@@ -1,5 +1,6 @@
 package com.janrain.simpledb;
 
+import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.RandomStringUtils;
 import org.junit.After;

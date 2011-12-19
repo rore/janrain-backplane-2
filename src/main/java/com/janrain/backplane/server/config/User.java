@@ -16,8 +16,8 @@
 
 package com.janrain.backplane.server.config;
 
-import com.janrain.message.AbstractMessage;
-import com.janrain.message.MessageField;
+import com.janrain.commons.supersimpledb.message.AbstractMessage;
+import com.janrain.commons.supersimpledb.message.MessageField;
 
 import java.util.EnumSet;
 import java.util.Set;

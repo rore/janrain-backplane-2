@@ -16,11 +16,10 @@
 
 package com.janrain.backplane.server;
 
-import com.janrain.message.AbstractMessage;
-import com.janrain.message.MessageField;
+import com.janrain.commons.supersimpledb.message.AbstractMessage;
+import com.janrain.commons.supersimpledb.message.MessageField;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
-
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;

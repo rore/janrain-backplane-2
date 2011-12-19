@@ -16,10 +16,9 @@
 
 package com.janrain.backplane.server.config;
 
-import com.janrain.message.AbstractMessage;
-import com.janrain.message.MessageField;
+import com.janrain.commons.supersimpledb.message.AbstractMessage;
+import com.janrain.commons.supersimpledb.message.MessageField;
 import org.apache.commons.lang.StringUtils;
-
 import javax.validation.constraints.Max;
 import java.util.EnumSet;
 import java.util.Set;

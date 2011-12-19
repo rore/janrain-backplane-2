@@ -17,8 +17,8 @@
 package com.janrain.backplane.server.metrics;
 
 import com.janrain.backplane.server.BackplaneServerException;
-import com.janrain.message.AbstractMessage;
-import com.janrain.message.MessageField;
+import com.janrain.commons.supersimpledb.message.AbstractMessage;
+import com.janrain.commons.supersimpledb.message.MessageField;
 import org.codehaus.jackson.map.ObjectMapper;
 
 import javax.ws.rs.GET;

@@ -1,6 +1,6 @@
 package com.janrain.util;
 
-import com.janrain.util.Utf8StringUtils;
+import com.janrain.commons.util.Utf8StringUtils;
 import org.apache.commons.lang.RandomStringUtils;
 import org.junit.Test;
 

@@ -223,6 +223,12 @@
             <artifactId>scala-library</artifactId>
             <version>2.7.2</version>
         </dependency>
+         <!-- supersimpledb -->
+        <dependency>
+            <groupId>com.janrain.commons.supersimpledb</groupId>
+            <artifactId>commons-supersimpledb</artifactId>
+            <version>1.0.2</version>
+        </dependency>
 	</dependencies>
     <repositories>
         <!-- For Hibernate Validator -->
@@ -262,6 +268,11 @@
             <snapshots>
                 <enabled>false</enabled>
             </snapshots>
+        </repository>
+         <!-- Janrain's supersimpledb dependency -->
+        <repository>
+            <id>janrain-repo</id>
+            <url>https://repository-janrain.forge.cloudbees.com/release</url>
         </repository>
     </repositories>
 	<build>

@@ -47,7 +47,7 @@
         </constructor-arg>
     </bean>
 
-    <bean id="superSimpleDB" class="com.janrain.simpledb.SuperSimpleDBImpl" />
+    <bean id="superSimpleDB" class="com.janrain.commons.supersimpledb.SuperSimpleDBImpl" />
 
     <bean id="bpIdFilter" class="com.janrain.servlet.InstanceIdFilter" />
 

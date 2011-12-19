@@ -1,6 +1,6 @@
 package com.janrain.simpledb;
 
-import com.janrain.message.AbstractNamedMap;
+import com.janrain.commons.supersimpledb.message.AbstractNamedMap;
 import org.junit.Ignore;
 
 /**
