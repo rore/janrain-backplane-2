@@ -1,9 +1,7 @@
 Backplane README
 ================
 
-The Backplane Server implements the [backplane-core-v1.1](https://sites.google.com/site/backplanespec/documentation/backplanespecification1-1#backplane.server.api) and [backplane-core-1.2](https://sites.google.com/site/backplanespec/documentation/backplane1-2) specifications, with the configuration and deployment specifics detailed in this document.
-
-The implementation is backwards-compatible with [v1](http://www.backplaneworkinggroup.org/documentation/backplanespecification#backplane.server.api) of the protocol.
+The Backplane Server implements the [backplane-core-v2](https://sites.google.com/site/backplanespec/documentation/backplane2-0-draft5) specification, with the configuration and deployment specifics detailed in this document.
 
 The deployment environment is Amazon AWS and the storage engine used is SimpleDB.
 
@@ -79,11 +77,9 @@ Note: An access decision for the "Post" operation requires the message type (fro
 Endpoints
 ---------
 
-All endpoints are available at paths starting with all of the following prefixes:
+All endpoints are available at paths starting with the following prefix:
 
-* /v1/
-* /v1.1/
-* /v1.2/
+* /v2
 
 Backplane Message Store
 -----------------------

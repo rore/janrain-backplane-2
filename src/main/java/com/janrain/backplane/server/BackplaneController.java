@@ -208,13 +208,17 @@ public class BackplaneController {
 
     public static String randomString(int length) {
         byte[] randomBytes = new byte[length];
+        // the base64 character set per RFC 4648 with last two members '-' and '_' removed due to possible
+        // compatibility issues.
+        byte[] digits = {'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T',
+                         'U','V','W','X','Y','Z','a','b','c','d','e','f','g','h','i','j','k','l','m','n',
+                         'o','p','q','r','s','t','u','v','w','x','y','z','0','1','2','3','4','5','6','7',
+                         '8','9'};
         random.nextBytes(randomBytes);
         for (int i = 0; i < length; i++) {
             byte b = randomBytes[i];
-            int c = Math.abs(b % 16);
-            if (c < 10) c += 48; // map (0..9) to '0' .. '9'
-            else c += (97 - 10);   // map (10..15) to 'a'..'f'
-            randomBytes[i] = (byte) c;
+            int c = Math.abs(b % digits.length);
+            randomBytes[i] = digits[c];
         }
         try {
             return new String(randomBytes, "US-ASCII");
