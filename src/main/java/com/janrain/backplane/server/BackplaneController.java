@@ -23,6 +23,8 @@ import com.janrain.backplane.server.config.User;
 import com.janrain.backplane.server.metrics.MetricsAccumulator;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
+import com.janrain.commons.supersimpledb.message.MessageField;
+import com.janrain.crypto.ChannelUtil;
 import com.janrain.crypto.HmacHashUtils;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.HistogramMetric;
@@ -203,9 +205,10 @@ public class BackplaneController {
      * @return a time-based, lexicographically comparable message ID.
      */
     public static String generateMessageId() {
-        return BackplaneConfig.ISO8601.format(new Date()) + "-" + randomString(10);
+        return BackplaneConfig.ISO8601.format(new Date()) + "-" + ChannelUtil.randomString(10);
     }
 
+    /*
     public static String randomString(int length) {
         byte[] randomBytes = new byte[length];
         // the base64 character set per RFC 4648 with last two members '-' and '_' removed due to possible
@@ -228,6 +231,7 @@ public class BackplaneController {
             return null;
         }
     }
+    */
     
     // - PRIVATE
 
@@ -265,7 +269,7 @@ public class BackplaneController {
     @Inject
     private MetricsAccumulator metricAccumulator;
 
-    private static final Random random = new SecureRandom();
+    //private static final Random random = new SecureRandom();
 
     private void checkAuth(String basicAuth, String bus, BackplaneConfig.BUS_PERMISSION permission) throws AuthException {
         // authN
@@ -335,7 +339,7 @@ public class BackplaneController {
     }
 
     private String newChannel() {
-        return "\"" + randomString(CHANNEL_NAME_LENGTH) +"\"";
+        return "\"" + ChannelUtil.randomString(CHANNEL_NAME_LENGTH) +"\"";
     }
 
     private String getChannelMessages(final String bus, final String channel, final String since, final String sticky) throws SimpleDBException, BackplaneServerException {

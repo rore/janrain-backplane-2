@@ -1,8 +1,10 @@
 package com.janrain.simpledb;
 
+import com.janrain.backplane.server.BackplaneController;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.RandomStringUtils;
+import org.apache.log4j.Logger;
 import org.junit.After;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -12,6 +14,7 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import javax.inject.Inject;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 /**
  * @author Johnny Bufu
