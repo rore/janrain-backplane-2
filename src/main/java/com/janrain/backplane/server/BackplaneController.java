@@ -44,6 +44,7 @@ import org.springframework.web.servlet.ModelAndView;
 import javax.inject.Inject;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.swing.text.View;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.SecureRandom;
@@ -71,6 +72,19 @@ public class BackplaneController {
         return new ModelAndView("welcome");
     }
 
+    /**
+     * Handle dynamic discovery of this server's registration endpoint
+     * @return
+     */
+    @RequestMapping(value = "/.well-known/host-meta", method = { RequestMethod.GET})
+    public ModelAndView xrds(HttpServletRequest request, HttpServletResponse response) {
+
+        ModelAndView view = new ModelAndView("xrd");
+        view.addObject("host", "http://" + request.getServerName());
+        view.addObject("secureHost", "https://" + request.getServerName());
+        return view;
+    }
+
     @RequestMapping(value = "/bus/{bus}", method = RequestMethod.GET)
     public @ResponseBody List<HashMap<String,Object>> getBusMessages(
                                 @RequestHeader(value = "Authorization", required = false) String basicAuth,
@@ -80,6 +94,7 @@ public class BackplaneController {
         throws AuthException, SimpleDBException, BackplaneServerException {
 
         checkAuth(basicAuth, bus, BackplaneConfig.BUS_PERMISSION.GETALL);
+
 
         // log metric
         busGets.mark();

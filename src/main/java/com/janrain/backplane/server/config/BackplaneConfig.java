@@ -34,6 +34,8 @@ import org.springframework.context.annotation.Scope;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.inject.Inject;
+import javax.naming.InitialContext;
+import javax.naming.NamingException;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -144,18 +146,29 @@ public class BackplaneConfig {
         this.bpInstanceId = instanceId;
     }
 
-    static String getAwsEnv(String envParamName) {
-        String result = System.getenv(envParamName);
-        if (StringUtils.isBlank(result)) {
-            throw new RuntimeException("Required environment configuration missing: " + envParamName);
-        }
-        return result;
-    }
+    /**
+     * Check for system property and if that fails, check the container Context
+     * @param propParamName
+     * @return
+     */
 
     static String getAwsProp(String propParamName) {
         String result = System.getProperty(propParamName);
         if (StringUtils.isBlank(result)) {
-            throw new RuntimeException("Required system property configuration missing: " + propParamName);
+            logger.info(propParamName + " value not found in system properties.");
+            try {
+                javax.naming.Context initCtx = new InitialContext();
+                result = (String) initCtx.lookup("java:comp/env/" + propParamName);
+            } catch (NamingException e) {
+                logger.error(e);
+                //continue
+            }
+
+            if (StringUtils.isBlank(result)) {
+                throw new RuntimeException("Required system property configuration missing: " + propParamName);
+            }  else {
+                logger.info(propParamName + " value found in application Context");
+            }
         }
         return result;
     }
