@@ -83,6 +83,8 @@ public class BackplaneController {
         return view;
     }
 
+
+
     /**
      * The OAuth "Token Endpoint" is used to obtain an access token to be used
      * for retrieving messages from the Get Messages endpoint.
@@ -114,6 +116,7 @@ public class BackplaneController {
 
     @RequestMapping(value = "/messages", method = { RequestMethod.GET})
     public ModelAndView messages(HttpServletRequest request, HttpServletResponse response,
+                                @RequestParam(value = "access_token", required = true) String access_token,
                                 @RequestParam(value = "block", defaultValue = "0", required = false) Integer block,
                                 @RequestParam(required = false) String callback,
                                 @RequestParam(value = "since", required = false) String since) {
@@ -132,6 +135,7 @@ public class BackplaneController {
 
     @RequestMapping(value = "/message/{msg_id}", method = { RequestMethod.GET})
     public ModelAndView message(HttpServletRequest request, HttpServletResponse response,
+                                @RequestParam(value = "access_token", required = true) String access_token,
                                 @RequestParam(required = false) String callback) {
 
 
@@ -147,7 +151,8 @@ public class BackplaneController {
      */
 
     @RequestMapping(value = "/messages", method = { RequestMethod.POST})
-    public ModelAndView postMessages(HttpServletRequest request, HttpServletResponse response) {
+    public ModelAndView postMessages(HttpServletRequest request, HttpServletResponse response,
+                                     @RequestParam(value = "access_token", required = true) String access_token) {
 
 
         throw new NotImplementedException();
