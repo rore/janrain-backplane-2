@@ -14,18 +14,9 @@
 		<to>/static/backplane.js</to>
 	</rule>
     <rule>
-        <from>/v1/**</from>
+        <from>/v2/**</from>
         <to>/app/$1</to>
     </rule>
-    <rule>
-        <from>/v1.1/**</from>
-        <to>/app/$1</to>
-    </rule>
-    <rule>
-        <from>/v1.2/**</from>
-        <to>/app/$1</to>
-    </rule>
-
 	<rule>
 		<from>/**</from>
 		<to>/app/$1</to>

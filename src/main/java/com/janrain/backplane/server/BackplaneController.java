@@ -30,6 +30,7 @@ import com.yammer.metrics.core.HistogramMetric;
 import com.yammer.metrics.core.MeterMetric;
 import com.yammer.metrics.core.TimerMetric;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -81,6 +82,81 @@ public class BackplaneController {
         view.addObject("secureHost", "https://" + request.getServerName());
         return view;
     }
+
+    /**
+     * The OAuth "Token Endpoint" is used to obtain an access token to be used
+     * for retrieving messages from the Get Messages endpoint.
+     * @param request
+     * @param response
+     * @return
+     */
+
+    @RequestMapping(value = "/token", method = { RequestMethod.POST})
+    public ModelAndView token(HttpServletRequest request, HttpServletResponse response,
+                              @RequestParam(value = "client_id", required = true) String client_id,
+                              @RequestParam(value = "grant_type", required = true) String grant_type,
+                              @RequestParam(value = "code", required = true) String code,
+                              @RequestParam(value = "redirect_uri", required = true) String redirect_uri,
+                              @RequestParam(value = "client_secret", required = false) String client_secret,
+                              @RequestParam(value = "scope", required = false) String scope) {
+
+
+        throw new NotImplementedException();
+
+    }
+
+    /**
+     * Retrieve messages from the server.
+     * @param request
+     * @param response
+     * @return
+     */
+
+    @RequestMapping(value = "/messages", method = { RequestMethod.GET})
+    public ModelAndView messages(HttpServletRequest request, HttpServletResponse response,
+                                @RequestParam(value = "block", defaultValue = "0", required = false) Integer block,
+                                @RequestParam(required = false) String callback,
+                                @RequestParam(value = "since", required = false) String since) {
+
+
+        throw new NotImplementedException();
+
+    }
+
+    /**
+     * Retrieve a single message from the server.
+     * @param request
+     * @param response
+     * @return
+     */
+
+    @RequestMapping(value = "/message/{msg_id}", method = { RequestMethod.GET})
+    public ModelAndView message(HttpServletRequest request, HttpServletResponse response,
+                                @RequestParam(required = false) String callback) {
+
+
+        throw new NotImplementedException();
+
+    }
+
+    /**
+     * Publish messages to the Backplane.
+     * @param request
+     * @param response
+     * @return
+     */
+
+    @RequestMapping(value = "/messages", method = { RequestMethod.POST})
+    public ModelAndView postMessages(HttpServletRequest request, HttpServletResponse response) {
+
+
+        throw new NotImplementedException();
+
+    }
+
+
+
+
 
     @RequestMapping(value = "/bus/{bus}", method = RequestMethod.GET)
     public @ResponseBody List<HashMap<String,Object>> getBusMessages(
