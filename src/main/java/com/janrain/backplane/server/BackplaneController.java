@@ -84,26 +84,53 @@ public class BackplaneController {
     }
 
 
-
     /**
      * The OAuth "Token Endpoint" is used to obtain an access token to be used
      * for retrieving messages from the Get Messages endpoint.
+     *
      * @param request
      * @param response
+     * @param client_id
+     * @param grant_type
+     * @param redirect_uri
+     * @param code
+     * @param client_secret
+     * @param scope
+     * @param callback (optional callback function)
      * @return
+     * @throws AuthException
+     * @throws SimpleDBException
+     * @throws BackplaneServerException
      */
 
     @RequestMapping(value = "/token", method = { RequestMethod.POST})
-    public ModelAndView token(HttpServletRequest request, HttpServletResponse response,
-                              @RequestParam(value = "client_id", required = true) String client_id,
-                              @RequestParam(value = "grant_type", required = true) String grant_type,
-                              @RequestParam(value = "code", required = true) String code,
-                              @RequestParam(value = "redirect_uri", required = true) String redirect_uri,
-                              @RequestParam(value = "client_secret", required = false) String client_secret,
-                              @RequestParam(value = "scope", required = false) String scope) {
+    @ResponseBody
+    public HashMap<String,Object> token(HttpServletRequest request, HttpServletResponse response,
+                                        @RequestParam(value = "client_id", required = false) String client_id,
+                                        @RequestParam(value = "grant_type", required = false) String grant_type,
+                                        @RequestParam(value = "redirect_uri", required = false) String redirect_uri,
+                                        @RequestParam(value = "code", required = false) String code,
+                                        @RequestParam(value = "client_secret", required = false) String client_secret,
+                                        @RequestParam(value = "scope", required = false) String scope,
+                                        @RequestParam(required = false) String callback)
+            throws AuthException, SimpleDBException, BackplaneServerException {
 
+        TokenRequest tokenRequest = new TokenRequest(client_id, grant_type, redirect_uri,
+                                                        code, client_secret, scope, callback);
 
-        throw new NotImplementedException();
+        try {
+            tokenRequest.setCode(superSimpleDb.retrieve(bpConfig.getCodeTableName(), Code.class, code));
+        } catch (Exception e) {
+            //do nothing
+        }
+
+        HashMap errors = tokenRequest.validate(superSimpleDb);
+        if (errors != null) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            return errors;
+        }
+
+        return new OAuth2Response(tokenDao, tokenRequest).generateResponse();
 
     }
 
@@ -119,7 +146,8 @@ public class BackplaneController {
                                 @RequestParam(value = "access_token", required = true) String access_token,
                                 @RequestParam(value = "block", defaultValue = "0", required = false) Integer block,
                                 @RequestParam(required = false) String callback,
-                                @RequestParam(value = "since", required = false) String since) {
+                                @RequestParam(value = "since", required = false) String since)
+            throws SimpleDBException {
 
 
         throw new NotImplementedException();
@@ -331,7 +359,8 @@ public class BackplaneController {
     private static final Logger logger = Logger.getLogger(BackplaneController.class);
 
     private static final String NEW_CHANNEL_LAST_PATH = "new";
-    private static final String ERR_MSG_FIELD = "ERR_MSG";
+    private static final String ERR_MSG_FIELD = "error";
+    private static final String ERR_MSG_DESCRIPTION = "error_description";
     private static final int CHANNEL_NAME_LENGTH = 32;
 
     private final MeterMetric posts =
@@ -358,6 +387,9 @@ public class BackplaneController {
 
     @Inject
     private SuperSimpleDB superSimpleDb;
+
+    @Inject
+    private TokenDAO tokenDao;
 
     @Inject
     private MetricsAccumulator metricAccumulator;

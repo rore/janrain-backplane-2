@@ -227,9 +227,15 @@
         <dependency>
             <groupId>com.janrain.commons.supersimpledb</groupId>
             <artifactId>commons-supersimpledb</artifactId>
-            <version>1.0.2</version>
+            <version>1.0.3</version>
         </dependency>
-	</dependencies>
+        <!-- intellij annotations library for @NotNull and @Nullable -->
+        <dependency>
+            <groupId>org.kohsuke.jetbrains</groupId>
+            <artifactId>annotations</artifactId>
+            <version>9.0</version>
+        </dependency>
+    </dependencies>
     <repositories>
         <!-- For Hibernate Validator -->
         <repository>
