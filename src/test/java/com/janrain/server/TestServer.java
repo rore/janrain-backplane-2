@@ -2,14 +2,17 @@ package com.janrain.server;
 
 
 import com.janrain.backplane.server.BackplaneController;
-import com.janrain.backplane.server.BackplaneServerException;
 import com.janrain.backplane.server.Code;
 import com.janrain.backplane.server.config.BackplaneConfig;
+import com.janrain.backplane.server.config.Client;
+import com.janrain.backplane.server.config.User;
+import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.crypto.ChannelUtil;
 import org.apache.catalina.util.Base64;
 import org.apache.log4j.Logger;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.context.ApplicationContext;
@@ -18,9 +21,9 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.web.servlet.HandlerAdapter;
-import org.springframework.web.servlet.ModelAndView;
+
 import javax.inject.Inject;
-import java.util.regex.Pattern;
+
 import static org.junit.Assert.*;
 
 /**
@@ -63,6 +66,13 @@ public class TestServer {
 		refreshRequestAndResponse();
 	}
 
+    private Client createTestClient() throws SimpleDBException {
+        Client client = new Client("random_id", "secret", "redirect_uri");
+        superSimpleDB.store(bpConfig.getClientsTableName(), Client.class, client);
+        return client;
+    }
+
+
     private void refreshRequestAndResponse() {
 		request = new MockHttpServletRequest();
 		response = new MockHttpServletResponse();
@@ -104,6 +114,7 @@ public class TestServer {
         // }
 
         refreshRequestAndResponse();
+
         request.setRequestURI("/token");
         request.setMethod("POST");
         request.setParameter("client_id", "anonymous");
@@ -126,15 +137,16 @@ public class TestServer {
     public void testTokenEndPointClientTokenRequestInvalidCode() throws Exception {
 
         refreshRequestAndResponse();
+        Client client = createTestClient();
         request.setRequestURI("/token");
         request.setMethod("POST");
-        request.setParameter("client_id", "meh");
+        request.setParameter("client_id", client.get(User.Field.USER));
         request.setParameter("grant_type", "code");
 
         //will fail because the code below is not valid
         request.setParameter("code", "meh");
-        request.setParameter("client_secret","meh");
-        request.setParameter("redirect_uri","meh");
+        request.setParameter("client_secret", client.get(User.Field.PWDHASH));
+        request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
         handlerAdapter.handle(request, response, controller);
         logger.debug("testTokenEndPointClientTokenRequestInvalidCode() => " + request.toString() + " => " + response.getContentAsString());
         assertTrue(response.getContentAsString().contains(ERR_GRANT));
@@ -145,6 +157,8 @@ public class TestServer {
     @Test()
     public void testTokenEndPointClientTokenRequest() throws Exception {
 
+        logger.info("==============================================");
+        logger.info("testTokenEndPointClientTokenRequest()");
         //  should return the form:
         //  {
         //      "access_token":"l5feG0KjdXTpgDAfOvN6pU6YWxNb7qyn",
@@ -152,9 +166,11 @@ public class TestServer {
         //  }
 
         refreshRequestAndResponse();
+        Client client = createTestClient();
+
         request.setRequestURI("/token");
         request.setMethod("POST");
-        request.setParameter("client_id", "meh");
+        request.setParameter("client_id", client.get(User.Field.USER));
         request.setParameter("grant_type", "code");
 
         //create code for test
@@ -162,8 +178,8 @@ public class TestServer {
         superSimpleDB.store(bpConfig.getCodeTableName(), Code.class, code);
 
         request.setParameter("code", code.getIdValue());
-        request.setParameter("client_secret","meh");
-        request.setParameter("redirect_uri","meh");
+        request.setParameter("client_secret", client.get(User.Field.PWDHASH));
+        request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
         handlerAdapter.handle(request, response, controller);
         logger.debug("testTokenEndPointClientTokenRequest() => " + response.getContentAsString());
         //assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
@@ -171,6 +187,8 @@ public class TestServer {
         assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
                 matches("[{]\\s*\"access_token\":\\s*\".{20}+\",\\s*" +
                         "\"token_type\":\\s*\"Bearer\"\\s*[}]"));
+
+        logger.info("======================");
 
     }
 

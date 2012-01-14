@@ -16,7 +16,9 @@
 
 package com.janrain.backplane.server;
 
+import com.janrain.backplane.server.config.AuthException;
 import com.janrain.backplane.server.config.BackplaneConfig;
+import com.janrain.backplane.server.config.Client;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.crypto.ChannelUtil;
@@ -43,6 +45,7 @@ public class TokenRequest {
     final String scope;
     final String callback;
     Code authCode;
+    Client client;
 
     @Inject
     private BackplaneConfig bpConfig;
@@ -68,12 +71,16 @@ public class TokenRequest {
         this.authCode = authCode;
     }
 
+    public void setClient(Client client) {
+        this.client = client;
+    }
+
     /**
      * Validates input
      * @return null if no errors exist or a HashMap with an error
      */
 
-    public HashMap<String, Object> validate(SuperSimpleDB superSimpleDB) throws SimpleDBException {
+    public HashMap<String, Object> validate() throws SimpleDBException {
          // use Oauth2 5.2 response codes for errors - http://tools.ietf.org/html/draft-ietf-oauth-v2-22#section-5.2
 
         if (StringUtils.isEmpty(client_id)) {
@@ -108,6 +115,11 @@ public class TokenRequest {
             }
             if (this.authCode.isExpired()) {
                 return error("invalid_grant", "Authorization code is expired");
+            }
+
+            //check the client
+            if (client == null || !client_secret.equals(client.getClientSecret()) || !redirect_uri.equals(client.getRedirectUri())) {
+                return error("invalid_client", "Client authentication failed");
             }
         }
 

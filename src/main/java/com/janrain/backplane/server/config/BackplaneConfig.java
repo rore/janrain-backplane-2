@@ -95,6 +95,10 @@ public class BackplaneConfig {
     public String getAccessTokenTableName() {
         return bpInstanceId + BP_ACCESS_TOKEN_TABLE_SUFFIX;
     }
+
+    public String getClientsTableName() {
+        return bpInstanceId + BP_CLIENTS_TABLE_SUFFIX;
+    }
     
     /**
      * Retrieve a configuration entity by its name
@@ -200,6 +204,7 @@ public class BackplaneConfig {
     private static final String BP_METRIC_AUTH_TABLE_SUFFIX = "_bpMetricAuth";
     private static final String BP_AUTHCODE_TABLE_SUFFIX = "_authCodes";
     private static final String BP_ACCESS_TOKEN_TABLE_SUFFIX = "_accessTokens";
+    private static final String BP_CLIENTS_TABLE_SUFFIX = "_clients";
     private static final long BP_MAX_MESSAGES_DEFAULT = 100;
 
     private final String bpInstanceId;

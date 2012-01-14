@@ -16,10 +16,7 @@
 
 package com.janrain.backplane.server;
 
-import com.janrain.backplane.server.config.AuthException;
-import com.janrain.backplane.server.config.BackplaneConfig;
-import com.janrain.backplane.server.config.BusConfig;
-import com.janrain.backplane.server.config.User;
+import com.janrain.backplane.server.config.*;
 import com.janrain.backplane.server.metrics.MetricsAccumulator;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
@@ -40,6 +37,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.ModelAndView;
+import org.tuckey.web.filters.urlrewrite.CatchElem;
 
 import javax.inject.Inject;
 import javax.servlet.http.HttpServletRequest;
@@ -118,13 +116,22 @@ public class BackplaneController {
         TokenRequest tokenRequest = new TokenRequest(client_id, grant_type, redirect_uri,
                                                         code, client_secret, scope, callback);
 
+
+
         try {
             tokenRequest.setCode(superSimpleDb.retrieve(bpConfig.getCodeTableName(), Code.class, code));
         } catch (Exception e) {
             //do nothing
         }
 
-        HashMap errors = tokenRequest.validate(superSimpleDb);
+        try {
+            tokenRequest.setClient(superSimpleDb.retrieve(bpConfig.getClientsTableName(), Client.class, client_id));
+        } catch (Exception e) {
+            //do nothing
+            logger.info("could not retrieve client with id " + client_id, e);
+        }
+
+        HashMap errors = tokenRequest.validate();
         if (errors != null) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             return errors;
