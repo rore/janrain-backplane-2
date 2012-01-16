@@ -16,19 +16,14 @@
 
 package com.janrain.backplane.server;
 
-import com.janrain.backplane.server.config.AuthException;
 import com.janrain.backplane.server.config.BackplaneConfig;
 import com.janrain.backplane.server.config.Client;
 import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.commons.supersimpledb.SuperSimpleDB;
-import com.janrain.crypto.ChannelUtil;
 import org.apache.commons.lang.StringUtils;
 import org.jetbrains.annotations.NotNull;
 
 import javax.inject.Inject;
-import java.util.Date;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 
 /**
  * Token request
@@ -46,6 +41,7 @@ public class TokenRequest {
     final String callback;
     Code authCode;
     Client client;
+    Scope scopes;
 
     @Inject
     private BackplaneConfig bpConfig;
@@ -95,7 +91,7 @@ public class TokenRequest {
             return error("invalid_request", "Missing code value");
         }
 
-        if (grant_type.equals("client_credentials") && !client_id.equals("anonymous") && StringUtils.isEmpty(client_secret)) {
+        if (grant_type.equals("client_credentials") && !client_id.equals(Token.ANONYMOUS) && StringUtils.isEmpty(client_secret)) {
             return error("invalid_request", "Missing client_secret value");
         }
 
@@ -103,7 +99,7 @@ public class TokenRequest {
             return error("invalid_request", "Missing redirect_uri value");
         }
 
-        if (grant_type.equals("client_credentials") && client_id.equals("anonymous") && StringUtils.isNotEmpty(client_secret)) {
+        if (grant_type.equals("client_credentials") && client_id.equals(Token.ANONYMOUS) && StringUtils.isNotEmpty(client_secret)) {
             return error("invalid_request", "Must not include client_secret for anonymous requests");
         }
 
@@ -120,6 +116,14 @@ public class TokenRequest {
             //check the client
             if (client == null || !client_secret.equals(client.getClientSecret()) || !redirect_uri.equals(client.getRedirectUri())) {
                 return error("invalid_client", "Client authentication failed");
+            }
+        }
+
+        if (StringUtils.isNotEmpty(scope)) {
+            try {
+                this.scopes = new Scope(scope);
+            } catch (BackplaneServerException e) {
+                return error("invalid_request", e.getMessage());
             }
         }
 

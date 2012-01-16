@@ -20,4 +20,8 @@ public class Code extends Access {
        this(ChannelUtil.randomString(CODE_LENGTH), new Date(new Date().getTime() + EXPIRES_SECONDS * 1000));
     }
 
+    public Code(Date expires) {
+        this(ChannelUtil.randomString(CODE_LENGTH), expires);
+    }
+
 }

@@ -125,10 +125,11 @@ public class BackplaneController {
         }
 
         try {
+            if (StringUtils.isNotEmpty(client_id) && !client_id.equals(Token.ANONYMOUS))
             tokenRequest.setClient(superSimpleDb.retrieve(bpConfig.getClientsTableName(), Client.class, client_id));
         } catch (Exception e) {
             //do nothing
-            logger.info("could not retrieve client with id " + client_id, e);
+            logger.info("could not retrieve client with id '" + client_id + "'", e);
         }
 
         HashMap errors = tokenRequest.validate();

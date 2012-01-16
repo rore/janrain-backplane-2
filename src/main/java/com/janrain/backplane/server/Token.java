@@ -12,6 +12,7 @@ public class Token extends Access {
 
     public static final int TOKEN_LENGTH = 20;
     public static final int EXPIRES_SECONDS = 3600;
+    public static final String ANONYMOUS = "anonymous";
 
     public Token(String token, type type, Date expires) {
         super(token,type,expires,  type == type.REGULAR_TOKEN ? true: false);

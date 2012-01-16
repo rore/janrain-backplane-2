@@ -39,7 +39,7 @@ public class OAuth2Response {
     }
 
     public HashMap<String, Object> generateResponse() throws SimpleDBException {
-        if (request.grant_type.equals("client_credentials") && request.client_id.equals("anonymous")) {
+        if (request.grant_type.equals("client_credentials") && request.client_id.equals(Token.ANONYMOUS)) {
             // issue new channel id
             final Token token = new Token(Access.type.REGULAR_TOKEN,  new Date(new Date().getTime() + Token.EXPIRES_SECONDS * 1000));
             tokenDao.persistToken(token);

@@ -3,6 +3,7 @@ package com.janrain.server;
 
 import com.janrain.backplane.server.BackplaneController;
 import com.janrain.backplane.server.Code;
+import com.janrain.backplane.server.Token;
 import com.janrain.backplane.server.config.BackplaneConfig;
 import com.janrain.backplane.server.config.Client;
 import com.janrain.backplane.server.config.User;
@@ -23,6 +24,8 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.web.servlet.HandlerAdapter;
 
 import javax.inject.Inject;
+
+import java.util.Date;
 
 import static org.junit.Assert.*;
 
@@ -157,8 +160,6 @@ public class TestServer {
     @Test()
     public void testTokenEndPointClientTokenRequest() throws Exception {
 
-        logger.info("==============================================");
-        logger.info("testTokenEndPointClientTokenRequest()");
         //  should return the form:
         //  {
         //      "access_token":"l5feG0KjdXTpgDAfOvN6pU6YWxNb7qyn",
@@ -188,8 +189,68 @@ public class TestServer {
                 matches("[{]\\s*\"access_token\":\\s*\".{20}+\",\\s*" +
                         "\"token_type\":\\s*\"Bearer\"\\s*[}]"));
 
-        logger.info("======================");
 
+    }
+
+    @Test()
+    public void TryToUseInvalidScopetest() throws Exception {
+
+        //  should return the form:
+        //  {
+        //      "access_token":"l5feG0KjdXTpgDAfOvN6pU6YWxNb7qyn",
+        //      "token_type":"Bearer"
+        //  }
+
+        refreshRequestAndResponse();
+        Client client = createTestClient();
+
+        request.setRequestURI("/token");
+        request.setMethod("POST");
+        request.setParameter("client_id", client.get(User.Field.USER));
+        request.setParameter("grant_type", "code");
+
+        //create code for test
+        Code code = new Code();
+        superSimpleDB.store(bpConfig.getCodeTableName(), Code.class, code);
+
+        request.setParameter("code", code.getIdValue());
+        request.setParameter("client_secret", client.get(User.Field.PWDHASH));
+        request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
+        request.setParameter("scope", "bus;mybus.com bus:yourbus.com");
+        handlerAdapter.handle(request, response, controller);
+        logger.debug("TryToUseInvalidScopetest() => " + response.getContentAsString());
+        assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
+
+        // try again with anonymous access with privileged use of payload
+        request.setParameter("client_id", Token.ANONYMOUS);
+        request.setParameter("client_secret", "");
+        request.setParameter("scope", "payload.blah.blah");
+        handlerAdapter.handle(request, response, controller);
+        assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
+        logger.debug("TryToUseInvalidScopetest() => " + response.getContentAsString());
+
+    }
+
+    @Test()
+    public void TryToUseExpiredCode() throws Exception {
+        refreshRequestAndResponse();
+        Client client = createTestClient();
+
+        request.setRequestURI("/token");
+        request.setMethod("POST");
+        request.setParameter("client_id", client.get(User.Field.USER));
+        request.setParameter("grant_type", "code");
+
+        //create expired code for test
+        Code code = new Code(new Date());
+        superSimpleDB.store(bpConfig.getCodeTableName(), Code.class, code);
+
+        request.setParameter("code", code.getIdValue());
+        request.setParameter("client_secret", client.get(User.Field.PWDHASH));
+        request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
+        handlerAdapter.handle(request, response, controller);
+        logger.debug("TryToUseExpiredCode() => " + response.getContentAsString());
+        assertTrue(response.getContentAsString().contains(ERR_GRANT));
     }
 
     @Test()
