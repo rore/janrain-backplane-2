@@ -55,7 +55,7 @@ public class BackplaneMessage extends AbstractMessage {
         return EnumSet.allOf(Field.class);
     }
 
-    public HashMap<String, Object> asFrame(String serverUrl) throws BackplaneServerException {
+    public HashMap<String, Object> asFrame(String serverUrl, boolean includePayload) throws BackplaneServerException {
 
         HashMap<String, Object> frame = new LinkedHashMap<String, Object>();
 
@@ -66,7 +66,9 @@ public class BackplaneMessage extends AbstractMessage {
         frame.put(Field.CHANNEL.getFieldName(), get(Field.CHANNEL.getFieldName()));
 
         try {
-            frame.put(Field.PAYLOAD.getFieldName(), (new ObjectMapper()).readValue(get(Field.PAYLOAD), Object.class) ); // un-quote the value)
+            if (includePayload) {
+                frame.put(Field.PAYLOAD.getFieldName(), (new ObjectMapper()).readValue(get(Field.PAYLOAD), Object.class) ); // un-quote the value)
+            }
         } catch (IOException e) {
             String errMsg = "Error deserializing message payload: " + e.getMessage();
             logger.error(errMsg);

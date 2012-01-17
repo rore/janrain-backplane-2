@@ -220,12 +220,12 @@ public class BackplaneController {
 
         if (StringUtils.isBlank(callback)) {
             response.setContentType("application/json");
-            return message.asFrame("https://" + request.getServerName() + "/v2/message");
+            return message.asFrame("https://" + request.getServerName() + "/v2/message", messageRequest.getToken().isPrivileged());
         } else {
             response.setContentType("application/x-javascript");
             try {
                 String responseBody = callback + "(" + new String(new ObjectMapper().writeValueAsString(message.asFrame("https://" +
-                        request.getServerName() + "/v2/message")) + ")");
+                        request.getServerName() + "/v2/message", messageRequest.getToken().isPrivileged())) + ")");
 
                 response.getWriter().print(responseBody);
 
@@ -292,7 +292,7 @@ public class BackplaneController {
 
         List<HashMap<String,Object>> frames = new ArrayList<HashMap<String, Object>>();
         for (BackplaneMessage message : messages) {
-            frames.add(message.asFrame(""));
+            frames.add(message.asFrame("", true));
         }
         return frames;
 
@@ -558,7 +558,7 @@ public class BackplaneController {
                     List<Map<String,Object>> frames = new ArrayList<Map<String, Object>>();
 
                     for (BackplaneMessage message : messages) {
-                        frames.add(message.asFrame(""));
+                        frames.add(message.asFrame("", true));
                     }
 
                     ObjectMapper mapper = new ObjectMapper();

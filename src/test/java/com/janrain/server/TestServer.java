@@ -422,8 +422,7 @@ public class TestServer {
                         "\"source\":\\s*\".*\",\\s*" +
                         "\"type\":\\s*\".*\",\\s*" +
                         "\"bus\":\\s*\".*\",\\s*" +
-                        "\"channel\":\\s*\".*\",\\s*" +
-                        "\"payload\":\\s*.*" +
+                        "\"channel\":\\s*\".*\"\\s*" +
                         "[}]"));
 
     }
@@ -475,12 +474,65 @@ public class TestServer {
                         "\"source\":\\s*\".*\",\\s*" +
                         "\"type\":\\s*\".*\",\\s*" +
                         "\"bus\":\\s*\".*\",\\s*" +
-                        "\"channel\":\\s*\".*\",\\s*" +
-                        "\"payload\":\\s*.*" +
+                        "\"channel\":\\s*\".*\"\\s*" +
                         "[}][)]"));
 
 
     }
+
+    @Test()
+    public void testMessageEndPointPAL() throws Exception {
+
+        refreshRequestAndResponse();
+
+        // Create appropriate token
+        Token token = new Token(Access.type.PRIVILEGED_TOKEN, "mybus.com", null);
+        superSimpleDB.store(bpConfig.getAccessTokenTableName(), Token.class, token);
+
+        // Seed message
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
+
+        BackplaneMessage message = new BackplaneMessage("123456", "mybus.com", "randomchannel", msg);
+        superSimpleDB.store(bpConfig.getMessagesTableName(), BackplaneMessage.class, message, true);
+
+        // Make the call
+        request.setRequestURI("/message/123456");
+        request.setMethod("GET");
+        request.setParameter("access_token", token.getIdValue());
+        handlerAdapter.handle(request, response, controller);
+        logger.debug("testMessageEndPointPAL()   => " + response.getContentAsString());
+       // assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
+
+        assertTrue(response.getStatus() == HttpServletResponse.SC_OK);
+        assertTrue(response.getContentType().equals("application/json"));
+
+        // {
+        //  "messageURL": "https://bp.example.com/v2/message/097a5cc401001f95b45d37aca32a3bd2",
+        //  "source": "http://aboutecho.com",
+        //  "type": "identity/ack"
+        //  "bus": "customer.com",
+        //  "channel": "67dc880cc265b0dbc755ea959b257118",
+        //  "payload": {
+        //      "role": "administrator"
+        //  },
+        //}
+
+        assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
+                matches("[{]\\s*" +
+                        "\"messageURL\":\\s*\".*\",\\s*" +
+                        "\"source\":\\s*\".*\",\\s*" +
+                        "\"type\":\\s*\".*\",\\s*" +
+                        "\"bus\":\\s*\".*\",\\s*" +
+                        "\"channel\":\\s*\".*\",\\s*" +
+                        "\"payload\":\\s*.*" +
+                        "[}]"));
+
+    }
+
+
+
+
 
 
 
