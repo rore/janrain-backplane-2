@@ -52,7 +52,7 @@ public class TestServer {
     @Inject
     private BackplaneConfig bpConfig;
 
-    private static final Logger logger = Logger.getLogger(BackplaneController.class);
+    private static final Logger logger = Logger.getLogger(TestServer.class);
 
     static final String OK_RESPONSE = "{\"stat\":\"ok\"}";
     static final String ERR_RESPONSE = "\"error\":";
@@ -380,6 +380,7 @@ public class TestServer {
 
     @Test()
     public void testMessageEndPoint() throws Exception {
+
         refreshRequestAndResponse();
 
         // Create appropriate token
@@ -399,9 +400,10 @@ public class TestServer {
         request.setParameter("access_token", token.getIdValue());
         handlerAdapter.handle(request, response, controller);
         logger.debug("testMessageEndPoint()  => " + response.getContentAsString());
-        assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
+       // assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
 
         assertTrue(response.getStatus() == HttpServletResponse.SC_OK);
+        assertTrue(response.getContentType().equals("application/json"));
 
         // {
         //  "messageURL": "https://bp.example.com/v2/message/097a5cc401001f95b45d37aca32a3bd2",
@@ -424,8 +426,62 @@ public class TestServer {
                         "\"payload\":\\s*.*" +
                         "[}]"));
 
+    }
+
+    @Test
+    public void testMessageEndPointWithCallBack() throws Exception {
+
+        String callbackName = "meh";
+
+        refreshRequestAndResponse();
+
+        // Create appropriate token
+        Token token = new Token(Access.type.REGULAR_TOKEN, "mybus.com", new Date(new Date().getTime() + Token.EXPIRES_SECONDS * 1000));
+        superSimpleDB.store(bpConfig.getAccessTokenTableName(), Token.class, token);
+
+        // Seed message
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
+
+        BackplaneMessage message = new BackplaneMessage("123456", "mybus.com", token.getChannelName(), msg);
+        superSimpleDB.store(bpConfig.getMessagesTableName(), BackplaneMessage.class, message, true);
+
+        // now, try it via callback
+        refreshRequestAndResponse();
+        request.setRequestURI("/message/123456");
+        request.setMethod("GET");
+        request.setParameter("access_token", token.getIdValue());
+        request.setParameter("callback", callbackName);
+        handlerAdapter.handle(request, response, controller);
+        logger.debug("testMessageEndPointWithCallBack()  => " + response.getContentAsString());
+
+        assertTrue(response.getStatus() == HttpServletResponse.SC_OK);
+        assertTrue(response.getContentType().equals("application/x-javascript"));
+
+        // callback({
+        //  "messageURL": "https://bp.example.com/v2/message/097a5cc401001f95b45d37aca32a3bd2",
+        //  "source": "http://aboutecho.com",
+        //  "type": "identity/ack"
+        //  "bus": "customer.com",
+        //  "channel": "67dc880cc265b0dbc755ea959b257118",
+        //  "payload": {
+        //      "role": "administrator"
+        //  },
+        // })
+
+        assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
+                matches(callbackName + "[(][{]\\s*" +
+                        "\"messageURL\":\\s*\".*\",\\s*" +
+                        "\"source\":\\s*\".*\",\\s*" +
+                        "\"type\":\\s*\".*\",\\s*" +
+                        "\"bus\":\\s*\".*\",\\s*" +
+                        "\"channel\":\\s*\".*\",\\s*" +
+                        "\"payload\":\\s*.*" +
+                        "[}][)]"));
+
 
     }
+
 
 
 

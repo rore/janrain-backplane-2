@@ -168,9 +168,9 @@ public class BackplaneController {
 
     @RequestMapping(value = "/message/{msg_id}", method = { RequestMethod.GET})
     public @ResponseBody HashMap<String,Object> message(HttpServletRequest request, HttpServletResponse response,
-                                @PathVariable String msg_id,
-                                @RequestParam(value = "access_token", required = false) String access_token,
-                                @RequestParam(required = false) String callback)
+                                                        @PathVariable String msg_id,
+                                                        @RequestParam(value = "access_token", required = false) String access_token,
+                                                        @RequestParam(required = false) String callback)
             throws BackplaneServerException {
 
         MessageRequest messageRequest = new MessageRequest(access_token, callback);
@@ -218,7 +218,25 @@ public class BackplaneController {
             return errors;
         }
 
-        return message.asFrame("https://" + request.getServerName() + "/v2/message");
+        if (StringUtils.isBlank(callback)) {
+            response.setContentType("application/json");
+            return message.asFrame("https://" + request.getServerName() + "/v2/message");
+        } else {
+            response.setContentType("application/x-javascript");
+            try {
+                String responseBody = callback + "(" + new String(new ObjectMapper().writeValueAsString(message.asFrame("https://" +
+                        request.getServerName() + "/v2/message")) + ")");
+
+                response.getWriter().print(responseBody);
+
+                return null;
+            } catch (IOException e) {
+                String errMsg = "Error converting frames to JSON: " + e.getMessage();
+                logger.error(errMsg, bpConfig.getDebugException(e));
+                throw new BackplaneServerException(errMsg, e);
+            }
+        }
+
 
 
     }
