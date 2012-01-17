@@ -122,6 +122,9 @@ public class TokenRequest {
         if (StringUtils.isNotEmpty(scope)) {
             try {
                 this.scopes = new Scope(scope);
+                if (this.authCode != null && !this.authCode.isAllowedBuses(scopes.getBusesInScope())) {
+                    return error("invalid_request", "Invalid scope");
+                }
             } catch (BackplaneServerException e) {
                 return error("invalid_request", e.getMessage());
             }

@@ -24,6 +24,7 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.web.servlet.HandlerAdapter;
 
 import javax.inject.Inject;
+import javax.servlet.http.HttpServletResponse;
 
 import java.util.Date;
 
@@ -52,8 +53,7 @@ public class TestServer {
     private static final Logger logger = Logger.getLogger(BackplaneController.class);
 
     static final String OK_RESPONSE = "{\"stat\":\"ok\"}";
-    static final String ERR_RESPONSE = "\"error\":\"invalid_request\"";
-    static final String ERR_GRANT = "\"error\":\"invalid_grant\"";
+    static final String ERR_RESPONSE = "\"error\":";
 
     private MockHttpServletRequest request;
 	private MockHttpServletResponse response;
@@ -123,6 +123,7 @@ public class TestServer {
         request.setParameter("client_id", "anonymous");
         request.setParameter("grant_type", "client_credentials");
         request.setParameter("client_secret","");
+
         handlerAdapter.handle(request, response, controller);
         logger.debug("testTokenEndPointAnonymousTokenRequest() => " + response.getContentAsString());
         //assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
@@ -152,7 +153,7 @@ public class TestServer {
         request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
         handlerAdapter.handle(request, response, controller);
         logger.debug("testTokenEndPointClientTokenRequestInvalidCode() => " + request.toString() + " => " + response.getContentAsString());
-        assertTrue(response.getContentAsString().contains(ERR_GRANT));
+        assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
 
     }
 
@@ -175,7 +176,7 @@ public class TestServer {
         request.setParameter("grant_type", "code");
 
         //create code for test
-        Code code = new Code();
+        Code code = new Code("test");
         superSimpleDB.store(bpConfig.getCodeTableName(), Code.class, code);
 
         request.setParameter("code", code.getIdValue());
@@ -193,13 +194,7 @@ public class TestServer {
     }
 
     @Test()
-    public void TryToUseInvalidScopetest() throws Exception {
-
-        //  should return the form:
-        //  {
-        //      "access_token":"l5feG0KjdXTpgDAfOvN6pU6YWxNb7qyn",
-        //      "token_type":"Bearer"
-        //  }
+    public void TryToUseMalformedScopeTest() throws Exception {
 
         refreshRequestAndResponse();
         Client client = createTestClient();
@@ -210,7 +205,7 @@ public class TestServer {
         request.setParameter("grant_type", "code");
 
         //create code for test
-        Code code = new Code();
+        Code code = new Code("test");
         superSimpleDB.store(bpConfig.getCodeTableName(), Code.class, code);
 
         request.setParameter("code", code.getIdValue());
@@ -218,7 +213,7 @@ public class TestServer {
         request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
         request.setParameter("scope", "bus;mybus.com bus:yourbus.com");
         handlerAdapter.handle(request, response, controller);
-        logger.debug("TryToUseInvalidScopetest() => " + response.getContentAsString());
+        logger.debug("TryToUseMalformedScopeTest() => " + response.getContentAsString());
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
 
         // try again with anonymous access with privileged use of payload
@@ -227,9 +222,35 @@ public class TestServer {
         request.setParameter("scope", "payload.blah.blah");
         handlerAdapter.handle(request, response, controller);
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
-        logger.debug("TryToUseInvalidScopetest() => " + response.getContentAsString());
+        logger.debug("TryToUseMalformedScopetest() => " + response.getContentAsString());
 
     }
+
+    @Test()
+    public void TryToUseInvalidScopeTest() throws Exception {
+
+        refreshRequestAndResponse();
+        Client client = createTestClient();
+
+        request.setRequestURI("/token");
+        request.setMethod("POST");
+        request.setParameter("client_id", client.get(User.Field.USER));
+        request.setParameter("grant_type", "code");
+
+        //create code for test
+        Code code = new Code("mybus.com");
+        superSimpleDB.store(bpConfig.getCodeTableName(), Code.class, code);
+
+        request.setParameter("code", code.getIdValue());
+        request.setParameter("client_secret", client.get(User.Field.PWDHASH));
+        request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
+        request.setParameter("scope", "bus:mybus.com bus:yourbus.com");
+        handlerAdapter.handle(request, response, controller);
+        logger.debug("TryToUseInvalidScopeTest() => " + response.getContentAsString());
+        assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
+    }
+
+
 
     @Test()
     public void TryToUseExpiredCode() throws Exception {
@@ -242,7 +263,7 @@ public class TestServer {
         request.setParameter("grant_type", "code");
 
         //create expired code for test
-        Code code = new Code(new Date());
+        Code code = new Code("test",new Date());
         superSimpleDB.store(bpConfig.getCodeTableName(), Code.class, code);
 
         request.setParameter("code", code.getIdValue());
@@ -250,7 +271,7 @@ public class TestServer {
         request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
         handlerAdapter.handle(request, response, controller);
         logger.debug("TryToUseExpiredCode() => " + response.getContentAsString());
-        assertTrue(response.getContentAsString().contains(ERR_GRANT));
+        assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
     }
 
     @Test()
@@ -262,7 +283,7 @@ public class TestServer {
         request.setParameter("grant_type", "code");
 
         //create code for test
-        Code code = new Code();
+        Code code = new Code("test");
         superSimpleDB.store(bpConfig.getCodeTableName(), Code.class, code);
 
         request.setParameter("code", code.getIdValue());
@@ -325,8 +346,23 @@ public class TestServer {
         request.setMethod("POST");
         handlerAdapter.handle(request, response, controller);
         logger.debug("testTokenEndPointNoParams() => " + response.getContentAsString());
+
+        assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
+        assertTrue(response.getStatus() == HttpServletResponse.SC_BAD_REQUEST);
+    }
+
+    @Test()
+    public void testMessageEndPoint() throws Exception {
+        refreshRequestAndResponse();
+
+        request.setRequestURI("/message/" + 1);
+        request.setMethod("GET");
+        handlerAdapter.handle(request, response, controller);
+        logger.debug("testMessageEndPoint()  => " + response.getContentAsString());
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
     }
+
+
 
 
 

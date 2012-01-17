@@ -116,8 +116,6 @@ public class BackplaneController {
         TokenRequest tokenRequest = new TokenRequest(client_id, grant_type, redirect_uri,
                                                         code, client_secret, scope, callback);
 
-
-
         try {
             tokenRequest.setCode(superSimpleDb.retrieve(bpConfig.getCodeTableName(), Code.class, code));
         } catch (Exception e) {
@@ -170,12 +168,53 @@ public class BackplaneController {
      */
 
     @RequestMapping(value = "/message/{msg_id}", method = { RequestMethod.GET})
-    public ModelAndView message(HttpServletRequest request, HttpServletResponse response,
-                                @RequestParam(value = "access_token", required = true) String access_token,
-                                @RequestParam(required = false) String callback) {
+    public @ResponseBody HashMap<String,Object> message(HttpServletRequest request, HttpServletResponse response,
+                                @PathVariable String msg_id,
+                                @RequestParam(value = "access_token", required = false) String access_token,
+                                @RequestParam(required = false) String callback)
+            throws BackplaneServerException {
 
+        MessageRequest messageRequest = new MessageRequest(access_token, callback);
 
-        throw new NotImplementedException();
+        BackplaneMessage message = null;
+
+        try {
+            messageRequest.setToken(tokenDao.retrieveToken(access_token));
+            message = superSimpleDb.retrieve(bpConfig.getMessagesTableName(), BackplaneMessage.class, msg_id);
+        } catch (SimpleDBException e) {
+            //do nothing
+        }
+
+        if (message == null) {
+            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            return new HashMap<String,Object>() {{
+                put(ERR_MSG_FIELD, "Message not found");
+            }};
+        } else {
+            // For the standard request, verify that the token channel matches the message channel or return error
+            if (!messageRequest.getToken().isPrivileged() && !message.get(BackplaneMessage.Field.CHANNEL_NAME).equals(messageRequest.getToken().getChannelName())) {
+                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                return new HashMap<String,Object>() {{
+                    put(ERR_MSG_FIELD, "Forbidden");
+                }};
+            }
+            // For the privileged request, make sure the message bus matches a bus in the token
+            if (messageRequest.getToken().isPrivileged() && !messageRequest.getToken().isAllowedBus(message.get(BackplaneMessage.Field.BUS))) {
+                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                return new HashMap<String,Object>() {{
+                    put(ERR_MSG_FIELD, "Forbidden");
+                }};
+            }
+        }
+
+        HashMap errors = messageRequest.validate();
+        if (errors != null) {
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            return errors;
+        }
+
+        return message.asFrame();
+
 
     }
 

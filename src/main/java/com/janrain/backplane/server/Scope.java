@@ -1,7 +1,10 @@
 package com.janrain.backplane.server;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 
+import javax.print.DocFlavor;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -30,14 +33,43 @@ public class Scope {
 
     public Scope(String scopes) throws BackplaneServerException {
         this.scopes = parseScopeString(scopes);
+        logger.debug("Client requested scopes: " + scopes);
+    }
+
+    /**
+     * Return a list of bus names client has requested be in scope
+     * @return valid list, possibly empty
+     */
+
+    public List<String> getBusesInScope() {
+        return scopes.get("bus");
+    }
+
+    public boolean isBusInScope(String bus) {
+        List<String> busesInScope = scopes.get("bus");
+        if (busesInScope == null || busesInScope.isEmpty()) {
+            return false;
+        }
+
+        for (String busInScope : busesInScope) {
+            if (bus.equals(busInScope)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     //private
 
     private Map<String,ArrayList<String>> scopes;
+    private static final Logger logger = Logger.getLogger(Scope.class);
 
     private Map<String,ArrayList<String>> parseScopeString(String scope) throws BackplaneServerException {
         HashMap<String,ArrayList<String>> scopes = new HashMap<String, ArrayList<String>>();
+
+        // guarantee bus has an entry
+        scopes.put("bus", new ArrayList<String>());
 
         if (StringUtils.isNotEmpty(scope)) {
             // TODO: is there a maximum length for the scope string?

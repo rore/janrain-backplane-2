@@ -14,6 +14,9 @@ import java.util.Set;
  */
 public class Client extends User {
 
+    /**
+     * Empty default constructor for AWS to use
+     */
     public Client() {};
 
     public Client(String id, String client_secret, String redirect_uri) {
