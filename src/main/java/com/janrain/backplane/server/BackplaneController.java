@@ -37,7 +37,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.ModelAndView;
-import org.tuckey.web.filters.urlrewrite.CatchElem;
 
 import javax.inject.Inject;
 import javax.servlet.http.HttpServletRequest;
@@ -198,7 +197,7 @@ public class BackplaneController {
             }};
         } else {
             // For the standard request, verify that the token channel matches the message channel or return error
-            if (!messageRequest.getToken().isPrivileged() && !message.get(BackplaneMessage.Field.CHANNEL_NAME).equals(messageRequest.getToken().getChannelName())) {
+            if (!messageRequest.getToken().isPrivileged() && !message.get(BackplaneMessage.Field.CHANNEL).equals(messageRequest.getToken().getChannelName())) {
                 response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                 return new HashMap<String,Object>() {{
                     put(ERR_MSG_FIELD, "Forbidden");
@@ -219,7 +218,7 @@ public class BackplaneController {
             return errors;
         }
 
-        return message.asFrame();
+        return message.asFrame("https://" + request.getServerName() + "/v2/message");
 
 
     }
@@ -275,7 +274,7 @@ public class BackplaneController {
 
         List<HashMap<String,Object>> frames = new ArrayList<HashMap<String, Object>>();
         for (BackplaneMessage message : messages) {
-            frames.add(message.asFrame());
+            frames.add(message.asFrame(""));
         }
         return frames;
 
@@ -528,7 +527,7 @@ public class BackplaneController {
                 public String call() throws Exception {
                     StringBuilder whereClause = new StringBuilder()
                         .append(BackplaneMessage.Field.BUS.getFieldName()).append("='").append(bus).append("'")
-                        .append(" and ").append(BackplaneMessage.Field.CHANNEL_NAME.getFieldName()).append("='").append(channel).append("'");
+                        .append(" and ").append(BackplaneMessage.Field.CHANNEL.getFieldName()).append("='").append(channel).append("'");
                     if (! StringUtils.isEmpty(since)) {
                         whereClause.append(" and ").append(BackplaneMessage.Field.ID.getFieldName()).append(" > '").append(since).append("'");
                     }
@@ -541,7 +540,7 @@ public class BackplaneController {
                     List<Map<String,Object>> frames = new ArrayList<Map<String, Object>>();
 
                     for (BackplaneMessage message : messages) {
-                        frames.add(message.asFrame());
+                        frames.add(message.asFrame(""));
                     }
 
                     ObjectMapper mapper = new ObjectMapper();

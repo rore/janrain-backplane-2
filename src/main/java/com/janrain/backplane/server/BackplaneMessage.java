@@ -36,7 +36,7 @@ public class BackplaneMessage extends AbstractMessage {
         Map<String,String> d = new LinkedHashMap<String, String>(toStringMap(data));
         d.put(Field.ID.getFieldName(), id);
         d.put(Field.BUS.getFieldName(), bus);
-        d.put(Field.CHANNEL_NAME.getFieldName(), channel);
+        d.put(Field.CHANNEL.getFieldName(), channel);
         d.put(Field.PAYLOAD.getFieldName(), extractFieldValueAsJsonString(Field.PAYLOAD, data));
         if (! d.containsKey(Field.STICKY.getFieldName())) {
             d.put(Field.STICKY.getFieldName(), Boolean.FALSE.toString());
@@ -54,39 +54,38 @@ public class BackplaneMessage extends AbstractMessage {
         return EnumSet.allOf(Field.class);
     }
 
-    public HashMap<String, Object> asFrame() throws BackplaneServerException {
+    public HashMap<String, Object> asFrame(String serverUrl) throws BackplaneServerException {
 
         HashMap<String, Object> frame = new LinkedHashMap<String, Object>();
 
-        frame.put(Field.ID.getFieldName(), get(BackplaneMessage.Field.ID.getFieldName()));
-        frame.put(Field.CHANNEL_NAME.getFieldName(), get(BackplaneMessage.Field.CHANNEL_NAME.getFieldName()));
+        frame.put("messageURL", serverUrl + "/" + get(Field.ID));
+        frame.put(Field.SOURCE.getFieldName(), get(Field.SOURCE));
+        frame.put(Field.TYPE.getFieldName(), get(Field.TYPE));
+        frame.put(Field.BUS.getFieldName(), get(Field.BUS));
+        frame.put(Field.CHANNEL.getFieldName(), get(Field.CHANNEL.getFieldName()));
 
-        Map <String,Object> msg = new LinkedHashMap<String, Object>(this);
-        msg.remove(Field.ID.getFieldName());
-        msg.remove(Field.BUS.getFieldName());
-        msg.remove(Field.CHANNEL_NAME.getFieldName());
-        String sticky = get(Field.STICKY.getFieldName());
-        if (sticky != null) {
-            // print sticky as a (json) boolean
-            msg.put(Field.STICKY.getFieldName(), Boolean.valueOf(sticky));
-        }
         try {
-            msg.put(
-                BackplaneMessage.Field.PAYLOAD.getFieldName(),
-                (new ObjectMapper()).readValue(get(BackplaneMessage.Field.PAYLOAD), Object.class) ); // un-quote the value
+            frame.put(Field.PAYLOAD.getFieldName(), (new ObjectMapper()).readValue(get(Field.PAYLOAD), Object.class) ); // un-quote the value)
         } catch (IOException e) {
             String errMsg = "Error deserializing message payload: " + e.getMessage();
             logger.error(errMsg);
             throw new BackplaneServerException(errMsg, e);
         }
-        frame.put("message", msg);
+
+        /*  sample response does not include sticky field?  It should, right?
+        String sticky = get(Field.STICKY.getFieldName());
+        if (sticky != null) {
+            // print sticky as a (json) boolean
+            frame.put(Field.STICKY.getFieldName(), Boolean.valueOf(sticky));
+        }
+        */
 
         return frame;
     }
 
     public static enum Field implements MessageField {
         ID("id"),
-        CHANNEL_NAME("channel_name"),
+        CHANNEL("channel"),
         BUS("bus"),
         STICKY("sticky", false) {
             @Override

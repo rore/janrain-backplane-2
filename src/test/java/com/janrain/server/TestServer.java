@@ -401,6 +401,29 @@ public class TestServer {
         logger.debug("testMessageEndPoint()  => " + response.getContentAsString());
         assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
 
+        assertTrue(response.getStatus() == HttpServletResponse.SC_OK);
+
+        // {
+        //  "messageURL": "https://bp.example.com/v2/message/097a5cc401001f95b45d37aca32a3bd2",
+        //  "source": "http://aboutecho.com",
+        //  "type": "identity/ack"
+        //  "bus": "customer.com",
+        //  "channel": "67dc880cc265b0dbc755ea959b257118",
+        //  "payload": {
+        //      "role": "administrator"
+        //  },
+        //}
+
+        assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
+                matches("[{]\\s*" +
+                        "\"messageURL\":\\s*\".*\",\\s*" +
+                        "\"source\":\\s*\".*\",\\s*" +
+                        "\"type\":\\s*\".*\",\\s*" +
+                        "\"bus\":\\s*\".*\",\\s*" +
+                        "\"channel\":\\s*\".*\",\\s*" +
+                        "\"payload\":\\s*.*" +
+                        "[}]"));
+
 
     }
 
