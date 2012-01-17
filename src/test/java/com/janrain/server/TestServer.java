@@ -1,17 +1,18 @@
 package com.janrain.server;
 
 
-import com.janrain.backplane.server.BackplaneController;
-import com.janrain.backplane.server.Code;
-import com.janrain.backplane.server.Token;
+import com.janrain.backplane.server.*;
 import com.janrain.backplane.server.config.BackplaneConfig;
 import com.janrain.backplane.server.config.Client;
 import com.janrain.backplane.server.config.User;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.crypto.ChannelUtil;
+import com.sun.org.apache.bcel.internal.generic.NEW;
 import org.apache.catalina.util.Base64;
 import org.apache.log4j.Logger;
+import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jackson.type.TypeReference;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -27,6 +28,7 @@ import javax.inject.Inject;
 import javax.servlet.http.HttpServletResponse;
 
 import java.util.Date;
+import java.util.Map;
 
 import static org.junit.Assert.*;
 
@@ -54,6 +56,31 @@ public class TestServer {
 
     static final String OK_RESPONSE = "{\"stat\":\"ok\"}";
     static final String ERR_RESPONSE = "\"error\":";
+
+    static final String TEST_MSG =
+            "    {\n" +
+            "        \"source\": \"ftp://bla_source/\",\n" +
+            "        \"type\": \"bla_type\",\n" +
+            "        \"sticky\": \"false\",\n" +
+            "        \"payload\":{\n" +
+            "            \"identities\":{\n" +
+            "               \"startIndex\":0,\n" +
+            "               \"itemsPerPage\":1,\n" +
+            "               \"totalResults\":1,\n" +
+            "               \"entry\":{\n" +
+            "                  \"displayName\":\"inewton\",\n" +
+            "                  \"accounts\":[\n" +
+            "                     {\n" +
+            "                        \"username\":\"inewton\",\n" +
+            "                        \"openid\":\"https://www.google.com/profiles/105119525695492353427\"\n" +
+            "                     }\n" +
+            "                  ],\n" +
+            "                  \"id\":\"1\"\n" +
+            "               }\n" +
+            "            },\n" +
+            "            \"context\":\"http://backplane1-2.janraindemo.com/token.html\"\n" +
+            "         }" +
+            "    }";
 
     private MockHttpServletRequest request;
 	private MockHttpServletResponse response;
@@ -355,12 +382,28 @@ public class TestServer {
     public void testMessageEndPoint() throws Exception {
         refreshRequestAndResponse();
 
-        request.setRequestURI("/message/" + 1);
+        // Create appropriate token
+        Token token = new Token(Access.type.REGULAR_TOKEN, "mybus.com", new Date(new Date().getTime() + Token.EXPIRES_SECONDS * 1000));
+        superSimpleDB.store(bpConfig.getAccessTokenTableName(), Token.class, token);
+
+        // Seed message
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
+
+        BackplaneMessage message = new BackplaneMessage("123456", "mybus.com", token.getChannelName(), msg);
+        superSimpleDB.store(bpConfig.getMessagesTableName(), BackplaneMessage.class, message, true);
+
+        // Make the call
+        request.setRequestURI("/message/123456");
         request.setMethod("GET");
+        request.setParameter("access_token", token.getIdValue());
         handlerAdapter.handle(request, response, controller);
         logger.debug("testMessageEndPoint()  => " + response.getContentAsString());
-        assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
+        assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
+
+
     }
+
 
 
 

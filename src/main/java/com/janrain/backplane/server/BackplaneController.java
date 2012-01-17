@@ -180,9 +180,15 @@ public class BackplaneController {
 
         try {
             messageRequest.setToken(tokenDao.retrieveToken(access_token));
-            message = superSimpleDb.retrieve(bpConfig.getMessagesTableName(), BackplaneMessage.class, msg_id);
         } catch (SimpleDBException e) {
             //do nothing
+            logger.info("Could not retrieve token " + access_token,e);
+        }
+
+        try {
+            message = superSimpleDb.retrieve(bpConfig.getMessagesTableName(), BackplaneMessage.class, msg_id);
+        } catch (SimpleDBException e) {
+            logger.info("Could not find message " + msg_id,e);
         }
 
         if (message == null) {
