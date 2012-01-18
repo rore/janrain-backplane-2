@@ -135,7 +135,14 @@ public class BackplaneController {
             return errors;
         }
 
-        return new OAuth2Response(tokenDao, tokenRequest).generateResponse();
+        try {
+            return new OAuth2Response(tokenDao, tokenRequest).generateResponse();
+        } catch (final BackplaneServerException bpe) {
+            return new HashMap<String,Object>() {{
+                put(ERR_MSG_FIELD, bpe.getMessage());
+            }};
+
+        }
 
     }
 

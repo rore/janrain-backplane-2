@@ -16,6 +16,7 @@ import org.codehaus.jackson.type.TypeReference;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.internal.runners.JUnit38ClassRunner;
 import org.junit.runner.RunWith;
 import org.springframework.context.ApplicationContext;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -551,6 +552,23 @@ public class TestServer {
         logger.debug("testMessagesEndPointPAL()   => " + response.getContentAsString());
 
         assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
+
+    }
+
+    @Test
+    public void testMessagesEndPointPALInvalidScope() throws Exception {
+
+        refreshRequestAndResponse();
+
+        // Create appropriate token
+        try {
+            Token token = new Token(Access.type.PRIVILEGED_TOKEN, "mybus.com yourbus.com", "bus:invalidbus.com", null);
+        } catch (BackplaneServerException bpe) {
+            //expected
+            return;
+        }
+
+        fail("Token requested with invalid scope should have failed");
 
     }
 
