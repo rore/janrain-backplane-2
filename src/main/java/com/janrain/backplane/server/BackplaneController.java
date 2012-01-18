@@ -321,6 +321,10 @@ public class BackplaneController {
             }};
         }
 
+        //TODO: add logic to verify the message cap per channel has not been exceeded
+        // and confirm what to do if the Nth message went over the limit but the first N-1
+        // messages succeeded in one request...
+
         // analyze each message for proper bus
         List<Map<String,Object>> msgs = messages.get("messages");
         for(Map<String,Object> messageData : msgs) {
@@ -343,111 +347,6 @@ public class BackplaneController {
         response.setStatus(HttpServletResponse.SC_CREATED);
         return null;
 
-    }
-
-
-
-
-
-    @RequestMapping(value = "/bus/{bus}", method = RequestMethod.GET)
-    public @ResponseBody List<HashMap<String,Object>> getBusMessages(
-                                @RequestHeader(value = "Authorization", required = false) String basicAuth,
-                                @PathVariable String bus,
-                                @RequestParam(value = "since", defaultValue = "") String since,
-                                @RequestParam(value = "sticky", required = false) String sticky )
-        throws AuthException, SimpleDBException, BackplaneServerException {
-
-        checkAuth(basicAuth, bus, BackplaneConfig.BUS_PERMISSION.GETALL);
-
-
-        // log metric
-        busGets.mark();
-
-        if (! StringUtils.isBlank(sticky) &&  "true".equalsIgnoreCase(sticky)) {
-            busGetsSticky.mark();
-        }
-
-        StringBuilder whereClause = new StringBuilder()
-            .append(BackplaneMessage.Field.BUS.getFieldName()).append("='").append(bus).append("'");
-        if (! StringUtils.isEmpty(since)) {
-            whereClause.append(" and ").append(BackplaneMessage.Field.ID.getFieldName()).append(" > '").append(since).append("'");
-        }
-        if (! StringUtils.isEmpty(sticky)) {
-            whereClause.append(" and ").append(BackplaneMessage.Field.STICKY.getFieldName()).append("='").append(sticky).append("'");
-        }
-
-        List<BackplaneMessage> messages = superSimpleDb.retrieveWhere(bpConfig.getMessagesTableName(), BackplaneMessage.class, whereClause.toString(), true);
-
-        List<HashMap<String,Object>> frames = new ArrayList<HashMap<String, Object>>();
-        for (BackplaneMessage message : messages) {
-            frames.add(message.asFrame("", true));
-        }
-        return frames;
-
-    }
-
-    @RequestMapping(value = "/bus/{bus}/channel/{channel}", method = RequestMethod.GET)
-    public ResponseEntity<String> getChannel(
-                                @PathVariable String bus,
-                                @PathVariable String channel,
-                                @RequestParam(required = false) String callback,
-                                @RequestParam(value = "since", required = false) String since,
-                                @RequestParam(value = "sticky", required = false) String sticky )
-        throws SimpleDBException, AuthException, BackplaneServerException {
-
-        // log metric
-        channelGets.mark();
-
-        if (! StringUtils.isBlank(sticky) &&  "true".equalsIgnoreCase(sticky)) {
-            channelGetsSticky.mark();
-        }
-
-        if (StringUtils.isBlank(callback)) {
-            return new ResponseEntity<String>(
-                    NEW_CHANNEL_LAST_PATH.equals(channel) ? newChannel() : getChannelMessages(bus, channel, since, sticky),
-                    new HttpHeaders() {{
-                        add("Content-Type", "application/json");
-                    }},
-                    HttpStatus.OK);
-
-        } else {
-            return new ResponseEntity<String>(
-                    paddedResponse(callback, NEW_CHANNEL_LAST_PATH.equals(channel) ? newChannel() : getChannelMessages(bus, channel, since, sticky)),
-                    new HttpHeaders() {{
-                        add("Content-Type", "application/x-javascript");
-                    }},
-                    HttpStatus.OK);
-        }
-    }
-
-    @RequestMapping(value = "/bus/{bus}/channel/{channel}", method = RequestMethod.POST)
-    public @ResponseBody String postToChannel(
-                                @RequestHeader(value = "Authorization", required = false) String basicAuth,
-                                @RequestBody List<Map<String,Object>> messages,
-                                @PathVariable String bus,
-                                @PathVariable String channel) throws AuthException, SimpleDBException, BackplaneServerException {
-        checkAuth(basicAuth, bus, BackplaneConfig.BUS_PERMISSION.POST);
-
-        //Block post if the caller has exceeded the message post limit
-        Long count = superSimpleDb.retrieveCount(bpConfig.getMessagesTableName(),
-                "select count(*) from `" + bpConfig.getMessagesTableName() + "` where bus='" + bus + "' and channel_name='" + channel + "'");
-
-        if (count >= bpConfig.getDefaultMaxMessageLimit()) {
-            throw new BackplaneServerException("Message limit exceeded for this channel");
-        }
-
-        //log metric - although this metric may need to be seeded on instance startup to be accurate
-        messagesPerChannel.update(count);
-
-        //log metric
-        posts.mark();
-
-        for(Map<String,Object> messageData : messages) {
-            BackplaneMessage message = new BackplaneMessage(generateMessageId(), bus, channel, messageData);
-            superSimpleDb.store(bpConfig.getMessagesTableName(), BackplaneMessage.class, message, true); // todo: make long entries support configurable
-        }
-
-        return "";
     }
 
     /**
@@ -480,12 +379,6 @@ public class BackplaneController {
         }};
     }
 
-    /**
-     * @return a time-based, lexicographically comparable message ID.
-     */
-    public static String generateMessageId() {
-        return BackplaneConfig.ISO8601.format(new Date()) + "-" + ChannelUtil.randomString(10);
-    }
 
     /*
     public static String randomString(int length) {
@@ -625,48 +518,5 @@ public class BackplaneController {
         return "\"" + ChannelUtil.randomString(CHANNEL_NAME_LENGTH) +"\"";
     }
 
-    private String getChannelMessages(final String bus, final String channel, final String since, final String sticky) throws SimpleDBException, BackplaneServerException {
 
-        try {
-            return getMessagesTime.time(new Callable<String>() {
-                @Override
-                public String call() throws Exception {
-                    StringBuilder whereClause = new StringBuilder()
-                        .append(BackplaneMessage.Field.BUS.getFieldName()).append("='").append(bus).append("'")
-                        .append(" and ").append(BackplaneMessage.Field.CHANNEL.getFieldName()).append("='").append(channel).append("'");
-                    if (! StringUtils.isEmpty(since)) {
-                        whereClause.append(" and ").append(BackplaneMessage.Field.ID.getFieldName()).append(" > '").append(since).append("'");
-                    }
-                    if (! StringUtils.isEmpty(sticky)) {
-                        whereClause.append(" and ").append(BackplaneMessage.Field.STICKY.getFieldName()).append("='").append(sticky).append("'");
-                    }
-
-                    List<BackplaneMessage> messages = superSimpleDb.retrieveWhere(bpConfig.getMessagesTableName(), BackplaneMessage.class, whereClause.toString(), true);
-
-                    List<Map<String,Object>> frames = new ArrayList<Map<String, Object>>();
-
-                    for (BackplaneMessage message : messages) {
-                        frames.add(message.asFrame("", true));
-                    }
-
-                    ObjectMapper mapper = new ObjectMapper();
-                    try {
-                        String payload = mapper.writeValueAsString(frames);
-                        payLoadSizesOnGets.update(payload.length());
-                        return mapper.writeValueAsString(frames);
-                    } catch (IOException e) {
-                        String errMsg = "Error converting frames to JSON: " + e.getMessage();
-                        logger.error(errMsg, bpConfig.getDebugException(e));
-                        throw new BackplaneServerException(errMsg, e);
-                    }
-                }
-            });
-        } catch (SimpleDBException sdbe) {
-            throw sdbe;
-        } catch (BackplaneServerException bse) {
-            throw bse;
-        } catch (Exception e) {
-            throw new BackplaneServerException(e.getMessage());
-        }
-    }
 }
