@@ -163,7 +163,7 @@ public class BackplaneController {
                                 @RequestParam(value = "since", required = false) String since)
             throws SimpleDBException, BackplaneServerException {
 
-        //TODO: add since and callback support - support for block?
+        //TODO: add callback support - support for block?
 
         MessageRequest messageRequest = new MessageRequest(access_token, callback);
 
@@ -175,7 +175,7 @@ public class BackplaneController {
         }
 
         List<BackplaneMessage> messages =
-                daoFactory.getBackplaneMessageDAO().retrieveAllMesssagesPerScope(messageRequest.getToken().getScope());
+                daoFactory.getBackplaneMessageDAO().retrieveAllMesssagesPerScope(messageRequest.getToken().getScope(), since);
 
         if (messages.isEmpty()) {
             return null;

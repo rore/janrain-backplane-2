@@ -13,6 +13,7 @@ import org.apache.catalina.util.Base64;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -26,12 +27,10 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.web.servlet.HandlerAdapter;
 
 import javax.inject.Inject;
+import javax.mail.Message;
 import javax.servlet.http.HttpServletResponse;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 import static org.junit.Assert.*;
 
@@ -56,6 +55,10 @@ public class TestServer {
     private BackplaneConfig bpConfig;
 
     private static final Logger logger = Logger.getLogger(TestServer.class);
+
+    ArrayList<String> createdMessageKeys = new ArrayList<String>();
+    ArrayList<String> createdTokenKeys = new ArrayList<String>();
+    ArrayList<String> createdCodeKeys = new ArrayList<String>();
 
     static final String OK_RESPONSE = "{\"stat\":\"ok\"}";
     static final String ERR_RESPONSE = "\"error\":";
@@ -101,6 +104,27 @@ public class TestServer {
 		refreshRequestAndResponse();
 	}
 
+    @After
+    public void cleanup() {
+        logger.info("Tearing down test writes to db");
+        try {
+            for (String key:this.createdMessageKeys) {
+                superSimpleDB.delete(bpConfig.getMessagesTableName(), key);
+            }
+            for (String key:this.createdTokenKeys) {
+                superSimpleDB.delete(bpConfig.getAccessTokenTableName(), key);
+            }
+            for (String key:this.createdCodeKeys) {
+                superSimpleDB.delete(bpConfig.getCodeTableName(), key);
+            }
+        } catch (SimpleDBException e) {
+            logger.error(e);
+        }
+    }
+
+
+
+
     private Client createTestClient() throws SimpleDBException {
         Client client = new Client("random_id", "secret", "redirect_uri");
         superSimpleDB.store(bpConfig.getClientsTableName(), Client.class, client);
@@ -112,6 +136,23 @@ public class TestServer {
 		request = new MockHttpServletRequest();
 		response = new MockHttpServletResponse();
 	}
+
+    private void saveMessage(BackplaneMessage message) throws SimpleDBException {
+        superSimpleDB.store(bpConfig.getMessagesTableName(), BackplaneMessage.class, message, true);
+        this.createdMessageKeys.add(message.getIdValue());
+    }
+
+    private void saveCode(Code code) throws SimpleDBException {
+        superSimpleDB.store(bpConfig.getCodeTableName(), Code.class, code);
+        this.createdTokenKeys.add(code.getIdValue());
+    }
+
+    private void saveToken(Token token) throws SimpleDBException {
+        superSimpleDB.store(bpConfig.getAccessTokenTableName(), Token.class, token);
+        this.createdTokenKeys.add(token.getIdValue());
+    }
+
+
 
     @Test
     public void testChannelGeneration() {
@@ -209,7 +250,7 @@ public class TestServer {
 
         //create code for test
         Code code = new Code("test");
-        superSimpleDB.store(bpConfig.getCodeTableName(), Code.class, code);
+        this.saveCode(code);
 
         request.setParameter("code", code.getIdValue());
         request.setParameter("client_secret", client.get(User.Field.PWDHASH));
@@ -238,7 +279,7 @@ public class TestServer {
 
         //create code for test
         Code code = new Code("test");
-        superSimpleDB.store(bpConfig.getCodeTableName(), Code.class, code);
+        this.saveCode(code);
 
         request.setParameter("code", code.getIdValue());
         request.setParameter("client_secret", client.get(User.Field.PWDHASH));
@@ -271,7 +312,7 @@ public class TestServer {
 
         //create code for test
         Code code = new Code("mybus.com");
-        superSimpleDB.store(bpConfig.getCodeTableName(), Code.class, code);
+        this.saveCode(code);
 
         request.setParameter("code", code.getIdValue());
         request.setParameter("client_secret", client.get(User.Field.PWDHASH));
@@ -296,7 +337,7 @@ public class TestServer {
 
         //create expired code for test
         Code code = new Code("test",new Date());
-        superSimpleDB.store(bpConfig.getCodeTableName(), Code.class, code);
+        this.saveCode(code);
 
         request.setParameter("code", code.getIdValue());
         request.setParameter("client_secret", client.get(User.Field.PWDHASH));
@@ -316,7 +357,7 @@ public class TestServer {
 
         //create code for test
         Code code = new Code("test");
-        superSimpleDB.store(bpConfig.getCodeTableName(), Code.class, code);
+        this.saveCode(code);
 
         request.setParameter("code", code.getIdValue());
 
@@ -390,14 +431,14 @@ public class TestServer {
 
         // Create appropriate token
         Token token = new Token(Access.type.REGULAR_TOKEN, "mybus.com", null, new Date(new Date().getTime() + Token.EXPIRES_SECONDS * 1000));
-        superSimpleDB.store(bpConfig.getAccessTokenTableName(), Token.class, token);
+        this.saveToken(token);
 
         // Seed message
         ObjectMapper mapper = new ObjectMapper();
         Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
 
         BackplaneMessage message = new BackplaneMessage("123456", "mybus.com", token.getChannelName(), msg);
-        superSimpleDB.store(bpConfig.getMessagesTableName(), BackplaneMessage.class, message, true);
+        this.saveMessage(message);
 
         // Make the call
         request.setRequestURI("/message/123456");
@@ -438,14 +479,14 @@ public class TestServer {
 
         // Create appropriate token
         Token token = new Token(Access.type.REGULAR_TOKEN, "mybus.com", null, new Date(new Date().getTime() + Token.EXPIRES_SECONDS * 1000));
-        superSimpleDB.store(bpConfig.getAccessTokenTableName(), Token.class, token);
+        this.saveToken(token);
 
         // Seed message
         ObjectMapper mapper = new ObjectMapper();
         Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
 
         BackplaneMessage message = new BackplaneMessage("123456", "mybus.com", token.getChannelName(), msg);
-        superSimpleDB.store(bpConfig.getMessagesTableName(), BackplaneMessage.class, message, true);
+        this.saveMessage(message);
 
         // now, try it via callback
         refreshRequestAndResponse();
@@ -486,14 +527,14 @@ public class TestServer {
 
         // Create appropriate token
         Token token = new Token(Access.type.PRIVILEGED_TOKEN, "mybus.com", null, null);
-        superSimpleDB.store(bpConfig.getAccessTokenTableName(), Token.class, token);
+        this.saveToken(token);
 
         // Seed message
         ObjectMapper mapper = new ObjectMapper();
         Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
 
         BackplaneMessage message = new BackplaneMessage("123456", "mybus.com", "randomchannel", msg);
-        superSimpleDB.store(bpConfig.getMessagesTableName(), BackplaneMessage.class, message, true);
+        this.saveMessage(message);
 
         // Make the call
         request.setRequestURI("/message/123456");
@@ -527,6 +568,7 @@ public class TestServer {
                         "\"payload\":\\s*.*" +
                         "[}]"));
 
+
     }
 
     @Test
@@ -536,17 +578,17 @@ public class TestServer {
 
         // Create appropriate token
         Token token = new Token(Access.type.PRIVILEGED_TOKEN, "mybus.com yourbus.com", "bus:mybus.com", null);
-        superSimpleDB.store(bpConfig.getAccessTokenTableName(), Token.class, token);
+        this.saveToken(token);
 
         // Seed 2 messages
         ObjectMapper mapper = new ObjectMapper();
         Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
 
         BackplaneMessage message1 = new BackplaneMessage("123456", "mybus.com", "randomchannel", msg);
-        superSimpleDB.store(bpConfig.getMessagesTableName(), BackplaneMessage.class, message1, true);
+        this.saveMessage(message1);
 
         BackplaneMessage message2 = new BackplaneMessage("1234567", "yourbus.com", "randomchannel", msg);
-        superSimpleDB.store(bpConfig.getMessagesTableName(), BackplaneMessage.class, message2, true);
+        this.saveMessage(message2);
 
          // Make the call
         request.setRequestURI("/messages");
@@ -556,7 +598,6 @@ public class TestServer {
         logger.debug("testMessagesEndPointPAL()   => " + response.getContentAsString());
 
         assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
-
     }
 
     @Test
@@ -568,26 +609,32 @@ public class TestServer {
 
         // Create appropriate token
         Token token = new Token(Access.type.REGULAR_TOKEN, null, null, new Date(new Date().getTime() + Token.EXPIRES_SECONDS * 1000));
-        superSimpleDB.store(bpConfig.getAccessTokenTableName(), Token.class, token);
+        this.saveToken(token);
 
         // Seed 2 messages
         ObjectMapper mapper = new ObjectMapper();
         Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
 
         BackplaneMessage message1 = new BackplaneMessage(BackplaneMessage.generateMessageId(), "mybus.com", token.getChannelName(), msg);
-        superSimpleDB.store(bpConfig.getMessagesTableName(), BackplaneMessage.class, message1, true);
+        this.saveMessage(message1);
 
         BackplaneMessage message2 = new BackplaneMessage(BackplaneMessage.generateMessageId(), "yourbus.com", token.getChannelName(), msg);
-        superSimpleDB.store(bpConfig.getMessagesTableName(), BackplaneMessage.class, message2, true);
+        this.saveMessage(message2);
 
          // Make the call
         request.setRequestURI("/messages");
         request.setMethod("GET");
         request.setParameter("access_token", token.getIdValue());
+        request.setParameter("since", message1.getIdValue());
         handlerAdapter.handle(request, response, controller);
         logger.debug("testMessagesEndPointRegular() => " + response.getContentAsString());
 
         assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
+
+        // should just receive one of the two messages
+        Map<String,Object> returnedBody = mapper.readValue(response.getContentAsString(), new TypeReference<Map<String,Object>>() {});
+        List<Map<String,Object>> returnedMsgs = (List<Map<String, Object>>) returnedBody.get("messages");
+        assertTrue(returnedMsgs.size() == 1);
 
         logger.info("========================================================");
 
@@ -619,7 +666,7 @@ public class TestServer {
 
         // Create appropriate token
         Token token = new Token(Access.type.PRIVILEGED_TOKEN, "mybus.com yourbus.com", "bus:yourbus.com", null);
-        superSimpleDB.store(bpConfig.getAccessTokenTableName(), Token.class, token);
+        this.saveToken(token);
 
         // Make the call
         request.setRequestURI("/messages");
@@ -633,7 +680,6 @@ public class TestServer {
         msgsList.add(new ObjectMapper().readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {}));
         msgsList.add(new ObjectMapper().readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {}));
 
-
         msgs.put("messages", msgsList);
         String msgsString = new ObjectMapper().writeValueAsString(msgs);
         logger.info(msgsString);
@@ -642,8 +688,6 @@ public class TestServer {
         handlerAdapter.handle(request, response, controller);
 
         assertTrue(response.getStatus() == HttpServletResponse.SC_CREATED);
-
-
 
     }
 

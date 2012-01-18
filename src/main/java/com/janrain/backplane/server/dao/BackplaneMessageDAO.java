@@ -6,6 +6,7 @@ import com.janrain.backplane.server.Token;
 import com.janrain.backplane.server.config.BackplaneConfig;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
+import org.apache.commons.lang.StringUtils;
 
 import java.util.List;
 
@@ -26,14 +27,15 @@ public class BackplaneMessageDAO extends DAO {
         return superSimpleDB.retrieve(bpConfig.getMessagesTableName(), BackplaneMessage.class, messageId);
     }
 
-    public List<BackplaneMessage> retrieveAllMesssagesPerScope(Scope scope) throws SimpleDBException {
-        return superSimpleDB.retrieveWhere(bpConfig.getMessagesTableName(), BackplaneMessage.class, scope.buildQueryFromScope(), true);
+    public List<BackplaneMessage> retrieveAllMesssagesPerScope(Scope scope, String sinceMessageId) throws SimpleDBException {
+        String query = scope.buildQueryFromScope();
+        assert(StringUtils.isNotEmpty(query));
+
+        if (StringUtils.isNotEmpty(sinceMessageId)) {
+            query += " AND id > '" + sinceMessageId + "'";
+        }
+
+        return superSimpleDB.retrieveWhere(bpConfig.getMessagesTableName(), BackplaneMessage.class, query, true);
     }
-
-    public List<BackplaneMessage> retrieveAllMesssagesPerScopeSince(Scope scope, String sinceMessageId) throws SimpleDBException {
-        return superSimpleDB.retrieveWhere(bpConfig.getMessagesTableName(), BackplaneMessage.class, scope.buildQueryFromScope(), true);
-    }
-
-
 
 }
