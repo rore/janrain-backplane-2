@@ -28,7 +28,9 @@ import org.springframework.web.servlet.HandlerAdapter;
 import javax.inject.Inject;
 import javax.servlet.http.HttpServletResponse;
 
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.Assert.*;
@@ -60,6 +62,8 @@ public class TestServer {
 
     static final String TEST_MSG =
             "    {\n" +
+            "        \"bus\": \"mybus.com\",\n" +
+            "        \"channel\": \"testchannel\",\n" +
             "        \"source\": \"ftp://bla_source/\",\n" +
             "        \"type\": \"bla_type\",\n" +
             "        \"sticky\": \"false\",\n" +
@@ -560,7 +564,7 @@ public class TestServer {
 
         refreshRequestAndResponse();
 
-        // Create appropriate token
+        // Create inappropriate token
         try {
             Token token = new Token(Access.type.PRIVILEGED_TOKEN, "mybus.com yourbus.com", "bus:invalidbus.com", null);
         } catch (BackplaneServerException bpe) {
@@ -571,6 +575,42 @@ public class TestServer {
         fail("Token requested with invalid scope should have failed");
 
     }
+
+    @Test
+    public void testMessagesPostEndPointPAL() throws Exception {
+
+        refreshRequestAndResponse();
+
+        // Create appropriate token
+        Token token = new Token(Access.type.PRIVILEGED_TOKEN, "mybus.com yourbus.com", "bus:yourbus.com", null);
+        superSimpleDB.store(bpConfig.getAccessTokenTableName(), Token.class, token);
+
+        // Make the call
+        request.setRequestURI("/messages");
+        request.setMethod("POST");
+        request.setParameter("access_token", token.getIdValue());
+        request.addHeader("Content-type", "application/json");
+        //request.setContentType("application/json");
+        //request.setParameter("messages", TEST_MSG);
+        HashMap<String, Object> msgs = new HashMap<String, Object>();
+        ArrayList msgsList = new ArrayList();
+        msgsList.add(new ObjectMapper().readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {}));
+        msgsList.add(new ObjectMapper().readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {}));
+
+
+        msgs.put("messages", msgsList);
+        String msgsString = new ObjectMapper().writeValueAsString(msgs);
+        logger.info(msgsString);
+        request.setContent(msgsString.getBytes());
+
+        handlerAdapter.handle(request, response, controller);
+
+        assertTrue(response.getStatus() == HttpServletResponse.SC_CREATED);
+
+
+
+    }
+
 
 
 

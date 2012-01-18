@@ -16,8 +16,10 @@
 
 package com.janrain.backplane.server;
 
+import com.janrain.backplane.server.config.BackplaneConfig;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
+import com.janrain.crypto.ChannelUtil;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -43,6 +45,17 @@ public class BackplaneMessage extends AbstractMessage {
             d.put(Field.STICKY.getFieldName(), Boolean.FALSE.toString());
         }
         super.init(id, d);
+    }
+
+    public BackplaneMessage(Map<String, Object> data) throws BackplaneServerException {
+        this(generateMessageId(), (String)data.get(Field.BUS.getFieldName()), (String)data.get(Field.CHANNEL.getFieldName()), data);
+    }
+
+    /**
+     * @return a time-based, lexicographically comparable message ID.
+     */
+    public static String generateMessageId() {
+        return BackplaneConfig.ISO8601.format(new Date()) + "-" + ChannelUtil.randomString(10);
     }
 
     @Override

@@ -289,14 +289,58 @@ public class BackplaneController {
      */
 
     @RequestMapping(value = "/messages", method = { RequestMethod.POST})
-    public ModelAndView postMessages(HttpServletRequest request, HttpServletResponse response,
-                                     @RequestParam(value = "access_token", required = false) String access_token,
-                                     @RequestParam(required = false) String callback,
-                                     @RequestParam(required = false) String since) {
+    public @ResponseBody HashMap<String,Object>  postMessages(HttpServletRequest request, HttpServletResponse response,
+                                                              @RequestBody Map<String,List<Map<String,Object>>> messages,
+                                                              @RequestParam(value = "access_token", required = false) String access_token,
+                                                              @RequestParam(required = false) String callback,
+                                                              @RequestParam(required = false) String since) throws BackplaneServerException, SimpleDBException {
 
+        Token token = null;
 
+        if (StringUtils.isEmpty(access_token)) {
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            return new HashMap<String,Object>() {{
+                put(ERR_MSG_FIELD, "Forbidden");
+            }};
+        }
 
-        throw new NotImplementedException();
+        try {
+            token = tokenDao.retrieveToken(access_token);
+        } catch (SimpleDBException e) {
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            return new HashMap<String,Object>() {{
+                put(ERR_MSG_FIELD, "Invalid token");
+            }};
+        }
+
+        if (!token.isPrivileged()) {
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            return new HashMap<String,Object>() {{
+                put(ERR_MSG_FIELD, "Forbidden");
+            }};
+        }
+
+        // analyze each message for proper bus
+        List<Map<String,Object>> msgs = messages.get("messages");
+        for(Map<String,Object> messageData : msgs) {
+            BackplaneMessage message = new BackplaneMessage(messageData);
+            if (!token.isAllowedBus(message.get(BackplaneMessage.Field.BUS))) {
+                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                return new HashMap<String,Object>() {{
+                    put(ERR_MSG_FIELD, "Invalid bus in message");
+                }};
+            }
+            //TODO: also check if the channel has a token issued for it
+        }
+
+        // do it all again and store the messages in the db
+        for(Map<String,Object> messageData : msgs) {
+            BackplaneMessage message = new BackplaneMessage(messageData);
+            superSimpleDb.store(bpConfig.getMessagesTableName(), BackplaneMessage.class, message);
+        }
+
+        response.setStatus(HttpServletResponse.SC_CREATED);
+        return null;
 
     }
 
