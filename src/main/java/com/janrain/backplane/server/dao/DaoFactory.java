@@ -21,6 +21,14 @@ public class DaoFactory {
         return new CodeDAO(superSimpleDB, bpConfig);
     }
 
+    public ClientDAO getClientDAO() {
+        return new ClientDAO(superSimpleDB, bpConfig);
+    }
+
+    public BackplaneMessageDAO getBackplaneMessageDAO() {
+        return new BackplaneMessageDAO(superSimpleDB, bpConfig);
+    }
+
     @Inject
     private SuperSimpleDB superSimpleDB;
 

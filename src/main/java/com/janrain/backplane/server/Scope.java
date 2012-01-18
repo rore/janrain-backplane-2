@@ -27,6 +27,7 @@ public class Scope {
 
     public Scope(String scopeString) throws BackplaneServerException {
         this.scopes = parseScopeString(scopeString);
+        this.scopeString = scopeString;
         logger.debug("Client requested scopes: " + scopeString);
     }
 
@@ -46,32 +47,28 @@ public class Scope {
     public String buildQueryFromScope() {
         StringBuilder sb = new StringBuilder();
 
-        //for(Map.Entry<String, List<String>> headerEntry: wrappedResponse.getHeaders().entrySet()) {
-        //        for(String value : headerEntry.getValue()) {
-        //            meta.append("\n").append(headerEntry.getKey()).append(": ").append(value);
-        //        }
-        //    }
         boolean firstElement = true;
         for (Map.Entry<String, ArrayList<String>> entry: scopes.entrySet()) {
-            StringBuilder clause = new StringBuilder();
             if (firstElement != true) {
-                clause.append(" AND ");
+                sb.append(" AND ");
             }
-            clause.append("(");
-            boolean firstDisjunction = true;
-            for (String value : entry.getValue()) {
-                if (firstDisjunction != true) {
-                    clause.append(" OR ");
+
+            if (!entry.getValue().isEmpty()) {
+                sb.append("(");
+                boolean firstDisjunction = true;
+                for (String value : entry.getValue()) {
+                    if (firstDisjunction != true) {
+                        sb.append(" OR ");
+                    }
+                    sb.append(entry.getKey() + "='" + value + "'");
+                    firstDisjunction = false;
                 }
-                clause.append(entry.getKey() + "='" + value + "'");
-                firstDisjunction = false;
+                sb.append(")");
+                firstElement = false;
             }
-            clause.append(")");
-            firstElement = false;
-            sb.append(clause);
         }
 
-        logger.info("clause = " + sb.toString());
+        logger.info("clause = " + sb.toString() + " generated from " + this.scopeString);
 
         return sb.toString();
 
@@ -79,6 +76,7 @@ public class Scope {
 
     //private
 
+    private String scopeString;
     private Map<String,ArrayList<String>> scopes;
     private static final Logger logger = Logger.getLogger(Scope.class);
 
@@ -102,13 +100,17 @@ public class Scope {
                 if (!Scope.isValidKey(keyValue[0])) {
                     throw new BackplaneServerException(keyValue[0] + " is not a valid scope field name");
                 }
-                List<String> values = scopes.get(keyValue[0]);
-                if (values == null) {
-                    values = new ArrayList<String>();
+
+                if (!scopes.containsKey(keyValue[0])) {
+                    scopes.put(keyValue[0], new ArrayList<String>());
                 }
+
+                List<String> values = scopes.get(keyValue[0]);
                 values.add(keyValue[1]);
             }
         }
+        logger.info("map " + scopes + " generated from " + scopeString);
+
         return scopes;
     }
 

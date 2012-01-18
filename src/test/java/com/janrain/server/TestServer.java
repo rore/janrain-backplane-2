@@ -560,6 +560,42 @@ public class TestServer {
     }
 
     @Test
+    public void testMessagesEndPointRegular() throws Exception {
+
+        logger.info("TEST: testMessagesEndPointRegular() =================");
+
+        refreshRequestAndResponse();
+
+        // Create appropriate token
+        Token token = new Token(Access.type.REGULAR_TOKEN, null, null, new Date(new Date().getTime() + Token.EXPIRES_SECONDS * 1000));
+        superSimpleDB.store(bpConfig.getAccessTokenTableName(), Token.class, token);
+
+        // Seed 2 messages
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
+
+        BackplaneMessage message1 = new BackplaneMessage(BackplaneMessage.generateMessageId(), "mybus.com", token.getChannelName(), msg);
+        superSimpleDB.store(bpConfig.getMessagesTableName(), BackplaneMessage.class, message1, true);
+
+        BackplaneMessage message2 = new BackplaneMessage(BackplaneMessage.generateMessageId(), "yourbus.com", token.getChannelName(), msg);
+        superSimpleDB.store(bpConfig.getMessagesTableName(), BackplaneMessage.class, message2, true);
+
+         // Make the call
+        request.setRequestURI("/messages");
+        request.setMethod("GET");
+        request.setParameter("access_token", token.getIdValue());
+        handlerAdapter.handle(request, response, controller);
+        logger.debug("testMessagesEndPointRegular() => " + response.getContentAsString());
+
+        assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
+
+        logger.info("========================================================");
+
+    }
+
+
+
+    @Test
     public void testMessagesEndPointPALInvalidScope() throws Exception {
 
         refreshRequestAndResponse();

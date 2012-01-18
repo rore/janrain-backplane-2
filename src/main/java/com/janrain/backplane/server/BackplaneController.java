@@ -17,6 +17,7 @@
 package com.janrain.backplane.server;
 
 import com.janrain.backplane.server.config.*;
+import com.janrain.backplane.server.dao.BackplaneMessageDAO;
 import com.janrain.backplane.server.dao.DaoFactory;
 import com.janrain.backplane.server.dao.TokenDAO;
 import com.janrain.backplane.server.metrics.MetricsAccumulator;
@@ -124,7 +125,7 @@ public class BackplaneController {
 
         try {
             if (StringUtils.isNotEmpty(client_id) && !client_id.equals(Token.ANONYMOUS))
-            tokenRequest.setClient(superSimpleDb.retrieve(bpConfig.getClientsTableName(), Client.class, client_id));
+            tokenRequest.setClient(daoFactory.getClientDAO().retrieveClient(client_id));
         } catch (Exception e) {
             //do nothing
             logger.info("could not retrieve client with id '" + client_id + "'", e);
@@ -173,8 +174,8 @@ public class BackplaneController {
             logger.info("Could not retrieve token " + access_token,e);
         }
 
-        List<BackplaneMessage> messages = superSimpleDb.retrieveWhere(bpConfig.getMessagesTableName(),
-                BackplaneMessage.class, messageRequest.getToken().getScope().buildQueryFromScope(), true);
+        List<BackplaneMessage> messages =
+                daoFactory.getBackplaneMessageDAO().retrieveAllMesssagesPerScope(messageRequest.getToken().getScope());
 
         if (messages.isEmpty()) {
             return null;
@@ -192,9 +193,6 @@ public class BackplaneController {
         hash.put("messages", frames);
 
         return hash;
-
-
-       // throw new NotImplementedException();
 
     }
 
@@ -226,7 +224,7 @@ public class BackplaneController {
         }
 
         try {
-            message = superSimpleDb.retrieve(bpConfig.getMessagesTableName(), BackplaneMessage.class, msg_id);
+            message = daoFactory.getBackplaneMessageDAO().retrieveBackplaneMessage(msg_id);
         } catch (SimpleDBException e) {
             logger.info("Could not find message " + msg_id,e);
         }
@@ -339,9 +337,9 @@ public class BackplaneController {
         }
 
         // do it all again and store the messages in the db
+        BackplaneMessageDAO bmd = daoFactory.getBackplaneMessageDAO();
         for(Map<String,Object> messageData : msgs) {
-            BackplaneMessage message = new BackplaneMessage(messageData);
-            superSimpleDb.store(bpConfig.getMessagesTableName(), BackplaneMessage.class, message);
+            bmd.persistBackplaneMessage(new BackplaneMessage(messageData));
         }
 
         response.setStatus(HttpServletResponse.SC_CREATED);
@@ -435,9 +433,6 @@ public class BackplaneController {
 
     @Inject
     private BackplaneConfig bpConfig;
-
-    @Inject
-    private SuperSimpleDB superSimpleDb;
 
     @Inject
     private DaoFactory daoFactory;

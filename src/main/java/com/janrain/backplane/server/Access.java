@@ -70,12 +70,19 @@ public class Access extends AbstractMessage {
             d.put(Field.BUSES.getFieldName(), authdBusesString);
         }
 
-        if (StringUtils.isNotEmpty(scopeString)) {
-            d.put(Field.SCOPE.getFieldName(), scopeString);
+        if (createChannel) {
+            String channel = ChannelUtil.randomString(CHANNEL_NAME_LENGTH);
+            d.put(Field.CHANNEL.getFieldName(), channel);
+            // set the scope string to include this new channel
+            if (StringUtils.isEmpty(scopeString)) {
+                scopeString = "channel:" + channel;
+            }  else {
+                scopeString += " channel:" + channel;
+            }
         }
 
-        if (createChannel) {
-            d.put(Field.CHANNEL.getFieldName(), ChannelUtil.randomString(CHANNEL_NAME_LENGTH));
+        if (StringUtils.isNotEmpty(scopeString)) {
+            d.put(Field.SCOPE.getFieldName(), scopeString);
         }
 
         super.init(id, d);
