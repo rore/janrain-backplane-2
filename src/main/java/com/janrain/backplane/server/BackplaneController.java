@@ -17,6 +17,8 @@
 package com.janrain.backplane.server;
 
 import com.janrain.backplane.server.config.*;
+import com.janrain.backplane.server.dao.DaoFactory;
+import com.janrain.backplane.server.dao.TokenDAO;
 import com.janrain.backplane.server.metrics.MetricsAccumulator;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
@@ -27,7 +29,6 @@ import com.yammer.metrics.core.HistogramMetric;
 import com.yammer.metrics.core.MeterMetric;
 import com.yammer.metrics.core.TimerMetric;
 import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -116,7 +117,7 @@ public class BackplaneController {
                                                         code, client_secret, scope, callback);
 
         try {
-            tokenRequest.setCode(superSimpleDb.retrieve(bpConfig.getCodeTableName(), Code.class, code));
+            tokenRequest.setCode(daoFactory.getCodeDao().retrieveCode(code));
         } catch (Exception e) {
             //do nothing
         }
@@ -136,7 +137,7 @@ public class BackplaneController {
         }
 
         try {
-            return new OAuth2Response(tokenDao, tokenRequest).generateResponse();
+            return new OAuth2Response(tokenRequest, daoFactory.getTokenDao()).generateResponse();
         } catch (final BackplaneServerException bpe) {
             return new HashMap<String,Object>() {{
                 put(ERR_MSG_FIELD, bpe.getMessage());
@@ -166,7 +167,7 @@ public class BackplaneController {
         MessageRequest messageRequest = new MessageRequest(access_token, callback);
 
         try {
-            messageRequest.setToken(tokenDao.retrieveToken(access_token));
+            messageRequest.setToken(daoFactory.getTokenDao().retrieveToken(access_token));
         } catch (SimpleDBException e) {
             //do nothing
             logger.info("Could not retrieve token " + access_token,e);
@@ -218,7 +219,7 @@ public class BackplaneController {
         BackplaneMessage message = null;
 
         try {
-            messageRequest.setToken(tokenDao.retrieveToken(access_token));
+            messageRequest.setToken(daoFactory.getTokenDao().retrieveToken(access_token));
         } catch (SimpleDBException e) {
             //do nothing
             logger.info("Could not retrieve token " + access_token,e);
@@ -305,7 +306,7 @@ public class BackplaneController {
         }
 
         try {
-            token = tokenDao.retrieveToken(access_token);
+            token = daoFactory.getTokenDao().retrieveToken(access_token);
         } catch (SimpleDBException e) {
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
             return new HashMap<String,Object>() {{
@@ -546,7 +547,7 @@ public class BackplaneController {
     private SuperSimpleDB superSimpleDb;
 
     @Inject
-    private TokenDAO tokenDao;
+    private DaoFactory daoFactory;
 
     @Inject
     private MetricsAccumulator metricAccumulator;

@@ -54,5 +54,7 @@
 
     <bean id="bpConfig" class="com.janrain.backplane.server.config.BackplaneConfig"/>
 
+    <bean id="daoFactory" class="com.janrain.backplane.server.dao.DaoFactory"/>
+
 
 </beans>

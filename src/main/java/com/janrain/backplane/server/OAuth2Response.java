@@ -16,9 +16,8 @@
 
 package com.janrain.backplane.server;
 
+import com.janrain.backplane.server.dao.TokenDAO;
 import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.commons.supersimpledb.SuperSimpleDB;
-import com.janrain.crypto.ChannelUtil;
 
 import java.util.Date;
 import java.util.HashMap;
@@ -33,7 +32,7 @@ public class OAuth2Response {
     TokenRequest request;
     private TokenDAO tokenDao;
 
-    OAuth2Response(TokenDAO tokenDao, TokenRequest request) {
+    OAuth2Response(TokenRequest request, TokenDAO tokenDao) {
         this.request = request;
         this.tokenDao = tokenDao;
     }
