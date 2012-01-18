@@ -38,10 +38,10 @@ public class OAuth2Response {
         this.tokenDao = tokenDao;
     }
 
-    public HashMap<String, Object> generateResponse() throws SimpleDBException {
+    public HashMap<String, Object> generateResponse() throws SimpleDBException, BackplaneServerException {
         if (request.grant_type.equals("client_credentials") && request.client_id.equals(Token.ANONYMOUS)) {
             // issue new channel id
-            final Token token = new Token(Access.type.REGULAR_TOKEN,  null, new Date(new Date().getTime() + Token.EXPIRES_SECONDS * 1000));
+            final Token token = new Token(Access.type.REGULAR_TOKEN,  null, null, new Date(new Date().getTime() + Token.EXPIRES_SECONDS * 1000));
             tokenDao.persistToken(token);
             return new LinkedHashMap<String, Object>() {{
                 put("access_token", token.getIdValue());
@@ -52,7 +52,7 @@ public class OAuth2Response {
         }
 
         if (request.grant_type.equals("code")) {
-            final Token token = new Token(request.getCode());
+            final Token token = new Token(request.getCode(), null);
             tokenDao.persistToken(token);
             return new LinkedHashMap<String, Object>() {{
                 put("access_token", token.getIdValue());

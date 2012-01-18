@@ -21,7 +21,7 @@ public class Code extends Access {
     public Code() {};
 
     Code(String code, String buses, Date expires) {
-        super(code, type.CODE, buses, expires, false);
+        super(code, type.CODE, buses, null, expires, false);
         assert(StringUtils.isNotBlank(buses));
         logger.info("Code declared with buses: " + buses);
 

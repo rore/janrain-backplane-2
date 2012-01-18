@@ -48,10 +48,11 @@ public class Access extends AbstractMessage {
      * Create a Access object for storage in SimpleDB
      * @param id
      * @param type "regular_token" or "privileged_token" or "code"
-     * @param buses is a space delimited list of buses
+     * @param authdBusesString is a space delimited list of buses set ONLY via Code
+     * @param scopeString is a space delimited set of key/value pairs supplied by the client
      * @param expires is null if the id does not expire
      */
-    public Access(@NotNull String id, @NotNull type type, @NotNull String buses,  @Nullable Date expires, boolean createChannel) {
+    public Access(@NotNull String id, @NotNull type type, @NotNull String authdBusesString, @Nullable String scopeString, @Nullable Date expires, boolean createChannel) {
         Map<String,String> d = new LinkedHashMap<String, String>();
         assert(type == type.REGULAR_TOKEN || type == type.PRIVILEGED_TOKEN || type == type.CODE);
         if (type.equals("regular_token") || type.equals("code")) {
@@ -65,8 +66,12 @@ public class Access extends AbstractMessage {
             d.put(Field.EXPIRES.getFieldName(), "");
         }
 
-        if (StringUtils.isNotEmpty(buses)) {
-            d.put(Field.BUSES.getFieldName(), buses);
+        if (StringUtils.isNotEmpty(authdBusesString)) {
+            d.put(Field.BUSES.getFieldName(), authdBusesString);
+        }
+
+        if (StringUtils.isNotEmpty(scopeString)) {
+            d.put(Field.SCOPE.getFieldName(), scopeString);
         }
 
         if (createChannel) {
@@ -81,12 +86,21 @@ public class Access extends AbstractMessage {
         return this.get(Field.CHANNEL);
     }
 
-    public String getBusesAsString() {
+    public @Nullable String getBusesAsString() {
         return this.get(Field.BUSES);
     }
 
-    public List<String> getBusesAsList() {
-        return Arrays.asList(getBusesAsString().split(" "));
+    /**
+     * Retrieve list of authorized buses
+     * @return a valid list which may be empty
+     */
+    public @NotNull List<String> getBusesAsList() {
+        String busesAsString = getBusesAsString();
+        if (StringUtils.isEmpty(busesAsString)) {
+            return new ArrayList<String>();
+        } else {
+            return Arrays.asList(busesAsString.split(" "));
+        }
     }
 
     public boolean isAllowedBus(@NotNull String testBus) {
@@ -95,6 +109,20 @@ public class Access extends AbstractMessage {
 
     public boolean isAllowedBuses(@NotNull List<String> testBuses) {
         return getBusesAsList().containsAll(testBuses);
+    }
+
+    /**
+     * Retrieve an encoded space delimited string of authorized buses
+     * as "bus:thisbus.com bus:andthatbus.com ..."
+     * @return
+     */
+
+    public String getEncodedBusesAsString() {
+        StringBuilder sb = new StringBuilder();
+        for (String bus: getBusesAsList()) {
+            sb.append("bus:" + bus + " ");
+        }
+        return sb.toString().trim();
     }
 
     public Date getExpiresDate() {
@@ -117,6 +145,18 @@ public class Access extends AbstractMessage {
         return false;
     }
 
+    public String getScopeString() {
+        return get(Field.SCOPE);
+    }
+
+    public void setScopeString(String scopeString) {
+        scopeString = scopeString.trim();
+        logger.debug("new scope string: '" + scopeString + "'");
+        put(Field.SCOPE.getFieldName(), scopeString);
+    }
+
+
+
     @Override
     public String getIdValue() {
         return get(Field.ID);
@@ -132,7 +172,8 @@ public class Access extends AbstractMessage {
         EXPIRES("expires"),
         TYPE("type"),
         BUSES("buses", false),
-        CHANNEL("channel", false);
+        CHANNEL("channel", false),
+        SCOPE("scope", false);
 
         @Override
         public String getFieldName() {

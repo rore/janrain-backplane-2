@@ -55,9 +55,11 @@ public class BackplaneMessage extends AbstractMessage {
         return EnumSet.allOf(Field.class);
     }
 
-    public HashMap<String, Object> asFrame(String serverUrl, boolean includePayload) throws BackplaneServerException {
+    public HashMap<String, Object> asFrame(String serverDomain, boolean includePayload) throws BackplaneServerException {
 
         HashMap<String, Object> frame = new LinkedHashMap<String, Object>();
+
+        String serverUrl = "https://" + serverDomain + "/v2/message";
 
         frame.put("messageURL", serverUrl + "/" + get(Field.ID));
         frame.put(Field.SOURCE.getFieldName(), get(Field.SOURCE));

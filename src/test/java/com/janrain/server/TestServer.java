@@ -384,7 +384,7 @@ public class TestServer {
         refreshRequestAndResponse();
 
         // Create appropriate token
-        Token token = new Token(Access.type.REGULAR_TOKEN, "mybus.com", new Date(new Date().getTime() + Token.EXPIRES_SECONDS * 1000));
+        Token token = new Token(Access.type.REGULAR_TOKEN, "mybus.com", null, new Date(new Date().getTime() + Token.EXPIRES_SECONDS * 1000));
         superSimpleDB.store(bpConfig.getAccessTokenTableName(), Token.class, token);
 
         // Seed message
@@ -410,10 +410,7 @@ public class TestServer {
         //  "source": "http://aboutecho.com",
         //  "type": "identity/ack"
         //  "bus": "customer.com",
-        //  "channel": "67dc880cc265b0dbc755ea959b257118",
-        //  "payload": {
-        //      "role": "administrator"
-        //  },
+        //  "channel": "67dc880cc265b0dbc755ea959b257118"
         //}
 
         assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
@@ -435,7 +432,7 @@ public class TestServer {
         refreshRequestAndResponse();
 
         // Create appropriate token
-        Token token = new Token(Access.type.REGULAR_TOKEN, "mybus.com", new Date(new Date().getTime() + Token.EXPIRES_SECONDS * 1000));
+        Token token = new Token(Access.type.REGULAR_TOKEN, "mybus.com", null, new Date(new Date().getTime() + Token.EXPIRES_SECONDS * 1000));
         superSimpleDB.store(bpConfig.getAccessTokenTableName(), Token.class, token);
 
         // Seed message
@@ -462,10 +459,7 @@ public class TestServer {
         //  "source": "http://aboutecho.com",
         //  "type": "identity/ack"
         //  "bus": "customer.com",
-        //  "channel": "67dc880cc265b0dbc755ea959b257118",
-        //  "payload": {
-        //      "role": "administrator"
-        //  },
+        //  "channel": "67dc880cc265b0dbc755ea959b257118"
         // })
 
         assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
@@ -486,7 +480,7 @@ public class TestServer {
         refreshRequestAndResponse();
 
         // Create appropriate token
-        Token token = new Token(Access.type.PRIVILEGED_TOKEN, "mybus.com", null);
+        Token token = new Token(Access.type.PRIVILEGED_TOKEN, "mybus.com", null, null);
         superSimpleDB.store(bpConfig.getAccessTokenTableName(), Token.class, token);
 
         // Seed message
@@ -529,6 +523,37 @@ public class TestServer {
                         "[}]"));
 
     }
+
+    @Test
+    public void testMessagesEndPointPAL() throws Exception {
+
+        refreshRequestAndResponse();
+
+        // Create appropriate token
+        Token token = new Token(Access.type.PRIVILEGED_TOKEN, "mybus.com yourbus.com", "bus:mybus.com", null);
+        superSimpleDB.store(bpConfig.getAccessTokenTableName(), Token.class, token);
+
+        // Seed 2 messages
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
+
+        BackplaneMessage message1 = new BackplaneMessage("123456", "mybus.com", "randomchannel", msg);
+        superSimpleDB.store(bpConfig.getMessagesTableName(), BackplaneMessage.class, message1, true);
+
+        BackplaneMessage message2 = new BackplaneMessage("1234567", "yourbus.com", "randomchannel", msg);
+        superSimpleDB.store(bpConfig.getMessagesTableName(), BackplaneMessage.class, message2, true);
+
+         // Make the call
+        request.setRequestURI("/messages");
+        request.setMethod("GET");
+        request.setParameter("access_token", token.getIdValue());
+        handlerAdapter.handle(request, response, controller);
+        logger.debug("testMessagesEndPointPAL()   => " + response.getContentAsString());
+
+        assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
+
+    }
+
 
 
 

@@ -147,17 +147,50 @@ public class BackplaneController {
      */
 
     @RequestMapping(value = "/messages", method = { RequestMethod.GET})
-    public ModelAndView messages(HttpServletRequest request, HttpServletResponse response,
-                                @RequestParam(value = "access_token", required = true) String access_token,
+    public @ResponseBody HashMap<String,Object> messages(HttpServletRequest request, HttpServletResponse response,
+                                @RequestParam(value = "access_token", required = false) String access_token,
                                 @RequestParam(value = "block", defaultValue = "0", required = false) Integer block,
                                 @RequestParam(required = false) String callback,
                                 @RequestParam(value = "since", required = false) String since)
-            throws SimpleDBException {
+            throws SimpleDBException, BackplaneServerException {
+
+        //TODO: add since and callback support - support for block?
+
+        MessageRequest messageRequest = new MessageRequest(access_token, callback);
+
+        try {
+            messageRequest.setToken(tokenDao.retrieveToken(access_token));
+        } catch (SimpleDBException e) {
+            //do nothing
+            logger.info("Could not retrieve token " + access_token,e);
+        }
+
+        List<BackplaneMessage> messages = superSimpleDb.retrieveWhere(bpConfig.getMessagesTableName(),
+                BackplaneMessage.class, messageRequest.getToken().getScope().buildQueryFromScope(), true);
+
+        if (messages.isEmpty()) {
+            return null;
+        }
+
+        String nextUrl = "https://" + request.getServerName() + "/v2/messages?since=" + messages.get(messages.size()-1).getIdValue();
+        List<Map<String,Object>> frames = new ArrayList<Map<String, Object>>();
+
+        for (BackplaneMessage message : messages) {
+            frames.add(message.asFrame(request.getServerName(), messageRequest.getToken().isPrivileged()));
+        }
+
+        HashMap<String, Object> hash = new HashMap<String, Object>();
+        hash.put("nextURL", nextUrl);
+        hash.put("messages", frames);
+
+        return hash;
 
 
-        throw new NotImplementedException();
+       // throw new NotImplementedException();
 
     }
+
+
 
     /**
      * Retrieve a single message from the server.
@@ -220,7 +253,7 @@ public class BackplaneController {
 
         if (StringUtils.isBlank(callback)) {
             response.setContentType("application/json");
-            return message.asFrame("https://" + request.getServerName() + "/v2/message", messageRequest.getToken().isPrivileged());
+            return message.asFrame(request.getServerName(), messageRequest.getToken().isPrivileged());
         } else {
             response.setContentType("application/x-javascript");
             try {
@@ -250,7 +283,10 @@ public class BackplaneController {
 
     @RequestMapping(value = "/messages", method = { RequestMethod.POST})
     public ModelAndView postMessages(HttpServletRequest request, HttpServletResponse response,
-                                     @RequestParam(value = "access_token", required = true) String access_token) {
+                                     @RequestParam(value = "access_token", required = false) String access_token,
+                                     @RequestParam(required = false) String callback,
+                                     @RequestParam(required = false) String since) {
+
 
 
         throw new NotImplementedException();
