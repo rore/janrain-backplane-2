@@ -116,6 +116,8 @@ public class BackplaneController {
 
         //TODO: we need to cleanup expired tokens
 
+        //TODO: how does a privileged client request a re-scoped token?
+
         TokenRequest tokenRequest = new TokenRequest(client_id, grant_type, redirect_uri,
                                                         code, client_secret, scope, callback);
 
@@ -424,10 +426,8 @@ public class BackplaneController {
 
     private static final Logger logger = Logger.getLogger(BackplaneController.class);
 
-    private static final String NEW_CHANNEL_LAST_PATH = "new";
     private static final String ERR_MSG_FIELD = "error";
     private static final String ERR_MSG_DESCRIPTION = "error_description";
-    private static final int CHANNEL_NAME_LENGTH = 32;
 
     private final MeterMetric posts =
             Metrics.newMeter(BackplaneController.class, "post", "posts", TimeUnit.MINUTES);
@@ -524,10 +524,6 @@ public class BackplaneController {
         StringBuilder result = new StringBuilder(callback);
         result.append("(").append(s).append(")");
         return result.toString();
-    }
-
-    private String newChannel() {
-        return "\"" + ChannelUtil.randomString(CHANNEL_NAME_LENGTH) +"\"";
     }
 
 
