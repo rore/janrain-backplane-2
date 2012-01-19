@@ -114,6 +114,8 @@ public class BackplaneController {
                                         @RequestParam(required = false) String callback)
             throws AuthException, SimpleDBException, BackplaneServerException {
 
+        //TODO: we need to cleanup expired tokens
+
         TokenRequest tokenRequest = new TokenRequest(client_id, grant_type, redirect_uri,
                                                         code, client_secret, scope, callback);
 
@@ -163,7 +165,7 @@ public class BackplaneController {
                                 @RequestParam(value = "since", required = false) String since)
             throws SimpleDBException, BackplaneServerException {
 
-        //TODO: add callback support - support for block?
+        //TODO: add support for block?
 
         MessageRequest messageRequest = new MessageRequest(access_token, callback);
 
@@ -192,8 +194,23 @@ public class BackplaneController {
         hash.put("nextURL", nextUrl);
         hash.put("messages", frames);
 
-        return hash;
+        if (StringUtils.isBlank(callback)) {
+            response.setContentType("application/json");
+            return hash;
+        } else {
+            response.setContentType("application/x-javascript");
+            try {
+                String responseBody = callback + "(" + new String(new ObjectMapper().writeValueAsString(hash) + ")");
 
+                response.getWriter().print(responseBody);
+
+                return null;
+            } catch (IOException e) {
+                String errMsg = "Error converting frames to JSON: " + e.getMessage();
+                logger.error(errMsg, bpConfig.getDebugException(e));
+                throw new BackplaneServerException(errMsg, e);
+            }
+        }
     }
 
 
@@ -263,8 +280,8 @@ public class BackplaneController {
         } else {
             response.setContentType("application/x-javascript");
             try {
-                String responseBody = callback + "(" + new String(new ObjectMapper().writeValueAsString(message.asFrame("https://" +
-                        request.getServerName() + "/v2/message", messageRequest.getToken().isPrivileged())) + ")");
+                String responseBody = callback + "(" +
+                        new String(new ObjectMapper().writeValueAsString(message.asFrame(request.getServerName(), messageRequest.getToken().isPrivileged())) + ")");
 
                 response.getWriter().print(responseBody);
 

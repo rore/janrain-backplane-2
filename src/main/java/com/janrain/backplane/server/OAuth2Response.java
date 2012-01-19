@@ -40,6 +40,7 @@ public class OAuth2Response {
     public HashMap<String, Object> generateResponse() throws SimpleDBException, BackplaneServerException {
         if (request.grant_type.equals("client_credentials") && request.client_id.equals(Token.ANONYMOUS)) {
             // issue new channel id
+            // note, the scope value is set to null for regular requests, per 13.1.1
             final Token token = new Token(Access.type.REGULAR_TOKEN,  null, null, new Date(new Date().getTime() + Token.EXPIRES_SECONDS * 1000));
             tokenDao.persistToken(token);
             return new LinkedHashMap<String, Object>() {{
