@@ -249,7 +249,7 @@ public class TestServer {
         request.setParameter("grant_type", "code");
 
         //create code for test
-        Code code = new Code("test");
+        Code code = new Code(client.getClientId(),"test");
         this.saveCode(code);
 
         request.setParameter("code", code.getIdValue());
@@ -278,7 +278,7 @@ public class TestServer {
         request.setParameter("grant_type", "code");
 
         //create code for test
-        Code code = new Code("test");
+        Code code = new Code(client.getClientId(),"test");
         this.saveCode(code);
 
         request.setParameter("code", code.getIdValue());
@@ -311,7 +311,7 @@ public class TestServer {
         request.setParameter("grant_type", "code");
 
         //create code for test
-        Code code = new Code("mybus.com");
+        Code code = new Code(client.getClientId(),"mybus.com");
         this.saveCode(code);
 
         request.setParameter("code", code.getIdValue());
@@ -336,7 +336,7 @@ public class TestServer {
         request.setParameter("grant_type", "code");
 
         //create expired code for test
-        Code code = new Code("test",new Date());
+        Code code = new Code(client.getClientId(),"test",new Date());
         this.saveCode(code);
 
         request.setParameter("code", code.getIdValue());
@@ -350,13 +350,15 @@ public class TestServer {
     @Test()
     public void testTokenEndPointNoURI() throws Exception {
         refreshRequestAndResponse();
+
+        Client client = createTestClient();
         request.setRequestURI("/token");
         request.setMethod("POST");
         request.setParameter("client_id", "meh");
         request.setParameter("grant_type", "code");
 
         //create code for test
-        Code code = new Code("test");
+        Code code = new Code(client.getClientId(),"test");
         this.saveCode(code);
 
         request.setParameter("code", code.getIdValue());

@@ -114,7 +114,10 @@ public class TokenRequest {
             }
 
             //check the client
-            if (client == null || !client_secret.equals(client.getClientSecret()) || !redirect_uri.equals(client.getRedirectUri())) {
+            if (client == null ||
+                    !client_secret.equals(client.getClientSecret()) ||
+                    !redirect_uri.equals(client.getRedirectUri()) ||
+                    !authCode.getCodeClientId().equals(client.getClientId())) {
                 return error("invalid_client", "Client authentication failed");
             }
         }
