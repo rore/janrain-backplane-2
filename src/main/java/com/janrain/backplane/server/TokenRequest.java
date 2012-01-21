@@ -20,6 +20,7 @@ import com.janrain.backplane.server.config.BackplaneConfig;
 import com.janrain.backplane.server.config.Client;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 
 import javax.inject.Inject;
@@ -38,7 +39,6 @@ public class TokenRequest {
     final String code;
     final String client_secret;
     final String scope;
-    final String callback;
     Code authCode;
     Client client;
     Scope scopes;
@@ -49,14 +49,15 @@ public class TokenRequest {
     private static final String ERR_MSG_FIELD = "error";
     private static final String ERR_MSG_DESCRIPTION = "error_description";
 
-    TokenRequest(String client_id, String grant_type, String redirect_uri, String code, String client_secret, String scope, String callback) {
+    private static final Logger logger = Logger.getLogger(TokenRequest.class);
+
+    TokenRequest(String client_id, String grant_type, String redirect_uri, String code, String client_secret, String scope) {
         this.client_id = client_id;
         this.grant_type = grant_type;
         this.redirect_uri = redirect_uri;
         this.code = code;
         this.client_secret = client_secret;
         this.scope = scope;
-        this.callback = callback;
     }
 
     public Code getCode() {

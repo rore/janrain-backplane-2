@@ -29,107 +29,38 @@ import java.text.ParseException;
 import java.util.*;
 
 /**
- * Token data
+ * Access data
  * @author Tom Raney
  */
-public class Access extends AbstractMessage {
+public abstract class Access extends AbstractMessage {
 
     private static final int CHANNEL_NAME_LENGTH = 32;
-    public static enum type {REGULAR_TOKEN, PRIVILEGED_TOKEN, CODE};
     private static final Logger logger = Logger.getLogger(Access.class);
 
     /**
-     * Empty default constructor for AWS to use.
-     * Don't call directly.
+     * Empty default constructor for child classes to use
      */
     public Access() {};
 
     /**
      * Create a Access object for storage in SimpleDB
      * @param id
-     * @param type "regular_token" or "privileged_token" or "code"
-     * @param authdBusesString is a space delimited list of buses set ONLY via Code
-     * @param scopeString is a space delimited set of key/value pairs supplied by the client
      * @param expires is null if the id does not expire
      */
-    public Access(@NotNull String id, @NotNull type type, @NotNull String authdBusesString, @Nullable String scopeString, @Nullable Date expires, boolean createChannel) {
+    public Access(@NotNull String id, @Nullable Date expires) {
         Map<String,String> d = new LinkedHashMap<String, String>();
-        assert(type == type.REGULAR_TOKEN || type == type.PRIVILEGED_TOKEN || type == type.CODE);
-        if (type.equals("regular_token") || type.equals("code")) {
-            assert( expires != null);
-        }
+
+        assert(StringUtils.isNotEmpty(id));
         d.put(Field.ID.getFieldName(), id);
-        d.put(Field.TYPE.getFieldName(), type.name());
+
         if (expires != null) {
             d.put(Field.EXPIRES.getFieldName(), BackplaneConfig.ISO8601.format(expires));
         } else {
             d.put(Field.EXPIRES.getFieldName(), "");
         }
 
-        if (StringUtils.isNotEmpty(authdBusesString)) {
-            d.put(Field.BUSES.getFieldName(), authdBusesString);
-        }
-
-        if (createChannel) {
-            String channel = ChannelUtil.randomString(CHANNEL_NAME_LENGTH);
-            d.put(Field.CHANNEL.getFieldName(), channel);
-            // set the scope string to include this new channel
-            if (StringUtils.isEmpty(scopeString)) {
-                scopeString = "channel:" + channel;
-            }  else {
-                scopeString += " channel:" + channel;
-            }
-        }
-
-        if (StringUtils.isNotEmpty(scopeString)) {
-            d.put(Field.SCOPE.getFieldName(), scopeString);
-        }
-
         super.init(id, d);
 
-    }
-
-    public String getChannelName() {
-        return this.get(Field.CHANNEL);
-    }
-
-    public @Nullable String getBusesAsString() {
-        return this.get(Field.BUSES);
-    }
-
-    /**
-     * Retrieve list of authorized buses
-     * @return a valid list which may be empty
-     */
-    public @NotNull List<String> getBusesAsList() {
-        String busesAsString = getBusesAsString();
-        if (StringUtils.isEmpty(busesAsString)) {
-            return new ArrayList<String>();
-        } else {
-            return Arrays.asList(busesAsString.split(" "));
-        }
-    }
-
-    public boolean isAllowedBus(@NotNull String testBus) {
-        return getBusesAsList().contains(testBus);
-    }
-
-    public boolean isAllowedBuses(@NotNull List<String> testBuses) {
-        return getBusesAsList().containsAll(testBuses);
-    }
-
-    /**
-     * Retrieve an encoded space delimited string of authorized buses
-     * as "bus:thisbus.com bus:andthatbus.com ..."
-     * @return
-     */
-
-    public String getEncodedBusesAsString() {
-        StringBuilder sb = new StringBuilder();
-        for (String bus: getBusesAsList()) {
-            sb.append("bus:" + bus + " ");
-        }
-        return sb.toString().trim();
     }
 
     public Date getExpiresDate() {
@@ -152,18 +83,6 @@ public class Access extends AbstractMessage {
         return false;
     }
 
-    public String getScopeString() {
-        return get(Field.SCOPE);
-    }
-
-    public void setScopeString(String scopeString) {
-        scopeString = scopeString.trim();
-        logger.debug("new scope string: '" + scopeString + "'");
-        put(Field.SCOPE.getFieldName(), scopeString);
-    }
-
-
-
     @Override
     public String getIdValue() {
         return get(Field.ID);
@@ -176,11 +95,7 @@ public class Access extends AbstractMessage {
 
     public static enum Field implements MessageField {
         ID("id"),
-        EXPIRES("expires"),
-        TYPE("type"),
-        BUSES("buses", false),
-        CHANNEL("channel", false),
-        SCOPE("scope", false);
+        EXPIRES("expires");
 
         @Override
         public String getFieldName() {

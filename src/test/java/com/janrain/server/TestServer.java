@@ -432,7 +432,7 @@ public class TestServer {
         refreshRequestAndResponse();
 
         // Create appropriate token
-        Token token = new Token(Access.type.REGULAR_TOKEN, "mybus.com", null, new Date(new Date().getTime() + Token.EXPIRES_SECONDS * 1000));
+        Token token = new Token(Token.TYPE.REGULAR_TOKEN, "mybus.com", null, new Date(new Date().getTime() + Token.EXPIRES_SECONDS * 1000));
         this.saveToken(token);
 
         // Seed message
@@ -480,7 +480,7 @@ public class TestServer {
         refreshRequestAndResponse();
 
         // Create appropriate token
-        Token token = new Token(Access.type.REGULAR_TOKEN, "mybus.com", null, new Date(new Date().getTime() + Token.EXPIRES_SECONDS * 1000));
+        Token token = new Token(Token.TYPE.REGULAR_TOKEN, "mybus.com", null, new Date(new Date().getTime() + Token.EXPIRES_SECONDS * 1000));
         this.saveToken(token);
 
         // Seed message
@@ -528,7 +528,7 @@ public class TestServer {
         refreshRequestAndResponse();
 
         // Create appropriate token
-        Token token = new Token(Access.type.PRIVILEGED_TOKEN, "mybus.com", null, null);
+        Token token = new Token(Token.TYPE.PRIVILEGED_TOKEN, "mybus.com", null, null);
         this.saveToken(token);
 
         // Seed message
@@ -579,7 +579,7 @@ public class TestServer {
         refreshRequestAndResponse();
 
         // Create appropriate token
-        Token token = new Token(Access.type.PRIVILEGED_TOKEN, "mybus.com yourbus.com", "bus:mybus.com", null);
+        Token token = new Token(Token.TYPE.PRIVILEGED_TOKEN, "mybus.com yourbus.com", "bus:mybus.com", null);
         this.saveToken(token);
 
         // Seed 2 messages
@@ -610,7 +610,7 @@ public class TestServer {
         refreshRequestAndResponse();
 
         // Create appropriate token
-        Token token = new Token(Access.type.REGULAR_TOKEN, null, null, new Date(new Date().getTime() + Token.EXPIRES_SECONDS * 1000));
+        Token token = new Token(Token.TYPE.REGULAR_TOKEN, null, null, new Date(new Date().getTime() + Token.EXPIRES_SECONDS * 1000));
         this.saveToken(token);
 
         // Seed 2 messages
@@ -651,7 +651,7 @@ public class TestServer {
 
         // Create inappropriate token
         try {
-            Token token = new Token(Access.type.PRIVILEGED_TOKEN, "mybus.com yourbus.com", "bus:invalidbus.com", null);
+            Token token = new Token(Token.TYPE.PRIVILEGED_TOKEN, "mybus.com yourbus.com", "bus:invalidbus.com", null);
         } catch (BackplaneServerException bpe) {
             //expected
             return;
@@ -667,7 +667,7 @@ public class TestServer {
         refreshRequestAndResponse();
 
         // Create appropriate token
-        Token token = new Token(Access.type.PRIVILEGED_TOKEN, "mybus.com yourbus.com", "bus:yourbus.com", null);
+        Token token = new Token(Token.TYPE.PRIVILEGED_TOKEN, "mybus.com yourbus.com", "bus:yourbus.com", null);
         this.saveToken(token);
 
         // Make the call

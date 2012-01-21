@@ -41,7 +41,7 @@ public class OAuth2Response {
         if (request.grant_type.equals("client_credentials") && request.client_id.equals(Token.ANONYMOUS)) {
             // issue new channel id
             // note, the scope value is set to null for regular requests, per 13.1.1
-            final Token token = new Token(Access.type.REGULAR_TOKEN,  null, null, new Date(new Date().getTime() + Token.EXPIRES_SECONDS * 1000));
+            final Token token = new Token(Token.TYPE.REGULAR_TOKEN,  null, null, new Date(new Date().getTime() + Token.EXPIRES_SECONDS * 1000L));
             tokenDao.persistToken(token);
             return new LinkedHashMap<String, Object>() {{
                 put("access_token", token.getIdValue());

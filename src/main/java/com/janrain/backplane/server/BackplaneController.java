@@ -95,7 +95,6 @@ public class BackplaneController {
      * @param code
      * @param client_secret
      * @param scope
-     * @param callback (optional callback function)
      * @return
      * @throws AuthException
      * @throws SimpleDBException
@@ -110,8 +109,7 @@ public class BackplaneController {
                                         @RequestParam(value = "redirect_uri", required = false) String redirect_uri,
                                         @RequestParam(value = "code", required = false) String code,
                                         @RequestParam(value = "client_secret", required = false) String client_secret,
-                                        @RequestParam(value = "scope", required = false) String scope,
-                                        @RequestParam(required = false) String callback)
+                                        @RequestParam(value = "scope", required = false) String scope)
             throws AuthException, SimpleDBException, BackplaneServerException {
 
         //TODO: we need to cleanup expired tokens
@@ -130,7 +128,7 @@ public class BackplaneController {
         // issued to the same client.
 
         TokenRequest tokenRequest = new TokenRequest(client_id, grant_type, redirect_uri,
-                                                        code, client_secret, scope, callback);
+                                                        code, client_secret, scope);
 
 
         try {
@@ -140,8 +138,9 @@ public class BackplaneController {
         }
 
         try {
-            if (StringUtils.isNotEmpty(client_id) && !client_id.equals(Token.ANONYMOUS))
-            tokenRequest.setClient(daoFactory.getClientDAO().retrieveClient(client_id));
+            if (StringUtils.isNotEmpty(client_id) && !client_id.equals(Token.ANONYMOUS)) {
+                tokenRequest.setClient(daoFactory.getClientDAO().retrieveClient(client_id));
+            }
         } catch (Exception e) {
             //do nothing
             logger.info("could not retrieve client with id '" + client_id + "'", e);

@@ -20,6 +20,6 @@ public class CodeDAO extends DAO {
     }
 
     public Code retrieveCode(String code) throws SimpleDBException {
-        return superSimpleDB.retrieveAndDelete(bpConfig.getCodeTableName(), Code.class, code);
+        return superSimpleDB.retrieve(bpConfig.getCodeTableName(), Code.class, code);
     }
 }
