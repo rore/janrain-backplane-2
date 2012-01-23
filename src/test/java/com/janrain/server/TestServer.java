@@ -5,19 +5,17 @@ import com.janrain.backplane.server.*;
 import com.janrain.backplane.server.config.BackplaneConfig;
 import com.janrain.backplane.server.config.Client;
 import com.janrain.backplane.server.config.User;
+import com.janrain.backplane.server.dao.DaoFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.crypto.ChannelUtil;
-import com.sun.org.apache.bcel.internal.generic.NEW;
 import org.apache.catalina.util.Base64;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
-import org.junit.internal.runners.JUnit38ClassRunner;
 import org.junit.runner.RunWith;
 import org.springframework.context.ApplicationContext;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -27,7 +25,6 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.web.servlet.HandlerAdapter;
 
 import javax.inject.Inject;
-import javax.mail.Message;
 import javax.servlet.http.HttpServletResponse;
 
 import java.util.*;
@@ -53,6 +50,9 @@ public class TestServer {
 
     @Inject
     private BackplaneConfig bpConfig;
+
+    @Inject
+    private DaoFactory daoFactory;
 
     private static final Logger logger = Logger.getLogger(TestServer.class);
 
@@ -109,14 +109,25 @@ public class TestServer {
         logger.info("Tearing down test writes to db");
         try {
             for (String key:this.createdMessageKeys) {
+                logger.info("deleting Message " + key);
                 superSimpleDB.delete(bpConfig.getMessagesTableName(), key);
             }
+            List<BackplaneMessage> testMsgs = superSimpleDB.
+                    retrieveWhere(bpConfig.getMessagesTableName(), BackplaneMessage.class, "channel='testchannel'", true);
+            for (BackplaneMessage msg : testMsgs) {
+                superSimpleDB.delete(bpConfig.getMessagesTableName(), msg.getIdValue());
+            }
             for (String key:this.createdTokenKeys) {
-                superSimpleDB.delete(bpConfig.getAccessTokenTableName(), key);
+                logger.info("deleting Token " + key);
+                daoFactory.getTokenDao().deleteTokenById(key);
             }
+
             for (String key:this.createdCodeKeys) {
-                superSimpleDB.delete(bpConfig.getCodeTableName(), key);
+                logger.info("deleting Grant " + key);
+                daoFactory.getTokenDao().revokeTokenByGrant(key);
+                superSimpleDB.delete(bpConfig.getGrantTableName(), key);
             }
+            superSimpleDB.delete(bpConfig.getClientsTableName(), "random_id");
         } catch (SimpleDBException e) {
             logger.error(e);
         }
@@ -140,15 +151,16 @@ public class TestServer {
     private void saveMessage(BackplaneMessage message) throws SimpleDBException {
         superSimpleDB.store(bpConfig.getMessagesTableName(), BackplaneMessage.class, message, true);
         this.createdMessageKeys.add(message.getIdValue());
+        logger.info("created Message " + message.getIdValue());
     }
 
-    private void saveCode(Code code) throws SimpleDBException {
-        superSimpleDB.store(bpConfig.getCodeTableName(), Code.class, code);
-        this.createdTokenKeys.add(code.getIdValue());
+    private void saveGrant(Grant grant) throws SimpleDBException {
+        superSimpleDB.store(bpConfig.getGrantTableName(), Grant.class, grant);
+        this.createdCodeKeys.add(grant.getIdValue());
     }
 
     private void saveToken(Token token) throws SimpleDBException {
-        superSimpleDB.store(bpConfig.getAccessTokenTableName(), Token.class, token);
+        daoFactory.getTokenDao().persistToken(token);
         this.createdTokenKeys.add(token.getIdValue());
     }
 
@@ -192,7 +204,7 @@ public class TestServer {
         refreshRequestAndResponse();
 
         request.setRequestURI("/token");
-        request.setMethod("POST");
+        request.setMethod("GET");
         request.setParameter("client_id", "anonymous");
         request.setParameter("grant_type", "client_credentials");
         request.setParameter("client_secret","");
@@ -206,6 +218,8 @@ public class TestServer {
                         "\"expires_in\":\\s*3600,\\s*" +
                         "\"token_type\":\\s*\"Bearer\",\\s*" +
                         "\"backplane_channel\":\\s*\".{32}+\"\\s*[}]"));
+
+        //TODO: remove test token?
 
 
     }
@@ -248,9 +262,11 @@ public class TestServer {
         request.setParameter("client_id", client.get(User.Field.USER));
         request.setParameter("grant_type", "code");
 
-        //create code for test
-        Code code = new Code(client.getClientId(),"test");
-        this.saveCode(code);
+        //create grant for test
+        Grant grant = new Grant(client.getClientId(),"test");
+        this.saveGrant(grant);
+        AuthCode code = daoFactory.getCodeDao().issueCode(grant);
+
 
         request.setParameter("code", code.getIdValue());
         request.setParameter("client_secret", client.get(User.Field.PWDHASH));
@@ -277,9 +293,10 @@ public class TestServer {
         request.setParameter("client_id", client.get(User.Field.USER));
         request.setParameter("grant_type", "code");
 
-        //create code for test
-        Code code = new Code(client.getClientId(),"test");
-        this.saveCode(code);
+        //create grant for test
+        Grant grant = new Grant(client.getClientId(),"test");
+        this.saveGrant(grant);
+        AuthCode code = daoFactory.getCodeDao().issueCode(grant);
 
         request.setParameter("code", code.getIdValue());
         request.setParameter("client_secret", client.get(User.Field.PWDHASH));
@@ -310,9 +327,10 @@ public class TestServer {
         request.setParameter("client_id", client.get(User.Field.USER));
         request.setParameter("grant_type", "code");
 
-        //create code for test
-        Code code = new Code(client.getClientId(),"mybus.com");
-        this.saveCode(code);
+        //create grant for test
+        Grant grant = new Grant(client.getClientId(),"mybus.com");
+        this.saveGrant(grant);
+        AuthCode code = daoFactory.getCodeDao().issueCode(grant);
 
         request.setParameter("code", code.getIdValue());
         request.setParameter("client_secret", client.get(User.Field.PWDHASH));
@@ -335,9 +353,10 @@ public class TestServer {
         request.setParameter("client_id", client.get(User.Field.USER));
         request.setParameter("grant_type", "code");
 
-        //create expired code for test
-        Code code = new Code(client.getClientId(),"test",new Date());
-        this.saveCode(code);
+        //create expired grant for test
+        Grant grant = new Grant(client.getClientId(),"test", new Date());
+        this.saveGrant(grant);
+        AuthCode code = daoFactory.getCodeDao().issueCode(grant);
 
         request.setParameter("code", code.getIdValue());
         request.setParameter("client_secret", client.get(User.Field.PWDHASH));
@@ -357,9 +376,10 @@ public class TestServer {
         request.setParameter("client_id", "meh");
         request.setParameter("grant_type", "code");
 
-        //create code for test
-        Code code = new Code(client.getClientId(),"test");
-        this.saveCode(code);
+        //create grant for test
+        Grant grant = new Grant(client.getClientId(),"test");
+        this.saveGrant(grant);
+        AuthCode code = daoFactory.getCodeDao().issueCode(grant);
 
         request.setParameter("code", code.getIdValue());
 
@@ -450,9 +470,6 @@ public class TestServer {
         logger.debug("testMessageEndPoint()  => " + response.getContentAsString());
        // assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
 
-        assertTrue(response.getStatus() == HttpServletResponse.SC_OK);
-        assertTrue(response.getContentType().equals("application/json"));
-
         // {
         //  "messageURL": "https://bp.example.com/v2/message/097a5cc401001f95b45d37aca32a3bd2",
         //  "source": "http://aboutecho.com",
@@ -469,6 +486,9 @@ public class TestServer {
                         "\"bus\":\\s*\".*\",\\s*" +
                         "\"channel\":\\s*\".*\"\\s*" +
                         "[}]"));
+
+        assertTrue("Expected " + HttpServletResponse.SC_OK + " but received: " + response.getStatus(), response.getStatus() == HttpServletResponse.SC_OK);
+        assertTrue(response.getContentType().equals("application/json"));
 
     }
 
@@ -499,9 +519,6 @@ public class TestServer {
         handlerAdapter.handle(request, response, controller);
         logger.debug("testMessageEndPointWithCallBack()  => " + response.getContentAsString());
 
-        assertTrue(response.getStatus() == HttpServletResponse.SC_OK);
-        assertTrue(response.getContentType().equals("application/x-javascript"));
-
         // callback({
         //  "messageURL": "https://bp.example.com/v2/message/097a5cc401001f95b45d37aca32a3bd2",
         //  "source": "http://aboutecho.com",
@@ -510,7 +527,7 @@ public class TestServer {
         //  "channel": "67dc880cc265b0dbc755ea959b257118"
         // })
 
-        assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
+        assertTrue("Invalid response: '" + response.getContentAsString() + "'", response.getContentAsString().
                 matches(callbackName + "[(][{]\\s*" +
                         "\"messageURL\":\\s*\".*\",\\s*" +
                         "\"source\":\\s*\".*\",\\s*" +
@@ -518,6 +535,9 @@ public class TestServer {
                         "\"bus\":\\s*\".*\",\\s*" +
                         "\"channel\":\\s*\".*\"\\s*" +
                         "[}][)]"));
+
+        assertTrue("Expected " + HttpServletResponse.SC_OK + " but received: " + response.getStatus(), response.getStatus() == HttpServletResponse.SC_OK);
+        assertTrue(response.getContentType().equals("application/x-javascript"));
 
 
     }
@@ -546,8 +566,6 @@ public class TestServer {
         logger.debug("testMessageEndPointPAL()   => " + response.getContentAsString());
        // assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
 
-        assertTrue(response.getStatus() == HttpServletResponse.SC_OK);
-        assertTrue(response.getContentType().equals("application/json"));
 
         // {
         //  "messageURL": "https://bp.example.com/v2/message/097a5cc401001f95b45d37aca32a3bd2",
@@ -570,6 +588,9 @@ public class TestServer {
                         "\"payload\":\\s*.*" +
                         "[}]"));
 
+        assertTrue("Expected " + HttpServletResponse.SC_OK + " but received: " + response.getStatus(), response.getStatus() == HttpServletResponse.SC_OK);
+        assertTrue(response.getContentType().equals("application/json"));
+
 
     }
 
@@ -586,10 +607,10 @@ public class TestServer {
         ObjectMapper mapper = new ObjectMapper();
         Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
 
-        BackplaneMessage message1 = new BackplaneMessage("123456", "mybus.com", "randomchannel", msg);
+        BackplaneMessage message1 = new BackplaneMessage("123456", "this.com", "randomchannel", msg);
         this.saveMessage(message1);
 
-        BackplaneMessage message2 = new BackplaneMessage("1234567", "yourbus.com", "randomchannel", msg);
+        BackplaneMessage message2 = new BackplaneMessage("1234567", "that.com", "randomchannel", msg);
         this.saveMessage(message2);
 
          // Make the call
@@ -617,10 +638,10 @@ public class TestServer {
         ObjectMapper mapper = new ObjectMapper();
         Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
 
-        BackplaneMessage message1 = new BackplaneMessage(BackplaneMessage.generateMessageId(), "mybus.com", token.getChannelName(), msg);
+        BackplaneMessage message1 = new BackplaneMessage(BackplaneMessage.generateMessageId(), "a.com", token.getChannelName(), msg);
         this.saveMessage(message1);
 
-        BackplaneMessage message2 = new BackplaneMessage(BackplaneMessage.generateMessageId(), "yourbus.com", token.getChannelName(), msg);
+        BackplaneMessage message2 = new BackplaneMessage(BackplaneMessage.generateMessageId(), "b.com", token.getChannelName(), msg);
         this.saveMessage(message2);
 
          // Make the call
@@ -690,6 +711,48 @@ public class TestServer {
         handlerAdapter.handle(request, response, controller);
 
         assertTrue(response.getStatus() == HttpServletResponse.SC_CREATED);
+
+    }
+
+    @Test
+    public void testGrantAndRevoke() throws Exception {
+
+        refreshRequestAndResponse();
+
+        logger.info("TEST: testGrantAndRevoke() =================");
+
+        Client client = this.createTestClient();
+
+        // Create auth
+        ArrayList<Grant> grants = new ArrayList<Grant>();
+        Grant grant1 = new Grant(client.getClientId(), "mybus.com");
+        Grant grant2 = new Grant(client.getClientId(), "thisbus.com");
+        this.saveGrant(grant1);
+        this.saveGrant(grant2);
+        grants.add(grant1);
+        grants.add(grant2);
+
+        // Create appropriate token
+        Token token = new Token(grants, "");
+        saveToken(token);
+
+        // Revoke token based on one code
+        daoFactory.getTokenDao().revokeTokenByGrant(grant1.getIdValue());
+
+        try {
+            // Now the token should fail
+            // Make the call
+            request.setRequestURI("/messages");
+            request.setMethod("GET");
+            request.setParameter("access_token", token.getIdValue());
+            handlerAdapter.handle(request, response, controller);
+            logger.debug("testGrantAndRevoke() => " + response.getContentAsString());
+
+            assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
+        } finally {
+
+            daoFactory.getTokenDao().deleteToken(token);
+        }
 
     }
 

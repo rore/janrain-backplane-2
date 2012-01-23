@@ -18,7 +18,9 @@ package com.janrain.backplane.server;
 
 import com.janrain.backplane.server.config.BackplaneConfig;
 import com.janrain.backplane.server.config.Client;
+import com.janrain.backplane.server.dao.DaoFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
+import com.sun.org.apache.bcel.internal.classfile.Code;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
@@ -33,13 +35,13 @@ import java.util.HashMap;
 
 public class TokenRequest {
 
-    final String client_id;
-    final String grant_type;
-    final String redirect_uri;
-    final String code;
-    final String client_secret;
-    final String scope;
-    Code authCode;
+    String client_id;
+    String grant_type;
+    String redirect_uri;
+    String codeId;
+    String client_secret;
+    String scope;
+    AuthCode code;
     Client client;
     Scope scopes;
 
@@ -51,21 +53,42 @@ public class TokenRequest {
 
     private static final Logger logger = Logger.getLogger(TokenRequest.class);
 
-    TokenRequest(String client_id, String grant_type, String redirect_uri, String code, String client_secret, String scope) {
+    TokenRequest(DaoFactory daoFactory, String client_id, String grant_type, String redirect_uri, String codeId, String client_secret, String scope) {
         this.client_id = client_id;
         this.grant_type = grant_type;
         this.redirect_uri = redirect_uri;
-        this.code = code;
+        this.codeId = codeId;
         this.client_secret = client_secret;
+        this.scope = scope;
+
+        try {
+            setCode(daoFactory.getCodeDao().retrieveCode(codeId));
+        } catch (Exception e) {
+            //do nothing
+        }
+
+        try {
+            if (StringUtils.isNotEmpty(client_id) && !client_id.equals(Token.ANONYMOUS)) {
+                setClient(daoFactory.getClientDAO().retrieveClient(client_id));
+            }
+        } catch (Exception e) {
+            //do nothing
+            logger.info("could not retrieve client with id '" + client_id + "'", e);
+        }
+    }
+
+    TokenRequest(String client_id, String grant_type, String scope) {
+        this.client_id = client_id;
+        this.grant_type = grant_type;
         this.scope = scope;
     }
 
-    public Code getCode() {
-        return this.authCode;
+    public AuthCode getCode() {
+        return this.code;
     }
 
-    public void setCode(Code authCode) {
-        this.authCode = authCode;
+    public void setCode(AuthCode code) {
+        this.code = code;
     }
 
     public void setClient(Client client) {
@@ -88,7 +111,7 @@ public class TokenRequest {
             return error("invalid_request", "Invalid grant type");
         }
 
-        if ((grant_type.equals("code") && StringUtils.isEmpty(code)) || (grant_type.equals("client_credentials") && StringUtils.isNotEmpty(code)) ) {
+        if ((grant_type.equals("code") && StringUtils.isEmpty(codeId)) || (grant_type.equals("client_credentials") && StringUtils.isNotEmpty(codeId)) ) {
             return error("invalid_request", "Missing code value");
         }
 
@@ -104,13 +127,13 @@ public class TokenRequest {
             return error("invalid_request", "Must not include client_secret for anonymous requests");
         }
 
-        // check the code
-        if (StringUtils.isNotEmpty(code)) {
+        // check the codeId
+        if (StringUtils.isNotEmpty(codeId)) {
             //did a record pull from the db?
-            if (authCode == null) {
+            if (code == null) {
                 return error("invalid_grant", "Authorization code is invalid");
             }
-            if (this.authCode.isExpired()) {
+            if (this.code.isExpired()) {
                 return error("invalid_grant", "Authorization code is expired");
             }
 
@@ -118,7 +141,7 @@ public class TokenRequest {
             if (client == null ||
                     !client_secret.equals(client.getClientSecret()) ||
                     !redirect_uri.equals(client.getRedirectUri()) ||
-                    !authCode.getCodeClientId().equals(client.getClientId())) {
+                    !code.getGrant().getCodeClientId().equals(client.getClientId())) {
                 return error("invalid_client", "Client authentication failed");
             }
         }
@@ -126,7 +149,7 @@ public class TokenRequest {
         if (StringUtils.isNotEmpty(scope)) {
             try {
                 this.scopes = new Scope(scope);
-                if (this.authCode != null && !this.authCode.isAllowedBuses(scopes.getBusesInScope())) {
+                if (this.code != null && !this.code.getGrant().isAllowedBuses(scopes.getBusesInScope())) {
                     return error("invalid_request", "Invalid scope");
                 }
             } catch (BackplaneServerException e) {
@@ -134,7 +157,7 @@ public class TokenRequest {
             }
         }
 
-        return null;
+        return new HashMap<String, Object>();
     }
 
     public HashMap<String, Object> error(@NotNull final String error, final String description) {

@@ -7,7 +7,7 @@ import com.janrain.commons.supersimpledb.SuperSimpleDB;
  * @author Tom Raney
  */
 
-public class DAO {
+public abstract class DAO {
 
     protected SuperSimpleDB superSimpleDB;
     protected BackplaneConfig bpConfig;

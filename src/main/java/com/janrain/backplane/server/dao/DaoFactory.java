@@ -17,8 +17,8 @@ public class DaoFactory {
         return new TokenDAO(superSimpleDB, bpConfig);
     }
 
-    public CodeDAO getCodeDao() {
-        return new CodeDAO(superSimpleDB, bpConfig);
+    public GrantDAO getCodeDao() {
+        return new GrantDAO(superSimpleDB, bpConfig);
     }
 
     public ClientDAO getClientDAO() {

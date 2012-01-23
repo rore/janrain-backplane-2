@@ -1,5 +1,6 @@
 package com.janrain.backplane.server;
 
+import com.janrain.backplane.server.dao.DaoFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import org.jetbrains.annotations.NotNull;
 
@@ -17,18 +18,29 @@ public class MessageRequest {
     private static final String ERR_MSG_FIELD = "error";
     private static final String ERR_MSG_DESCRIPTION = "error_description";
 
-    public MessageRequest(String tokenString, String callback) {
+    public MessageRequest(DaoFactory daoFactory, String tokenString, String callback) {
         this.tokenString = tokenString;
         this.callback = callback;
+
+        try {
+            setToken(daoFactory.getTokenDao().retrieveToken(tokenString));
+        } catch (SimpleDBException e) {
+            // do nothing for now
+        }
+
+
     }
 
-    public void setToken(Token token) {
+
+
+    private void setToken(Token token) {
         this.token = token;
     }
 
     public Token getToken() {
         return this.token;
     }
+
 
     public HashMap<String, Object> validate() {
 
@@ -39,7 +51,7 @@ public class MessageRequest {
         // is the token properly scoped for this message id?
 
 
-        return null;
+        return new HashMap<String, Object>();
 
 
 

@@ -52,7 +52,7 @@ public class OAuth2Response {
         }
 
         if (request.grant_type.equals("code")) {
-            final Token token = new Token(request.getCode(), null);
+            final Token token = new Token(request.getCode().getGrant(), null);
             tokenDao.persistToken(token);
             return new LinkedHashMap<String, Object>() {{
                 put("access_token", token.getIdValue());

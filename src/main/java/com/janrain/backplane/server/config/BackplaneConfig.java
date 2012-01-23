@@ -88,12 +88,20 @@ public class BackplaneConfig {
         return bpInstanceId + BP_SAMPLES_TABLE_SUFFIX;
     }
 
+    public String getGrantTableName() {
+        return bpInstanceId + BP_GRANT_TABLE_SUFFIX;
+    }
+
     public String getCodeTableName() {
-        return bpInstanceId + BP_AUTHCODE_TABLE_SUFFIX;
+        return bpInstanceId + BP_CODE_TABLE_SUFFIX;
     }
 
     public String getAccessTokenTableName() {
         return bpInstanceId + BP_ACCESS_TOKEN_TABLE_SUFFIX;
+    }
+
+    public String getAuthTokenRelTableName() {
+        return bpInstanceId + BP_AUTHTOKEN_REL_TABLE_SUFFIX;
     }
 
     public String getClientsTableName() {
@@ -202,8 +210,10 @@ public class BackplaneConfig {
     private static final String BP_SAMPLES_TABLE_SUFFIX = "_samples";
     private static final String BP_METRICS_TABLE_SUFFIX = "_metrics";
     private static final String BP_METRIC_AUTH_TABLE_SUFFIX = "_bpMetricAuth";
-    private static final String BP_AUTHCODE_TABLE_SUFFIX = "_authCodes";
+    private static final String BP_GRANT_TABLE_SUFFIX = "_grants";
+    private static final String BP_CODE_TABLE_SUFFIX = "_authCodes";
     private static final String BP_ACCESS_TOKEN_TABLE_SUFFIX = "_accessTokens";
+    private static final String BP_AUTHTOKEN_REL_TABLE_SUFFIX = "_authtokenrel";
     private static final String BP_CLIENTS_TABLE_SUFFIX = "_clients";
     private static final long BP_MAX_MESSAGES_DEFAULT = 100;
 

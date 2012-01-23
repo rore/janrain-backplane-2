@@ -19,11 +19,8 @@ package com.janrain.backplane.server;
 import com.janrain.backplane.server.config.*;
 import com.janrain.backplane.server.dao.BackplaneMessageDAO;
 import com.janrain.backplane.server.dao.DaoFactory;
-import com.janrain.backplane.server.dao.TokenDAO;
 import com.janrain.backplane.server.metrics.MetricsAccumulator;
 import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.commons.supersimpledb.SuperSimpleDB;
-import com.janrain.crypto.ChannelUtil;
 import com.janrain.crypto.HmacHashUtils;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.HistogramMetric;
@@ -33,9 +30,6 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.ModelAndView;
@@ -46,7 +40,6 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.*;
-import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -82,6 +75,66 @@ public class BackplaneController {
         return view;
     }
 
+    /**
+     * The OAuth "Token Endpoint" is used to obtain an access token to be used
+     * for retrieving messages from the Get Messages endpoint.
+     *
+     * @param request
+     * @param response
+     * @param scope
+     * @param callback
+     * @return
+     * @throws AuthException
+     * @throws SimpleDBException
+     * @throws BackplaneServerException
+     */
+
+    @RequestMapping(value = "/token", method = { RequestMethod.GET})
+    @ResponseBody
+    public HashMap<String,Object> getToken(HttpServletRequest request, HttpServletResponse response,
+                                           @RequestParam(value = "scope", required = false) String scope,
+                                           @RequestParam(required = false) String callback)
+            throws AuthException, SimpleDBException, BackplaneServerException {
+
+        TokenRequest tokenRequest = new TokenRequest("anonymous", "client_credentials", scope);
+
+        HashMap errors = tokenRequest.validate();
+
+        if (!errors.isEmpty()) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            return errors;
+        }
+
+        HashMap<String, Object> hash;
+
+
+        try {
+            hash= new OAuth2Response(tokenRequest, daoFactory.getTokenDao()).generateResponse();
+        } catch (final BackplaneServerException bpe) {
+            return new HashMap<String,Object>() {{
+                put(ERR_MSG_FIELD, bpe.getMessage());
+            }};
+
+        }
+
+        if (StringUtils.isBlank(callback)) {
+            response.setContentType("application/json");
+            return hash;
+        } else {
+            response.setContentType("application/x-javascript");
+            try {
+                String responseBody = callback + "(" + new String(new ObjectMapper().writeValueAsString(hash) + ")");
+
+                response.getWriter().print(responseBody);
+
+                return null;
+            } catch (IOException e) {
+                String errMsg = "Error converting frames to JSON: " + e.getMessage();
+                logger.error(errMsg, bpConfig.getDebugException(e));
+                throw new BackplaneServerException(errMsg, e);
+            }
+        }
+    }
 
     /**
      * The OAuth "Token Endpoint" is used to obtain an access token to be used
@@ -127,27 +180,11 @@ public class BackplaneController {
         // authenticate the client and ensure that the authorization code was
         // issued to the same client.
 
-        TokenRequest tokenRequest = new TokenRequest(client_id, grant_type, redirect_uri,
+        TokenRequest tokenRequest = new TokenRequest(daoFactory, client_id, grant_type, redirect_uri,
                                                         code, client_secret, scope);
 
-
-        try {
-            tokenRequest.setCode(daoFactory.getCodeDao().retrieveCode(code));
-        } catch (Exception e) {
-            //do nothing
-        }
-
-        try {
-            if (StringUtils.isNotEmpty(client_id) && !client_id.equals(Token.ANONYMOUS)) {
-                tokenRequest.setClient(daoFactory.getClientDAO().retrieveClient(client_id));
-            }
-        } catch (Exception e) {
-            //do nothing
-            logger.info("could not retrieve client with id '" + client_id + "'", e);
-        }
-
         HashMap errors = tokenRequest.validate();
-        if (errors != null) {
+        if (!errors.isEmpty()) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             return errors;
         }
@@ -180,13 +217,11 @@ public class BackplaneController {
 
         //TODO: add support for block?
 
-        MessageRequest messageRequest = new MessageRequest(access_token, callback);
+        MessageRequest messageRequest = new MessageRequest(daoFactory, access_token, callback);
 
-        try {
-            messageRequest.setToken(daoFactory.getTokenDao().retrieveToken(access_token));
-        } catch (SimpleDBException e) {
-            //do nothing
-            logger.info("Could not retrieve token " + access_token,e);
+        HashMap<String, Object> errors = messageRequest.validate();
+        if (!errors.isEmpty()) {
+            return errors;
         }
 
         List<BackplaneMessage> messages =
@@ -242,16 +277,15 @@ public class BackplaneController {
                                                         @RequestParam(required = false) String callback)
             throws BackplaneServerException {
 
-        MessageRequest messageRequest = new MessageRequest(access_token, callback);
+        MessageRequest messageRequest = new MessageRequest(daoFactory, access_token, callback);
+
+        HashMap error = messageRequest.validate();
+        if (!error.isEmpty()) {
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            return error;
+        }
 
         BackplaneMessage message = null;
-
-        try {
-            messageRequest.setToken(daoFactory.getTokenDao().retrieveToken(access_token));
-        } catch (SimpleDBException e) {
-            //do nothing
-            logger.info("Could not retrieve token " + access_token,e);
-        }
 
         try {
             message = daoFactory.getBackplaneMessageDAO().retrieveBackplaneMessage(msg_id);
@@ -281,10 +315,10 @@ public class BackplaneController {
             }
         }
 
-        HashMap errors = messageRequest.validate();
-        if (errors != null) {
+        error = messageRequest.validate();
+        if (!error.isEmpty()) {
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            return errors;
+            return error;
         }
 
         if (StringUtils.isBlank(callback)) {

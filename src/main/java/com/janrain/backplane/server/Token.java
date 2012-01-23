@@ -4,14 +4,8 @@ import com.janrain.commons.supersimpledb.message.MessageField;
 import com.janrain.crypto.ChannelUtil;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-import org.omg.PortableInterceptor.ServerRequestInfo;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 /**
  * @author Tom Raney
@@ -85,8 +79,14 @@ public class Token extends Base {
         this(ChannelUtil.randomString(TOKEN_LENGTH), accessType, buses, scope, expires);
     }
 
-    public Token(Code code, String scope) throws BackplaneServerException {
-        this(ChannelUtil.randomString(TOKEN_LENGTH), TYPE.PRIVILEGED_TOKEN, code.getBusesAsString(), scope, null);
+    public Token(Grant grant, String scope) throws BackplaneServerException {
+        this(ChannelUtil.randomString(TOKEN_LENGTH), TYPE.PRIVILEGED_TOKEN, grant.getBusesAsString(), scope, null);
+        this.addGrant(grant);
+    }
+
+    public Token(List<Grant> grants, String scope) throws BackplaneServerException {
+        this(ChannelUtil.randomString(TOKEN_LENGTH), TYPE.PRIVILEGED_TOKEN, Grant.getBusesAsString(grants), scope, null);
+        this.setGrants(grants);
     }
 
     public String getChannelName() {
@@ -117,6 +117,14 @@ public class Token extends Base {
         scopeString = scopeString.trim();
         logger.debug("new scope string: '" + scopeString + "'");
         put(TokenField.SCOPE.getFieldName(), scopeString);
+    }
+
+    public List<Grant> getGrants() {
+        return Collections.unmodifiableList(this.sourceGrants);
+    }
+
+    public void setGrants(List<Grant> grants) {
+        this.sourceGrants = new ArrayList<Grant>(grants);
     }
 
 
@@ -157,5 +165,11 @@ public class Token extends Base {
     }
 
     private static final Logger logger = Logger.getLogger(Token.class);
+
+    private ArrayList<Grant> sourceGrants = new ArrayList<Grant>();
+
+    private void addGrant(Grant grant) {
+        this.sourceGrants.add(grant);
+    }
 
 }
