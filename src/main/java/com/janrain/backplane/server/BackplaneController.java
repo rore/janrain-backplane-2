@@ -81,8 +81,8 @@ public class BackplaneController {
      *
      * @param request
      * @param response
-     * @param scope
-     * @param callback
+     * @param scope     optional
+     * @param callback  required
      * @return
      * @throws AuthException
      * @throws SimpleDBException
@@ -93,7 +93,7 @@ public class BackplaneController {
     @ResponseBody
     public HashMap<String,Object> getToken(HttpServletRequest request, HttpServletResponse response,
                                            @RequestParam(value = "scope", required = false) String scope,
-                                           @RequestParam(required = false) String callback)
+                                           @RequestParam(required = true) String callback)
             throws AuthException, SimpleDBException, BackplaneServerException {
 
         TokenRequest tokenRequest = new TokenRequest("anonymous", "client_credentials", scope);
@@ -107,7 +107,6 @@ public class BackplaneController {
 
         HashMap<String, Object> hash;
 
-
         try {
             hash= new OAuth2Response(tokenRequest, daoFactory).generateResponse();
         } catch (final BackplaneServerException bpe) {
@@ -118,15 +117,12 @@ public class BackplaneController {
         }
 
         if (StringUtils.isBlank(callback)) {
-            response.setContentType("application/json");
-            return hash;
+            throw new IllegalArgumentException("Callback cannot be blank");
         } else {
             response.setContentType("application/x-javascript");
             try {
                 String responseBody = callback + "(" + new String(new ObjectMapper().writeValueAsString(hash) + ")");
-
                 response.getWriter().print(responseBody);
-
                 return null;
             } catch (IOException e) {
                 String errMsg = "Error converting frames to JSON: " + e.getMessage();
@@ -173,6 +169,9 @@ public class BackplaneController {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             return errors;
         }
+
+        //TODO: we need to push the "scope" parameter back in the response, if it differs from
+        // the requested scope.
 
         try {
             return new OAuth2Response(tokenRequest, daoFactory).generateResponse();

@@ -193,6 +193,8 @@ public class TestServer {
     public void testTokenEndPointAnonymousTokenRequest() throws Exception {
         //satisfy 13.1.1
 
+        String callback = "Backplane.callback";
+
         //  should return the form:
         //  {
         //      "access_token": "l5feG0KjdXTpgDAfOvN6pU6YWxNb7qyn",
@@ -208,16 +210,17 @@ public class TestServer {
         request.setParameter("client_id", "anonymous");
         request.setParameter("grant_type", "client_credentials");
         request.setParameter("client_secret","");
+        request.setParameter("callback", callback);
 
         handlerAdapter.handle(request, response, controller);
         logger.debug("testTokenEndPointAnonymousTokenRequest() => " + response.getContentAsString());
         //assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
 
         assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
-                matches("[{]\\s*\"access_token\":\\s*\".{20}+\",\\s*" +
+                matches(callback + "[(][{]\\s*\"access_token\":\\s*\".{20}+\",\\s*" +
                         "\"expires_in\":\\s*3600,\\s*" +
                         "\"token_type\":\\s*\"Bearer\",\\s*" +
-                        "\"backplane_channel\":\\s*\".{32}+\"\\s*[}]"));
+                        "\"backplane_channel\":\\s*\".{32}+\"\\s*[}][)]"));
 
         //TODO: remove test token?
 
@@ -730,7 +733,6 @@ public class TestServer {
         // override the random channel name for our test channel
         token1.put(Token.TokenField.CHANNEL.getFieldName(), "testchannel");
         this.saveToken(token1);
-
 
         // Create appropriate token
         Token token2 = new Token(Token.TYPE.PRIVILEGED_TOKEN, "mybus.com yourbus.com", "bus:yourbus.com", null);
