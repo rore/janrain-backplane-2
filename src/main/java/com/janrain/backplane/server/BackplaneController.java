@@ -167,19 +167,6 @@ public class BackplaneController {
 
         //TODO: we need to cleanup expired tokens
 
-        //TODO: how does a privileged client request a re-scoped token?
-
-        // from http://tools.ietf.org/html/draft-ietf-oauth-v2-22#section-10.5
-        // Authorization codes MUST be short lived and single use.  If the
-        // authorization server observes multiple attempts to exchange an
-        // authorization code for an access token, the authorization server
-        // SHOULD attempt to revoke all access tokens already granted based on
-        // the compromised authorization code.
-        //
-        // If the client can be authenticated, the authorization servers MUST
-        // authenticate the client and ensure that the authorization code was
-        // issued to the same client.
-
         TokenRequest tokenRequest = new TokenRequest(daoFactory, client_id, grant_type, redirect_uri,
                                                         code, client_secret, scope);
 
