@@ -43,6 +43,7 @@ public class TokenRequest {
     AuthCode code;
     Client client;
     Scope scopes;
+    DaoFactory daoFactory;
 
     @Inject
     private BackplaneConfig bpConfig;
@@ -59,9 +60,10 @@ public class TokenRequest {
         this.codeId = codeId;
         this.client_secret = client_secret;
         this.scope = scope;
+        this.daoFactory = daoFactory;
 
         try {
-            setCode(daoFactory.getCodeDao().retrieveCode(codeId));
+            setCode(daoFactory.getGrantDao().retrieveCode(codeId));
         } catch (Exception e) {
             //do nothing
         }
@@ -134,6 +136,12 @@ public class TokenRequest {
             }
             if (this.code.isExpired()) {
                 return error("invalid_grant", "Authorization code is expired");
+            }
+
+            if (!code.isValid()) {
+                // revoke related token, if one exists
+                daoFactory.getTokenDao().revokeTokenByGrant(code.getGrantId());
+                return error("invalid_grant", "Authorization code is invalid");
             }
 
             //check the client

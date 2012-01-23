@@ -1,8 +1,9 @@
 package com.janrain.backplane.server;
 
+import com.janrain.backplane.server.config.BackplaneConfig;
 import com.janrain.commons.supersimpledb.message.MessageField;
-import com.janrain.crypto.ChannelUtil;
 
+import java.text.ParseException;
 import java.util.Date;
 
 /**
@@ -15,23 +16,18 @@ public class AuthCode extends Access {
     public static final int EXPIRES_SECONDS = 600;
 
 
-
     /**
      * Empty default constructor for AWS to use
      */
     public AuthCode() {};
 
-    public AuthCode(String codeId, String grantId, Date expires) {
-        super(codeId, expires);
-        put(AuthCodeField.SOURCE_GRANT.getFieldName(), grantId);
-    }
-
     public AuthCode(String grantId, Date expires) {
-        this(ChannelUtil.randomString(CODE_LENGTH), grantId, expires);
+        // the AuthCode record shares the same key as the source Grant record
+        super(grantId, expires);
     }
 
     public AuthCode(String grantId) {
-        this(ChannelUtil.randomString(CODE_LENGTH), grantId, new Date(new Date().getTime() + EXPIRES_SECONDS * 1000L));
+        this(grantId, new Date(new Date().getTime() + EXPIRES_SECONDS * 1000L));
     }
 
     public void setGrant(Grant grant) {
@@ -43,30 +39,68 @@ public class AuthCode extends Access {
     }
 
     public String getGrantId() {
-        return get(AuthCodeField.SOURCE_GRANT);
+        return get(Field.ID);
     }
 
-    public static enum AuthCodeField implements MessageField {
+    public void setUsedNow() {
+        put(CodeField.DATE_USED.getFieldName(), BackplaneConfig.ISO8601.format(new Date()));
+    }
 
-        // - PUBLIC
+    public boolean isValid() {
+        return getDateUsed() == null;
+    }
 
-        SOURCE_GRANT;
+    public Date getDateUsed() {
+
+        String usedString = get(CodeField.DATE_USED);
+        if (usedString == null) {
+            return null;
+        }
+
+        Date expires = null;
+        try {
+            expires = BackplaneConfig.ISO8601.parse(usedString);
+        } catch (ParseException e) {
+            return null;
+        }
+        return expires;
+    }
+
+    // PRIVATE
+
+    private static enum CodeField implements MessageField {
+        DATE_USED("dateused");
 
         @Override
         public String getFieldName() {
-            return name();
+            return fieldName;
         }
 
         @Override
         public boolean isRequired() {
-            return true;
+            return required;
         }
 
         @Override
         public void validate(String value) throws RuntimeException {
-            if (isRequired()) validateNotNull(name(), value);
+            if (isRequired()) validateNotNull(getFieldName(), value);
+        }
+
+        // - PRIVATE
+
+        private String fieldName;
+        private boolean required = true;
+
+        private CodeField(String fieldName) {
+            this(fieldName, true);
+        }
+
+        private CodeField(String fieldName, boolean required) {
+            this.fieldName = fieldName;
+            this.required = required;
         }
     }
+
 
     private Grant backingGrant;
 

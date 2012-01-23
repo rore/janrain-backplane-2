@@ -58,7 +58,7 @@ public class TestServer {
 
     ArrayList<String> createdMessageKeys = new ArrayList<String>();
     ArrayList<String> createdTokenKeys = new ArrayList<String>();
-    ArrayList<String> createdCodeKeys = new ArrayList<String>();
+    ArrayList<String> createdGrantsKeys = new ArrayList<String>();
 
     static final String OK_RESPONSE = "{\"stat\":\"ok\"}";
     static final String ERR_RESPONSE = "\"error\":";
@@ -122,10 +122,10 @@ public class TestServer {
                 daoFactory.getTokenDao().deleteTokenById(key);
             }
 
-            for (String key:this.createdCodeKeys) {
+            for (String key:this.createdGrantsKeys) {
                 logger.info("deleting Grant " + key);
                 daoFactory.getTokenDao().revokeTokenByGrant(key);
-                superSimpleDB.delete(bpConfig.getGrantTableName(), key);
+                daoFactory.getGrantDao().deleteGrant(key);
             }
             superSimpleDB.delete(bpConfig.getClientsTableName(), "random_id");
         } catch (SimpleDBException e) {
@@ -156,7 +156,7 @@ public class TestServer {
 
     private void saveGrant(Grant grant) throws SimpleDBException {
         superSimpleDB.store(bpConfig.getGrantTableName(), Grant.class, grant);
-        this.createdCodeKeys.add(grant.getIdValue());
+        this.createdGrantsKeys.add(grant.getIdValue());
     }
 
     private void saveToken(Token token) throws SimpleDBException {
@@ -173,7 +173,8 @@ public class TestServer {
         assertTrue(Base64.isBase64(channel));
     }
 
-    @Test()
+
+    @Test
     public void testTokenEndPointAnonymousWithClientSecret() throws Exception {
         //satisfy 13.1.1
         refreshRequestAndResponse();
@@ -188,8 +189,7 @@ public class TestServer {
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
     }
 
-
-    @Test()
+    @Test
     public void testTokenEndPointAnonymousTokenRequest() throws Exception {
         //satisfy 13.1.1
 
@@ -224,7 +224,7 @@ public class TestServer {
 
     }
 
-    @Test()
+    @Test
     public void testTokenEndPointClientTokenRequestInvalidCode() throws Exception {
 
         refreshRequestAndResponse();
@@ -244,8 +244,7 @@ public class TestServer {
 
     }
 
-
-    @Test()
+    @Test
     public void testTokenEndPointClientTokenRequest() throws Exception {
 
         //  should return the form:
@@ -265,7 +264,7 @@ public class TestServer {
         //create grant for test
         Grant grant = new Grant(client.getClientId(),"test");
         this.saveGrant(grant);
-        AuthCode code = daoFactory.getCodeDao().issueCode(grant);
+        AuthCode code = daoFactory.getGrantDao().issueCode(grant);
 
 
         request.setParameter("code", code.getIdValue());
@@ -282,7 +281,51 @@ public class TestServer {
 
     }
 
-    @Test()
+    @Test
+    public void testTokenEndPointClientUsedCode() throws Exception {
+        refreshRequestAndResponse();
+        Client client = createTestClient();
+
+        //create grant for test
+        Grant grant = new Grant(client.getClientId(),"test");
+        this.saveGrant(grant);
+        AuthCode code = daoFactory.getGrantDao().issueCode(grant);
+        logger.info("issued AuthCode " + code.getIdValue());
+
+        request.setRequestURI("/token");
+        request.setMethod("POST");
+        request.setParameter("client_id", client.get(User.Field.USER));
+        request.setParameter("grant_type", "code");
+        request.setParameter("code", code.getIdValue());
+        request.setParameter("client_secret", client.get(User.Field.PWDHASH));
+        request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
+        handlerAdapter.handle(request, response, controller);
+        logger.debug("testTokenEndPointClientUsedCode() => " + response.getContentAsString());
+        //assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
+
+         assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
+                matches("[{]\\s*\"access_token\":\\s*\".{20}+\",\\s*" +
+                        "\"token_type\":\\s*\"Bearer\"\\s*[}]"));
+
+        // now, try to use the same AuthCode again
+        refreshRequestAndResponse();
+        request.setRequestURI("/token");
+        request.setMethod("POST");
+        request.setParameter("client_id", client.get(User.Field.USER));
+        request.setParameter("grant_type", "code");
+        request.setParameter("code", code.getIdValue());
+        request.setParameter("client_secret", client.get(User.Field.PWDHASH));
+        request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
+        handlerAdapter.handle(request, response, controller);
+        logger.debug("testTokenEndPointClientUsedCode() ====> " + response.getContentAsString());
+
+        assertTrue(daoFactory.getGrantDao().retrieveCode(code.getIdValue()).getDateUsed() != null);
+        assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
+
+
+    }
+
+    @Test
     public void TryToUseMalformedScopeTest() throws Exception {
 
         refreshRequestAndResponse();
@@ -296,7 +339,7 @@ public class TestServer {
         //create grant for test
         Grant grant = new Grant(client.getClientId(),"test");
         this.saveGrant(grant);
-        AuthCode code = daoFactory.getCodeDao().issueCode(grant);
+        AuthCode code = daoFactory.getGrantDao().issueCode(grant);
 
         request.setParameter("code", code.getIdValue());
         request.setParameter("client_secret", client.get(User.Field.PWDHASH));
@@ -316,7 +359,7 @@ public class TestServer {
 
     }
 
-    @Test()
+    @Test
     public void TryToUseInvalidScopeTest() throws Exception {
 
         refreshRequestAndResponse();
@@ -330,7 +373,7 @@ public class TestServer {
         //create grant for test
         Grant grant = new Grant(client.getClientId(),"mybus.com");
         this.saveGrant(grant);
-        AuthCode code = daoFactory.getCodeDao().issueCode(grant);
+        AuthCode code = daoFactory.getGrantDao().issueCode(grant);
 
         request.setParameter("code", code.getIdValue());
         request.setParameter("client_secret", client.get(User.Field.PWDHASH));
@@ -341,9 +384,7 @@ public class TestServer {
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
     }
 
-
-
-    @Test()
+    @Test
     public void TryToUseExpiredCode() throws Exception {
         refreshRequestAndResponse();
         Client client = createTestClient();
@@ -356,7 +397,7 @@ public class TestServer {
         //create expired grant for test
         Grant grant = new Grant(client.getClientId(),"test", new Date());
         this.saveGrant(grant);
-        AuthCode code = daoFactory.getCodeDao().issueCode(grant);
+        AuthCode code = daoFactory.getGrantDao().issueCode(grant);
 
         request.setParameter("code", code.getIdValue());
         request.setParameter("client_secret", client.get(User.Field.PWDHASH));
@@ -366,7 +407,7 @@ public class TestServer {
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
     }
 
-    @Test()
+    @Test
     public void testTokenEndPointNoURI() throws Exception {
         refreshRequestAndResponse();
 
@@ -379,7 +420,7 @@ public class TestServer {
         //create grant for test
         Grant grant = new Grant(client.getClientId(),"test");
         this.saveGrant(grant);
-        AuthCode code = daoFactory.getCodeDao().issueCode(grant);
+        AuthCode code = daoFactory.getGrantDao().issueCode(grant);
 
         request.setParameter("code", code.getIdValue());
 
@@ -390,7 +431,7 @@ public class TestServer {
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
     }
 
-    @Test()
+    @Test
     public void testTokenEndPointNoClientSecret() throws Exception {
         refreshRequestAndResponse();
         request.setRequestURI("/token");
@@ -404,8 +445,7 @@ public class TestServer {
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
     }
 
-
-    @Test()
+    @Test
     public void testTokenEndPointEmptyCode() throws Exception {
         refreshRequestAndResponse();
         request.setRequestURI("/token");
@@ -420,7 +460,7 @@ public class TestServer {
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
     }
 
-    @Test()
+    @Test
     public void testTokenEndPointBadGrantType() throws Exception {
         refreshRequestAndResponse();
         request.setRequestURI("/token");
@@ -433,7 +473,7 @@ public class TestServer {
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
     }
 
-    @Test()
+    @Test
     public void testTokenEndPointNoParams() throws Exception {
         // test empty parameters submitted to the token endpoint
         refreshRequestAndResponse();
@@ -446,7 +486,7 @@ public class TestServer {
         assertTrue(response.getStatus() == HttpServletResponse.SC_BAD_REQUEST);
     }
 
-    @Test()
+    @Test
     public void testMessageEndPoint() throws Exception {
 
         refreshRequestAndResponse();
@@ -542,7 +582,7 @@ public class TestServer {
 
     }
 
-    @Test()
+    @Test
     public void testMessageEndPointPAL() throws Exception {
 
         refreshRequestAndResponse();
@@ -662,8 +702,6 @@ public class TestServer {
         logger.info("========================================================");
 
     }
-
-
 
     @Test
     public void testMessagesEndPointPALInvalidScope() throws Exception {

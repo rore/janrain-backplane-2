@@ -109,7 +109,7 @@ public class BackplaneController {
 
 
         try {
-            hash= new OAuth2Response(tokenRequest, daoFactory.getTokenDao()).generateResponse();
+            hash= new OAuth2Response(tokenRequest, daoFactory).generateResponse();
         } catch (final BackplaneServerException bpe) {
             return new HashMap<String,Object>() {{
                 put(ERR_MSG_FIELD, bpe.getMessage());
@@ -190,7 +190,7 @@ public class BackplaneController {
         }
 
         try {
-            return new OAuth2Response(tokenRequest, daoFactory.getTokenDao()).generateResponse();
+            return new OAuth2Response(tokenRequest, daoFactory).generateResponse();
         } catch (final BackplaneServerException bpe) {
             return new HashMap<String,Object>() {{
                 put(ERR_MSG_FIELD, bpe.getMessage());

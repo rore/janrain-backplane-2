@@ -65,9 +65,15 @@ public abstract class Access extends AbstractMessage {
 
     public Date getExpiresDate() {
 
+        String expiresString = get(Field.EXPIRES);
+
+        if (expiresString == null) {
+            return null;
+        }
+
         Date expires = null;
         try {
-            expires = BackplaneConfig.ISO8601.parse(this.get(Field.EXPIRES));
+            expires = BackplaneConfig.ISO8601.parse(expiresString);
         } catch (ParseException e) {
             return null;
         }

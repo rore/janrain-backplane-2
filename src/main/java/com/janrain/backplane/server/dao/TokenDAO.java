@@ -6,6 +6,7 @@ import com.janrain.backplane.server.Token;
 import com.janrain.backplane.server.config.BackplaneConfig;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
+import org.apache.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -61,7 +62,9 @@ public class TokenDAO extends DAO {
         List<Token> tokens = retrieveTokensByGrant(grantId);
         for (Token token : tokens) {
             deleteToken(token);
+            logger.info("revoked token " + token.getIdValue());
         }
+        logger.info("all tokens for grant " + grantId + " have been revoked");
     }
 
     private void deleteRelsByTokenId(String tokenId)  {
@@ -76,6 +79,8 @@ public class TokenDAO extends DAO {
         }
 
     }
+
+    private static final Logger logger = Logger.getLogger(TokenDAO.class);
 
 
 }
