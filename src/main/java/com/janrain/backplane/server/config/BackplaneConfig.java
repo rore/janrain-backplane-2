@@ -17,6 +17,7 @@
 package com.janrain.backplane.server.config;
 
 import com.janrain.backplane.server.ApplicationException;
+import com.janrain.backplane.server.dao.DaoFactory;
 import com.janrain.backplane.server.metrics.MetricMessage;
 import com.janrain.backplane.server.metrics.MetricsAccumulator;
 import com.janrain.commons.supersimpledb.SimpleDBException;
@@ -265,6 +266,7 @@ public class BackplaneConfig {
                         @Override
                         public Object call() throws Exception {
                             deleteExpiredMessages();
+                            deleteExpiredTokens();
                             return null;
                         }
                     });
@@ -356,6 +358,20 @@ public class BackplaneConfig {
         }
     }
 
+    private void deleteExpiredTokens() {
+        try {
+            logger.info("Backplane token cleanup task started.");
+            daoFactory.getTokenDao().deleteExpiredTokens();
+
+        } catch (Exception e) {
+            // catch-all, else cleanup thread stops
+            logger.error("Backplane token cleanup task error: " + e.getMessage(), e);
+        } finally {
+            logger.info("Backplane token cleanup task finished.");
+        }
+
+    }
+
     private String getExpiredMetricClause() {
         int interval = 0;
         try {
@@ -386,6 +402,9 @@ public class BackplaneConfig {
 
     @Inject
     private MetricsAccumulator metricAccumulator;
+
+    @Inject
+    private DaoFactory daoFactory;
 
     private Pair<BpServerConfigMap,Long> bpServerConfigCache;
 

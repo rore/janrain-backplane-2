@@ -165,8 +165,6 @@ public class BackplaneController {
                                         @RequestParam(value = "scope", required = false) String scope)
             throws AuthException, SimpleDBException, BackplaneServerException {
 
-        //TODO: we need to cleanup expired tokens
-
         TokenRequest tokenRequest = new TokenRequest(daoFactory, client_id, grant_type, redirect_uri,
                                                         code, client_secret, scope);
 

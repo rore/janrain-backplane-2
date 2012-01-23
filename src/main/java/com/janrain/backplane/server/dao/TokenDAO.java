@@ -1,5 +1,6 @@
 package com.janrain.backplane.server.dao;
 
+import com.janrain.backplane.server.Access;
 import com.janrain.backplane.server.Grant;
 import com.janrain.backplane.server.GrantTokenRel;
 import com.janrain.backplane.server.Token;
@@ -7,9 +8,14 @@ import com.janrain.backplane.server.config.BackplaneConfig;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import org.apache.log4j.Logger;
+import org.apache.log4j.helpers.ISO8601DateFormat;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+
+import static com.janrain.backplane.server.BackplaneMessage.Field.ID;
+import static com.janrain.backplane.server.BackplaneMessage.Field.STICKY;
 
 
 /**
@@ -54,6 +60,11 @@ public class TokenDAO extends DAO {
     public void deleteTokenById(String tokenId) throws SimpleDBException {
         superSimpleDB.delete(bpConfig.getAccessTokenTableName(), tokenId);
         deleteRelsByTokenId(tokenId);
+    }
+
+    public void deleteExpiredTokens() throws SimpleDBException {
+        String expiredClause = Access.Field.ID.getFieldName() + " > '" + bpConfig.ISO8601.format(new Date(System.currentTimeMillis()));
+        superSimpleDB.deleteWhere(bpConfig.getAccessTokenTableName(), expiredClause);
     }
 
     public List<Token> retrieveTokensByGrant(String grantId) throws SimpleDBException {
