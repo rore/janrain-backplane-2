@@ -63,7 +63,7 @@ public class TokenDAO extends DAO {
     }
 
     public void deleteExpiredTokens() throws SimpleDBException {
-        String expiredClause = Access.Field.ID.getFieldName() + " < '" + bpConfig.ISO8601.format(new Date(System.currentTimeMillis())) + "'";
+        String expiredClause = Access.Field.EXPIRES.getFieldName() + " < '" + bpConfig.ISO8601.format(new Date(System.currentTimeMillis())) + "'";
         superSimpleDB.deleteWhere(bpConfig.getAccessTokenTableName(), expiredClause);
     }
 
