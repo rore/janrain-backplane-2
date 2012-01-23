@@ -725,14 +725,21 @@ public class TestServer {
 
         refreshRequestAndResponse();
 
+        // Create source token for the channel
+        Token token1 = new Token(Token.TYPE.REGULAR_TOKEN, "", "", null);
+        // override the random channel name for our test channel
+        token1.put(Token.TokenField.CHANNEL.getFieldName(), "testchannel");
+        this.saveToken(token1);
+
+
         // Create appropriate token
-        Token token = new Token(Token.TYPE.PRIVILEGED_TOKEN, "mybus.com yourbus.com", "bus:yourbus.com", null);
-        this.saveToken(token);
+        Token token2 = new Token(Token.TYPE.PRIVILEGED_TOKEN, "mybus.com yourbus.com", "bus:yourbus.com", null);
+        this.saveToken(token2);
 
         // Make the call
         request.setRequestURI("/messages");
         request.setMethod("POST");
-        request.setParameter("access_token", token.getIdValue());
+        request.setParameter("access_token", token2.getIdValue());
         request.addHeader("Content-type", "application/json");
         //request.setContentType("application/json");
         //request.setParameter("messages", TEST_MSG);

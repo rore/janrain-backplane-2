@@ -39,6 +39,14 @@ public class TokenDAO extends DAO {
         return superSimpleDB.retrieve(bpConfig.getAccessTokenTableName(), Token.class, tokenId);
     }
 
+    public Token retrieveTokenByChannel(String channel) throws SimpleDBException {
+        List<Token> tokens = superSimpleDB.retrieveWhere(bpConfig.getAccessTokenTableName(), Token.class, "channel='" + channel + "'", false);
+        if (tokens.isEmpty()) {
+            return null;
+        }
+        return tokens.get(0);
+    }
+
     public void deleteToken(Token token) throws SimpleDBException {
         deleteTokenById(token.getIdValue());
     }

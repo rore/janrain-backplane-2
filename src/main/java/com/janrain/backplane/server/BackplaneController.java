@@ -384,7 +384,13 @@ public class BackplaneController {
                     put(ERR_MSG_FIELD, "Invalid bus in message");
                 }};
             }
-            //TODO: also check if the channel has a token issued for it
+
+            if (daoFactory.getTokenDao().retrieveTokenByChannel(message.get(BackplaneMessage.Field.CHANNEL)) == null) {
+                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                return new HashMap<String,Object>() {{
+                    put(ERR_MSG_FIELD, "Invalid channel in message");
+                }};
+            }
         }
 
         // do it all again and store the messages in the db
