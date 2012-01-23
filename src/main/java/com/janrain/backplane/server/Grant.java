@@ -36,7 +36,7 @@ public class Grant extends Base {
 
         assert(StringUtils.isNotEmpty(clientId));
 
-        put(CodeField.ISSUED_TO_CLIENT_ID.getFieldName(), clientId);
+        put(GrantField.ISSUED_TO_CLIENT_ID.getFieldName(), clientId);
         logger.info("Grant declared with buses: " + buses);
     }
 
@@ -48,8 +48,8 @@ public class Grant extends Base {
         this(ChannelUtil.randomString(CODE_LENGTH), clientId, buses, expires);
     }
 
-    public String getCodeClientId() {
-        return get(CodeField.ISSUED_TO_CLIENT_ID.getFieldName());
+    public String getGrantClientId() {
+        return get(GrantField.ISSUED_TO_CLIENT_ID.getFieldName());
     }
 
     public void revokeAuth() {
@@ -57,7 +57,7 @@ public class Grant extends Base {
     }
 
 
-    public static enum CodeField implements MessageField {
+    public static enum GrantField implements MessageField {
 
         // - PUBLIC
 
@@ -84,11 +84,11 @@ public class Grant extends Base {
         private String fieldName;
         private boolean required = true;
 
-        private CodeField(String fieldName) {
+        private GrantField(String fieldName) {
             this(fieldName, true);
         }
 
-        private CodeField(String fieldName, boolean required) {
+        private GrantField(String fieldName, boolean required) {
             this.fieldName = fieldName;
             this.required = required;
         }

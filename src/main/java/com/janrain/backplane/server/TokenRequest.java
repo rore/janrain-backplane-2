@@ -20,7 +20,6 @@ import com.janrain.backplane.server.config.BackplaneConfig;
 import com.janrain.backplane.server.config.Client;
 import com.janrain.backplane.server.dao.DaoFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.sun.org.apache.bcel.internal.classfile.Code;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
@@ -141,7 +140,7 @@ public class TokenRequest {
             if (client == null ||
                     !client_secret.equals(client.getClientSecret()) ||
                     !redirect_uri.equals(client.getRedirectUri()) ||
-                    !code.getGrant().getCodeClientId().equals(client.getClientId())) {
+                    !code.getGrant().getGrantClientId().equals(client.getClientId())) {
                 return error("invalid_client", "Client authentication failed");
             }
         }
