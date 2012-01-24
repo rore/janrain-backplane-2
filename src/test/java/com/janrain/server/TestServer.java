@@ -193,7 +193,8 @@ public class TestServer {
     public void testTokenEndPointAnonymousTokenRequest() throws Exception {
         //satisfy 13.1.1
 
-        String callback = "Backplane.callback";
+        //TODO: the spec doesn't allow '.' in the callback name but this likely needs to change
+        String callback = "Backplanecallback";
 
         //  should return the form:
         //  {

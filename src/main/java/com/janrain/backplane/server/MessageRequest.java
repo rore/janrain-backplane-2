@@ -2,6 +2,7 @@ package com.janrain.backplane.server;
 
 import com.janrain.backplane.server.dao.DaoFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
+import org.apache.commons.lang.StringUtils;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.HashMap;
@@ -48,13 +49,15 @@ public class MessageRequest {
             return error("Not authorized",null);
         }
 
+        if (StringUtils.isNotEmpty(callback)) {
+            if (!callback.matches("[a-zA-Z0-9]*")) {
+                return error("invalid_request", "callback parameter value is malformed");
+            }
+        }
+
         // is the token properly scoped for this message id?
 
-
         return new HashMap<String, Object>();
-
-
-
     }
 
 

@@ -96,7 +96,7 @@ public class BackplaneController {
                                            @RequestParam(required = true) String callback)
             throws AuthException, SimpleDBException, BackplaneServerException {
 
-        TokenRequest tokenRequest = new TokenRequest("anonymous", "client_credentials", scope);
+        TokenRequest tokenRequest = new TokenRequest("anonymous", "client_credentials", scope, callback);
 
         HashMap errors = tokenRequest.validate();
 
@@ -162,7 +162,7 @@ public class BackplaneController {
             throws AuthException, SimpleDBException, BackplaneServerException {
 
         TokenRequest tokenRequest = new TokenRequest(daoFactory, client_id, grant_type, redirect_uri,
-                                                        code, client_secret, scope);
+                                                        code, client_secret, scope, null);
 
         HashMap errors = tokenRequest.validate();
         if (!errors.isEmpty()) {

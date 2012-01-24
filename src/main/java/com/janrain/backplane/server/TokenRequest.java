@@ -40,6 +40,7 @@ public class TokenRequest {
     String codeId;
     String client_secret;
     String scope;
+    String callback;
     AuthCode code;
     Client client;
     Scope scopes;
@@ -53,7 +54,7 @@ public class TokenRequest {
 
     private static final Logger logger = Logger.getLogger(TokenRequest.class);
 
-    TokenRequest(DaoFactory daoFactory, String client_id, String grant_type, String redirect_uri, String codeId, String client_secret, String scope) {
+    TokenRequest(DaoFactory daoFactory, String client_id, String grant_type, String redirect_uri, String codeId, String client_secret, String scope, String callback) {
         this.client_id = client_id;
         this.grant_type = grant_type;
         this.redirect_uri = redirect_uri;
@@ -61,6 +62,7 @@ public class TokenRequest {
         this.client_secret = client_secret;
         this.scope = scope;
         this.daoFactory = daoFactory;
+        this.callback = callback;
 
         try {
             setCode(daoFactory.getGrantDao().retrieveCode(codeId));
@@ -78,10 +80,11 @@ public class TokenRequest {
         }
     }
 
-    TokenRequest(String client_id, String grant_type, String scope) {
+    TokenRequest(String client_id, String grant_type, String scope, String callback) {
         this.client_id = client_id;
         this.grant_type = grant_type;
         this.scope = scope;
+        this.callback = callback;
     }
 
     public AuthCode getCode() {
@@ -103,6 +106,12 @@ public class TokenRequest {
 
     public HashMap<String, Object> validate() throws SimpleDBException {
          // use Oauth2 5.2 response codes for errors - http://tools.ietf.org/html/draft-ietf-oauth-v2-22#section-5.2
+
+        if (StringUtils.isNotEmpty(callback)) {
+            if (!callback.matches("[a-zA-Z0-9]*")) {
+                return error("invalid_request", "callback parameter value is malformed");
+            }
+        }
 
         if (StringUtils.isEmpty(client_id)) {
             return error("invalid_request", "Missing value for client_id");
