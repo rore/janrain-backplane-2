@@ -231,7 +231,6 @@ public class BackplaneController {
             // verify the proper permissions
             if (messageRequest.getToken().isPrivileged()) {
                 if (!messageRequest.getToken().isAllowedBus(message.get(BackplaneMessage.Field.BUS))) {
-                    // For the privileged request, make sure the message bus matches a bus in the token
                     response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                     return new HashMap<String,Object>() {{
                         put(ERR_MSG_FIELD, "Forbidden");
@@ -311,7 +310,6 @@ public class BackplaneController {
             // verify the proper permissions
             if (messageRequest.getToken().isPrivileged()) {
                 if (!messageRequest.getToken().isAllowedBus(message.get(BackplaneMessage.Field.BUS))) {
-                    // For the privileged request, make sure the message bus matches a bus in the token
                     response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                     return new HashMap<String,Object>() {{
                         put(ERR_MSG_FIELD, "Forbidden");
