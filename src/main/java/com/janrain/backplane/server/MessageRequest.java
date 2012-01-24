@@ -28,8 +28,6 @@ public class MessageRequest {
         } catch (SimpleDBException e) {
             // do nothing for now
         }
-
-
     }
 
 
@@ -45,7 +43,7 @@ public class MessageRequest {
 
     public HashMap<String, Object> validate() {
 
-        if (token == null) {
+        if (token == null || token.isExpired()) {
             return error("Not authorized",null);
         }
 

@@ -127,7 +127,7 @@ public class TestServer {
                 daoFactory.getTokenDao().revokeTokenByGrant(key);
                 daoFactory.getGrantDao().deleteGrant(key);
             }
-            superSimpleDB.delete(bpConfig.getClientsTableName(), "random_id");
+            //superSimpleDB.delete(bpConfig.getClientsTableName(), "random_id");
         } catch (SimpleDBException e) {
             logger.error(e);
         }
