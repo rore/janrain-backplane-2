@@ -16,10 +16,7 @@
 
 package com.janrain.backplane.server.provision;
 
-import com.janrain.backplane.server.config.AuthException;
-import com.janrain.backplane.server.config.BackplaneConfig;
-import com.janrain.backplane.server.config.BusConfig;
-import com.janrain.backplane.server.config.User;
+import com.janrain.backplane.server.config.*;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.crypto.HmacHashUtils;
@@ -60,6 +57,13 @@ public class ProvisioningController {
         return doList(User.class, listRequest.getEntities());
     }
 
+    @RequestMapping(value = "/client/list", method = RequestMethod.POST)
+    @ResponseBody
+    public Map<String, Map<String, String>> clientList(@RequestBody ListRequest listRequest) throws AuthException {
+        bpConfig.checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
+        return doList(Client.class, listRequest.getEntities());
+    }
+
     @RequestMapping(value = "/bus/delete", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, String> busDelete(@RequestBody ListRequest deleteRequest) throws AuthException {
@@ -74,6 +78,13 @@ public class ProvisioningController {
         return doDelete(User.class, deleteRequest.getEntities());
     }
 
+    @RequestMapping(value = "/client/delete", method = RequestMethod.POST)
+    @ResponseBody
+    public Map<String, String> clientDelete(@RequestBody ListRequest deleteRequest) throws AuthException {
+        bpConfig.checkAdminAuth(deleteRequest.getAdmin(), deleteRequest.getSecret());
+        return doDelete(Client.class, deleteRequest.getEntities());
+    }
+
     @RequestMapping(value = "/bus/update", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, String> busUpdate(@RequestBody BusUpdateRequest updateRequest) throws AuthException {
@@ -84,6 +95,12 @@ public class ProvisioningController {
     @ResponseBody
     public Map<String, String> userUpdate(@RequestBody UserUpdateRequest updateRequest) throws AuthException {
         return doUpdate(User.class, updateRequest);
+    }
+
+    @RequestMapping(value = "/client/update", method = RequestMethod.POST)
+    @ResponseBody
+    public Map<String, String> clientUpdate(@RequestBody ClientUpdateRequest updateRequest) throws AuthException {
+        return doUpdate(Client.class, updateRequest);
     }
 
     /**
@@ -209,4 +226,5 @@ public class ProvisioningController {
     // type helper classes for JSON mapper
     private static class BusUpdateRequest extends UpdateRequest<BusConfig> {}
     private static class UserUpdateRequest extends UpdateRequest<User> {}
+    private static class ClientUpdateRequest extends UpdateRequest<Client> {}
 }

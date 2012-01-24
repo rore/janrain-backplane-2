@@ -18,8 +18,7 @@ package com.janrain.backplane.server.config;
 
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
-import org.apache.commons.lang.StringUtils;
-import javax.validation.constraints.Max;
+
 import java.util.EnumSet;
 import java.util.Set;
 
@@ -40,24 +39,11 @@ public class BusConfig extends AbstractMessage {
         return EnumSet.allOf(Field.class);
     }
 
-    public EnumSet<BackplaneConfig.BUS_PERMISSION> getPermissions(String user) {
-        if (isBusConfigField(user)) {
-            throw new IllegalArgumentException("Invalid user name: " + user);
-        }
-
-        String perms = get(user);
-        EnumSet<BackplaneConfig.BUS_PERMISSION> result = EnumSet.noneOf(BackplaneConfig.BUS_PERMISSION.class);
-        if (StringUtils.isNotBlank(perms)) {
-            for(String perm : perms.split(",")) {
-                result.add(BackplaneConfig.BUS_PERMISSION.valueOf(perm));
-            }
-        }
-        return result;
-    }
-
     public static enum Field implements MessageField {
 
         BUS_NAME,
+
+        OWNER,
 
         RETENTION_TIME_SECONDS {
             @Override
@@ -110,16 +96,4 @@ public class BusConfig extends AbstractMessage {
         private static final int RETENTION_STICKY_MAX_VALUE = 604800; // one week
 
     }
-
-    // - PRIVATE
-
-    private boolean isBusConfigField(String name) {
-        try {
-            Field.valueOf(name);
-            return true;
-        } catch (IllegalArgumentException e) {
-            return false;
-        }
-    }
-
 }

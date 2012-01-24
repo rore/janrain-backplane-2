@@ -16,17 +16,16 @@
 
 package com.janrain.backplane.server;
 
-import com.janrain.backplane.server.config.*;
+import com.janrain.backplane.server.config.AuthException;
+import com.janrain.backplane.server.config.BackplaneConfig;
 import com.janrain.backplane.server.dao.BackplaneMessageDAO;
 import com.janrain.backplane.server.dao.DaoFactory;
 import com.janrain.backplane.server.metrics.MetricsAccumulator;
 import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.crypto.HmacHashUtils;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.HistogramMetric;
 import com.yammer.metrics.core.MeterMetric;
 import com.yammer.metrics.core.TimerMetric;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -38,8 +37,10 @@ import javax.inject.Inject;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -499,55 +500,6 @@ public class BackplaneController {
     private MetricsAccumulator metricAccumulator;
 
     //private static final Random random = new SecureRandom();
-
-    private void checkAuth(String basicAuth, String bus, BackplaneConfig.BUS_PERMISSION permission) throws AuthException {
-        // authN
-        String userPass = null;
-        if ( basicAuth == null || ! basicAuth.startsWith("Basic ") || basicAuth.length() < 7) {
-            authError("Invalid Authorization header: " + basicAuth);
-        } else {
-            try {
-                userPass = new String(Base64.decodeBase64(basicAuth.substring(6).getBytes("utf-8")));
-            } catch (UnsupportedEncodingException e) {
-                authError("Cannot check authentication, unsupported encoding: utf-8"); // shouldn't happen
-            }
-        }
-
-        @SuppressWarnings({"ConstantConditions"})
-        int delim = userPass.indexOf(":");
-        if (delim == -1) {
-            authError("Invalid Basic auth token: " + userPass);
-        }
-        String user = userPass.substring(0, delim);
-        String pass = userPass.substring(delim + 1);
-
-        User userEntry = null;
-        try {
-            userEntry = bpConfig.getConfig(user, User.class);
-        } catch (SimpleDBException e) {
-            authError("Error looking up user: " + user);
-        }
-
-        if (userEntry == null) {
-            authError("User not found: " + user);
-        } else if ( ! HmacHashUtils.checkHmacHash(pass, userEntry.get(User.Field.PWDHASH)) ) {
-            authError("Incorrect password for user " + user);
-        }
-
-        // authZ
-        BusConfig busConfig = null;
-        try {
-            busConfig = bpConfig.getConfig(bus, BusConfig.class);
-        } catch (SimpleDBException e) {
-            authError("Error looking up bus configuration for " + bus);
-        }
-        if (busConfig == null) {
-            authError("Bus configuration not found for " + bus);
-        } else if (!busConfig.getPermissions(user).contains(permission)) {
-            logger.error("User " + user + " denied " + permission + " to " + bus);
-            throw new AuthException("Access denied.");
-        }
-    }
 
     private void authError(String errMsg) throws AuthException {
         logger.error(errMsg);

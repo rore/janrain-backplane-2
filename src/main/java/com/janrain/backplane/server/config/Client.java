@@ -1,13 +1,9 @@
 package com.janrain.backplane.server.config;
 
-import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
 
-import java.io.FileDescriptor;
-import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * @author Tom Raney
@@ -19,12 +15,13 @@ public class Client extends User {
      */
     public Client() {};
 
-    public Client(String id, String client_secret, String redirect_uri) {
+    public Client(String client_id, String client_secret, String source_url, String redirect_uri) {
         Map<String,String> d = new LinkedHashMap<String, String>();
-        d.put(Field.USER.getFieldName(), id);
+        d.put(Field.USER.getFieldName(), client_id);
         d.put(Field.PWDHASH.getFieldName(), client_secret);
+        d.put(ClientField.SOURCE_URL.getFieldName(), source_url);
         d.put(ClientField.REDIRECT_URI.getFieldName(), redirect_uri);
-        super.init(id, d);
+        super.init(client_id, d);
     }
 
     public String getClientId() {
@@ -43,6 +40,8 @@ public class Client extends User {
 
         // - PUBLIC
 
+        SOURCE_URL,
+        
         REDIRECT_URI;
 
         @Override

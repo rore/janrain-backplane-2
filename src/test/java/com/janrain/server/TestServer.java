@@ -137,7 +137,7 @@ public class TestServer {
 
 
     private Client createTestClient() throws SimpleDBException {
-        Client client = new Client("random_id", "secret", "redirect_uri");
+        Client client = new Client("random_id", "secret", "source_url", "redirect_uri");
         superSimpleDB.store(bpConfig.getClientsTableName(), Client.class, client);
         return client;
     }
