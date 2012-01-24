@@ -7,6 +7,7 @@ import com.janrain.backplane.server.config.BackplaneConfig;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 
 import java.util.List;
 
@@ -35,7 +36,11 @@ public class BackplaneMessageDAO extends DAO {
             query += " AND id > '" + sinceMessageId + "'";
         }
 
+        logger.info("message query => " + query);
+
         return superSimpleDB.retrieveWhere(bpConfig.getMessagesTableName(), BackplaneMessage.class, query, true);
     }
+
+    private static final Logger logger = Logger.getLogger(BackplaneMessageDAO.class);
 
 }

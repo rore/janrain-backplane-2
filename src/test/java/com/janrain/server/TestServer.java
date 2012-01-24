@@ -225,8 +225,54 @@ public class TestServer {
 
         //TODO: remove test token?
 
+    }
+
+    @Test
+    public void testTokenEndPointAnonymousTokenRequestWithInvalidScope() throws Exception {
+        //satisfy 13.1.1
+
+        //TODO: the spec doesn't allow '.' in the callback name but this likely needs to change
+        String callback = "Backplanecallback";
+
+        //  should return the form:
+        //  {
+        //      "access_token": "l5feG0KjdXTpgDAfOvN6pU6YWxNb7qyn",
+        //      "expires_in":3600,
+        //      "token_type": "Bearer",
+        //      "backplane_channel": "Tm5FUzstWmUOdp0xU5UW83r2q9OXrrxt"
+        // }
+
+        refreshRequestAndResponse();
+
+        request.setRequestURI("/token");
+        request.setMethod("GET");
+        request.setParameter("client_id", "anonymous");
+        request.setParameter("grant_type", "client_credentials");
+        request.setParameter("client_secret","");
+        request.setParameter("scope","channel:notmychannel");
+        request.setParameter("callback", callback);
+
+        handlerAdapter.handle(request, response, controller);
+        logger.debug("testTokenEndPointAnonymousTokenRequestWithInvalidScope() => " + response.getContentAsString());
+        assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
+
+        refreshRequestAndResponse();
+
+        request.setRequestURI("/token");
+        request.setMethod("GET");
+        request.setParameter("client_id", "anonymous");
+        request.setParameter("grant_type", "client_credentials");
+        request.setParameter("client_secret","");
+        request.setParameter("scope","bus:notmybus");
+        request.setParameter("callback", callback);
+
+        handlerAdapter.handle(request, response, controller);
+        logger.debug("testTokenEndPointAnonymousTokenRequestWithInvalidScope() => " + response.getContentAsString());
+        assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
 
     }
+
+
 
     @Test
     public void testTokenEndPointClientTokenRequestInvalidCode() throws Exception {

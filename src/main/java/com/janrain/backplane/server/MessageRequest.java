@@ -49,7 +49,7 @@ public class MessageRequest {
 
         if (StringUtils.isNotEmpty(callback)) {
             if (!callback.matches("[a-zA-Z0-9]*")) {
-                return error("invalid_request", "callback parameter value is malformed");
+                return error("invalid_request", "Callback parameter value is malformed");
             }
         }
 

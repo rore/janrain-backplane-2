@@ -40,6 +40,13 @@ public class Token extends Base {
         put(TokenField.TYPE.getFieldName(), accessType.name());
 
         if (accessType == TYPE.REGULAR_TOKEN) {
+
+            // verify that no channel or bus was submitted in the scopeString request
+            Scope testScope = new Scope(scopeString);
+            if (!testScope.getBusesInScope().isEmpty() || !testScope.getChannelsInScope().isEmpty()) {
+                throw new BackplaneServerException("Scope request not allowed");
+            }
+
             String channel = ChannelUtil.randomString(CHANNEL_NAME_LENGTH);
             put(TokenField.CHANNEL.getFieldName(), channel);
             // set the scope string to include this new channel
@@ -48,13 +55,8 @@ public class Token extends Base {
             }  else {
                 scopeString += " channel:" + channel;
             }
-        }
 
-        if (StringUtils.isNotEmpty(scopeString)) {
-            put(TokenField.SCOPE.getFieldName(), scopeString);
-        }
-
-        if (accessType == TYPE.PRIVILEGED_TOKEN) {
+        } else if (accessType == TYPE.PRIVILEGED_TOKEN) {
             if (new Scope(scopeString).getBusesInScope().isEmpty()) {
                 // if a privileged user has requested a token without specifying a bus in the scope, copy
                 // over all authorized buses from the set of authorized buses
@@ -64,15 +66,20 @@ public class Token extends Base {
                 }
 
                 scopeString = getEncodedBusesAsString() + " " + scopeString;
-                this.setScopeString(scopeString);
-
                 this.setMustReturnScopeInResponse(true);
             }
 
-            if (!isAllowedBuses(new Scope(this.getScopeString()).getBusesInScope())) {
+            if (!isAllowedBuses(new Scope(scopeString).getBusesInScope())) {
                 throw new BackplaneServerException("Scope request not allowed");
             }
+
+            logger.info("privileged token allowed scope:'" + scopeString + "' from auth'd buses:'" + getBusesAsString() + "'");
+        } else {
+            throw new BackplaneServerException("A server error has occurred");
         }
+
+        setScopeString(scopeString);
+
     }
 
     public Token(TYPE accessType, String buses, String scope, Date expires) throws BackplaneServerException {
@@ -114,6 +121,9 @@ public class Token extends Base {
     }
 
     public void setScopeString(String scopeString) {
+        if (StringUtils.isBlank(scopeString)) {
+            return;
+        }
         scopeString = scopeString.trim();
         logger.debug("new scope string: '" + scopeString + "'");
         put(TokenField.SCOPE.getFieldName(), scopeString);

@@ -4,8 +4,6 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 
-import javax.print.DocFlavor;
-import java.lang.reflect.Array;
 import java.util.*;
 
 /**
@@ -18,10 +16,10 @@ public class Scope {
     public static final String SEPARATOR = " ";
     public static final String DELIMITER = ":";
 
-    public static final String[] VALID_KEYS = {"bus","sticky","channel","type","source","payload"};
+    public static final String[] VALID_PRIVILEGED_KEYS = {"source","type","bus","channel","sticky","messageURL"};
 
     public static boolean isValidKey(String key) {
-        return Arrays.asList(VALID_KEYS).contains(key);
+        return Arrays.asList(VALID_PRIVILEGED_KEYS).contains(key);
     }
 
 
@@ -32,12 +30,21 @@ public class Scope {
     }
 
     /**
-     * Return a list of bus names client has requested be in scope
+     * Return a list of bus names in requested scope
      * @return valid list, possibly empty
      */
 
     public @NotNull List<String> getBusesInScope() {
         return scopes.get("bus");
+    }
+
+    /**
+     * Return a list of channel names in requested scope
+     * @return valid list, possibly empty
+     */
+
+    public @NotNull List<String> getChannelsInScope() {
+        return scopes.get("channel");
     }
 
     /**
@@ -49,11 +56,10 @@ public class Scope {
 
         boolean firstElement = true;
         for (Map.Entry<String, ArrayList<String>> entry: scopes.entrySet()) {
-            if (firstElement != true) {
-                sb.append(" AND ");
-            }
-
             if (!entry.getValue().isEmpty()) {
+                if (firstElement != true) {
+                    sb.append(" AND ");
+                }
                 sb.append("(");
                 boolean firstDisjunction = true;
                 for (String value : entry.getValue()) {
@@ -83,18 +89,21 @@ public class Scope {
     private Map<String,ArrayList<String>> parseScopeString(String scopeString) throws BackplaneServerException {
         HashMap<String,ArrayList<String>> scopes = new HashMap<String, ArrayList<String>>();
 
-        // guarantee bus has an entry
+        // guarantee bus and channel have an entry
         scopes.put("bus", new ArrayList<String>());
+        scopes.put("channel", new ArrayList<String>());
 
-        if (StringUtils.isNotEmpty(scopeString)) {
+        if (StringUtils.isNotBlank(scopeString)) {
             // TODO: is there a maximum length for the scope string?
             //
+            scopeString = scopeString.trim();
+            logger.info("scopeString = '" + scopeString + "'");
             String[] tokens = scopeString.split(Scope.SEPARATOR,Scope.MAX_PARAMETERS);
             // all scope tokens need to have the ":" key/value delimiter
             for (String token:tokens) {
                 if (!token.contains(Scope.DELIMITER)) {
-                    logger.debug("Malformed scope: " + scopeString);
-                    throw new BackplaneServerException("Malformed scope: " + token);
+                    logger.debug("Malformed scope: '" + scopeString + "'");
+                    throw new BackplaneServerException("Malformed scope");
                 }
                 String[] keyValue = token.split(Scope.DELIMITER);
                 if (!Scope.isValidKey(keyValue[0])) {
