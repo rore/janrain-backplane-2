@@ -253,7 +253,8 @@ public class TestServer {
         //  should return the form:
         //  {
         //      "access_token":"l5feG0KjdXTpgDAfOvN6pU6YWxNb7qyn",
-        //      "token_type":"Bearer"
+        //      "token_type":"Bearer",
+        //      "scope":"bus:???"
         //  }
 
         refreshRequestAndResponse();

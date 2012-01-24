@@ -212,6 +212,12 @@ public class BackplaneController {
                 daoFactory.getBackplaneMessageDAO().retrieveAllMesssagesPerScope(messageRequest.getToken().getScope(), since);
 
         if (messages.isEmpty()) {
+            try {
+                response.getWriter().print("{}");
+            } catch (IOException e) {
+                logger.error(e);
+                throw new BackplaneServerException("A server error has occurred");
+            }
             return null;
         }
 
