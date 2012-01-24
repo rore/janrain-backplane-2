@@ -234,14 +234,6 @@ public class TestServer {
         //TODO: the spec doesn't allow '.' in the callback name but this likely needs to change
         String callback = "Backplanecallback";
 
-        //  should return the form:
-        //  {
-        //      "access_token": "l5feG0KjdXTpgDAfOvN6pU6YWxNb7qyn",
-        //      "expires_in":3600,
-        //      "token_type": "Bearer",
-        //      "backplane_channel": "Tm5FUzstWmUOdp0xU5UW83r2q9OXrrxt"
-        // }
-
         refreshRequestAndResponse();
 
         request.setRequestURI("/token");

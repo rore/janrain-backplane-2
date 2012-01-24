@@ -227,6 +227,24 @@ public class BackplaneController {
 
         for (BackplaneMessage message : messages) {
             frames.add(message.asFrame(request.getServerName(), messageRequest.getToken().isPrivileged()));
+
+            // verify the proper permissions
+            if (messageRequest.getToken().isPrivileged()) {
+                if (!messageRequest.getToken().isAllowedBus(message.get(BackplaneMessage.Field.BUS))) {
+                    // For the privileged request, make sure the message bus matches a bus in the token
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    return new HashMap<String,Object>() {{
+                        put(ERR_MSG_FIELD, "Forbidden");
+                    }};
+                }
+            } else {
+                if (!message.get(BackplaneMessage.Field.CHANNEL).equals(messageRequest.getToken().getChannelName())) {
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    return new HashMap<String,Object>() {{
+                        put(ERR_MSG_FIELD, "Forbidden");
+                    }};
+                }
+            }
         }
 
         HashMap<String, Object> hash = new HashMap<String, Object>();
@@ -290,19 +308,22 @@ public class BackplaneController {
                 put(ERR_MSG_FIELD, "Message not found");
             }};
         } else {
-            // For the standard request, verify that the token channel matches the message channel or return error
-            if (!messageRequest.getToken().isPrivileged() && !message.get(BackplaneMessage.Field.CHANNEL).equals(messageRequest.getToken().getChannelName())) {
-                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                return new HashMap<String,Object>() {{
-                    put(ERR_MSG_FIELD, "Forbidden");
-                }};
-            }
-            // For the privileged request, make sure the message bus matches a bus in the token
-            if (messageRequest.getToken().isPrivileged() && !messageRequest.getToken().isAllowedBus(message.get(BackplaneMessage.Field.BUS))) {
-                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                return new HashMap<String,Object>() {{
-                    put(ERR_MSG_FIELD, "Forbidden");
-                }};
+            // verify the proper permissions
+            if (messageRequest.getToken().isPrivileged()) {
+                if (!messageRequest.getToken().isAllowedBus(message.get(BackplaneMessage.Field.BUS))) {
+                    // For the privileged request, make sure the message bus matches a bus in the token
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    return new HashMap<String,Object>() {{
+                        put(ERR_MSG_FIELD, "Forbidden");
+                    }};
+                }
+            } else {
+                if (!message.get(BackplaneMessage.Field.CHANNEL).equals(messageRequest.getToken().getChannelName())) {
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    return new HashMap<String,Object>() {{
+                        put(ERR_MSG_FIELD, "Forbidden");
+                    }};
+                }
             }
         }
 
