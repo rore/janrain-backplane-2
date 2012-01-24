@@ -17,8 +17,6 @@ public class Token extends Base {
     public static final int TOKEN_LENGTH = 20;
     public static final int EXPIRES_SECONDS = 3600;
     public static final String ANONYMOUS = "anonymous";
-
-
     public static enum TYPE {REGULAR_TOKEN, PRIVILEGED_TOKEN}
 
     /**
@@ -67,6 +65,8 @@ public class Token extends Base {
 
                 scopeString = getEncodedBusesAsString() + " " + scopeString;
                 this.setScopeString(scopeString);
+
+                this.setMustReturnScopeInResponse(true);
             }
 
             if (!isAllowedBuses(new Scope(this.getScopeString()).getBusesInScope())) {
@@ -127,6 +127,14 @@ public class Token extends Base {
         this.sourceGrants = new ArrayList<Grant>(grants);
     }
 
+    public void setMustReturnScopeInResponse(boolean flag) {
+        this.mustReturnScopeInResponse = flag;
+    }
+
+    public boolean mustReturnScopeInResponse() {
+        return this.mustReturnScopeInResponse;
+    }
+
 
     public static enum TokenField implements MessageField {
         TYPE("type", true),
@@ -167,9 +175,12 @@ public class Token extends Base {
     private static final Logger logger = Logger.getLogger(Token.class);
 
     private ArrayList<Grant> sourceGrants = new ArrayList<Grant>();
+    private boolean mustReturnScopeInResponse = false;
 
     private void addGrant(Grant grant) {
         this.sourceGrants.add(grant);
     }
+
+
 
 }

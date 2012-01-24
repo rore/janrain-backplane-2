@@ -269,6 +269,8 @@ public class TestServer {
         this.saveGrant(grant);
         AuthCode code = daoFactory.getGrantDao().issueCode(grant);
 
+        // because we didn't specify the "scope" parameter, the server will
+        // return the scope it determined from the grant
 
         request.setParameter("code", code.getIdValue());
         request.setParameter("client_secret", client.get(User.Field.PWDHASH));
@@ -279,9 +281,9 @@ public class TestServer {
 
         assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
                 matches("[{]\\s*\"access_token\":\\s*\".{20}+\",\\s*" +
-                        "\"token_type\":\\s*\"Bearer\"\\s*[}]"));
-
-
+                        "\"token_type\":\\s*\"Bearer\",\\s*" +
+                        "\"scope\":\\s*\".*\"\\s*" +
+                        "[}]"));
     }
 
     @Test
@@ -306,9 +308,11 @@ public class TestServer {
         logger.debug("testTokenEndPointClientUsedCode() => " + response.getContentAsString());
         //assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
 
-         assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
+        assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
                 matches("[{]\\s*\"access_token\":\\s*\".{20}+\",\\s*" +
-                        "\"token_type\":\\s*\"Bearer\"\\s*[}]"));
+                        "\"token_type\":\\s*\"Bearer\",\\s*" +
+                        "\"scope\":\\s*\".*\"\\s*" +
+                        "[}]"));
 
         // now, try to use the same AuthCode again
         refreshRequestAndResponse();

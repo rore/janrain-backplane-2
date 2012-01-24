@@ -63,6 +63,9 @@ public class OAuth2Response {
             return new LinkedHashMap<String, Object>() {{
                 put("access_token", token.getIdValue());
                 put("token_type", "Bearer");
+                if (token.mustReturnScopeInResponse()) {
+                    put("scope", token.getScopeString());
+                }
             }};
         }
 
