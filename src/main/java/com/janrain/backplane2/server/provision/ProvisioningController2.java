@@ -14,12 +14,9 @@
  * limitations under the License.
  */
 
-package com.janrain.backplane.server.provision;
+package com.janrain.backplane2.server.provision;
 
-import com.janrain.backplane.server.config.AuthException;
-import com.janrain.backplane.server.config.Backplane1Config;
-import com.janrain.backplane.server.config.BusConfig1;
-import com.janrain.backplane.server.config.User;
+import com.janrain.backplane2.server.config.*;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.crypto.HmacHashUtils;
@@ -40,9 +37,9 @@ import java.util.Map;
  * @author Johnny Bufu
  */
 @Controller
-@RequestMapping(value="/provision/*")
+@RequestMapping(value="/v2/provision/*")
 @SuppressWarnings({"UnusedDeclaration"})
-public class ProvisioningController {
+public class ProvisioningController2 {
 
     // - PUBLIC
 
@@ -50,7 +47,7 @@ public class ProvisioningController {
     @ResponseBody
     public Map<String, Map<String, String>> busList(@RequestBody ListRequest listRequest) throws AuthException {
         bpConfig.checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
-        return doList(BusConfig1.class, listRequest.getEntities());
+        return doList(BusConfig2.class, listRequest.getEntities());
     }
 
     @RequestMapping(value = "/user/list", method = RequestMethod.POST)
@@ -60,11 +57,18 @@ public class ProvisioningController {
         return doList(User.class, listRequest.getEntities());
     }
 
+    @RequestMapping(value = "/client/list", method = RequestMethod.POST)
+    @ResponseBody
+    public Map<String, Map<String, String>> clientList(@RequestBody ListRequest listRequest) throws AuthException {
+        bpConfig.checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
+        return doList(Client.class, listRequest.getEntities());
+    }
+
     @RequestMapping(value = "/bus/delete", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, String> busDelete(@RequestBody ListRequest deleteRequest) throws AuthException {
         bpConfig.checkAdminAuth(deleteRequest.getAdmin(), deleteRequest.getSecret());
-        return doDelete(BusConfig1.class, deleteRequest.getEntities());
+        return doDelete(BusConfig2.class, deleteRequest.getEntities());
     }
 
     @RequestMapping(value = "/user/delete", method = RequestMethod.POST)
@@ -74,16 +78,29 @@ public class ProvisioningController {
         return doDelete(User.class, deleteRequest.getEntities());
     }
 
+    @RequestMapping(value = "/client/delete", method = RequestMethod.POST)
+    @ResponseBody
+    public Map<String, String> clientDelete(@RequestBody ListRequest deleteRequest) throws AuthException {
+        bpConfig.checkAdminAuth(deleteRequest.getAdmin(), deleteRequest.getSecret());
+        return doDelete(Client.class, deleteRequest.getEntities());
+    }
+
     @RequestMapping(value = "/bus/update", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, String> busUpdate(@RequestBody BusUpdateRequest updateRequest) throws AuthException {
-        return doUpdate(BusConfig1.class, updateRequest);
+        return doUpdate(BusConfig2.class, updateRequest);
     }
 
     @RequestMapping(value = "/user/update", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, String> userUpdate(@RequestBody UserUpdateRequest updateRequest) throws AuthException {
         return doUpdate(User.class, updateRequest);
+    }
+
+    @RequestMapping(value = "/client/update", method = RequestMethod.POST)
+    @ResponseBody
+    public Map<String, String> clientUpdate(@RequestBody ClientUpdateRequest updateRequest) throws AuthException {
+        return doUpdate(Client.class, updateRequest);
     }
 
     /**
@@ -114,7 +131,7 @@ public class ProvisioningController {
 
     // - PRIVATE
 
-    private static final Logger logger = Logger.getLogger(ProvisioningController.class);
+    private static final Logger logger = Logger.getLogger(ProvisioningController2.class);
 
     private static final String BACKPLANE_UPDATE_SUCCESS = "BACKPLANE_UPDATE_SUCCESS";
     private static final String BACKPLANE_DELETE_SUCCESS = "BACKPLANE_DELETE_SUCCESS";
@@ -122,7 +139,7 @@ public class ProvisioningController {
     private static final String CONFIG_NOT_FOUND = "CONFIG_NOT_FOUND";
 
     @Inject
-    private Backplane1Config bpConfig;
+    private Backplane2Config bpConfig;
 
     @Inject
     private SuperSimpleDB superSimpleDb;
@@ -207,6 +224,7 @@ public class ProvisioningController {
     }
 
     // type helper classes for JSON mapper
-    private static class BusUpdateRequest extends UpdateRequest<BusConfig1> {}
+    private static class BusUpdateRequest extends UpdateRequest<BusConfig2> {}
     private static class UserUpdateRequest extends UpdateRequest<User> {}
+    private static class ClientUpdateRequest extends UpdateRequest<Client> {}
 }

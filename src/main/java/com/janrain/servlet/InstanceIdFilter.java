@@ -17,8 +17,7 @@
 package com.janrain.servlet;
 
 
-import com.janrain.backplane.server.config.BackplaneConfig;
-import com.janrain.example.Person;
+import com.janrain.backplane2.server.config.Backplane2Config;
 import org.apache.log4j.Logger;
 
 import javax.inject.Inject;
@@ -60,7 +59,7 @@ public class InstanceIdFilter implements Filter {
     private static final String SSO_ID_HEADER = "X-BP-Instance";
 
     @Inject
-    private BackplaneConfig bpConfig;
+    private Backplane2Config bpConfig;
 
     private FilterConfig fc;
 

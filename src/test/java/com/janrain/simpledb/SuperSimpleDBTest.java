@@ -1,10 +1,8 @@
 package com.janrain.simpledb;
 
-import com.janrain.backplane.server.BackplaneController;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.RandomStringUtils;
-import org.apache.log4j.Logger;
 import org.junit.After;
 import org.junit.Test;
 import org.junit.runner.RunWith;
