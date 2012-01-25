@@ -194,7 +194,7 @@ public class TestServer {
         //satisfy 13.1.1
 
         //TODO: the spec doesn't allow '.' in the callback name but this likely needs to change
-        String callback = "Backplanecallback";
+        String callback = "Backplane.call_back";
 
         //  should return the form:
         //  {
@@ -232,7 +232,7 @@ public class TestServer {
         //satisfy 13.1.1
 
         //TODO: the spec doesn't allow '.' in the callback name but this likely needs to change
-        String callback = "Backplanecallback";
+        String callback = "Backplane.callback";
 
         refreshRequestAndResponse();
 

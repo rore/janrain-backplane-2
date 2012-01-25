@@ -212,17 +212,17 @@ public class BackplaneController {
         List<BackplaneMessage> messages =
                 daoFactory.getBackplaneMessageDAO().retrieveAllMesssagesPerScope(messageRequest.getToken().getScope(), since);
 
+        String nextUrl = "https://" + request.getServerName() + "/v2/messages";
+
         if (messages.isEmpty()) {
-            try {
-                response.getWriter().print("{}");
-            } catch (IOException e) {
-                logger.error(e);
-                throw new BackplaneServerException("A server error has occurred");
+            if (!StringUtils.isBlank(since)) {
+                nextUrl += "?since=" + since;
             }
-            return null;
+        } else {
+                nextUrl += "?since=" + messages.get(messages.size()-1).getIdValue();
         }
 
-        String nextUrl = "https://" + request.getServerName() + "/v2/messages?since=" + messages.get(messages.size()-1).getIdValue();
+        //String nextUrl = "https://" + request.getServerName() + "/v2/messages?since=" + messages.get(messages.size()-1).getIdValue();
         List<Map<String,Object>> frames = new ArrayList<Map<String, Object>>();
 
         for (BackplaneMessage message : messages) {
@@ -350,12 +350,10 @@ public class BackplaneController {
             }
         }
 
-
-
     }
 
     /**
-     * Publish messages to the Backplane.
+     * Publish messages to Backplane.
      * @param request
      * @param response
      * @return
@@ -408,6 +406,7 @@ public class BackplaneController {
                 }};
             }
 
+            // return an error if the channel used in the message is not associated with a token
             if (daoFactory.getTokenDao().retrieveTokenByChannel(message.get(BackplaneMessage.Field.CHANNEL)) == null) {
                 response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                 return new HashMap<String,Object>() {{

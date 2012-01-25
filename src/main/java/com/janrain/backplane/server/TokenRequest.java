@@ -108,7 +108,7 @@ public class TokenRequest {
          // use Oauth2 5.2 response codes for errors - http://tools.ietf.org/html/draft-ietf-oauth-v2-22#section-5.2
 
         if (StringUtils.isNotEmpty(callback)) {
-            if (!callback.matches("[a-zA-Z0-9]*")) {
+            if (!callback.matches("[\\._a-zA-Z0-9]*")) {
                 return error("invalid_request", "callback parameter value is malformed");
             }
         }
