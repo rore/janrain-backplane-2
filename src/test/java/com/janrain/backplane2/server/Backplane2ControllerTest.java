@@ -33,7 +33,7 @@ import static org.junit.Assert.*;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(locations = { "classpath:/spring/app-config.xml", "classpath:/spring/mvc-config.xml" })
-public class TestServer {
+public class Backplane2ControllerTest {
 
     @Inject
 	private ApplicationContext applicationContext;
@@ -50,7 +50,7 @@ public class TestServer {
     @Inject
     private DaoFactory daoFactory;
 
-    private static final Logger logger = Logger.getLogger(TestServer.class);
+    private static final Logger logger = Logger.getLogger(Backplane2ControllerTest.class);
 
     ArrayList<String> createdMessageKeys = new ArrayList<String>();
     ArrayList<String> createdTokenKeys = new ArrayList<String>();

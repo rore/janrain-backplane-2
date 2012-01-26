@@ -163,9 +163,6 @@ public class Backplane2Controller {
             return errors;
         }
 
-        //TODO: we need to push the "scope" parameter back in the response, if it differs from
-        // the requested scope.
-
         try {
             return new OAuth2Response(tokenRequest, daoFactory).generateResponse();
         } catch (final BackplaneServerException bpe) {
