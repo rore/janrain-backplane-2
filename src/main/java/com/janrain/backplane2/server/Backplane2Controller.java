@@ -203,6 +203,10 @@ public class Backplane2Controller {
 
         String nextUrl = "https://" + request.getServerName() + "/v2/messages";
 
+        //TODO: the spec (sec 12, last paragraph) suggests that the "since" id must specify a message that exists and
+        // if it does NOT exist, then we remove the "since" value from the query to allow the filter to be applied
+        // against the entire message "current buffer".  Fix.
+
         if (messages.isEmpty()) {
             if (!StringUtils.isBlank(since)) {
                 nextUrl += "?since=" + since;
