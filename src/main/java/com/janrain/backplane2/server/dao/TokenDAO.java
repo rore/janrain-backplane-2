@@ -65,10 +65,15 @@ public class TokenDAO extends DAO {
 
     public List<Token> retrieveTokensByGrant(String grantId) throws SimpleDBException {
         ArrayList<Token> tokens = new ArrayList<Token>();
-        List<GrantTokenRel> rels = superSimpleDB.retrieveWhere(bpConfig.getAuthTokenRelTableName(),
-                GrantTokenRel.class, "auth_id='" + grantId + "'", true);
-        for (GrantTokenRel rel : rels) {
-            tokens.add(retrieveToken(rel.getTokenId()));
+
+        try {
+            List<GrantTokenRel> rels = superSimpleDB.retrieveWhere(bpConfig.getAuthTokenRelTableName(),
+                    GrantTokenRel.class, "auth_id='" + grantId + "'", true);
+            for (GrantTokenRel rel : rels) {
+                tokens.add(retrieveToken(rel.getTokenId()));
+            }
+        } catch (SimpleDBException sdbe) {
+            // ignore -
         }
         return tokens;
     }

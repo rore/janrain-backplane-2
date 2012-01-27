@@ -108,10 +108,16 @@ public class Backplane2ControllerTest {
                 logger.info("deleting Message " + key);
                 superSimpleDB.delete(bpConfig.getMessagesTableName(), key);
             }
-            List<BackplaneMessage> testMsgs = superSimpleDB.
-                    retrieveWhere(bpConfig.getMessagesTableName(), BackplaneMessage.class, "channel='testchannel'", true);
-            for (BackplaneMessage msg : testMsgs) {
-                superSimpleDB.delete(bpConfig.getMessagesTableName(), msg.getIdValue());
+
+            try {
+                List<BackplaneMessage> testMsgs = superSimpleDB.
+                        retrieveWhere(bpConfig.getMessagesTableName(), BackplaneMessage.class, "channel='testchannel'", true);
+                for (BackplaneMessage msg : testMsgs) {
+                    logger.info("deleting Message " + msg.getIdValue());
+                    superSimpleDB.delete(bpConfig.getMessagesTableName(), msg.getIdValue());
+                }
+            } catch (SimpleDBException sdbe) {
+                // ignore - the domain may not exist
             }
             for (String key:this.createdTokenKeys) {
                 logger.info("deleting Token " + key);
@@ -302,13 +308,14 @@ public class Backplane2ControllerTest {
 
         //create grant for test
         Grant grant = new Grant(client.getClientId(),"test");
+        // set code to expire?
+        grant.setCodeExpirationDefault();
         this.saveGrant(grant);
-        AuthCode code = daoFactory.getGrantDao().issueCode(grant);
 
         // because we didn't specify the "scope" parameter, the server will
         // return the scope it determined from the grant
 
-        request.setParameter("code", code.getIdValue());
+        request.setParameter("code", grant.getIdValue());
         request.setParameter("client_secret", client.get(User.Field.PWDHASH));
         request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
         handlerAdapter.handle(request, response, controller);
@@ -323,21 +330,97 @@ public class Backplane2ControllerTest {
     }
 
     @Test
+    public void testTokenGrantByCodeScopeIsolation() throws Exception {
+
+        refreshRequestAndResponse();
+        Client client = createTestClient();
+
+                //create grant for test
+        Grant grant1 = new Grant(client.getClientId(),"foo");
+        grant1.setCodeExpirationDefault();
+        this.saveGrant(grant1);
+
+        Grant grant2 = new Grant(client.getClientId(), "bar");
+        grant2.setCodeExpirationDefault();
+        this.saveGrant(grant2);
+
+        request.setRequestURI("/v2/token");
+        request.setMethod("POST");
+        request.setParameter("client_id", client.get(User.Field.USER));
+        request.setParameter("grant_type", "code");
+
+        // because we didn't specify the "scope" parameter, the server will
+        // return the scope it determined from grant1 but not grant2
+
+        request.setParameter("code", grant1.getIdValue());
+        request.setParameter("client_secret", client.get(User.Field.PWDHASH));
+        request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
+        handlerAdapter.handle(request, response, controller);
+        logger.debug("testTokenGrantByCodeScopeIsolation() => " + response.getContentAsString());
+        //assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
+
+        assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
+                matches("[{]\\s*\"access_token\":\\s*\".{20}+\",\\s*" +
+                        "\"token_type\":\\s*\"Bearer\",\\s*" +
+                        "\"scope\":\\s*\".*\"\\s*" +
+                        "[}]"));
+
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String,Object> msg = mapper.readValue(response.getContentAsString(), new TypeReference<Map<String,Object>>() {});
+
+        assertFalse("Invalid scope: " + msg.get("scope").toString(), msg.get("scope").toString().contains("bar"));
+
+        //
+        // make the call again with "client_credentials" and verify that scope covers both grants
+        //
+
+        refreshRequestAndResponse();
+
+        request.setRequestURI("/v2/token");
+        request.setMethod("POST");
+        request.setParameter("client_id", client.get(User.Field.USER));
+        request.setParameter("grant_type", "client_credentials");
+
+        // because we didn't use a "code", the server will
+        // return the scope it determined from grant1 and grant2
+
+        request.setParameter("code", "");
+        request.setParameter("client_secret", client.get(User.Field.PWDHASH));
+        request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
+        handlerAdapter.handle(request, response, controller);
+        logger.debug("testTokenGrantByCodeScopeIsolation() => " + response.getContentAsString());
+        //assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
+
+        assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
+                matches("[{]\\s*\"access_token\":\\s*\".{20}+\",\\s*" +
+                        "\"token_type\":\\s*\"Bearer\",\\s*" +
+                        "\"scope\":\\s*\".*\"\\s*" +
+                        "[}]"));
+
+        msg = mapper.readValue(response.getContentAsString(), new TypeReference<Map<String,Object>>() {});
+        String scope = msg.get("scope").toString();
+
+        assertTrue("Invalid scope: " + scope, scope.contains("bar") && scope.contains("foo") );
+
+
+    }
+
+    @Test
     public void testTokenEndPointClientUsedCode() throws Exception {
         refreshRequestAndResponse();
         Client client = createTestClient();
 
         //create grant for test
         Grant grant = new Grant(client.getClientId(),"test");
+        grant.setCodeExpirationDefault();
         this.saveGrant(grant);
-        AuthCode code = daoFactory.getGrantDao().issueCode(grant);
-        logger.info("issued AuthCode " + code.getIdValue());
+        logger.info("issued AuthCode " + grant.getIdValue());
 
         request.setRequestURI("/v2/token");
         request.setMethod("POST");
         request.setParameter("client_id", client.get(User.Field.USER));
         request.setParameter("grant_type", "code");
-        request.setParameter("code", code.getIdValue());
+        request.setParameter("code", grant.getIdValue());
         request.setParameter("client_secret", client.get(User.Field.PWDHASH));
         request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
         handlerAdapter.handle(request, response, controller);
@@ -350,19 +433,19 @@ public class Backplane2ControllerTest {
                         "\"scope\":\\s*\".*\"\\s*" +
                         "[}]"));
 
-        // now, try to use the same AuthCode again
+        // now, try to use the same code again
         refreshRequestAndResponse();
         request.setRequestURI("/v2/token");
         request.setMethod("POST");
         request.setParameter("client_id", client.get(User.Field.USER));
         request.setParameter("grant_type", "code");
-        request.setParameter("code", code.getIdValue());
+        request.setParameter("code", grant.getIdValue());
         request.setParameter("client_secret", client.get(User.Field.PWDHASH));
         request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
         handlerAdapter.handle(request, response, controller);
         logger.debug("testTokenEndPointClientUsedCode() ====> " + response.getContentAsString());
 
-        assertTrue(daoFactory.getGrantDao().retrieveCode(code.getIdValue()).getDateUsed() != null);
+        assertTrue(daoFactory.getGrantDao().retrieveGrant(grant.getIdValue()).isCodeUsed() == true);
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
 
 
@@ -381,10 +464,10 @@ public class Backplane2ControllerTest {
 
         //create grant for test
         Grant grant = new Grant(client.getClientId(),"test");
+        grant.setCodeIssuedNow();
         this.saveGrant(grant);
-        AuthCode code = daoFactory.getGrantDao().issueCode(grant);
 
-        request.setParameter("code", code.getIdValue());
+        request.setParameter("code", grant.getIdValue());
         request.setParameter("client_secret", client.get(User.Field.PWDHASH));
         request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
         request.setParameter("scope", "bus;mybus.com bus:yourbus.com");
@@ -415,38 +498,15 @@ public class Backplane2ControllerTest {
 
         //create grant for test
         Grant grant = new Grant(client.getClientId(),"mybus.com");
+        grant.setCodeIssuedNow();
         this.saveGrant(grant);
-        AuthCode code = daoFactory.getGrantDao().issueCode(grant);
 
-        request.setParameter("code", code.getIdValue());
+        request.setParameter("code", grant.getIdValue());
         request.setParameter("client_secret", client.get(User.Field.PWDHASH));
         request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
         request.setParameter("scope", "bus:mybus.com bus:yourbus.com");
         handlerAdapter.handle(request, response, controller);
         logger.debug("TryToUseInvalidScopeTest() => " + response.getContentAsString());
-        assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
-    }
-
-    @Test
-    public void TryToUseExpiredCode() throws Exception {
-        refreshRequestAndResponse();
-        Client client = createTestClient();
-
-        request.setRequestURI("/v2/token");
-        request.setMethod("POST");
-        request.setParameter("client_id", client.get(User.Field.USER));
-        request.setParameter("grant_type", "code");
-
-        //create expired grant for test
-        Grant grant = new Grant(client.getClientId(),"test", new Date());
-        this.saveGrant(grant);
-        AuthCode code = daoFactory.getGrantDao().issueCode(grant);
-
-        request.setParameter("code", code.getIdValue());
-        request.setParameter("client_secret", client.get(User.Field.PWDHASH));
-        request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
-        handlerAdapter.handle(request, response, controller);
-        logger.debug("TryToUseExpiredCode() => " + response.getContentAsString());
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
     }
 
@@ -462,10 +522,10 @@ public class Backplane2ControllerTest {
 
         //create grant for test
         Grant grant = new Grant(client.getClientId(),"test");
+        grant.setCodeIssuedNow();
         this.saveGrant(grant);
-        AuthCode code = daoFactory.getGrantDao().issueCode(grant);
 
-        request.setParameter("code", code.getIdValue());
+        request.setParameter("code", grant.getIdValue());
 
         //will fail because no redirect_uri value is included
         request.setParameter("redirect_uri","");

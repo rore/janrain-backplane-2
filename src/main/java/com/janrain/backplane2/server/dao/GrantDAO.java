@@ -1,6 +1,5 @@
 package com.janrain.backplane2.server.dao;
 
-import com.janrain.backplane2.server.AuthCode;
 import com.janrain.backplane2.server.Grant;
 import com.janrain.backplane2.server.Scope;
 import com.janrain.backplane2.server.config.Backplane2Config;
@@ -30,25 +29,6 @@ public class GrantDAO extends DAO {
 
     public void deleteGrant(String grantId) throws SimpleDBException {
         superSimpleDB.delete(bpConfig.getGrantTableName(), grantId);
-        // delete associated Code, if one exists
-        superSimpleDB.delete(bpConfig.getCodeTableName(), grantId);
-    }
-
-    public AuthCode issueCode(Grant grant) throws SimpleDBException {
-        AuthCode code = new AuthCode(grant.getIdValue(),
-                (grant.getExpiresDate()==null?new Date(new Date().getTime() + AuthCode.EXPIRES_SECONDS * 1000L): grant.getExpiresDate()));
-        superSimpleDB.store(bpConfig.getCodeTableName(), AuthCode.class, code);
-        return code;
-    }
-
-    public AuthCode retrieveCode(String codeId) throws SimpleDBException {
-        AuthCode code = superSimpleDB.retrieve(bpConfig.getCodeTableName(), AuthCode.class, codeId);
-        code.setGrant(retrieveGrant(code.getGrantId()));
-        return code;
-    }
-
-    public void persistCode(AuthCode code) throws SimpleDBException {
-        superSimpleDB.store(bpConfig.getCodeTableName(), AuthCode.class, code);
     }
 
     /**
