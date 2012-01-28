@@ -21,6 +21,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.HandlerAdapter;
 import javax.inject.Inject;
 import javax.servlet.http.HttpServletResponse;
@@ -151,13 +152,13 @@ public class Backplane2ControllerTest {
 	}
 
     private void saveMessage(BackplaneMessage message) throws SimpleDBException {
-        superSimpleDB.store(bpConfig.getMessagesTableName(), BackplaneMessage.class, message, true);
+        daoFactory.getBackplaneMessageDAO().persistBackplaneMessage(message);
         this.createdMessageKeys.add(message.getIdValue());
         logger.info("created Message " + message.getIdValue());
     }
 
     private void saveGrant(Grant grant) throws SimpleDBException {
-        superSimpleDB.store(bpConfig.getGrantTableName(), Grant.class, grant);
+        daoFactory.getGrantDao().persistGrant(grant);
         this.createdGrantsKeys.add(grant.getIdValue());
     }
 
@@ -405,6 +406,67 @@ public class Backplane2ControllerTest {
 
     }
 
+
+    @Test
+    public void testTokenGrantByCodeScopeComplexity() throws Exception {
+
+        refreshRequestAndResponse();
+        Client client = createTestClient();
+
+        //create grant for test
+        ArrayList<String> randomBuses = new ArrayList<String>();
+        for (int i=0; i < 15; i++) {
+            randomBuses.add(ChannelUtil.randomString(10));
+        }
+        String buses = StringUtils.collectionToDelimitedString(randomBuses, " ");
+
+        Grant grant = new Grant(client.getClientId(),buses);
+        grant.setCodeExpirationDefault();
+        this.saveGrant(grant);
+
+        request.setRequestURI("/v2/token");
+        request.setMethod("POST");
+        request.setParameter("client_id", client.get(User.Field.USER));
+        request.setParameter("grant_type", "code");
+
+        // because we didn't specify the "scope" parameter, the server will
+        // return the scope it determined from grant1 but not grant2
+
+        request.setParameter("code", grant.getIdValue());
+        request.setParameter("client_secret", client.get(User.Field.PWDHASH));
+        request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
+        handlerAdapter.handle(request, response, controller);
+        logger.debug("testTokenGrantByCodeScopeComplexity() => " + response.getContentAsString());
+        //assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
+
+        assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
+                matches("[{]\\s*\"access_token\":\\s*\".{20}+\",\\s*" +
+                        "\"token_type\":\\s*\"Bearer\",\\s*" +
+                        "\"scope\":\\s*\".*\"\\s*" +
+                        "[}]"));
+
+        // attempt to read a message on one of the buses
+
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String,Object> reply = mapper.readValue(response.getContentAsString(), new TypeReference<Map<String,Object>>() {});
+        String returnedToken = reply.get("access_token").toString();
+
+        Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
+
+        BackplaneMessage message1 = new BackplaneMessage("123456", randomBuses.get(randomBuses.size()-1), "randomchannel", msg);
+        this.saveMessage(message1);
+
+         // Make the call
+        request.setRequestURI("/v2/messages");
+        request.setMethod("GET");
+        request.setParameter("access_token", returnedToken);
+        handlerAdapter.handle(request, response, controller);
+        logger.debug("testTokenGrantByCodeScopeComplexity()   => " + response.getContentAsString());
+
+        assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
+
+    }
+
     @Test
     public void testTokenEndPointClientUsedCode() throws Exception {
         refreshRequestAndResponse();
@@ -606,7 +668,7 @@ public class Backplane2ControllerTest {
         this.saveMessage(message);
 
         // Make the call
-        request.setRequestURI("/v2//message/123456");
+        request.setRequestURI("/v2/message/123456");
         request.setMethod("GET");
         request.setParameter("access_token", token.getIdValue());
         handlerAdapter.handle(request, response, controller);

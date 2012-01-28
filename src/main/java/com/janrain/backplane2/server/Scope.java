@@ -4,6 +4,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 
+import javax.print.DocFlavor;
 import java.util.*;
 
 /**
@@ -60,16 +61,21 @@ public class Scope {
                 if (firstElement != true) {
                     sb.append(" AND ");
                 }
-                sb.append("(");
-                boolean firstDisjunction = true;
-                for (String value : entry.getValue()) {
-                    if (firstDisjunction != true) {
-                        sb.append(" OR ");
+
+                if (!entry.getValue().isEmpty()) {
+                    sb.append(entry.getKey() + " IN (");
+
+                    boolean firstDisjunction = true;
+                    for (String value : entry.getValue()) {
+                        if (firstDisjunction != true) {
+                            sb.append(",");
+                        }
+                        sb.append("'" + value + "'");
+                        firstDisjunction = false;
                     }
-                    sb.append(entry.getKey() + "='" + value + "'");
-                    firstDisjunction = false;
+                    sb.append(")");
                 }
-                sb.append(")");
+
                 firstElement = false;
             }
         }
@@ -77,6 +83,41 @@ public class Scope {
         logger.info("clause = " + sb.toString() + " generated from " + this.scopeString);
 
         return sb.toString();
+
+    }
+
+    public List<String> buildQueriesFromScope() {
+
+        logger.info("build queries from scope: " + scopes.entrySet());
+
+        ArrayList<String> queries = new ArrayList<String>();
+
+        ArrayList l = new ArrayList(scopes.entrySet());
+
+        buildQuery(queries, "", l, 0);
+        return queries;
+    }
+
+    private void buildQuery(List<String> list, String query, List l, int level) {
+
+        if (level == l.size()) {
+            logger.info("add " + query);
+            list.add(query);
+            return;
+        }
+
+        Map.Entry<String,ArrayList<String>> entry = (Map.Entry<String, ArrayList<String>>) l.get(level);
+
+        if (entry.getValue().isEmpty()) {
+            buildQuery(list, query, l, level+1);
+        }
+
+        for (String val : entry.getValue()) {
+            String newquery = query + " " + entry.getKey() + "='" + val + "'";
+            logger.info("new query = " + newquery + " list = " + l);
+            buildQuery(list, newquery, l, level+1);
+        }
+
 
     }
 

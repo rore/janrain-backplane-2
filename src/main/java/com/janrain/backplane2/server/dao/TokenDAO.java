@@ -25,7 +25,7 @@ public class TokenDAO extends DAO {
     };
 
     public void persistToken(Token token) throws SimpleDBException {
-        superSimpleDB.store(bpConfig.getAccessTokenTableName(), Token.class, token);
+        superSimpleDB.store(bpConfig.getAccessTokenTableName(), Token.class, token, true);
         // if any grants exist for this token be sure to persist
         // the relationships, but delete them first
         deleteRelsByTokenId(token.getIdValue());

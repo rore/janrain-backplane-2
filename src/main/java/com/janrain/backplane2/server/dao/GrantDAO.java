@@ -20,7 +20,7 @@ public class GrantDAO extends DAO {
     };
 
     public void persistGrant(Grant grant) throws SimpleDBException {
-        superSimpleDB.store(bpConfig.getGrantTableName(), Grant.class, grant);
+        superSimpleDB.store(bpConfig.getGrantTableName(), Grant.class, grant, true);
     }
 
     public Grant retrieveGrant(String grantId) throws SimpleDBException {
