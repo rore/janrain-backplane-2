@@ -23,6 +23,7 @@ import org.apache.log4j.Logger;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 
 /**
  * Response
@@ -52,12 +53,25 @@ public class OAuth2Response {
         }
 
         if (request.grant_type.equals("code")) {
-            final Token token = new Token(request.getCode().getGrant(), null);
+            final Token token = new Token(request.getGrant(), request.scope);
             daoFactory.getTokenDao().persistToken(token);
-            // mark the AuthCode as used
-            request.getCode().setUsedNow();
-            daoFactory.getGrantDao().persistCode(request.getCode());
-            logger.info("marking AuthCode " + request.getCode().getIdValue() + " as used");
+            // mark the code as used
+            request.getGrant().setCodeUsedNow();
+            daoFactory.getGrantDao().persistGrant(request.getGrant());
+            logger.info("marking AuthCode " + request.getGrant().getIdValue() + " as used");
+            return new LinkedHashMap<String, Object>() {{
+                put("access_token", token.getIdValue());
+                put("token_type", "Bearer");
+                if (token.mustReturnScopeInResponse()) {
+                    put("scope", token.getScopeString());
+                }
+            }};
+        }
+
+        if (request.grant_type.equals("client_credentials")) {
+            List<Grant> grants = daoFactory.getGrantDao().retrieveGrants(request.client_id, new Scope(request.scope));
+            final Token token = new Token(grants, null);
+            daoFactory.getTokenDao().persistToken(token);
             return new LinkedHashMap<String, Object>() {{
                 put("access_token", token.getIdValue());
                 put("token_type", "Bearer");

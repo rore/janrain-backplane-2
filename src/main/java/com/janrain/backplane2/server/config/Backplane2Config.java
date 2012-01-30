@@ -92,10 +92,6 @@ public class Backplane2Config {
         return bpInstanceId + BP_GRANT_TABLE_SUFFIX;
     }
 
-    public String getCodeTableName() {
-        return bpInstanceId + BP_CODE_TABLE_SUFFIX;
-    }
-
     public String getAccessTokenTableName() {
         return bpInstanceId + BP_ACCESS_TOKEN_TABLE_SUFFIX;
     }
@@ -213,7 +209,6 @@ public class Backplane2Config {
     private static final String BP_METRICS_TABLE_SUFFIX = "_metrics";
     private static final String BP_METRIC_AUTH_TABLE_SUFFIX = "_bpMetricAuth";
     private static final String BP_GRANT_TABLE_SUFFIX = "_v2_grants";
-    private static final String BP_CODE_TABLE_SUFFIX = "_v2_authCodes";
     private static final String BP_ACCESS_TOKEN_TABLE_SUFFIX = "_v2_accessTokens";
     private static final String BP_AUTHTOKEN_REL_TABLE_SUFFIX = "_v2_authtokenrel";
     private static final String BP_CLIENTS_TABLE_SUFFIX = "_v2_clients";

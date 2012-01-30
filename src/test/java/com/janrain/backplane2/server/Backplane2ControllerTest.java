@@ -21,6 +21,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.HandlerAdapter;
 import javax.inject.Inject;
 import javax.servlet.http.HttpServletResponse;
@@ -33,7 +34,7 @@ import static org.junit.Assert.*;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(locations = { "classpath:/spring/app-config.xml", "classpath:/spring/mvc-config.xml" })
-public class TestServer {
+public class Backplane2ControllerTest {
 
     @Inject
 	private ApplicationContext applicationContext;
@@ -50,7 +51,7 @@ public class TestServer {
     @Inject
     private DaoFactory daoFactory;
 
-    private static final Logger logger = Logger.getLogger(TestServer.class);
+    private static final Logger logger = Logger.getLogger(Backplane2ControllerTest.class);
 
     ArrayList<String> createdMessageKeys = new ArrayList<String>();
     ArrayList<String> createdTokenKeys = new ArrayList<String>();
@@ -108,10 +109,16 @@ public class TestServer {
                 logger.info("deleting Message " + key);
                 superSimpleDB.delete(bpConfig.getMessagesTableName(), key);
             }
-            List<BackplaneMessage> testMsgs = superSimpleDB.
-                    retrieveWhere(bpConfig.getMessagesTableName(), BackplaneMessage.class, "channel='testchannel'", true);
-            for (BackplaneMessage msg : testMsgs) {
-                superSimpleDB.delete(bpConfig.getMessagesTableName(), msg.getIdValue());
+
+            try {
+                List<BackplaneMessage> testMsgs = superSimpleDB.
+                        retrieveWhere(bpConfig.getMessagesTableName(), BackplaneMessage.class, "channel='testchannel'", true);
+                for (BackplaneMessage msg : testMsgs) {
+                    logger.info("deleting Message " + msg.getIdValue());
+                    superSimpleDB.delete(bpConfig.getMessagesTableName(), msg.getIdValue());
+                }
+            } catch (SimpleDBException sdbe) {
+                // ignore - the domain may not exist
             }
             for (String key:this.createdTokenKeys) {
                 logger.info("deleting Token " + key);
@@ -145,13 +152,13 @@ public class TestServer {
 	}
 
     private void saveMessage(BackplaneMessage message) throws SimpleDBException {
-        superSimpleDB.store(bpConfig.getMessagesTableName(), BackplaneMessage.class, message, true);
+        daoFactory.getBackplaneMessageDAO().persistBackplaneMessage(message);
         this.createdMessageKeys.add(message.getIdValue());
         logger.info("created Message " + message.getIdValue());
     }
 
     private void saveGrant(Grant grant) throws SimpleDBException {
-        superSimpleDB.store(bpConfig.getGrantTableName(), Grant.class, grant);
+        daoFactory.getGrantDao().persistGrant(grant);
         this.createdGrantsKeys.add(grant.getIdValue());
     }
 
@@ -302,13 +309,14 @@ public class TestServer {
 
         //create grant for test
         Grant grant = new Grant(client.getClientId(),"test");
+        // set code to expire?
+        grant.setCodeExpirationDefault();
         this.saveGrant(grant);
-        AuthCode code = daoFactory.getGrantDao().issueCode(grant);
 
         // because we didn't specify the "scope" parameter, the server will
         // return the scope it determined from the grant
 
-        request.setParameter("code", code.getIdValue());
+        request.setParameter("code", grant.getIdValue());
         request.setParameter("client_secret", client.get(User.Field.PWDHASH));
         request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
         handlerAdapter.handle(request, response, controller);
@@ -323,21 +331,161 @@ public class TestServer {
     }
 
     @Test
+    public void testTokenGrantByCodeScopeIsolation() throws Exception {
+
+        refreshRequestAndResponse();
+        Client client = createTestClient();
+
+                //create grant for test
+        Grant grant1 = new Grant(client.getClientId(),"foo");
+        grant1.setCodeExpirationDefault();
+        this.saveGrant(grant1);
+
+        Grant grant2 = new Grant(client.getClientId(), "bar");
+        grant2.setCodeExpirationDefault();
+        this.saveGrant(grant2);
+
+        request.setRequestURI("/v2/token");
+        request.setMethod("POST");
+        request.setParameter("client_id", client.get(User.Field.USER));
+        request.setParameter("grant_type", "code");
+
+        // because we didn't specify the "scope" parameter, the server will
+        // return the scope it determined from grant1 but not grant2
+
+        request.setParameter("code", grant1.getIdValue());
+        request.setParameter("client_secret", client.get(User.Field.PWDHASH));
+        request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
+        handlerAdapter.handle(request, response, controller);
+        logger.debug("testTokenGrantByCodeScopeIsolation() => " + response.getContentAsString());
+        //assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
+
+        assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
+                matches("[{]\\s*\"access_token\":\\s*\".{20}+\",\\s*" +
+                        "\"token_type\":\\s*\"Bearer\",\\s*" +
+                        "\"scope\":\\s*\".*\"\\s*" +
+                        "[}]"));
+
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String,Object> msg = mapper.readValue(response.getContentAsString(), new TypeReference<Map<String,Object>>() {});
+
+        assertFalse("Invalid scope: " + msg.get("scope").toString(), msg.get("scope").toString().contains("bar"));
+
+        //
+        // make the call again with "client_credentials" and verify that scope covers both grants
+        //
+
+        refreshRequestAndResponse();
+
+        request.setRequestURI("/v2/token");
+        request.setMethod("POST");
+        request.setParameter("client_id", client.get(User.Field.USER));
+        request.setParameter("grant_type", "client_credentials");
+
+        // because we didn't use a "code", the server will
+        // return the scope it determined from grant1 and grant2
+
+        request.setParameter("code", "");
+        request.setParameter("client_secret", client.get(User.Field.PWDHASH));
+        request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
+        handlerAdapter.handle(request, response, controller);
+        logger.debug("testTokenGrantByCodeScopeIsolation() => " + response.getContentAsString());
+        //assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
+
+        assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
+                matches("[{]\\s*\"access_token\":\\s*\".{20}+\",\\s*" +
+                        "\"token_type\":\\s*\"Bearer\",\\s*" +
+                        "\"scope\":\\s*\".*\"\\s*" +
+                        "[}]"));
+
+        msg = mapper.readValue(response.getContentAsString(), new TypeReference<Map<String,Object>>() {});
+        String scope = msg.get("scope").toString();
+
+        assertTrue("Invalid scope: " + scope, scope.contains("bar") && scope.contains("foo") );
+
+
+    }
+
+
+    @Test
+    public void testTokenGrantByCodeScopeComplexity() throws Exception {
+
+        refreshRequestAndResponse();
+        Client client = createTestClient();
+
+        //create grant for test
+        ArrayList<String> randomBuses = new ArrayList<String>();
+        for (int i=0; i < 8; i++) {
+            randomBuses.add(ChannelUtil.randomString(10));
+        }
+        String buses = StringUtils.collectionToDelimitedString(randomBuses, " ");
+
+        Grant grant = new Grant(client.getClientId(),buses);
+        grant.setCodeExpirationDefault();
+        this.saveGrant(grant);
+
+        request.setRequestURI("/v2/token");
+        request.setMethod("POST");
+        request.setParameter("client_id", client.get(User.Field.USER));
+        request.setParameter("grant_type", "code");
+        request.setParameter("code", grant.getIdValue());
+        request.setParameter("scope", "sticky:false sticky:true source:ftp://bla_source/");
+        request.setParameter("client_secret", client.get(User.Field.PWDHASH));
+        request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
+        handlerAdapter.handle(request, response, controller);
+        logger.debug("testTokenGrantByCodeScopeComplexity() get token => " + response.getContentAsString());
+        //assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
+
+        assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
+                matches("[{]\\s*\"access_token\":\\s*\".{20}+\",\\s*" +
+                        "\"token_type\":\\s*\"Bearer\",\\s*" +
+                        "\"scope\":\\s*\".*\"\\s*" +
+                        "[}]"));
+
+        // attempt to read a message on one of the buses
+
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String,Object> reply = mapper.readValue(response.getContentAsString(), new TypeReference<Map<String,Object>>() {});
+        String returnedToken = reply.get("access_token").toString();
+
+        Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
+
+        BackplaneMessage message1 = new BackplaneMessage("123456", randomBuses.get(randomBuses.size()-1), "randomchannel", msg);
+        this.saveMessage(message1);
+
+         // Make the call
+        refreshRequestAndResponse();
+        request.setRequestURI("/v2/messages");
+        request.setMethod("GET");
+        request.setParameter("access_token", returnedToken);
+        handlerAdapter.handle(request, response, controller);
+        logger.debug("testTokenGrantByCodeScopeComplexity()   => " + response.getContentAsString());
+
+        assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
+
+        // should just receive one message on the last bus
+        Map<String,Object> returnedBody = mapper.readValue(response.getContentAsString(), new TypeReference<Map<String,Object>>() {});
+        List<Map<String,Object>> returnedMsgs = (List<Map<String, Object>>) returnedBody.get("messages");
+        assertTrue(returnedMsgs.size() == 1);
+
+    }
+
+    @Test
     public void testTokenEndPointClientUsedCode() throws Exception {
         refreshRequestAndResponse();
         Client client = createTestClient();
 
         //create grant for test
         Grant grant = new Grant(client.getClientId(),"test");
+        grant.setCodeExpirationDefault();
         this.saveGrant(grant);
-        AuthCode code = daoFactory.getGrantDao().issueCode(grant);
-        logger.info("issued AuthCode " + code.getIdValue());
+        logger.info("issued AuthCode " + grant.getIdValue());
 
         request.setRequestURI("/v2/token");
         request.setMethod("POST");
         request.setParameter("client_id", client.get(User.Field.USER));
         request.setParameter("grant_type", "code");
-        request.setParameter("code", code.getIdValue());
+        request.setParameter("code", grant.getIdValue());
         request.setParameter("client_secret", client.get(User.Field.PWDHASH));
         request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
         handlerAdapter.handle(request, response, controller);
@@ -350,19 +498,19 @@ public class TestServer {
                         "\"scope\":\\s*\".*\"\\s*" +
                         "[}]"));
 
-        // now, try to use the same AuthCode again
+        // now, try to use the same code again
         refreshRequestAndResponse();
         request.setRequestURI("/v2/token");
         request.setMethod("POST");
         request.setParameter("client_id", client.get(User.Field.USER));
         request.setParameter("grant_type", "code");
-        request.setParameter("code", code.getIdValue());
+        request.setParameter("code", grant.getIdValue());
         request.setParameter("client_secret", client.get(User.Field.PWDHASH));
         request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
         handlerAdapter.handle(request, response, controller);
         logger.debug("testTokenEndPointClientUsedCode() ====> " + response.getContentAsString());
 
-        assertTrue(daoFactory.getGrantDao().retrieveCode(code.getIdValue()).getDateUsed() != null);
+        assertTrue(daoFactory.getGrantDao().retrieveGrant(grant.getIdValue()).isCodeUsed() == true);
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
 
 
@@ -381,10 +529,10 @@ public class TestServer {
 
         //create grant for test
         Grant grant = new Grant(client.getClientId(),"test");
+        grant.setCodeIssuedNow();
         this.saveGrant(grant);
-        AuthCode code = daoFactory.getGrantDao().issueCode(grant);
 
-        request.setParameter("code", code.getIdValue());
+        request.setParameter("code", grant.getIdValue());
         request.setParameter("client_secret", client.get(User.Field.PWDHASH));
         request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
         request.setParameter("scope", "bus;mybus.com bus:yourbus.com");
@@ -415,38 +563,15 @@ public class TestServer {
 
         //create grant for test
         Grant grant = new Grant(client.getClientId(),"mybus.com");
+        grant.setCodeIssuedNow();
         this.saveGrant(grant);
-        AuthCode code = daoFactory.getGrantDao().issueCode(grant);
 
-        request.setParameter("code", code.getIdValue());
+        request.setParameter("code", grant.getIdValue());
         request.setParameter("client_secret", client.get(User.Field.PWDHASH));
         request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
         request.setParameter("scope", "bus:mybus.com bus:yourbus.com");
         handlerAdapter.handle(request, response, controller);
         logger.debug("TryToUseInvalidScopeTest() => " + response.getContentAsString());
-        assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
-    }
-
-    @Test
-    public void TryToUseExpiredCode() throws Exception {
-        refreshRequestAndResponse();
-        Client client = createTestClient();
-
-        request.setRequestURI("/v2/token");
-        request.setMethod("POST");
-        request.setParameter("client_id", client.get(User.Field.USER));
-        request.setParameter("grant_type", "code");
-
-        //create expired grant for test
-        Grant grant = new Grant(client.getClientId(),"test", new Date());
-        this.saveGrant(grant);
-        AuthCode code = daoFactory.getGrantDao().issueCode(grant);
-
-        request.setParameter("code", code.getIdValue());
-        request.setParameter("client_secret", client.get(User.Field.PWDHASH));
-        request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
-        handlerAdapter.handle(request, response, controller);
-        logger.debug("TryToUseExpiredCode() => " + response.getContentAsString());
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
     }
 
@@ -462,10 +587,10 @@ public class TestServer {
 
         //create grant for test
         Grant grant = new Grant(client.getClientId(),"test");
+        grant.setCodeIssuedNow();
         this.saveGrant(grant);
-        AuthCode code = daoFactory.getGrantDao().issueCode(grant);
 
-        request.setParameter("code", code.getIdValue());
+        request.setParameter("code", grant.getIdValue());
 
         //will fail because no redirect_uri value is included
         request.setParameter("redirect_uri","");
@@ -546,7 +671,7 @@ public class TestServer {
         this.saveMessage(message);
 
         // Make the call
-        request.setRequestURI("/v2//message/123456");
+        request.setRequestURI("/v2/message/123456");
         request.setMethod("GET");
         request.setParameter("access_token", token.getIdValue());
         handlerAdapter.handle(request, response, controller);

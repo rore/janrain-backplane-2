@@ -41,7 +41,7 @@ public class TokenRequest {
     String client_secret;
     String scope;
     String callback;
-    AuthCode code;
+    Grant grant;
     Client client;
     Scope scopes;
     DaoFactory daoFactory;
@@ -65,7 +65,7 @@ public class TokenRequest {
         this.callback = callback;
 
         try {
-            setCode(daoFactory.getGrantDao().retrieveCode(codeId));
+            setGrant(daoFactory.getGrantDao().retrieveGrant(codeId));
         } catch (Exception e) {
             //do nothing
         }
@@ -87,12 +87,12 @@ public class TokenRequest {
         this.callback = callback;
     }
 
-    public AuthCode getCode() {
-        return this.code;
+    public Grant getGrant() {
+        return this.grant;
     }
 
-    public void setCode(AuthCode code) {
-        this.code = code;
+    public void setGrant(Grant grant) {
+        this.grant = grant;
     }
 
     public void setClient(Client client) {
@@ -139,25 +139,26 @@ public class TokenRequest {
 
         // check the codeId
         if (StringUtils.isNotEmpty(codeId)) {
-            //did a record pull from the db?
-            if (code == null) {
+            //did a grant record pull from the db?
+            if (grant == null) {
                 return error("invalid_grant", "Authorization code is invalid");
-            }
-            if (this.code.isExpired()) {
-                return error("invalid_grant", "Authorization code is expired");
             }
 
-            if (!code.isValid()) {
-                // revoke related token, if one exists
-                daoFactory.getTokenDao().revokeTokenByGrant(code.getGrantId());
+            if (grant.isCodeUsed()) {
+                // revoke related token, if one exists and has already been used
+                daoFactory.getTokenDao().revokeTokenByGrant(grant.getIdValue());
                 return error("invalid_grant", "Authorization code is invalid");
+            }
+
+            if (this.grant.isCodeExpired()) {
+                return error("invalid_grant", "Authorization code is expired");
             }
 
             //check the client
             if (client == null ||
                     !client_secret.equals(client.getClientSecret()) ||
                     !redirect_uri.equals(client.getRedirectUri()) ||
-                    !code.getGrant().getGrantClientId().equals(client.getClientId())) {
+                    !grant.getGrantClientId().equals(client.getClientId())) {
                 return error("invalid_client", "Client authentication failed");
             }
         }
@@ -165,7 +166,7 @@ public class TokenRequest {
         if (StringUtils.isNotEmpty(scope)) {
             try {
                 this.scopes = new Scope(scope);
-                if (this.code != null && !this.code.getGrant().isAllowedBuses(scopes.getBusesInScope())) {
+                if (this.grant != null && !grant.isAllowedBuses(scopes.getBusesInScope())) {
                     return error("invalid_request", "Invalid scope");
                 }
             } catch (BackplaneServerException e) {
