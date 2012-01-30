@@ -13,6 +13,10 @@ import javax.inject.Inject;
 @Scope(value="singleton")
 public class DaoFactory {
 
+    public BusDAO getBusDao() {
+        return new BusDAO(superSimpleDB, bpConfig);
+    }
+
     public TokenDAO getTokenDao() {
         return new TokenDAO(superSimpleDB, bpConfig);
     }
@@ -27,6 +31,18 @@ public class DaoFactory {
 
     public BackplaneMessageDAO getBackplaneMessageDAO() {
         return new BackplaneMessageDAO(superSimpleDB, bpConfig);
+    }
+
+    public AuthSessionDAO getAuthSessionDAO() {
+        return new AuthSessionDAO(superSimpleDB, bpConfig);
+    }
+
+    public AuthorizationRequestDAO getAuthorizationRequestDAO() {
+        return new AuthorizationRequestDAO(superSimpleDB, bpConfig);
+    }
+
+    public AuthorizationDecisionKeyDAO getAuthorizationDecisionKeyDAO() {
+        return new AuthorizationDecisionKeyDAO(superSimpleDB, bpConfig);
     }
 
     @Inject

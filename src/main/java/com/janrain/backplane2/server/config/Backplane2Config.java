@@ -107,7 +107,23 @@ public class Backplane2Config {
     public String getClientsTableName() {
         return bpInstanceId + BP_CLIENTS_TABLE_SUFFIX;
     }
+
+    public String getAuthSessionTableName() {
+        return bpInstanceId + BP_AUTH_SESSION_TABLE_SUFFIX;
+    }
+
+    public String getAuthorizationRequestTableName() {
+        return bpInstanceId + BP_AUTHORIZATION_REQUEST_TABLE_SUFFIX;
+    }
+
+    public String getAuthorizationDecisionKeyTableName() {
+        return bpInstanceId + BP_AUTHORIZATION_DECISION_KEY_TABLE_SUFFIX;
+    }
     
+    public String getBusConfigTableName() {
+        return bpInstanceId + BP_V2_BUS_CONFIG;
+    }
+
     /**
      * Retrieve a configuration entity by its name
      *
@@ -201,6 +217,10 @@ public class Backplane2Config {
     private static final String BP_ACCESS_TOKEN_TABLE_SUFFIX = "_v2_accessTokens";
     private static final String BP_AUTHTOKEN_REL_TABLE_SUFFIX = "_v2_authtokenrel";
     private static final String BP_CLIENTS_TABLE_SUFFIX = "_v2_clients";
+    private static final String BP_AUTH_SESSION_TABLE_SUFFIX = "_v2_authSessions";
+    private static final String BP_AUTHORIZATION_REQUEST_TABLE_SUFFIX = "_v2_authorizationRequests";
+    private static final String BP_AUTHORIZATION_DECISION_KEY_TABLE_SUFFIX = "_v2_authorizationDecisions";
+    private static final String BP_V2_BUS_CONFIG = "_v2_busconfig";
     private static final long BP_MAX_MESSAGES_DEFAULT = 100;
 
     private final String bpInstanceId;

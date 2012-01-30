@@ -16,16 +16,18 @@
 
 package com.janrain.backplane2.server;
 
-import com.janrain.backplane2.server.config.AuthException;
-import com.janrain.backplane2.server.config.Backplane2Config;
+import com.janrain.backplane2.server.config.*;
 import com.janrain.backplane2.server.dao.BackplaneMessageDAO;
 import com.janrain.backplane2.server.dao.DaoFactory;
-import com.janrain.metrics.MetricsAccumulator;
 import com.janrain.commons.supersimpledb.SimpleDBException;
+import com.janrain.crypto.ChannelUtil;
+import com.janrain.crypto.HmacHashUtils;
+import com.janrain.metrics.MetricsAccumulator;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.HistogramMetric;
 import com.yammer.metrics.core.MeterMetric;
 import com.yammer.metrics.core.TimerMetric;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -34,9 +36,11 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.ModelAndView;
 
 import javax.inject.Inject;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -55,6 +59,8 @@ public class Backplane2Controller {
 
     // - PUBLIC
 
+    public static final String DIRECT_RESPONSE = "direct_response"; // both view name and jsp variable
+
     /**
      * Handle dynamic discovery of this server's registration endpoint
      * @return
@@ -66,6 +72,88 @@ public class Backplane2Controller {
         view.addObject("host", "http://" + request.getServerName());
         view.addObject("secureHost", "https://" + request.getServerName());
         return view;
+    }
+
+    // todo: cleanup authsession, authorizationrequests... tables
+
+    @RequestMapping(value = "/authorize", method = { RequestMethod.GET, RequestMethod.POST })
+    public ModelAndView authorize(
+                            HttpServletRequest request,
+                            HttpServletResponse response,
+                            @CookieValue( value = AUTH_SESSION_COOKIE, required = false) String authSessionCookie,
+                            @CookieValue( value = AUTHORIZATION_REQUEST_COOKIE, required = false) String authorizationRequestCookie,
+                            @RequestHeader(value = "Authorization", required = false) String basicAuth) throws OAuth2AuthorizationException {
+
+        AuthorizationRequest authzRequest = null;
+        String httpMethod = request.getMethod();
+        String authZdecisionKey = request.getParameter(AUTHZ_DECISION_KEY);
+
+        // not return from /authenticate && not authz decision post
+        if ( request.getParameterMap().size() > 0  &&  StringUtils.isEmpty(authZdecisionKey) ) { 
+            // incoming authz request
+            authzRequest = parseAuthZrequest(request, basicAuth);
+        }
+
+        String authenticatedBusOwner = getAuthenticatedBusOwner(request, authSessionCookie);
+        if (null == authenticatedBusOwner) {
+            if (null != authzRequest) {
+                try {
+                    logger.info("Persisting authorization request for client: " + authzRequest.get(AuthorizationRequest.Field.CLIENT_ID) +
+                                "[" + authzRequest.get(AuthorizationRequest.Field.COOKIE)+"]");
+                    daoFactory.getAuthorizationRequestDAO().persistAuthorizationRequest(authzRequest);
+                    response.addCookie(new Cookie(AUTHORIZATION_REQUEST_COOKIE, authzRequest.get(AuthorizationRequest.Field.COOKIE)));
+                } catch (SimpleDBException e) {
+                    throw new OAuth2AuthorizationException(OAuth2.OAUTH2_AUTHZ_SERVER_ERROR, e.getMessage(), request, e);
+                }
+            }
+            logger.info("Bus owner not authenticated, redirecting to /authenticate");
+            return new ModelAndView("redirect:/v2/authenticate");
+        }
+
+        if (StringUtils.isEmpty(authZdecisionKey)) {
+            // authorization request
+            if (null == authzRequest) {
+                // return from /authenticate
+                try {
+                    authzRequest = daoFactory.getAuthorizationRequestDAO().retrieveAuthorizationRequest(authorizationRequestCookie);
+                    logger.info("Retrieved authorization request for client:" + authzRequest.get(AuthorizationRequest.Field.CLIENT_ID) +
+                                "[" + authzRequest.get(AuthorizationRequest.Field.COOKIE)+"]");
+                } catch (SimpleDBException e) {
+                    throw new OAuth2AuthorizationException(OAuth2.OAUTH2_AUTHZ_SERVER_ERROR, e.getMessage(), request, e);
+                }
+            }
+            return processAuthZrequest(authzRequest, authSessionCookie, authenticatedBusOwner);
+        } else {
+            // authZ decision from bus owner, accept only on post
+            if (! "post".equals(httpMethod)) {
+                throw new IllegalArgumentException("Invalid HTTP method for authorization decision post: " + httpMethod);
+            }
+            return processAuthZdecision(authZdecisionKey, authSessionCookie, authenticatedBusOwner, authorizationRequestCookie, request);
+        }
+    }
+
+    /**
+     * Authenticates a bus owner and stores the authenticated session (cookie) to simpleDB.
+     *
+     * GET: dislays authentication form
+     * POST: processes authentication and returns to /authorize
+     */
+    @RequestMapping(value = "/authenticate", method = { RequestMethod.GET, RequestMethod.POST })
+    public ModelAndView authenticate(
+                          HttpServletRequest request,
+                          HttpServletResponse response,
+                          @RequestParam(required = false) String busOwner,
+                          @RequestParam(required = false) String password) throws AuthException, SimpleDBException {
+        String httpMethod = request.getMethod();
+        if ("get".equals(httpMethod)) {
+            return new ModelAndView(BUS_OWNER_AUTH_FORM_JSP);
+        } else if ("post".equals(httpMethod)) {
+            checkBusOwnerAuth(busOwner, password);
+            persistAuthenticatedSession(response, busOwner);
+            return new ModelAndView("redirect:/v2/authorize");
+        } else {
+            throw new IllegalArgumentException("Unsupported method for /authenticate: " + httpMethod);
+        }
     }
 
     /**
@@ -418,6 +506,11 @@ public class Backplane2Controller {
 
     }
 
+    @ExceptionHandler
+    public ModelAndView handleOauthAuthzError(final OAuth2AuthorizationException e) {
+        return authzRequestError(e.getOauthErrorCode(), e.getMessage(), e.getRedirectUri(), e.getState());
+    }
+    
     /**
      * Handle auth errors
      */
@@ -481,6 +574,16 @@ public class Backplane2Controller {
     private static final String ERR_MSG_FIELD = "error";
     private static final String ERR_MSG_DESCRIPTION = "error_description";
 
+    private static final String BUS_OWNER_AUTH_FORM_JSP = "bus_owner_auth";
+    private static final String CLIENT_AUTHORIZATION_FORM_JSP = "client_authorization";
+
+    private static final int AUTH_SESSION_COOKIE_LENGTH = 30;
+    private static final String AUTH_SESSION_COOKIE = "bp2.bus.owner.auth";
+    private static final int AUTHORIZATOIN_REQUEST_COOKIE_LENGTH = 30;
+    private static final String AUTHORIZATION_REQUEST_COOKIE = "bp2.authorization.request";
+
+    private static final String AUTHZ_DECISION_KEY = "bp2_authz_key";
+
     private final MeterMetric posts =
             Metrics.newMeter(Backplane2Controller.class, "post", "posts", TimeUnit.MINUTES);
 
@@ -511,6 +614,40 @@ public class Backplane2Controller {
 
     //private static final Random random = new SecureRandom();
 
+    private void checkBusOwnerAuth(String busOwner, String password) throws AuthException {
+        User busOwnerEntry = null;
+        try {
+            busOwnerEntry = bpConfig.getConfig(busOwner, User.class);
+        } catch (SimpleDBException e) {
+            authError("Error looking up bus owner user: " + busOwner);
+        }
+
+        if (busOwnerEntry == null) {
+            authError("Bus owner user not found: " + busOwner);
+        } else if ( ! HmacHashUtils.checkHmacHash(password, busOwnerEntry.get(User.Field.PWDHASH)) ) {
+            authError("Incorrect password for bus owner user " + busOwner);
+        }
+        logger.info("Authenticated bus owner: " + busOwner);
+    }
+
+    private void persistAuthenticatedSession(HttpServletResponse response, String busOwner) throws SimpleDBException {
+        String authCookie = ChannelUtil.randomString(AUTH_SESSION_COOKIE_LENGTH);
+        daoFactory.getAuthSessionDAO().persistAuthSession(new AuthSession(busOwner, authCookie));
+        response.addCookie(new Cookie(AUTH_SESSION_COOKIE, authCookie));
+    }
+
+    private String getAuthenticatedBusOwner(HttpServletRequest request, String authSessionCookie) {
+        if (authSessionCookie == null) return null;
+        try {
+            AuthSession authSession = daoFactory.getAuthSessionDAO().retrieveAuthSession(authSessionCookie);
+            String authenticatedOwner = authSession.get(AuthSession.Field.AUTH_USER);
+            logger.info("Session found for previously authenticated bus owner: " + authenticatedOwner);
+            return authenticatedOwner;
+        } catch (SimpleDBException e) {
+            return null;
+        }
+    }
+
     private void authError(String errMsg) throws AuthException {
         logger.error(errMsg);
         try {
@@ -529,5 +666,227 @@ public class Backplane2Controller {
         return result.toString();
     }
 
+    /** Parse, extract & validate an OAuth2 authorizaton request from the HTTP request and basic auth header */
+    private AuthorizationRequest parseAuthZrequest(HttpServletRequest request, String basicAuth) throws OAuth2AuthorizationException {
+        try {
+            // authenticate client
+            Client authenticatedClient = getAuthenticatedClient(basicAuth);
+            // parse authz request
+            AuthorizationRequest authorizationRequest = new AuthorizationRequest(
+                    ChannelUtil.randomString(AUTHORIZATOIN_REQUEST_COOKIE_LENGTH),
+                    authenticatedClient.get(Client.ClientField.REDIRECT_URI),
+                    request.getParameterMap());
+            // check auth client_id == request param client_id
+            String requestClient = authorizationRequest.get(AuthorizationRequest.Field.CLIENT_ID);
+            if ( ! requestClient.equals(authenticatedClient.get(Client.Field.USER))) {
+                throw new OAuth2AuthorizationException(OAuth2.OAUTH2_AUTHZ_INVALID_REQUEST, "Mismatched client_id in request and basicauth header.", request);
+            }
+            logger.info("Parsed authorization request: " + authorizationRequest);
+            return authorizationRequest;
+        } catch (AuthException e) {
+            throw new OAuth2AuthorizationException(OAuth2.OAUTH2_AUTHZ_ACCESS_DENIED, "Client authentication failed.", request);
+        } catch (Exception e) {
+            throw new OAuth2AuthorizationException(OAuth2.OAUTH2_AUTHZ_INVALID_REQUEST, e.getMessage(), request, e);
+        }
+    }
 
+    private Client getAuthenticatedClient(String basicAuth) throws AuthException {
+        String userPass = null;
+        if (basicAuth == null || !basicAuth.startsWith("Basic ") || basicAuth.length() < 7) {
+            authError("Invalid client authorization header: " + basicAuth);
+        } else {
+            try {
+                userPass = new String(Base64.decodeBase64(basicAuth.substring(6).getBytes("utf-8")));
+            } catch (UnsupportedEncodingException e) {
+                authError("Cannot check client authentication, unsupported encoding: utf-8"); // shouldn't happen
+            }
+        }
+
+        @SuppressWarnings({"ConstantConditions"})
+        int delim = userPass.indexOf(":");
+        if (delim == -1) {
+            authError("Invalid Basic auth token: " + userPass);
+        }
+        String client = userPass.substring(0, delim);
+        String pass = userPass.substring(delim + 1);
+
+        Client clientEntry = null;
+        try {
+            clientEntry = bpConfig.getConfig(client, Client.class);
+        } catch (SimpleDBException e) {
+            authError("Error looking up client: " + client);
+        }
+
+        if (clientEntry == null) {
+            authError("Client not found: " + client);
+        } else if (!HmacHashUtils.checkHmacHash(pass, clientEntry.get(Client.Field.PWDHASH))) {
+            authError("Incorrect password for client " + client);
+        }
+
+        logger.info("Authenticated client: " + client);
+        return clientEntry;
+    }
+
+    /** Present an authorization form to the bus owner and obtain authorization decision */
+    private ModelAndView processAuthZrequest(AuthorizationRequest authzRequest, String authSessionCookie, String authenticatedBusOwner) throws OAuth2AuthorizationException {
+        Map<String,String> model = new HashMap<String, String>();
+
+        // generate & persist authZdecisionKey
+        try {
+            AuthorizationDecisionKey authorizationDecisionKey = new AuthorizationDecisionKey(authSessionCookie);
+            daoFactory.getAuthorizationDecisionKeyDAO().persistAuthorizationDecisionKey(authorizationDecisionKey);
+
+            model.put("auth_key", authorizationDecisionKey.get(AuthorizationDecisionKey.Field.KEY));
+            model.put(AuthorizationRequest.Field.CLIENT_ID.getFieldName(), authzRequest.get(AuthorizationRequest.Field.CLIENT_ID));
+            model.put(AuthorizationRequest.Field.REDIRECT_URI.getFieldName(), authzRequest.get(AuthorizationRequest.Field.REDIRECT_URI));
+
+            String scope = authzRequest.get(AuthorizationRequest.Field.SCOPE);
+            List<BusConfig2> ownedBuses = daoFactory.getBusDao().retrieveBuses(authenticatedBusOwner);
+            model.put(AuthorizationRequest.Field.SCOPE.getFieldName(), checkScope(scope, ownedBuses) );
+
+            // return authZ form
+            logger.info("Requesting bus owner authorization for :" + authzRequest.get(AuthorizationRequest.Field.CLIENT_ID) +
+                    "[" + authzRequest.get(AuthorizationRequest.Field.COOKIE)+"]");
+            return new ModelAndView(CLIENT_AUTHORIZATION_FORM_JSP, model);
+
+        } catch (SimpleDBException e) {
+            throw new OAuth2AuthorizationException(OAuth2.OAUTH2_AUTHZ_SERVER_ERROR, e.getMessage(), authzRequest, e);
+        }
+    }
+
+    private String checkScope(String scope, List<BusConfig2> ownedBuses) {
+        StringBuilder result = new StringBuilder();
+        if(StringUtils.isEmpty(scope)) {
+            // request scope empty, ask/offer permission to all owned buses
+            for(BusConfig2 bus : ownedBuses) {
+                result.append("bus:").append(bus.get(BusConfig2.Field.BUS_NAME)).append(" ");
+            }
+            if(result.length() > 0) {
+                result.deleteCharAt(result.length()-1);
+            }
+        } else {
+            List<String> ownedBusNames = new ArrayList<String>();
+            for(BusConfig2 bus : ownedBuses) {
+                ownedBusNames.add(bus.get(BusConfig2.Field.BUS_NAME));
+            }
+            for(String scopeToken : scope.split(" ")) {
+                if(scopeToken.startsWith("bus:")) {
+                    String bus = scopeToken.substring(4);
+                    if (! ownedBusNames.contains(bus) ) continue;
+                }
+                result.append(scopeToken).append(" ");
+            }
+            if(result.length() > 0) {
+                result.deleteCharAt(result.length()-1);
+            }
+        }
+
+        String resultString = result.toString();
+        if (! resultString.equals(scope)) {
+            logger.info("Checked scope: " + resultString);
+        }
+        return resultString;
+    }
+
+    private ModelAndView processAuthZdecision(String authZdecisionKey, String authSessionCookie,
+                                              String authenticatedBusOwner,
+                                              String authorizationRequestCookie, HttpServletRequest request) throws OAuth2AuthorizationException {
+        AuthorizationRequest authorizationRequest = null;
+        try {
+            // retrieve authorization request
+            authorizationRequest = daoFactory.getAuthorizationRequestDAO().retrieveAuthorizationRequest(authorizationRequestCookie);
+
+            // check authZdecisionKey
+            AuthorizationDecisionKey authZdecisionKeyEntry = daoFactory.getAuthorizationDecisionKeyDAO().retrieveAuthorizationRequest(authZdecisionKey);
+            if (null == authZdecisionKeyEntry || ! authSessionCookie.equals(authZdecisionKeyEntry.get(AuthorizationDecisionKey.Field.AUTH_COOKIE))) {
+                throw new OAuth2AuthorizationException(OAuth2.OAUTH2_AUTHZ_ACCESS_DENIED, "Presented authorization key was issued to a different authenticated bus owner.", authorizationRequest);
+            }
+
+            if (! "Authorize".equals(request.getParameter("authorize"))) {
+                throw new OAuth2AuthorizationException(OAuth2.OAUTH2_AUTHZ_ACCESS_DENIED, "Bus owner denied authorization.", authorizationRequest);
+            } else {
+                // create grant/code
+                Grant grant = new Grant(
+                        authorizationRequest.get(AuthorizationRequest.Field.CLIENT_ID),
+                        // todo: use (and check) scope posted back by bus owner
+                        getBuses(checkScope(
+                                authorizationRequest.get(AuthorizationRequest.Field.SCOPE),
+                                daoFactory.getBusDao().retrieveBuses(authenticatedBusOwner)))
+                );
+                final AuthCode authCode = daoFactory.getGrantDao().issueCode(grant);
+                daoFactory.getGrantDao().persistGrant(grant);
+                
+                logger.info("Authorized " + authorizationRequest.get(AuthorizationRequest.Field.CLIENT_ID)+
+                        "[" + authorizationRequest.get(AuthorizationRequest.Field.COOKIE)+"]" + "grant ID: " + authCode.get(Access.Field.ID));
+
+                // return OAuth2 authz response
+                final String code = authCode.getIdValue();
+                final String state = authorizationRequest.get(AuthorizationRequest.Field.STATE);
+
+                try {
+                    return new ModelAndView("redirect:" + UrlResponseFormat.QUERY.encode(
+                            authorizationRequest.get(AuthorizationRequest.Field.REDIRECT_URI),
+                            new HashMap<String, String>() {{
+                                put(OAuth2.OAUTH2_AUTHZ_RESPONSE_CODE, code);
+                                if (StringUtils.isNotEmpty(state)) {
+                                    put(OAuth2.OAUTH2_AUTHZ_RESPONSE_STATE, state);
+                                }
+                            }}));
+                } catch (ValidationException ve) {
+                    String errMsg = "Error building (positive) authorization response: " + ve.getMessage();
+                    logger.error(errMsg, ve);
+                    return authzRequestError(ve.getCode(), errMsg,
+                            authorizationRequest.get(AuthorizationRequest.Field.REDIRECT_URI),
+                            authorizationRequest.get(AuthorizationRequest.Field.STATE));
+                }
+            }
+        } catch (SimpleDBException e) {
+            throw new OAuth2AuthorizationException(OAuth2.OAUTH2_AUTHZ_SERVER_ERROR, e.getMessage(), authorizationRequest, e);
+        }
+    }
+
+    private String getBuses(String scope) {
+        if (StringUtils.isEmpty(scope)) {
+            return "";
+        } else {
+            StringBuilder result = new StringBuilder();
+            for(String scopeToken : scope.split(" ")) {
+                if(scopeToken.startsWith("bus:")) {
+                    result.append(scopeToken.substring(4)).append(" ");
+                }
+            }
+            if (result.length() > 0) {
+                result.deleteCharAt(result.length()-1);
+            }
+            return result.toString();
+        }
+    }
+    
+    private static ModelAndView authzRequestError( final String oauthErrCode, final String errMsg,
+                                                   final String redirectUri, final String state) {
+        // direct or in/redirect
+        if (OAuth2.OAUTH2_AUTHZ_DIRECT_ERROR.equals(oauthErrCode)) {
+            return new ModelAndView(DIRECT_RESPONSE, new HashMap<String, Object>() {{
+                put("DIRECT_RESPONSE", errMsg);
+            }});
+        } else {
+            try {
+                return new ModelAndView("redirect:" + UrlResponseFormat.QUERY.encode(
+                        redirectUri,
+                        new HashMap<String, String>() {{
+                            put(OAuth2.OAUTH2_AUTHZ_ERROR_FIELD_NAME, oauthErrCode);
+                            put(OAuth2.OAUTH2_AUTHZ_ERROR_DESC_FIELD_NAME, errMsg);
+                            if (StringUtils.isNotEmpty(state)) {
+                                put(AuthorizationRequest.Field.STATE.getFieldName(), state);
+                            }
+                        }}));
+
+            } catch (ValidationException e) {
+                logger.error("Error building redirect_uri: " + e.getMessage());
+                return new ModelAndView(DIRECT_RESPONSE, new HashMap<String, Object>() {{
+                    put("DIRECT_RESPONSE", errMsg);
+                }});
+            }
+        }
+    }
 }
