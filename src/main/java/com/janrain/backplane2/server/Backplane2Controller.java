@@ -814,14 +814,15 @@ public class Backplane2Controller {
                                 authorizationRequest.get(AuthorizationRequest.Field.SCOPE),
                                 daoFactory.getBusDao().retrieveBuses(authenticatedBusOwner)))
                 );
-                final AuthCode authCode = daoFactory.getGrantDao().issueCode(grant);
+
+                grant.setCodeIssuedNow();
                 daoFactory.getGrantDao().persistGrant(grant);
                 
                 logger.info("Authorized " + authorizationRequest.get(AuthorizationRequest.Field.CLIENT_ID)+
-                        "[" + authorizationRequest.get(AuthorizationRequest.Field.COOKIE)+"]" + "grant ID: " + authCode.get(Access.Field.ID));
+                        "[" + authorizationRequest.get(AuthorizationRequest.Field.COOKIE)+"]" + "grant ID: " + grant.getIdValue());
 
                 // return OAuth2 authz response
-                final String code = authCode.getIdValue();
+                final String code = grant.getIdValue();
                 final String state = authorizationRequest.get(AuthorizationRequest.Field.STATE);
 
                 try {
