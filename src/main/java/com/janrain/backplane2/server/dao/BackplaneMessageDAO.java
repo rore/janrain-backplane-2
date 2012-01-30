@@ -32,6 +32,10 @@ public class BackplaneMessageDAO extends DAO {
 
         ArrayList<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
 
+        // If the scope is complex, the risk is that we over-run SDB's query size restrictions.
+        // So, here we break the query into chunks to run against SDB and build the result set
+        // up incrementally.
+
         List<String> queries = scope.buildQueriesFromScope();
 
         for (String query : queries) {

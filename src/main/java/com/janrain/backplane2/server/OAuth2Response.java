@@ -53,7 +53,7 @@ public class OAuth2Response {
         }
 
         if (request.grant_type.equals("code")) {
-            final Token token = new Token(request.getGrant(), null);
+            final Token token = new Token(request.getGrant(), request.scope);
             daoFactory.getTokenDao().persistToken(token);
             // mark the code as used
             request.getGrant().setCodeUsedNow();

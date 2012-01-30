@@ -92,30 +92,35 @@ public class Scope {
 
         ArrayList<String> queries = new ArrayList<String>();
 
-        ArrayList l = new ArrayList(scopes.entrySet());
+        ArrayList scopeList = new ArrayList(scopes.entrySet());
 
-        buildQuery(queries, "", l, 0);
+        buildQuery(queries, "", scopeList, 0);
         return queries;
     }
 
-    private void buildQuery(List<String> list, String query, List l, int level) {
+    private void buildQuery(List<String> queryList, String query, List scopeList, int level) {
 
-        if (level == l.size()) {
+        if (level > scopeList.size()-1) {
             logger.info("add " + query);
-            list.add(query);
+            queryList.add(query);
             return;
         }
 
-        Map.Entry<String,ArrayList<String>> entry = (Map.Entry<String, ArrayList<String>>) l.get(level);
+        Map.Entry<String,ArrayList<String>> entry = (Map.Entry<String, ArrayList<String>>) scopeList.get(level);
 
         if (entry.getValue().isEmpty()) {
-            buildQuery(list, query, l, level+1);
+            buildQuery(queryList, query, scopeList, level+1);
         }
 
         for (String val : entry.getValue()) {
-            String newquery = query + " " + entry.getKey() + "='" + val + "'";
-            logger.info("new query = " + newquery + " list = " + l);
-            buildQuery(list, newquery, l, level+1);
+            String conjunction = "";
+            if (StringUtils.isNotBlank(query)) {
+                conjunction = " AND ";
+            }
+
+            String newQuery = query + conjunction + entry.getKey() + "='" + val + "'";
+
+            buildQuery(queryList, newQuery, scopeList, level+1);
         }
 
 
@@ -141,22 +146,26 @@ public class Scope {
             logger.info("scopeString = '" + scopeString + "'");
             String[] tokens = scopeString.split(Scope.SEPARATOR,Scope.MAX_PARAMETERS);
             // all scope tokens need to have the ":" key/value delimiter
+            // and, if they have the ":" in the value (like the source field MUST have)
+            // we will use the first ":" as the key/value delimiter.
             for (String token:tokens) {
                 if (!token.contains(Scope.DELIMITER)) {
                     logger.debug("Malformed scope: '" + scopeString + "'");
                     throw new BackplaneServerException("Malformed scope");
                 }
-                String[] keyValue = token.split(Scope.DELIMITER);
-                if (!Scope.isValidKey(keyValue[0])) {
-                    throw new BackplaneServerException(keyValue[0] + " is not a valid scope field name");
+                String value = token.substring(token.indexOf(Scope.DELIMITER)+1);
+                String key = token.substring(0, token.indexOf(Scope.DELIMITER));
+
+                if (!Scope.isValidKey(key)) {
+                    throw new BackplaneServerException(key + " is not a valid scope field name");
                 }
 
-                if (!scopes.containsKey(keyValue[0])) {
-                    scopes.put(keyValue[0], new ArrayList<String>());
+                if (!scopes.containsKey(key)) {
+                    scopes.put(key, new ArrayList<String>());
                 }
 
-                List<String> values = scopes.get(keyValue[0]);
-                values.add(keyValue[1]);
+                List<String> values = scopes.get(key);
+                values.add(value);
             }
         }
         logger.info("map " + scopes + " generated from " + scopeString);

@@ -415,7 +415,7 @@ public class Backplane2ControllerTest {
 
         //create grant for test
         ArrayList<String> randomBuses = new ArrayList<String>();
-        for (int i=0; i < 15; i++) {
+        for (int i=0; i < 8; i++) {
             randomBuses.add(ChannelUtil.randomString(10));
         }
         String buses = StringUtils.collectionToDelimitedString(randomBuses, " ");
@@ -428,15 +428,12 @@ public class Backplane2ControllerTest {
         request.setMethod("POST");
         request.setParameter("client_id", client.get(User.Field.USER));
         request.setParameter("grant_type", "code");
-
-        // because we didn't specify the "scope" parameter, the server will
-        // return the scope it determined from grant1 but not grant2
-
         request.setParameter("code", grant.getIdValue());
+        request.setParameter("scope", "sticky:false sticky:true source:ftp://bla_source/");
         request.setParameter("client_secret", client.get(User.Field.PWDHASH));
         request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
         handlerAdapter.handle(request, response, controller);
-        logger.debug("testTokenGrantByCodeScopeComplexity() => " + response.getContentAsString());
+        logger.debug("testTokenGrantByCodeScopeComplexity() get token => " + response.getContentAsString());
         //assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
 
         assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
@@ -457,6 +454,7 @@ public class Backplane2ControllerTest {
         this.saveMessage(message1);
 
          // Make the call
+        refreshRequestAndResponse();
         request.setRequestURI("/v2/messages");
         request.setMethod("GET");
         request.setParameter("access_token", returnedToken);
@@ -464,6 +462,11 @@ public class Backplane2ControllerTest {
         logger.debug("testTokenGrantByCodeScopeComplexity()   => " + response.getContentAsString());
 
         assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
+
+        // should just receive one message on the last bus
+        Map<String,Object> returnedBody = mapper.readValue(response.getContentAsString(), new TypeReference<Map<String,Object>>() {});
+        List<Map<String,Object>> returnedMsgs = (List<Map<String, Object>>) returnedBody.get("messages");
+        assertTrue(returnedMsgs.size() == 1);
 
     }
 
