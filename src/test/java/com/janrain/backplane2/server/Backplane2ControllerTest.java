@@ -148,13 +148,8 @@ public class Backplane2ControllerTest {
 
 
     private Client createTestClient() throws SimpleDBException {
-<<<<<<< HEAD
-        Client client = new Client("random_id", "secret", "source_url", "redirect_uri");
-        superSimpleDB.store(bpConfig.getTableName(BP_CLIENTS), Client.class, client);
-=======
         Client client = new Client("random_id", HmacHashUtils.hmacHash("secret"), "source_url", "http://redirect.com");
-        superSimpleDB.store(bpConfig.getClientsTableName(), Client.class, client);
->>>>>>> added test for new endpoints
+        superSimpleDB.store(bpConfig.getTableName(BP_CLIENTS), Client.class, client);
         return client;
     }
 
@@ -1011,46 +1006,6 @@ public class Backplane2ControllerTest {
 
             assertNotNull(authCookie);
             logger.info("auth cookie = " + authCookie.getValue());
-
-
-            /*
-            refreshRequestAndResponse();
-
-            logger.info("simulate redirect to /authenticate endpoint");
-            request.setRequestURI("/v2/authenticate");
-            request.setMethod("GET");
-            mv = handlerAdapter.handle(request, response, controller);
-            //assertTrue(mv.getViewName().equals("bus_owner_auth"));
-
-            refreshRequestAndResponse();
-
-            logger.info("post bus owner credentials to /authenticate endpoint");
-            request.setRequestURI("/v2/authenticate");
-            request.setMethod("POST");
-            request.setParameter("busOwner", user.getIdValue());
-            request.setParameter("password", "foo");
-
-            mv = handlerAdapter.handle(request, response, controller);
-            logger.info("testAuthenticate()-> view = " + mv.getViewName());
-
-            Cookie sessionCookie = response.getCookie("bp2.bus.owner.auth");
-            assertNotNull(sessionCookie);
-            logger.info("session cookie = " + sessionCookie.getValue());
-
-            // now, simulate redirect back to the authorize endpoint
-            logger.info("back to /v2/authorize endpoint");
-
-            refreshRequestAndResponse();
-
-            request.setCookies(new Cookie[]{sessionCookie});
-            request.setRequestURI("/v2/authorize");
-            request.setMethod("POST");
-            request.setAuthType("BASIC");
-            request.addHeader("Authorization", "Basic " + encodedCredentials);
-            request.setCookies(new Cookie[]{authCookie});
-            mv = handlerAdapter.handle(request, response, controller);
-            logger.info("testAuthenticate() -> view after  = " + mv.getViewName());
-            */
 
 
         } finally {
