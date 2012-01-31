@@ -196,10 +196,6 @@ public class Backplane2Config {
             throw new RuntimeException(err, e);
         }
 
-        for(SimpleDBTables table : EnumSet.allOf(SimpleDBTables.class)) {
-            superSimpleDb.checkDomain(getTableName(table));
-        }
-
         logger.info("Configured Backplane Server instance: " + bpInstanceId);
     }
 
@@ -242,6 +238,10 @@ public class Backplane2Config {
     @PostConstruct
     private void init() {
         this.cleanup = createCleanupTask();
+
+        for(SimpleDBTables table : EnumSet.allOf(SimpleDBTables.class)) {
+            superSimpleDb.checkDomain(getTableName(table));
+        }
     }
 
     @PreDestroy
