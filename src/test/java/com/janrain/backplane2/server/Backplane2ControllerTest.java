@@ -8,6 +8,7 @@ import com.janrain.backplane2.server.dao.DaoFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.crypto.ChannelUtil;
+import com.janrain.crypto.HmacHashUtils;
 import org.apache.catalina.util.Base64;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -23,8 +24,12 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.HandlerAdapter;
+import org.springframework.web.servlet.ModelAndView;
+
 import javax.inject.Inject;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletResponse;
+import java.lang.reflect.Array;
 import java.util.*;
 
 import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_CLIENTS;
@@ -143,11 +148,15 @@ public class Backplane2ControllerTest {
 
 
     private Client createTestClient() throws SimpleDBException {
+<<<<<<< HEAD
         Client client = new Client("random_id", "secret", "source_url", "redirect_uri");
         superSimpleDB.store(bpConfig.getTableName(BP_CLIENTS), Client.class, client);
+=======
+        Client client = new Client("random_id", HmacHashUtils.hmacHash("secret"), "source_url", "http://redirect.com");
+        superSimpleDB.store(bpConfig.getClientsTableName(), Client.class, client);
+>>>>>>> added test for new endpoints
         return client;
     }
-
 
     private void refreshRequestAndResponse() {
 		request = new MockHttpServletRequest();
@@ -965,8 +974,87 @@ public class Backplane2ControllerTest {
 
             assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
         } finally {
-
             daoFactory.getTokenDao().deleteToken(token);
+        }
+
+    }
+
+    @Test
+    public void testAuthenticate() throws Exception {
+
+        User user = new User();
+        user.put(User.Field.USER.getFieldName(), ChannelUtil.randomString(20));
+        user.put(User.Field.PWDHASH.getFieldName(), HmacHashUtils.hmacHash("foo"));
+
+        Client client = this.createTestClient();
+
+        try {
+            daoFactory.getUserDAO().persistUser(user);
+
+            refreshRequestAndResponse();
+
+            // encode un:pw
+            String credentials = client.getIdValue() + ":" + "secret";
+            String encodedCredentials = new String(Base64.encode(credentials.getBytes()));
+
+            logger.info("hit /authorize endpoint to get ball rolling");
+            request.setRequestURI("/v2/authorize");
+            request.setMethod("GET");
+            request.setAuthType("BASIC");
+            request.addParameter("redirect_uri", "http://foo.com");
+            request.addParameter("response_type", "authorization_code");
+            request.addParameter("client_id", client.getClientId());
+            request.addHeader("Authorization", "Basic " + encodedCredentials);
+            ModelAndView mv = handlerAdapter.handle(request, response, controller);
+            logger.info("testAuthenticate() -> view after  = " + mv.getViewName());
+            Cookie authCookie = response.getCookie("bp2.authorization.request");
+
+            assertNotNull(authCookie);
+            logger.info("auth cookie = " + authCookie.getValue());
+
+
+            /*
+            refreshRequestAndResponse();
+
+            logger.info("simulate redirect to /authenticate endpoint");
+            request.setRequestURI("/v2/authenticate");
+            request.setMethod("GET");
+            mv = handlerAdapter.handle(request, response, controller);
+            //assertTrue(mv.getViewName().equals("bus_owner_auth"));
+
+            refreshRequestAndResponse();
+
+            logger.info("post bus owner credentials to /authenticate endpoint");
+            request.setRequestURI("/v2/authenticate");
+            request.setMethod("POST");
+            request.setParameter("busOwner", user.getIdValue());
+            request.setParameter("password", "foo");
+
+            mv = handlerAdapter.handle(request, response, controller);
+            logger.info("testAuthenticate()-> view = " + mv.getViewName());
+
+            Cookie sessionCookie = response.getCookie("bp2.bus.owner.auth");
+            assertNotNull(sessionCookie);
+            logger.info("session cookie = " + sessionCookie.getValue());
+
+            // now, simulate redirect back to the authorize endpoint
+            logger.info("back to /v2/authorize endpoint");
+
+            refreshRequestAndResponse();
+
+            request.setCookies(new Cookie[]{sessionCookie});
+            request.setRequestURI("/v2/authorize");
+            request.setMethod("POST");
+            request.setAuthType("BASIC");
+            request.addHeader("Authorization", "Basic " + encodedCredentials);
+            request.setCookies(new Cookie[]{authCookie});
+            mv = handlerAdapter.handle(request, response, controller);
+            logger.info("testAuthenticate() -> view after  = " + mv.getViewName());
+            */
+
+
+        } finally {
+            daoFactory.getUserDAO().deleteUser(user.getIdValue());
         }
 
     }

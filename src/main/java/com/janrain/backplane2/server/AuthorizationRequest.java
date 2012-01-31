@@ -3,6 +3,7 @@ package com.janrain.backplane2.server;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -25,15 +26,18 @@ public class AuthorizationRequest extends AbstractMessage {
     public AuthorizationRequest(String cookie, String configuredRedirectUri, Map parameterMap) {
         Map<String,String> data = new LinkedHashMap<String, String>();
         data.put(Field.COOKIE.getFieldName(), cookie);
+
         for(Field f: EnumSet.allOf(Field.class)) {
             Object value = parameterMap.get(f.getFieldName().toLowerCase());
             if ( value != null && ((String[]) value).length > 0 && StringUtils.isNotEmpty(((String[])value)[0])) {
                 data.put(f.getFieldName(), ((String[])value)[0]);
             }
         }
+
         if(StringUtils.isEmpty(get(Field.REDIRECT_URI))) {
             data.put(Field.REDIRECT_URI.getFieldName(), configuredRedirectUri);
         }
+
         super.init(cookie, data);
     }
 
@@ -99,8 +103,8 @@ public class AuthorizationRequest extends AbstractMessage {
             this(true);
         }
 
-        private  Field(boolean requried) {
-            this.required = requried;
+        private Field(boolean required) {
+            this.required = required;
         }
     }
 }

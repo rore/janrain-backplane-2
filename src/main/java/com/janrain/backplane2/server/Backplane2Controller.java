@@ -115,6 +115,7 @@ public class Backplane2Controller {
             if (null == authzRequest) {
                 // return from /authenticate
                 try {
+                    logger.debug("bp2.authorization.request cookie = " + authorizationRequestCookie);
                     authzRequest = daoFactory.getAuthorizationRequestDAO().retrieveAuthorizationRequest(authorizationRequestCookie);
                     logger.info("Retrieved authorization request for client:" + authzRequest.get(AuthorizationRequest.Field.CLIENT_ID) +
                                 "[" + authzRequest.get(AuthorizationRequest.Field.COOKIE)+"]");
@@ -125,7 +126,7 @@ public class Backplane2Controller {
             return processAuthZrequest(authzRequest, authSessionCookie, authenticatedBusOwner);
         } else {
             // authZ decision from bus owner, accept only on post
-            if (! "post".equals(httpMethod)) {
+            if (! "POST".equals(httpMethod)) {
                 throw new IllegalArgumentException("Invalid HTTP method for authorization decision post: " + httpMethod);
             }
             return processAuthZdecision(authZdecisionKey, authSessionCookie, authenticatedBusOwner, authorizationRequestCookie, request);
@@ -135,7 +136,7 @@ public class Backplane2Controller {
     /**
      * Authenticates a bus owner and stores the authenticated session (cookie) to simpleDB.
      *
-     * GET: dislays authentication form
+     * GET: displays authentication form
      * POST: processes authentication and returns to /authorize
      */
     @RequestMapping(value = "/authenticate", method = { RequestMethod.GET, RequestMethod.POST })
@@ -145,9 +146,10 @@ public class Backplane2Controller {
                           @RequestParam(required = false) String busOwner,
                           @RequestParam(required = false) String password) throws AuthException, SimpleDBException {
         String httpMethod = request.getMethod();
-        if ("get".equals(httpMethod)) {
+        if ("GET".equals(httpMethod)) {
+            logger.debug("returning view for GET");
             return new ModelAndView(BUS_OWNER_AUTH_FORM_JSP);
-        } else if ("post".equals(httpMethod)) {
+        } else if ("POST".equals(httpMethod)) {
             checkBusOwnerAuth(busOwner, password);
             persistAuthenticatedSession(response, busOwner);
             return new ModelAndView("redirect:/v2/authorize");
@@ -580,7 +582,7 @@ public class Backplane2Controller {
 
     private static final int AUTH_SESSION_COOKIE_LENGTH = 30;
     private static final String AUTH_SESSION_COOKIE = "bp2.bus.owner.auth";
-    private static final int AUTHORIZATOIN_REQUEST_COOKIE_LENGTH = 30;
+    private static final int AUTHORIZATION_REQUEST_COOKIE_LENGTH = 30;
     private static final String AUTHORIZATION_REQUEST_COOKIE = "bp2.authorization.request";
 
     private static final String AUTHZ_DECISION_KEY = "bp2_authz_key";
@@ -667,14 +669,14 @@ public class Backplane2Controller {
         return result.toString();
     }
 
-    /** Parse, extract & validate an OAuth2 authorizaton request from the HTTP request and basic auth header */
+    /** Parse, extract & validate an OAuth2 authorization request from the HTTP request and basic auth header */
     private AuthorizationRequest parseAuthZrequest(HttpServletRequest request, String basicAuth) throws OAuth2AuthorizationException {
         try {
             // authenticate client
             Client authenticatedClient = getAuthenticatedClient(basicAuth);
             // parse authz request
             AuthorizationRequest authorizationRequest = new AuthorizationRequest(
-                    ChannelUtil.randomString(AUTHORIZATOIN_REQUEST_COOKIE_LENGTH),
+                    ChannelUtil.randomString(AUTHORIZATION_REQUEST_COOKIE_LENGTH),
                     authenticatedClient.get(Client.ClientField.REDIRECT_URI),
                     request.getParameterMap());
             // check auth client_id == request param client_id
