@@ -24,10 +24,11 @@ public class AuthorizationRequest extends AbstractMessage {
 
     public AuthorizationRequest(String cookie, String configuredRedirectUri, Map parameterMap) {
         Map<String,String> data = new LinkedHashMap<String, String>();
+        data.put(Field.COOKIE.getFieldName(), cookie);
         for(Field f: EnumSet.allOf(Field.class)) {
             Object value = parameterMap.get(f.getFieldName().toLowerCase());
-            if (value instanceof String && StringUtils.isNotEmpty((String) value)) {
-                data.put(f.getFieldName(), (String) value);
+            if ( value != null && ((String[]) value).length > 0 && StringUtils.isNotEmpty(((String[])value)[0])) {
+                data.put(f.getFieldName(), ((String[])value)[0]);
             }
         }
         if(StringUtils.isEmpty(get(Field.REDIRECT_URI))) {
