@@ -17,11 +17,15 @@ public class BusOwnerDAO extends DAO {
     }
 
 
-    public void persistBusOwner(User client) throws SimpleDBException {
-        superSimpleDB.store(bpConfig.getTableName(BP_BUS_OWNERS), User.class, client);
+    public void persistBusOwner(User user) throws SimpleDBException {
+        superSimpleDB.store(bpConfig.getTableName(BP_BUS_OWNERS), User.class, user);
     }
 
-    public User retrieveBusOwner(String client) throws SimpleDBException {
-        return superSimpleDB.retrieve(bpConfig.getTableName(BP_BUS_OWNERS), User.class, client);
+    public User retrieveBusOwner(String userId) throws SimpleDBException {
+        return superSimpleDB.retrieve(bpConfig.getTableName(BP_BUS_OWNERS), User.class, userId);
+    }
+
+    public void deleteBusOwner(String userId) throws SimpleDBException {
+        superSimpleDB.delete(bpConfig.getTableName(BP_BUS_OWNERS), userId);
     }
 }

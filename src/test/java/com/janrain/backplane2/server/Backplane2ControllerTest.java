@@ -984,7 +984,7 @@ public class Backplane2ControllerTest {
         Client client = this.createTestClient();
 
         try {
-            daoFactory.getUserDAO().persistUser(user);
+            daoFactory.getBusOwnerDAO().persistBusOwner(user);
 
             refreshRequestAndResponse();
 
@@ -1009,7 +1009,7 @@ public class Backplane2ControllerTest {
 
 
         } finally {
-            daoFactory.getUserDAO().deleteUser(user.getIdValue());
+            daoFactory.getBusOwnerDAO().deleteBusOwner(user.getIdValue());
         }
 
     }

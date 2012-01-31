@@ -49,10 +49,6 @@ public class DaoFactory {
         return new AuthorizationDecisionKeyDAO(superSimpleDB, bpConfig);
     }
 
-    public UserDAO getUserDAO() {
-        return new UserDAO(superSimpleDB, bpConfig);
-    }
-
     @Inject
     private SuperSimpleDB superSimpleDB;
 
