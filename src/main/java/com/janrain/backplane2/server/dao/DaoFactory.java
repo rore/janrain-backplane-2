@@ -25,6 +25,10 @@ public class DaoFactory {
         return new GrantDAO(superSimpleDB, bpConfig);
     }
 
+    public BusOwnerDAO getBusOwnerDAO() {
+        return new BusOwnerDAO(superSimpleDB, bpConfig);
+    }
+
     public ClientDAO getClientDAO() {
         return new ClientDAO(superSimpleDB, bpConfig);
     }

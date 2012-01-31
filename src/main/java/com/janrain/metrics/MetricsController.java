@@ -73,7 +73,7 @@ public class MetricsController {
 
     private String retrieveAllMetrics() throws SimpleDBException {
 
-        List<MetricMessage> metrics = superSimpleDb.retrieve(bpConfig.getMetricsTableName(), MetricMessage.class);
+        List<MetricMessage> metrics = superSimpleDb.retrieve(bpConfig.getTableName(Backplane2Config.SimpleDBTables.BP_METRICS), MetricMessage.class);
 
         StringBuilder sb = new StringBuilder().append("[");
 

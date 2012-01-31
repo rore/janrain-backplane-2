@@ -17,16 +17,13 @@
 package com.janrain.backplane2.server.config;
 
 import com.janrain.InitSystemProps;
-import com.janrain.backplane2.server.ApplicationException;
 import com.janrain.backplane2.server.dao.DaoFactory;
-import com.janrain.metrics.MetricMessage;
-import com.janrain.metrics.MetricsAccumulator;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
-import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.AbstractNamedMap;
-import com.janrain.commons.supersimpledb.message.NamedMap;
 import com.janrain.crypto.HmacHashUtils;
+import com.janrain.metrics.MetricMessage;
+import com.janrain.metrics.MetricsAccumulator;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.TimerMetric;
 import org.apache.commons.lang.StringUtils;
@@ -72,70 +69,40 @@ public class Backplane2Config {
         checkAuth(getMetricAuthTableName(), user, password);
     }
 
-    public <T extends NamedMap> String getTableNameForType(Class<T> type) {
-        return bpInstanceId + "_" + type.getSimpleName();
+    public String getTableName(SimpleDBTables table) {
+        return Backplane2Config.this.bpInstanceId + table.getTableSuffix();
     }
 
-    public String getMetricsTableName() {
-        return bpInstanceId +  BP_METRICS_TABLE_SUFFIX;
-    }
+    public enum SimpleDBTables {
 
-    public String getMessagesTableName() {
-        return bpInstanceId + BP_MESSAGES_TABLE_SUFFIX;
-    }
+        BP_SERVER_CONFIG("_bpserverconfig"),
+        BP_ADMIN_AUTH("_Admin"),
+        BP_V2_BUS_CONFIG("_v2_busconfig"),
+        BP_BUS_OWNERS("_v2_bus_owners"),
+        BP_CLIENTS("_v2_clients"),
+        BP_MESSAGES("_v2_messages"),
+        BP_SAMPLES("_samples"),
+        BP_METRICS("_metrics"),
+        BP_METRIC_AUTH("_bpMetricAuth"),
+        BP_GRANT("_v2_grants"),
+        BP_ACCESS_TOKEN("_v2_accessTokens"),
+        BP_AUTHTOKEN_REL("_v2_authtokenrel"),
+        BP_AUTH_SESSION("_v2_authSessions"),
+        BP_AUTHORIZATION_REQUEST("_v2_authorizationRequests"),
+        BP_AUTHORIZATION_DECISION_KEY("_v2_authorizationDecisions");
 
-    public String getSamplesTableName() {
-        return bpInstanceId + BP_SAMPLES_TABLE_SUFFIX;
-    }
-
-    public String getGrantTableName() {
-        return bpInstanceId + BP_GRANT_TABLE_SUFFIX;
-    }
-
-    public String getAccessTokenTableName() {
-        return bpInstanceId + BP_ACCESS_TOKEN_TABLE_SUFFIX;
-    }
-
-    public String getAuthTokenRelTableName() {
-        return bpInstanceId + BP_AUTHTOKEN_REL_TABLE_SUFFIX;
-    }
-
-    public String getClientsTableName() {
-        return bpInstanceId + BP_CLIENTS_TABLE_SUFFIX;
-    }
-
-    public String getAuthSessionTableName() {
-        return bpInstanceId + BP_AUTH_SESSION_TABLE_SUFFIX;
-    }
-
-    public String getAuthorizationRequestTableName() {
-        return bpInstanceId + BP_AUTHORIZATION_REQUEST_TABLE_SUFFIX;
-    }
-
-    public String getAuthorizationDecisionKeyTableName() {
-        return bpInstanceId + BP_AUTHORIZATION_DECISION_KEY_TABLE_SUFFIX;
-    }
-    
-    public String getBusConfigTableName() {
-        return bpInstanceId + BP_V2_BUS_CONFIG;
-    }
-
-    /**
-     * Retrieve a configuration entity by its name
-     *
-     *
-     * @param entityName	The entity name for the configuration
-     * @return		        The entity configuration
-     * @throws ApplicationException if no matching entity configuration is found
-     */
-    public <T extends AbstractMessage> T getConfig(String entityName, Class<T> entityType) throws SimpleDBException {
-        T config = superSimpleDb.retrieve(getTableNameForType(entityType), entityType, entityName);
-        if (config == null) {
-            throw new ApplicationException("Error looking up " + entityType.getSimpleName() + " " + entityName);
+        public String getTableSuffix() {
+            return tableSuffix;
         }
-        return config;
-    }
 
+        // - PRIVATE
+
+        private String tableSuffix;
+
+        private SimpleDBTables(String tableSuffix) {
+            this.tableSuffix = tableSuffix;
+        }
+    }
 
     /**
 	 * @return the debugMode
@@ -200,22 +167,7 @@ public class Backplane2Config {
     private static final String BUILD_VERSION_PROPERTY = "build.version";
     private static final Properties buildProperties = new Properties();
 
-
-    private static final String BP_SERVER_CONFIG_TABLE_SUFFIX = "_bpserverconfig";
-    private static final String BP_ADMIN_AUTH_TABLE_SUFFIX = "_Admin";
     private static final String BP_CONFIG_ENTRY_NAME = "bpserverconfig";
-    private static final String BP_MESSAGES_TABLE_SUFFIX = "_v2_messages";
-    private static final String BP_SAMPLES_TABLE_SUFFIX = "_samples";
-    private static final String BP_METRICS_TABLE_SUFFIX = "_metrics";
-    private static final String BP_METRIC_AUTH_TABLE_SUFFIX = "_bpMetricAuth";
-    private static final String BP_GRANT_TABLE_SUFFIX = "_v2_grants";
-    private static final String BP_ACCESS_TOKEN_TABLE_SUFFIX = "_v2_accessTokens";
-    private static final String BP_AUTHTOKEN_REL_TABLE_SUFFIX = "_v2_authtokenrel";
-    private static final String BP_CLIENTS_TABLE_SUFFIX = "_v2_clients";
-    private static final String BP_AUTH_SESSION_TABLE_SUFFIX = "_v2_authSessions";
-    private static final String BP_AUTHORIZATION_REQUEST_TABLE_SUFFIX = "_v2_authorizationRequests";
-    private static final String BP_AUTHORIZATION_DECISION_KEY_TABLE_SUFFIX = "_v2_authorizationDecisions";
-    private static final String BP_V2_BUS_CONFIG = "_v2_busconfig";
     private static final long BP_MAX_MESSAGES_DEFAULT = 100;
 
     private final String bpInstanceId;
@@ -240,6 +192,10 @@ public class Backplane2Config {
             String err = "Error loading build properties from " + BUILD_PROPERTIES;
             logger.error(err, e);
             throw new RuntimeException(err, e);
+        }
+
+        for(SimpleDBTables table : EnumSet.allOf(SimpleDBTables.class)) {
+            superSimpleDb.checkDomain(getTableName(table));
         }
 
         logger.info("Configured Backplane Server instance: " + bpInstanceId);
@@ -315,11 +271,11 @@ public class Backplane2Config {
             logger.debug("Storing metrics for instance " + MetricsAccumulator.getInstanceUuid());
 
             // Create the _metrics table if it doesn't already exist.  This is a light-weight call.
-            superSimpleDb.checkDomain(getMetricsTableName());
+            superSimpleDb.checkDomain(getTableName(SimpleDBTables.BP_METRICS));
 
-            MetricMessage oldMetric = superSimpleDb.retrieveAndDelete(getMetricsTableName(), MetricMessage.class, metric.getIdValue());
+            MetricMessage oldMetric = superSimpleDb.retrieveAndDelete(getTableName(SimpleDBTables.BP_METRICS), MetricMessage.class, metric.getIdValue());
 
-            superSimpleDb.store(getMetricsTableName(), MetricMessage.class, metric, true);
+            superSimpleDb.store(getTableName(SimpleDBTables.BP_METRICS), MetricMessage.class, metric, true);
 
         } catch (Exception e) {
             logger.error("Error compiling metrics " + e.getMessage(), e);
@@ -330,8 +286,8 @@ public class Backplane2Config {
     private void deleteExpiredMessages() {
         try {
             logger.info("Backplane message cleanup task started.");
-            String messagesTable = getMessagesTableName();
-            for(BusConfig2 busConfig : superSimpleDb.retrieve(getTableNameForType(BusConfig2.class), BusConfig2.class)) {
+            String messagesTable = getTableName(SimpleDBTables.BP_MESSAGES);
+            for(BusConfig2 busConfig : superSimpleDb.retrieve(getTableName(SimpleDBTables.BP_V2_BUS_CONFIG), BusConfig2.class)) {
                 try {
                     // non-sticky
                     superSimpleDb.deleteWhere(messagesTable, getExpiredMessagesClause(busConfig.get(BUS_NAME), false, busConfig.get(RETENTION_TIME_SECONDS)));
@@ -345,7 +301,7 @@ public class Backplane2Config {
 
             try {
                 // remove old metrics
-                superSimpleDb.deleteWhere(getMetricsTableName(), getExpiredMetricClause());
+                superSimpleDb.deleteWhere(getTableName(SimpleDBTables.BP_METRICS), getExpiredMetricClause());
             } catch (SimpleDBException sdbe) {
                 logger.error("Error while removing expired metrics, " + sdbe.getMessage(), sdbe);
             }
@@ -426,15 +382,15 @@ public class Backplane2Config {
     }
 
     private String getBpServerConfigTableName() {
-        return bpInstanceId + BP_SERVER_CONFIG_TABLE_SUFFIX;
+        return bpInstanceId + SimpleDBTables.BP_SERVER_CONFIG.getTableSuffix();
     }
 
     private String getAdminAuthTableName() {
-        return bpInstanceId + BP_ADMIN_AUTH_TABLE_SUFFIX;
+        return bpInstanceId + SimpleDBTables.BP_ADMIN_AUTH.getTableSuffix();
     }
 
     private String getMetricAuthTableName() {
-        return bpInstanceId + BP_METRIC_AUTH_TABLE_SUFFIX;
+        return bpInstanceId + SimpleDBTables.BP_METRIC_AUTH.getTableSuffix();
     }
 
     private Long getMaxCacheAge() {

@@ -5,6 +5,8 @@ import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 
+import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_AUTH_SESSION;
+
 /**
  * @author Johnny Bufu
  */
@@ -15,10 +17,10 @@ public class AuthSessionDAO extends DAO {
     }
 
     public void persistAuthSession(AuthSession authSession) throws SimpleDBException {
-        superSimpleDB.store(bpConfig.getAuthSessionTableName(), AuthSession.class, authSession);
+        superSimpleDB.store(bpConfig.getTableName(BP_AUTH_SESSION), AuthSession.class, authSession);
     }
 
     public AuthSession retrieveAuthSession(String cookie) throws SimpleDBException {
-        return superSimpleDB.retrieve(bpConfig.getAuthSessionTableName(), AuthSession.class, cookie);
+        return superSimpleDB.retrieve(bpConfig.getTableName(BP_AUTH_SESSION), AuthSession.class, cookie);
     }
 }

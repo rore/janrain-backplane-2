@@ -26,6 +26,9 @@ import org.springframework.web.servlet.HandlerAdapter;
 import javax.inject.Inject;
 import javax.servlet.http.HttpServletResponse;
 import java.util.*;
+
+import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_CLIENTS;
+import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_MESSAGES;
 import static org.junit.Assert.*;
 
 /**
@@ -107,15 +110,15 @@ public class Backplane2ControllerTest {
         try {
             for (String key:this.createdMessageKeys) {
                 logger.info("deleting Message " + key);
-                superSimpleDB.delete(bpConfig.getMessagesTableName(), key);
+                superSimpleDB.delete(bpConfig.getTableName(BP_MESSAGES), key);
             }
 
             try {
                 List<BackplaneMessage> testMsgs = superSimpleDB.
-                        retrieveWhere(bpConfig.getMessagesTableName(), BackplaneMessage.class, "channel='testchannel'", true);
+                        retrieveWhere(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class, "channel='testchannel'", true);
                 for (BackplaneMessage msg : testMsgs) {
                     logger.info("deleting Message " + msg.getIdValue());
-                    superSimpleDB.delete(bpConfig.getMessagesTableName(), msg.getIdValue());
+                    superSimpleDB.delete(bpConfig.getTableName(BP_MESSAGES), msg.getIdValue());
                 }
             } catch (SimpleDBException sdbe) {
                 // ignore - the domain may not exist
@@ -141,7 +144,7 @@ public class Backplane2ControllerTest {
 
     private Client createTestClient() throws SimpleDBException {
         Client client = new Client("random_id", "secret", "source_url", "redirect_uri");
-        superSimpleDB.store(bpConfig.getClientsTableName(), Client.class, client);
+        superSimpleDB.store(bpConfig.getTableName(BP_CLIENTS), Client.class, client);
         return client;
     }
 

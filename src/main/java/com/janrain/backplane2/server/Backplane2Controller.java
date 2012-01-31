@@ -618,7 +618,7 @@ public class Backplane2Controller {
     private void checkBusOwnerAuth(String busOwner, String password) throws AuthException {
         User busOwnerEntry = null;
         try {
-            busOwnerEntry = bpConfig.getConfig(busOwner, User.class);
+            busOwnerEntry = daoFactory.getBusOwnerDAO().retrieveBusOwner(busOwner);
         } catch (SimpleDBException e) {
             authError("Error looking up bus owner user: " + busOwner);
         }
@@ -713,7 +713,7 @@ public class Backplane2Controller {
 
         Client clientEntry = null;
         try {
-            clientEntry = bpConfig.getConfig(client, Client.class);
+            clientEntry = daoFactory.getClientDAO().retrieveClient(client);
         } catch (SimpleDBException e) {
             authError("Error looking up client: " + client);
         }

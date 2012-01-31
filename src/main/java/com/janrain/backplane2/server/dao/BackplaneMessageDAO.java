@@ -11,6 +11,8 @@ import org.apache.log4j.Logger;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_MESSAGES;
+
 /**
  * @author Tom Raney
  */
@@ -21,11 +23,11 @@ public class BackplaneMessageDAO extends DAO {
     };
 
     public void persistBackplaneMessage(BackplaneMessage message) throws SimpleDBException {
-        superSimpleDB.store(bpConfig.getMessagesTableName(), BackplaneMessage.class, message);
+        superSimpleDB.store(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class, message);
     }
 
     public BackplaneMessage retrieveBackplaneMessage(String messageId) throws SimpleDBException {
-        return superSimpleDB.retrieve(bpConfig.getMessagesTableName(), BackplaneMessage.class, messageId);
+        return superSimpleDB.retrieve(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class, messageId);
     }
 
     public List<BackplaneMessage> retrieveAllMesssagesPerScope(Scope scope, String sinceMessageId) throws SimpleDBException {
@@ -48,7 +50,7 @@ public class BackplaneMessageDAO extends DAO {
 
             logger.info("message query => " + query);
 
-            messages.addAll(superSimpleDB.retrieveWhere(bpConfig.getMessagesTableName(), BackplaneMessage.class, query, true));
+            messages.addAll(superSimpleDB.retrieveWhere(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class, query, true));
         }
 
         return messages;

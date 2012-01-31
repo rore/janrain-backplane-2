@@ -5,6 +5,8 @@ import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 
+import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_AUTHORIZATION_REQUEST;
+
 /**
  * @author Johnny Bufu
  */
@@ -15,10 +17,10 @@ public class AuthorizationRequestDAO extends DAO {
     }
 
     public void persistAuthorizationRequest(AuthorizationRequest authorizationRequest) throws SimpleDBException {
-        superSimpleDB.store(bpConfig.getAuthorizationRequestTableName(), AuthorizationRequest.class, authorizationRequest);
+        superSimpleDB.store(bpConfig.getTableName(BP_AUTHORIZATION_REQUEST), AuthorizationRequest.class, authorizationRequest);
     }
 
     public AuthorizationRequest retrieveAuthorizationRequest(String cookie) throws SimpleDBException {
-        return superSimpleDB.retrieve(bpConfig.getAuthorizationRequestTableName(), AuthorizationRequest.class, cookie);
+        return superSimpleDB.retrieve(bpConfig.getTableName(BP_AUTHORIZATION_REQUEST), AuthorizationRequest.class, cookie);
     }
 }

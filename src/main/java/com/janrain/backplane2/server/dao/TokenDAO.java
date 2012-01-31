@@ -13,6 +13,9 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_ACCESS_TOKEN;
+import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_AUTHTOKEN_REL;
+
 
 /**
  * @author Tom Raney
@@ -25,24 +28,24 @@ public class TokenDAO extends DAO {
     };
 
     public void persistToken(Token token) throws SimpleDBException {
-        superSimpleDB.store(bpConfig.getAccessTokenTableName(), Token.class, token, true);
+        superSimpleDB.store(bpConfig.getTableName(BP_ACCESS_TOKEN), Token.class, token, true);
         // if any grants exist for this token be sure to persist
         // the relationships, but delete them first
         deleteRelsByTokenId(token.getIdValue());
         if (!token.getGrants().isEmpty()) {
             for (Grant grant : token.getGrants()) {
-                superSimpleDB.store(bpConfig.getAuthTokenRelTableName(),
+                superSimpleDB.store(bpConfig.getTableName(Backplane2Config.SimpleDBTables.BP_AUTHTOKEN_REL),
                         GrantTokenRel.class, new GrantTokenRel(grant.getIdValue(), token.getIdValue()));
             }
         }
     }
 
     public Token retrieveToken(String tokenId) throws SimpleDBException {
-        return superSimpleDB.retrieve(bpConfig.getAccessTokenTableName(), Token.class, tokenId);
+        return superSimpleDB.retrieve(bpConfig.getTableName(BP_ACCESS_TOKEN), Token.class, tokenId);
     }
 
     public Token retrieveTokenByChannel(String channel) throws SimpleDBException {
-        List<Token> tokens = superSimpleDB.retrieveWhere(bpConfig.getAccessTokenTableName(), Token.class, "channel='" + channel + "'", false);
+        List<Token> tokens = superSimpleDB.retrieveWhere(bpConfig.getTableName(BP_ACCESS_TOKEN), Token.class, "channel='" + channel + "'", false);
         if (tokens.isEmpty()) {
             return null;
         }
@@ -54,20 +57,20 @@ public class TokenDAO extends DAO {
     }
 
     public void deleteTokenById(String tokenId) throws SimpleDBException {
-        superSimpleDB.delete(bpConfig.getAccessTokenTableName(), tokenId);
+        superSimpleDB.delete(bpConfig.getTableName(BP_ACCESS_TOKEN), tokenId);
         deleteRelsByTokenId(tokenId);
     }
 
     public void deleteExpiredTokens() throws SimpleDBException {
         String expiredClause = Access.Field.EXPIRES.getFieldName() + " < '" + bpConfig.ISO8601.format(new Date(System.currentTimeMillis())) + "'";
-        superSimpleDB.deleteWhere(bpConfig.getAccessTokenTableName(), expiredClause);
+        superSimpleDB.deleteWhere(bpConfig.getTableName(BP_ACCESS_TOKEN), expiredClause);
     }
 
     public List<Token> retrieveTokensByGrant(String grantId) throws SimpleDBException {
         ArrayList<Token> tokens = new ArrayList<Token>();
 
         try {
-            List<GrantTokenRel> rels = superSimpleDB.retrieveWhere(bpConfig.getAuthTokenRelTableName(),
+            List<GrantTokenRel> rels = superSimpleDB.retrieveWhere(bpConfig.getTableName(BP_AUTHTOKEN_REL),
                     GrantTokenRel.class, "auth_id='" + grantId + "'", true);
             for (GrantTokenRel rel : rels) {
                 tokens.add(retrieveToken(rel.getTokenId()));
@@ -90,9 +93,9 @@ public class TokenDAO extends DAO {
     private void deleteRelsByTokenId(String tokenId)  {
         List<GrantTokenRel> rels = null;
         try {
-            rels = superSimpleDB.retrieveWhere(bpConfig.getAuthTokenRelTableName(), GrantTokenRel.class, "token_id='" + tokenId + "'", true);
+            rels = superSimpleDB.retrieveWhere(bpConfig.getTableName(BP_AUTHTOKEN_REL), GrantTokenRel.class, "token_id='" + tokenId + "'", true);
             for (GrantTokenRel rel: rels) {
-                superSimpleDB.delete(bpConfig.getAuthTokenRelTableName(), rel.getIdValue());
+                superSimpleDB.delete(bpConfig.getTableName(BP_AUTHTOKEN_REL), rel.getIdValue());
             }
         } catch (SimpleDBException e) {
             // do nothing
