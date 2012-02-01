@@ -18,7 +18,6 @@ package com.janrain.backplane2.server.dao;
 
 import com.janrain.backplane2.server.Access;
 import com.janrain.backplane2.server.Grant;
-import com.janrain.backplane2.server.GrantTokenRel;
 import com.janrain.backplane2.server.Token;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
@@ -30,8 +29,6 @@ import java.util.Date;
 import java.util.List;
 
 import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_ACCESS_TOKEN;
-import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_AUTHTOKEN_REL;
-
 
 /**
  * @author Tom Raney
@@ -45,15 +42,6 @@ public class TokenDAO extends DAO {
 
     public void persistToken(Token token) throws SimpleDBException {
         superSimpleDB.store(bpConfig.getTableName(BP_ACCESS_TOKEN), Token.class, token, true);
-        // if any grants exist for this token be sure to persist
-        // the relationships, but delete them first
-        deleteRelsByTokenId(token.getIdValue());
-        if (!token.getGrants().isEmpty()) {
-            for (Grant grant : token.getGrants()) {
-                superSimpleDB.store(bpConfig.getTableName(Backplane2Config.SimpleDBTables.BP_AUTHTOKEN_REL),
-                        GrantTokenRel.class, new GrantTokenRel(grant.getIdValue(), token.getIdValue()));
-            }
-        }
     }
 
     public Token retrieveToken(String tokenId) throws SimpleDBException {
@@ -74,7 +62,7 @@ public class TokenDAO extends DAO {
 
     public void deleteTokenById(String tokenId) throws SimpleDBException {
         superSimpleDB.delete(bpConfig.getTableName(BP_ACCESS_TOKEN), tokenId);
-        deleteRelsByTokenId(tokenId);
+        // TODO: be sure to update grant that may refer to this token?
     }
 
     public void deleteExpiredTokens() throws SimpleDBException {
@@ -90,43 +78,30 @@ public class TokenDAO extends DAO {
         }
     }
 
-    public List<Token> retrieveTokensByGrant(String grantId) throws SimpleDBException {
+    public List<Token> retrieveTokensByGrant(Grant grant) throws SimpleDBException {
         ArrayList<Token> tokens = new ArrayList<Token>();
 
-        try {
-            List<GrantTokenRel> rels = superSimpleDB.retrieveWhere(bpConfig.getTableName(BP_AUTHTOKEN_REL),
-                    GrantTokenRel.class, "auth_id='" + grantId + "'", true);
-            for (GrantTokenRel rel : rels) {
-                tokens.add(retrieveToken(rel.getTokenId()));
+        // TODO: brittle - possible that a token doesn't exist for a given id?
+        for (String tokenId : grant.getIssuedTokenIds()) {
+            Token token = retrieveToken(tokenId);
+            if (token != null) {
+                tokens.add(token);
             }
-        } catch (SimpleDBException sdbe) {
-            // ignore -
         }
+
         return tokens;
     }
 
-    public void revokeTokenByGrant(String grantId) throws SimpleDBException {
-        List<Token> tokens = retrieveTokensByGrant(grantId);
+    public void revokeTokenByGrant(Grant grant) throws SimpleDBException {
+        List<Token> tokens = retrieveTokensByGrant(grant);
         for (Token token : tokens) {
             deleteToken(token);
             logger.info("revoked token " + token.getIdValue());
         }
-        logger.info("all tokens for grant " + grantId + " have been revoked");
+        logger.info("all tokens for grant " + grant.getIdValue() + " have been revoked");
     }
 
     // - PRIVATE
-
-    private void deleteRelsByTokenId(String tokenId)  {
-        List<GrantTokenRel> rels;
-        try {
-            rels = superSimpleDB.retrieveWhere(bpConfig.getTableName(BP_AUTHTOKEN_REL), GrantTokenRel.class, "token_id='" + tokenId + "'", true);
-            for (GrantTokenRel rel: rels) {
-                superSimpleDB.delete(bpConfig.getTableName(BP_AUTHTOKEN_REL), rel.getIdValue());
-            }
-        } catch (SimpleDBException e) {
-            // do nothing
-        }
-    }
 
     private static final Logger logger = Logger.getLogger(TokenDAO.class);
 

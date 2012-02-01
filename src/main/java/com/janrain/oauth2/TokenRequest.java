@@ -147,7 +147,7 @@ public class TokenRequest {
 
             if (grant.isCodeUsed()) {
                 // revoke related token, if one exists and has already been used
-                daoFactory.getTokenDao().revokeTokenByGrant(grant.getIdValue());
+                daoFactory.getTokenDao().revokeTokenByGrant(daoFactory.getGrantDao().retrieveGrant(grant.getIdValue()));
                 return error(OAUTH2_TOKEN_INVALID_GRANT, "Authorization code is invalid");
             }
 

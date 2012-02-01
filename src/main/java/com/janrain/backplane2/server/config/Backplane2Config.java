@@ -86,7 +86,6 @@ public class Backplane2Config {
         BP_METRIC_AUTH("_bpMetricAuth"),
         BP_GRANT("_v2_grants"),
         BP_ACCESS_TOKEN("_v2_accessTokens"),
-        BP_AUTHTOKEN_REL("_v2_authtokenrel"),
         BP_AUTH_SESSION("_v2_authSessions"),
         BP_AUTHORIZATION_REQUEST("_v2_authorizationRequests"),
         BP_AUTHORIZATION_DECISION_KEY("_v2_authorizationDecisions");

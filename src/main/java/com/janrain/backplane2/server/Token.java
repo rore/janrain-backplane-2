@@ -39,7 +39,7 @@ public class Token extends Base {
      * Empty default constructor for AWS to use.
      * Don't call directly.
      */
-    public Token() {};
+    public Token() {}
 
     /**
      * Token constructor
@@ -96,20 +96,11 @@ public class Token extends Base {
 
         setScopeString(scopeString);
 
+
     }
 
     public Token(TYPE accessType, String buses, String scope, Date expires) throws BackplaneServerException {
         this(ChannelUtil.randomString(TOKEN_LENGTH), accessType, buses, scope, expires);
-    }
-
-    public Token(Grant grant, String scope) throws BackplaneServerException {
-        this(ChannelUtil.randomString(TOKEN_LENGTH), TYPE.PRIVILEGED_TOKEN, grant.getBusesAsString(), scope, null);
-        this.addGrant(grant);
-    }
-
-    public Token(List<Grant> grants, String scope) throws BackplaneServerException {
-        this(ChannelUtil.randomString(TOKEN_LENGTH), TYPE.PRIVILEGED_TOKEN, Grant.getBusesAsString(grants), scope, null);
-        this.setGrants(grants);
     }
 
     public String getChannelName() {
@@ -143,14 +134,6 @@ public class Token extends Base {
         scopeString = scopeString.trim();
         logger.debug("new scope string: '" + scopeString + "'");
         put(TokenField.SCOPE.getFieldName(), scopeString);
-    }
-
-    public List<Grant> getGrants() {
-        return Collections.unmodifiableList(this.sourceGrants);
-    }
-
-    public void setGrants(List<Grant> grants) {
-        this.sourceGrants = new ArrayList<Grant>(grants);
     }
 
     public void setMustReturnScopeInResponse(boolean flag) {
@@ -199,14 +182,7 @@ public class Token extends Base {
     }
 
     private static final Logger logger = Logger.getLogger(Token.class);
-
-    private ArrayList<Grant> sourceGrants = new ArrayList<Grant>();
     private boolean mustReturnScopeInResponse = false;
-
-    private void addGrant(Grant grant) {
-        this.sourceGrants.add(grant);
-    }
-
 
 
 }

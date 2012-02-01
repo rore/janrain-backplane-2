@@ -54,7 +54,7 @@ public class TokenResponse {
         }
 
         if (request.grant_type.equals("code")) {
-            final Token token = new Token(request.getGrant(), request.scope);
+            final TokenPrivileged token = new TokenPrivileged(request.client_id, request.getGrant(), request.scope);
             daoFactory.getTokenDao().persistToken(token);
             // mark the code as used
             request.getGrant().setCodeUsedNow();
@@ -71,7 +71,7 @@ public class TokenResponse {
 
         if (request.grant_type.equals("client_credentials")) {
             List<Grant> grants = daoFactory.getGrantDao().retrieveGrants(request.client_id, new Scope(request.scope));
-            final Token token = new Token(grants, null);
+            final TokenPrivileged token = new TokenPrivileged(request.client_id, grants, null);
             daoFactory.getTokenDao().persistToken(token);
             return new LinkedHashMap<String, Object>() {{
                 put("access_token", token.getIdValue());

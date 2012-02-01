@@ -137,7 +137,8 @@ public class Backplane2ControllerTest {
 
             for (String key:this.createdGrantsKeys) {
                 logger.info("deleting Grant " + key);
-                daoFactory.getTokenDao().revokeTokenByGrant(key);
+                Grant grant = daoFactory.getGrantDao().retrieveGrant(key);
+                daoFactory.getTokenDao().revokeTokenByGrant(grant);
                 daoFactory.getGrantDao().deleteGrant(key);
             }
             //superSimpleDB.delete(bpConfig.getClientsTableName(), "random_id");
@@ -168,11 +169,13 @@ public class Backplane2ControllerTest {
 
     private void saveGrant(Grant grant) throws SimpleDBException {
         daoFactory.getGrantDao().persistGrant(grant);
+        logger.info("saved grant: " + grant.getIdValue());
         this.createdGrantsKeys.add(grant.getIdValue());
     }
 
     private void saveToken(Token token) throws SimpleDBException {
         daoFactory.getTokenDao().persistToken(token);
+        logger.info("saved token: " + token.getIdValue());
         this.createdTokenKeys.add(token.getIdValue());
     }
 
@@ -957,11 +960,22 @@ public class Backplane2ControllerTest {
         grants.add(grant2);
 
         // Create appropriate token
-        Token token = new Token(grants, "");
+        TokenPrivileged token = new TokenPrivileged(client.getClientId(), grants, "");
+        grant1.addIssuedTokenId(token.getIdValue());
+        daoFactory.getGrantDao().persistGrant(grant1);
+        grant2.addIssuedTokenId(token.getIdValue());
+        daoFactory.getGrantDao().persistGrant(grant2);
         saveToken(token);
 
+        // quick validation
+        Grant temp = daoFactory.getGrantDao().retrieveGrant(grant1.getIdValue());
+        assertTrue(temp.isIssuedToken(token.getIdValue()));
+
+        temp = daoFactory.getGrantDao().retrieveGrant(grant2.getIdValue());
+        assertTrue(temp.isIssuedToken(token.getIdValue()));
+
         // Revoke token based on one code
-        daoFactory.getTokenDao().revokeTokenByGrant(grant1.getIdValue());
+        daoFactory.getTokenDao().revokeTokenByGrant(daoFactory.getGrantDao().retrieveGrant(grant1.getIdValue()));
 
         try {
             // Now the token should fail

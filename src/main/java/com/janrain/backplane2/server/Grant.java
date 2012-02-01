@@ -22,10 +22,10 @@ import com.janrain.crypto.ChannelUtil;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
 
 import java.text.ParseException;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 /**
  * @author Tom Raney
@@ -51,6 +51,8 @@ public class Grant extends Base {
     public Grant() {};
 
     Grant(String code, String busOwnerId, String clientId, String buses, Date expires) {
+
+
         super(code, buses, expires);
 
         assert(StringUtils.isNotEmpty(clientId));
@@ -162,17 +164,64 @@ public class Grant extends Base {
         this.setCodeExpirationDate(new Date(new Date().getTime() + CODE_EXPIRATION*1000L ));
     }
 
+    private String getIssuedTokenIdsAsString() {
+        return get(GrantField.ISSUED_TOKEN_IDS.getFieldName());
+    }
+
+    /**
+     * Retrieve list of token Ids issued against this grant
+     * @return a non-null but possibly empty list
+     */
+    public @NotNull
+    List<String> getIssuedTokenIds() {
+        String ids = getIssuedTokenIdsAsString();
+        if (StringUtils.isEmpty(ids)) {
+            return new ArrayList<String>();
+        }
+
+        String[] tokens = ids.split(" ");
+        return Arrays.asList(tokens);
+    }
+
+    public boolean isIssuedToken(String tokenId) {
+        return getIssuedTokenIds().contains(tokenId);
+    }
+
+    public void addIssuedTokenId(@NotNull String tokenId) {
+        List<String> tokenIds = getIssuedTokenIds();
+        if (tokenIds.contains(tokenId)) {
+            // if it exists, no-op
+            return;
+        }
+        tokenIds.add(tokenId);
+        setIssuedTokens(tokenIds);
+    }
+
+    public void setIssuedTokens(List<String> tokenIds) {
+        put(GrantField.ISSUED_TOKEN_IDS.getFieldName(),
+                org.springframework.util.StringUtils.collectionToDelimitedString(tokenIds, " "));
+    }
+
+    public boolean removeIssuedTokenId(@NotNull String tokenId) {
+        List<String> tokenIds = getIssuedTokenIds();
+        if (!tokenIds.remove(tokenId)) {
+            return false;
+        }
+        setIssuedTokens(tokenIds);
+        return true;
+    }
+
 
     public static enum GrantField implements MessageField {
 
         // - PUBLIC
 
-        ISSUED_BY_USER_ID("issued_by_user", false),
-        ISSUED_TO_CLIENT_ID("issued_to_client", false),
-
+        ISSUED_BY_USER_ID("issued_by_user"),
+        ISSUED_TO_CLIENT_ID("issued_to_client"),
         DATE_CODE_ISSUED("date_code_issued"),
         DATE_CODE_EXPIRES("date_code_expires"),
-        DATE_CODE_USED("date_code_used");
+        DATE_CODE_USED("date_code_used"),
+        ISSUED_TOKEN_IDS("issued_token_ids", false);
 
         @Override
         public String getFieldName() {
