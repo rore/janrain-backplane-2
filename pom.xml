@@ -227,7 +227,7 @@
         <dependency>
             <groupId>com.janrain.commons.supersimpledb</groupId>
             <artifactId>commons-supersimpledb</artifactId>
-            <version>1.0.3</version>
+            <version>1.0.4</version>
         </dependency>
         <!-- intellij annotations library for @NotNull and @Nullable -->
         <dependency>
