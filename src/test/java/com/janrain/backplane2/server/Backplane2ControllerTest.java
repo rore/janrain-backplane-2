@@ -3,6 +3,7 @@ package com.janrain.backplane2.server;
 
 import com.amazonaws.services.identitymanagement.model.MalformedPolicyDocumentException;
 import com.janrain.backplane2.server.config.Backplane2Config;
+import com.janrain.backplane2.server.config.BusConfig2;
 import com.janrain.backplane2.server.config.Client;
 import com.janrain.backplane2.server.config.User;
 import com.janrain.backplane2.server.dao.DaoFactory;
@@ -984,8 +985,15 @@ public class Backplane2ControllerTest {
 
         Client client = this.createTestClient();
 
+        BusConfig2 bus1 = new BusConfig2(ChannelUtil.randomString(30), user.getIdValue(), "100", "50000");
+        BusConfig2 bus2 = new BusConfig2(ChannelUtil.randomString(30), user.getIdValue(), "100", "50000");
+
         try {
             daoFactory.getBusOwnerDAO().persistBusOwner(user);
+
+            // create a few buses
+            daoFactory.getBusDao().persistBus(bus1);
+            daoFactory.getBusDao().persistBus(bus2);
 
             refreshRequestAndResponse();
 
@@ -1073,6 +1081,8 @@ public class Backplane2ControllerTest {
 
         } finally {
             daoFactory.getBusOwnerDAO().deleteBusOwner(user.getIdValue());
+            daoFactory.getBusDao().deleteBus(bus1.getIdValue());
+            daoFactory.getBusDao().deleteBus(bus2.getIdValue());
         }
 
     }

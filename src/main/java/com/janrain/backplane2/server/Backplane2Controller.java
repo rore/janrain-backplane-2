@@ -819,9 +819,9 @@ public class Backplane2Controller {
                 Grant grant = new Grant(
                         authorizationRequest.get(AuthorizationRequest.Field.CLIENT_ID),
                         // todo: use (and check) scope posted back by bus owner
-                        getBuses(checkScope(
+                        new Scope(checkScope(
                                 authorizationRequest.get(AuthorizationRequest.Field.SCOPE),
-                                daoFactory.getBusDao().retrieveBuses(authenticatedBusOwner)))
+                                daoFactory.getBusDao().retrieveBuses(authenticatedBusOwner))).getBusesInScopeAsString()
                 );
 
                 grant.setCodeIssuedNow();
@@ -853,26 +853,11 @@ public class Backplane2Controller {
             }
         } catch (SimpleDBException e) {
             throw new OAuth2AuthorizationException(OAuth2.OAUTH2_AUTHZ_SERVER_ERROR, e.getMessage(), authorizationRequest, e);
+        } catch (BackplaneServerException e) {
+            throw new OAuth2AuthorizationException(OAuth2.OAUTH2_AUTHZ_SERVER_ERROR, e.getMessage(), authorizationRequest, e);
         }
     }
 
-    private String getBuses(String scope) {
-        if (StringUtils.isEmpty(scope)) {
-            return "";
-        } else {
-            StringBuilder result = new StringBuilder();
-            for(String scopeToken : scope.split(" ")) {
-                if(scopeToken.startsWith("bus:")) {
-                    result.append(scopeToken.substring(4)).append(" ");
-                }
-            }
-            if (result.length() > 0) {
-                result.deleteCharAt(result.length()-1);
-            }
-            return result.toString();
-        }
-    }
-    
     private static ModelAndView authzRequestError( final String oauthErrCode, final String errMsg,
                                                    final String redirectUri, final String state) {
         // direct or in/redirect

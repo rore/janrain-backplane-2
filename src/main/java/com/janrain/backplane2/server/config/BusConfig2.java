@@ -20,6 +20,8 @@ import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
 
 import java.util.EnumSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -28,6 +30,17 @@ import java.util.Set;
 public class BusConfig2 extends AbstractMessage {
 
     // - PUBLIC
+
+    public BusConfig2() {}
+
+    public BusConfig2(String busName, String busOwner, String retentionTimeSeconds, String retentionTimeStickySeconds) {
+        Map<String,String> d = new LinkedHashMap<String, String>();
+        d.put(Field.BUS_NAME.getFieldName(), busName);
+        d.put(Field.OWNER.getFieldName(), busOwner);
+        d.put(Field.RETENTION_TIME_SECONDS.getFieldName(), retentionTimeSeconds);
+        d.put(Field.RETENTION_STICKY_TIME_SECONDS.getFieldName(), retentionTimeStickySeconds);
+        super.init(busName, d);
+    }
 
     @Override
     public String getIdValue() {

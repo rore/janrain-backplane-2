@@ -3,8 +3,6 @@ package com.janrain.backplane2.server;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
-
-import javax.print.DocFlavor;
 import java.util.*;
 
 /**
@@ -37,6 +35,10 @@ public class Scope {
 
     public @NotNull List<String> getBusesInScope() {
         return scopes.get("bus");
+    }
+
+    public @NotNull String getBusesInScopeAsString() {
+        return org.springframework.util.StringUtils.collectionToDelimitedString(getBusesInScope(), " ");
     }
 
     /**
@@ -122,7 +124,6 @@ public class Scope {
 
             buildQuery(queryList, newQuery, scopeList, level+1);
         }
-
 
     }
 
