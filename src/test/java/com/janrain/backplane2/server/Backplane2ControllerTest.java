@@ -1081,6 +1081,7 @@ public class Backplane2ControllerTest {
 
             String code = mv.getViewName().substring(mv.getViewName().indexOf("code=")+5);
             logger.info("using code: '" + code + "' to retrieve token");
+
             // redeem the code for a token
             refreshRequestAndResponse();
 

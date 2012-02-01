@@ -1,7 +1,9 @@
 Backplane README
 ================
 
-The Backplane Server implements the [backplane-core-v2](https://sites.google.com/site/backplanespec/documentation/backplane2-0-draft5) specification, with the configuration and deployment specifics detailed in this document.
+This Backplane Server implements both the [backplane-core-v2](https://sites.google.com/site/backplanespec/documentation/backplane2-0-draft5)
+specification and the previous [backplane-core-v1.2](https://sites.google.com/site/backplanespec/documentation/backplane1-2) specification,
+with the configuration and deployment specifics detailed in this document.
 
 The deployment environment is Amazon AWS and the storage engine used is SimpleDB.
 
@@ -28,7 +30,7 @@ This project requires the [Maven](http://maven.apache.org/guides/getting-started
 
 To process the tests, you must have created an Amazon SimpleDB instance.  Use the following modification to the Maven build command (be sure to add your parameters):
 
-`mvn package -DargLine="-DPARAM1=instanceid -DPARAM2=sample.com -DPARAM3=quiet@sample.com -DAWS_ACCESS_KEY_ID=key -DAWS_SECRET_KEY=secret"`
+`mvn package -DargLine="-DPARAM1=instanceid -DPARAM2=sample.com -DPARAM3=backplane-email@sample.com -DAWS_ACCESS_KEY_ID=key -DAWS_SECRET_KEY=secret"`
 
 Maven will create a WAR file for deployment in the server/target directory.
 
@@ -46,6 +48,11 @@ To retrieve the generated metrics, you must add the `<backplane-instance>__bpMet
 * `PWDHASH`: metrics password (hash)
 
 These Backplane admin users are provisioned manually.  To generate a password hash, see the HmacHashUtils class and its main() method.
+
+Backplane V2 Configuration
+==========================
+
+
 
 Bus Configuration
 -----------------
