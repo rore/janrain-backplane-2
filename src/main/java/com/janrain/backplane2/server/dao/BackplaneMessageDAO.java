@@ -3,24 +3,33 @@ package com.janrain.backplane2.server.dao;
 import com.janrain.backplane2.server.BackplaneMessage;
 import com.janrain.backplane2.server.Scope;
 import com.janrain.backplane2.server.config.Backplane2Config;
+import com.janrain.backplane2.server.config.BusConfig2;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
+import static com.janrain.backplane2.server.BackplaneMessage.Field.BUS;
+import static com.janrain.backplane2.server.BackplaneMessage.Field.ID;
+import static com.janrain.backplane2.server.BackplaneMessage.Field.STICKY;
 import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_MESSAGES;
+import static com.janrain.backplane2.server.config.BusConfig2.Field.BUS_NAME;
+import static com.janrain.backplane2.server.config.BusConfig2.Field.RETENTION_STICKY_TIME_SECONDS;
+import static com.janrain.backplane2.server.config.BusConfig2.Field.RETENTION_TIME_SECONDS;
 
 /**
  * @author Tom Raney
  */
 public class BackplaneMessageDAO extends DAO {
 
-    BackplaneMessageDAO(SuperSimpleDB superSimpleDB, Backplane2Config bpConfig) {
+    BackplaneMessageDAO(SuperSimpleDB superSimpleDB, Backplane2Config bpConfig, DaoFactory daoFactory) {
         super(superSimpleDB, bpConfig);
-    };
+        this.daoFactory = daoFactory;
+    }
 
     public void persistBackplaneMessage(BackplaneMessage message) throws SimpleDBException {
         superSimpleDB.store(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class, message);
@@ -55,7 +64,45 @@ public class BackplaneMessageDAO extends DAO {
 
         return messages;
     }
+    
+    public void deleteExpiredMessages() {
+        try {
+            logger.info("Backplane message cleanup task started.");
+            String messagesTable = bpConfig.getTableName(BP_MESSAGES);
+            for(BusConfig2 busConfig : daoFactory.getBusDao().retrieveBuses()) {
+                try {
+                    // non-sticky
+                    superSimpleDB.deleteWhere(messagesTable, getExpiredMessagesClause(busConfig.get(BUS_NAME), false, busConfig.get(RETENTION_TIME_SECONDS)));
+                    // sticky
+                    superSimpleDB.deleteWhere(messagesTable, getExpiredMessagesClause(busConfig.get(BUS_NAME), true, busConfig.get(RETENTION_STICKY_TIME_SECONDS)));
+
+                } catch (SimpleDBException sdbe) {
+                    logger.error("Error cleaning up expired messages on bus "  + busConfig.get(BUS_NAME) + ", " + sdbe.getMessage(), sdbe);
+                }
+            }
+
+        } catch (Exception e) {
+            // catch-all, else cleanup thread stops
+            logger.error("Backplane messages cleanup task error: " + e.getMessage(), e);
+        } finally {
+            logger.info("Backplane messages cleanup task finished.");
+        }
+
+    }
+    
+    // - PRIVATE
 
     private static final Logger logger = Logger.getLogger(BackplaneMessageDAO.class);
 
+    private DaoFactory daoFactory;
+
+    private String getExpiredMessagesClause(String busId, boolean sticky, String retentionTimeSeconds) {
+        return BUS.getFieldName() + " = '" + busId + "' AND " +
+                // "is (not) null" is low-performance on simpledb apparently
+                // http://practicalcloudcomputing.com/post/722621724/simpledb-essentials-for-high-performance-users-part-2
+                STICKY.getFieldName() + " = '" + Boolean.toString(sticky) + "' AND " +
+                ID.getFieldName() + " < '" +
+                Backplane2Config.ISO8601.format(new Date(System.currentTimeMillis() - Long.valueOf(retentionTimeSeconds) * 1000))
+                + "'";
+    }
 }

@@ -1,13 +1,11 @@
 package com.janrain.backplane2.server;
 
+import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import com.janrain.crypto.ChannelUtil;
 
-import java.util.EnumSet;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * @author Johnny Bufu
@@ -26,6 +24,7 @@ public class AuthorizationDecisionKey extends AbstractMessage {
         String key = ChannelUtil.randomString(AUTHORIZATION_DECISION_KEY_LENGTH);
         data.put(Field.KEY.getFieldName(), key);
         data.put(Field.AUTH_COOKIE.getFieldName(), authCookie);
+        data.put(Field.EXPIRES.getFieldName(), Backplane2Config.ISO8601.format(new Date(System.currentTimeMillis() + AUTHORIZATION_DECISION_TIMEOUT_SECONDS * 1000)));
         super.init(key, data);
     }
 
@@ -42,7 +41,8 @@ public class AuthorizationDecisionKey extends AbstractMessage {
     public static enum Field implements MessageField {
 
         KEY,
-        AUTH_COOKIE;
+        AUTH_COOKIE,
+        EXPIRES;
 
         @Override
         public String getFieldName() {
@@ -63,4 +63,5 @@ public class AuthorizationDecisionKey extends AbstractMessage {
     // - PRIVATE
 
     private static final int AUTHORIZATION_DECISION_KEY_LENGTH = 30;
+    private static final long AUTHORIZATION_DECISION_TIMEOUT_SECONDS = 300l;
 }

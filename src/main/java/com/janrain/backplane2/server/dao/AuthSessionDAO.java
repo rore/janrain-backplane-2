@@ -4,7 +4,11 @@ import com.janrain.backplane2.server.AuthSession;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
+import org.apache.log4j.Logger;
 
+import java.util.Date;
+
+import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_ACCESS_TOKEN;
 import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_AUTH_SESSION;
 
 /**
@@ -23,4 +27,22 @@ public class AuthSessionDAO extends DAO {
     public AuthSession retrieveAuthSession(String cookie) throws SimpleDBException {
         return superSimpleDB.retrieve(bpConfig.getTableName(BP_AUTH_SESSION), AuthSession.class, cookie);
     }
+
+    public void deleteExpiredAuthSessions() {
+        try {
+            logger.info("Backplane auth sessions cleanup task started.");
+            String expiredClause = AuthSession.Field.EXPIRES.getFieldName() + " < '" + Backplane2Config.ISO8601.format(new Date(System.currentTimeMillis())) + "'";
+            superSimpleDB.deleteWhere(bpConfig.getTableName(BP_ACCESS_TOKEN), expiredClause);
+        } catch (Exception e) {
+            // catch-all, else cleanup thread stops
+            logger.error("Backplane auth sessions cleanup task error: " + e.getMessage(), e);
+        } finally {
+            logger.info("Backplane auth sessions cleanup task finished.");
+        }
+    }
+
+    // - PRIVATE
+
+    private static final Logger logger = Logger.getLogger(AuthSessionDAO.class);
+
 }

@@ -34,7 +34,7 @@ import java.util.Map;
 
 import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_BUS_OWNERS;
 import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_CLIENTS;
-import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_V2_BUS_CONFIG;
+import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_BUS_CONFIG;
 
 /**
  * Controller handling the API calls for backplane customer configuration provisioning.
@@ -52,7 +52,7 @@ public class ProvisioningController2 {
     @ResponseBody
     public Map<String, Map<String, String>> busList(@RequestBody ListRequest listRequest) throws AuthException {
         bpConfig.checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
-        return doList(bpConfig.getTableName(BP_V2_BUS_CONFIG), BusConfig2.class, listRequest.getEntities());
+        return doList(bpConfig.getTableName(BP_BUS_CONFIG), BusConfig2.class, listRequest.getEntities());
     }
 
     @RequestMapping(value = "/user/list", method = RequestMethod.POST)
@@ -73,7 +73,7 @@ public class ProvisioningController2 {
     @ResponseBody
     public Map<String, String> busDelete(@RequestBody ListRequest deleteRequest) throws AuthException {
         bpConfig.checkAdminAuth(deleteRequest.getAdmin(), deleteRequest.getSecret());
-        return doDelete(bpConfig.getTableName(BP_V2_BUS_CONFIG), BusConfig2.class, deleteRequest.getEntities());
+        return doDelete(bpConfig.getTableName(BP_BUS_CONFIG), BusConfig2.class, deleteRequest.getEntities());
     }
 
     @RequestMapping(value = "/user/delete", method = RequestMethod.POST)
@@ -93,7 +93,7 @@ public class ProvisioningController2 {
     @RequestMapping(value = "/bus/update", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, String> busUpdate(@RequestBody BusUpdateRequest updateRequest) throws AuthException {
-        return doUpdate(bpConfig.getTableName(BP_V2_BUS_CONFIG), BusConfig2.class, updateRequest);
+        return doUpdate(bpConfig.getTableName(BP_BUS_CONFIG), BusConfig2.class, updateRequest);
     }
 
     @RequestMapping(value = "/user/update", method = RequestMethod.POST)

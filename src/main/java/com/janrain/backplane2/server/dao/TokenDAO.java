@@ -25,7 +25,7 @@ public class TokenDAO extends DAO {
 
     TokenDAO(SuperSimpleDB superSimpleDB, Backplane2Config bpConfig) {
         super(superSimpleDB, bpConfig);
-    };
+    }
 
     public void persistToken(Token token) throws SimpleDBException {
         superSimpleDB.store(bpConfig.getTableName(BP_ACCESS_TOKEN), Token.class, token, true);
@@ -62,8 +62,16 @@ public class TokenDAO extends DAO {
     }
 
     public void deleteExpiredTokens() throws SimpleDBException {
-        String expiredClause = Access.Field.EXPIRES.getFieldName() + " < '" + bpConfig.ISO8601.format(new Date(System.currentTimeMillis())) + "'";
-        superSimpleDB.deleteWhere(bpConfig.getTableName(BP_ACCESS_TOKEN), expiredClause);
+        try {
+            logger.info("Backplane token cleanup task started.");
+            String expiredClause = Access.Field.EXPIRES.getFieldName() + " < '" + Backplane2Config.ISO8601.format(new Date(System.currentTimeMillis())) + "'";
+            superSimpleDB.deleteWhere(bpConfig.getTableName(BP_ACCESS_TOKEN), expiredClause);
+        } catch (Exception e) {
+            // catch-all, else cleanup thread stops
+            logger.error("Backplane token cleanup task error: " + e.getMessage(), e);
+        } finally {
+            logger.info("Backplane token cleanup task finished.");
+        }
     }
 
     public List<Token> retrieveTokensByGrant(String grantId) throws SimpleDBException {
@@ -90,8 +98,10 @@ public class TokenDAO extends DAO {
         logger.info("all tokens for grant " + grantId + " have been revoked");
     }
 
+    // - PRIVATE
+
     private void deleteRelsByTokenId(String tokenId)  {
-        List<GrantTokenRel> rels = null;
+        List<GrantTokenRel> rels;
         try {
             rels = superSimpleDB.retrieveWhere(bpConfig.getTableName(BP_AUTHTOKEN_REL), GrantTokenRel.class, "token_id='" + tokenId + "'", true);
             for (GrantTokenRel rel: rels) {
@@ -100,10 +110,8 @@ public class TokenDAO extends DAO {
         } catch (SimpleDBException e) {
             // do nothing
         }
-
     }
 
     private static final Logger logger = Logger.getLogger(TokenDAO.class);
-
 
 }

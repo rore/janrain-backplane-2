@@ -35,14 +35,14 @@ import javax.annotation.PreDestroy;
 import javax.inject.Inject;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.Calendar;
+import java.util.EnumSet;
+import java.util.Properties;
+import java.util.TimeZone;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-
-import static com.janrain.backplane2.server.BackplaneMessage.Field.*;
-import static com.janrain.backplane2.server.config.BusConfig2.Field.*;
 
 
 /**
@@ -77,7 +77,7 @@ public class Backplane2Config {
 
         BP_SERVER_CONFIG("_bpserverconfig"),
         BP_ADMIN_AUTH("_Admin"),
-        BP_V2_BUS_CONFIG("_v2_busconfig"),
+        BP_BUS_CONFIG("_v2_busconfig"),
         BP_BUS_OWNERS("_v2_bus_owners"),
         BP_CLIENTS("_v2_clients"),
         BP_MESSAGES("_v2_messages"),
@@ -117,7 +117,6 @@ public class Backplane2Config {
      * @return the server default max message value per channel
      * @throws SimpleDBException
      */
-
     public long getDefaultMaxMessageLimit() throws SimpleDBException {
         Long max = Long.valueOf(cachedGet(BpServerProperty.DEFAULT_MESSAGES_MAX));
         return max == null ? Backplane2Config.BP_MAX_MESSAGES_DEFAULT : max;
@@ -219,15 +218,18 @@ public class Backplane2Config {
                     getMessagesTime.time(new Callable<Object>() {
                         @Override
                         public Object call() throws Exception {
-                            deleteExpiredMessages();
-                            deleteExpiredTokens();
+                            daoFactory.getBackplaneMessageDAO().deleteExpiredMessages();
+                            deleteExpiredMetrics();
+                            daoFactory.getTokenDao().deleteExpiredTokens();
+                            daoFactory.getAuthSessionDAO().deleteExpiredAuthSessions();
+                            daoFactory.getAuthorizationRequestDAO().deleteExpiredAuthorizationRequests();
+                            daoFactory.getAuthorizationDecisionKeyDAO().deleteExpiredAuthorizationDecisionKeys();
                             return null;
                         }
                     });
                 } catch (Exception e) {
-                    logger.error("Error while cleaning up expired messages, " + e.getMessage(), e);
+                    logger.error("Error while cleaning up expired stuff, " + e.getMessage(), e);
                 }
-
             }
 
         }, cleanupIntervalMinutes, cleanupIntervalMinutes, TimeUnit.MINUTES);
@@ -285,49 +287,18 @@ public class Backplane2Config {
 
     }
 
-    private void deleteExpiredMessages() {
+    private void deleteExpiredMetrics() {
         try {
-            logger.info("Backplane message cleanup task started.");
-            String messagesTable = getTableName(SimpleDBTables.BP_MESSAGES);
-            for(BusConfig2 busConfig : superSimpleDb.retrieve(getTableName(SimpleDBTables.BP_V2_BUS_CONFIG), BusConfig2.class)) {
-                try {
-                    // non-sticky
-                    superSimpleDb.deleteWhere(messagesTable, getExpiredMessagesClause(busConfig.get(BUS_NAME), false, busConfig.get(RETENTION_TIME_SECONDS)));
-                    // sticky
-                    superSimpleDb.deleteWhere(messagesTable, getExpiredMessagesClause(busConfig.get(BUS_NAME), true, busConfig.get(RETENTION_STICKY_TIME_SECONDS)));
-
-                } catch (SimpleDBException sdbe) {
-                    logger.error("Error cleaning up expired messages on bus "  + busConfig.get(BUS_NAME) + ", " + sdbe.getMessage(), sdbe);
-                }
-            }
-
-            try {
-                // remove old metrics
-                superSimpleDb.deleteWhere(getTableName(SimpleDBTables.BP_METRICS), getExpiredMetricClause());
-            } catch (SimpleDBException sdbe) {
-                logger.error("Error while removing expired metrics, " + sdbe.getMessage(), sdbe);
-            }
-
+            logger.info("Backplane metrics cleanup task started.");
+            superSimpleDb.deleteWhere(getTableName(SimpleDBTables.BP_METRICS), getExpiredMetricClause());
+        } catch (SimpleDBException sdbe) {
+            logger.error("Error while removing expired metrics, " + sdbe.getMessage(), sdbe);
         } catch (Exception e) {
             // catch-all, else cleanup thread stops
             logger.error("Backplane messages cleanup task error: " + e.getMessage(), e);
         } finally {
             logger.info("Backplane messages cleanup task finished.");
         }
-    }
-
-    private void deleteExpiredTokens() {
-        try {
-            logger.info("Backplane token cleanup task started.");
-            daoFactory.getTokenDao().deleteExpiredTokens();
-
-        } catch (Exception e) {
-            // catch-all, else cleanup thread stops
-            logger.error("Backplane token cleanup task error: " + e.getMessage(), e);
-        } finally {
-            logger.info("Backplane token cleanup task finished.");
-        }
-
     }
 
     private String getExpiredMetricClause() {
@@ -341,17 +312,6 @@ public class Backplane2Config {
         // Cleanup metrics that may be lingering due to a shutdown server instance
         now.roll(Calendar.MINUTE, -(interval+2));
         return "time < '" + ISO8601.format(now.getTime()) + "'";
-    }
-
-
-    private String getExpiredMessagesClause(String busId, boolean sticky, String retentionTimeSeconds) {
-        return BUS.getFieldName() + " = '" + busId + "' AND " +
-            // "is (not) null" is low-performance on simpledb apparently
-            // http://practicalcloudcomputing.com/post/722621724/simpledb-essentials-for-high-performance-users-part-2
-            STICKY.getFieldName() + " = '" + Boolean.toString(sticky) + "' AND " +
-            ID.getFieldName() + " < '" +
-            ISO8601.format(new Date(System.currentTimeMillis() - Long.valueOf(retentionTimeSeconds) * 1000))
-            + "'";
     }
 
     @Inject

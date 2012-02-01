@@ -1,12 +1,10 @@
 package com.janrain.backplane2.server;
 
+import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
 
-import java.util.EnumSet;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * @author Johnny Bufu
@@ -24,6 +22,7 @@ public class AuthSession extends AbstractMessage {
         Map<String,String> data = new LinkedHashMap<String, String>();
         data.put(Field.AUTH_USER.getFieldName(), authUser);
         data.put(Field.COOKIE.getFieldName(), cookie);
+        data.put(Field.EXPIRES.getFieldName(), Backplane2Config.ISO8601.format(new Date(System.currentTimeMillis() + AUTH_SESSION_TIMEOUT_SECONDS * 1000)));
         super.init(cookie, data);
     }
 
@@ -42,7 +41,8 @@ public class AuthSession extends AbstractMessage {
         // - PUBLIC
 
         COOKIE,
-        AUTH_USER;
+        AUTH_USER,
+        EXPIRES;
 
         @Override
         public String getFieldName() {
@@ -59,4 +59,8 @@ public class AuthSession extends AbstractMessage {
             if (isRequired()) validateNotNull(name(), value);
         }
     }
+
+    // - PRIVATE
+
+    private static final long AUTH_SESSION_TIMEOUT_SECONDS = 3600l;
 }

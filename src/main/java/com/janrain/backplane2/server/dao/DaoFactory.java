@@ -34,7 +34,7 @@ public class DaoFactory {
     }
 
     public BackplaneMessageDAO getBackplaneMessageDAO() {
-        return new BackplaneMessageDAO(superSimpleDB, bpConfig);
+        return new BackplaneMessageDAO(superSimpleDB, bpConfig, this);
     }
 
     public AuthSessionDAO getAuthSessionDAO() {

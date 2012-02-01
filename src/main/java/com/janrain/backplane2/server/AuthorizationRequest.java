@@ -1,21 +1,19 @@
 package com.janrain.backplane2.server;
 
+import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import org.apache.commons.lang.StringUtils;
-import org.apache.log4j.Logger;
 
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.EnumSet;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * @author Johnny Bufu
  */
 public class AuthorizationRequest extends AbstractMessage {
+
     // - PUBLIC
 
     /**
@@ -34,6 +32,7 @@ public class AuthorizationRequest extends AbstractMessage {
         }
 
         data.put(Field.COOKIE.getFieldName(), cookie);
+        data.put(Field.EXPIRES.getFieldName(), Backplane2Config.ISO8601.format(new Date(System.currentTimeMillis() + AUTH_REQUEST_TIMEOUT_SECONDS * 1000)));
 
         if(StringUtils.isEmpty(get(Field.REDIRECT_URI))) {
             data.put(Field.REDIRECT_URI.getFieldName(), configuredRedirectUri);
@@ -57,6 +56,7 @@ public class AuthorizationRequest extends AbstractMessage {
         // - PUBLIC
 
         COOKIE,
+        EXPIRES,
         CLIENT_ID,
         RESPONSE_TYPE {
             @Override
@@ -108,4 +108,8 @@ public class AuthorizationRequest extends AbstractMessage {
             this.required = required;
         }
     }
+
+    // - PRIVATE
+
+    private static final long AUTH_REQUEST_TIMEOUT_SECONDS = 1200l;
 }

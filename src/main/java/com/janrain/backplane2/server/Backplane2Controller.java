@@ -74,8 +74,6 @@ public class Backplane2Controller {
         return view;
     }
 
-    // todo: cleanup authsession, authorizationrequests... tables
-
     @RequestMapping(value = "/authorize", method = { RequestMethod.GET, RequestMethod.POST })
     public ModelAndView authorize(
                             HttpServletRequest request,
