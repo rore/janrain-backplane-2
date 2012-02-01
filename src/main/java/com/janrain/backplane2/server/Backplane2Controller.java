@@ -182,7 +182,7 @@ public class Backplane2Controller {
 
         TokenRequest tokenRequest = new TokenRequest("anonymous", "client_credentials", scope, callback);
 
-        HashMap errors = tokenRequest.validate();
+        HashMap<String,Object> errors = tokenRequest.validate();
 
         if (!errors.isEmpty()) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
@@ -845,7 +845,7 @@ public class Backplane2Controller {
                 } catch (ValidationException ve) {
                     String errMsg = "Error building (positive) authorization response: " + ve.getMessage();
                     logger.error(errMsg, ve);
-                    return authzRequestError(ve.getCode(), errMsg,
+                    return authzRequestError(OAuth2.OAUTH2_AUTHZ_DIRECT_ERROR, errMsg,
                             authorizationRequest.get(AuthorizationRequest.Field.REDIRECT_URI),
                             authorizationRequest.get(AuthorizationRequest.Field.STATE));
                 }

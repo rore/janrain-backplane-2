@@ -158,9 +158,15 @@ public class TokenRequest {
             //check the client
             if (client == null ||
                     !HmacHashUtils.checkHmacHash(client_secret, client.getClientSecret()) ||
-                    !redirect_uri.equals(client.getRedirectUri()) ||
                     !grant.getGrantClientId().equals(client.getClientId())) {
                 return error("invalid_client", "Client authentication failed");
+            }
+            
+            // check redirect_uri
+            try {
+                OAuth2.validateRedirectUri(redirect_uri, client.getRedirectUri());
+            } catch (ValidationException e) {
+                return error(e.getCode(), "Invalid redirect_uri.");
             }
         }
 

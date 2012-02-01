@@ -21,8 +21,6 @@ import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import org.apache.commons.lang.StringUtils;
 
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.*;
 
 /**
@@ -37,7 +35,7 @@ public class AuthorizationRequest extends AbstractMessage {
      */
     public AuthorizationRequest() { }
 
-    public AuthorizationRequest(String cookie, String configuredRedirectUri, Map parameterMap) {
+    public AuthorizationRequest(String cookie, String configuredRedirectUri, Map parameterMap) throws ValidationException {
         Map<String,String> data = new LinkedHashMap<String, String>();
 
         for(Field f: EnumSet.allOf(Field.class)) {
@@ -52,6 +50,8 @@ public class AuthorizationRequest extends AbstractMessage {
 
         if(StringUtils.isEmpty(get(Field.REDIRECT_URI))) {
             data.put(Field.REDIRECT_URI.getFieldName(), configuredRedirectUri);
+        } else {
+            OAuth2.validateRedirectUri(get(Field.REDIRECT_URI), configuredRedirectUri);
         }
 
         super.init(cookie, data);
@@ -88,9 +88,9 @@ public class AuthorizationRequest extends AbstractMessage {
             public void validate(String value) throws RuntimeException {
                 super.validate(value);
                 try {
-                    new URL(value);
-                } catch (MalformedURLException e) {
-                    throw new IllegalArgumentException("Invalid redirect_uri value: " + e.getMessage());
+                    OAuth2.validateRedirectUri(value);
+                } catch (ValidationException e) {
+                    throw new IllegalArgumentException(e.getMessage());
                 }
             }
         },

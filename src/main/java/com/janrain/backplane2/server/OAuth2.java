@@ -17,6 +17,7 @@
 package com.janrain.backplane2.server;
 
 import org.apache.commons.lang.StringUtils;
+import org.jetbrains.annotations.Nullable;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -53,22 +54,33 @@ public class OAuth2 {
     public static final String OAUTH2_AUTHZ_RESPONSE_STATE = "state";
 
 
+    public static final String OAUTH2_TOKEN_INVALID_REQUEST = "invalid_request";
+    public static final String OAUTH2_TOKEN_INVALID_GRANT = "invalid_grant";
+
+
+    public static void validateRedirectUri(String redirectUri) throws ValidationException {
+        validateRedirectUri(redirectUri, null);
+    }
+
     /**
      * @param redirectUri
      * @throws ValidationException
      */
-    public static void validateRedirectUri(String redirectUri) throws ValidationException {
+    public static void validateRedirectUri(String redirectUri, @Nullable String expected) throws ValidationException {
         if (! StringUtils.isNotEmpty(redirectUri)) {
             try {
                 URL url = new URL(redirectUri);
                 if (StringUtils.isEmpty(url.getProtocol())) {
-                    throw new ValidationException(OAuth2.OAUTH2_AUTHZ_DIRECT_ERROR, "redirect_uri is not absolute: " + redirectUri);
+                    throw new ValidationException(OAUTH2_TOKEN_INVALID_REQUEST, "redirect_uri is not absolute: " + redirectUri);
                 }
                 if (StringUtils.isNotEmpty(url.getRef())) {
-                    throw new ValidationException(OAuth2.OAUTH2_AUTHZ_DIRECT_ERROR, "redirect_uri MUST not contain a fragment: " + redirectUri);
+                    throw new ValidationException(OAUTH2_TOKEN_INVALID_REQUEST, "redirect_uri MUST not contain a fragment: " + redirectUri);
+                }
+                if (StringUtils.isNotEmpty(expected) && ! redirectUri.equals(expected)) {
+                    throw new ValidationException(OAUTH2_TOKEN_INVALID_GRANT, "Redirect URI mismatch, expected: " +expected);
                 }
             } catch (MalformedURLException e) {
-                throw new ValidationException(OAuth2.OAUTH2_AUTHZ_DIRECT_ERROR, "Invalid redirect_uri: " + e .getMessage());
+                throw new ValidationException(OAUTH2_TOKEN_INVALID_REQUEST, "Invalid redirect_uri: " + e .getMessage());
             }
         }
     }
