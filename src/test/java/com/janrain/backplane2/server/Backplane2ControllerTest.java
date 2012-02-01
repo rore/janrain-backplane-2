@@ -317,7 +317,8 @@ public class Backplane2ControllerTest {
         request.setParameter("grant_type", "code");
 
         //create grant for test
-        Grant grant = new Grant(client.getClientId(),"test");
+
+        Grant grant = new Grant("fakeOwnerId", client.getClientId(),"test");
         // set code to expire?
         grant.setCodeExpirationDefault();
         this.saveGrant(grant);
@@ -346,12 +347,14 @@ public class Backplane2ControllerTest {
         Client client = createTestClient();
 
                 //create grant for test
-        Grant grant1 = new Grant(client.getClientId(),"foo");
+        Grant grant1 = new Grant("fakeOwnerId", client.getClientId(),"foo");
         grant1.setCodeExpirationDefault();
         this.saveGrant(grant1);
 
-        Grant grant2 = new Grant(client.getClientId(), "bar");
+        Grant grant2 = new Grant("fakeOwnerId", client.getClientId(), "bar");
         grant2.setCodeExpirationDefault();
+        // next step required to make it eligible for "client credentials" access
+        grant2.setCodeUsedNow();
         this.saveGrant(grant2);
 
         request.setRequestURI("/v2/token");
@@ -429,7 +432,7 @@ public class Backplane2ControllerTest {
         }
         String buses = StringUtils.collectionToDelimitedString(randomBuses, " ");
 
-        Grant grant = new Grant(client.getClientId(),buses);
+        Grant grant = new Grant("fakeOwnerId", client.getClientId(),buses);
         grant.setCodeExpirationDefault();
         this.saveGrant(grant);
 
@@ -485,7 +488,7 @@ public class Backplane2ControllerTest {
         Client client = createTestClient();
 
         //create grant for test
-        Grant grant = new Grant(client.getClientId(),"test");
+        Grant grant = new Grant("fakeOwnerId", client.getClientId(),"test");
         grant.setCodeExpirationDefault();
         this.saveGrant(grant);
         logger.info("issued AuthCode " + grant.getIdValue());
@@ -537,7 +540,7 @@ public class Backplane2ControllerTest {
         request.setParameter("grant_type", "code");
 
         //create grant for test
-        Grant grant = new Grant(client.getClientId(),"test");
+        Grant grant = new Grant("fakeOwnerId", client.getClientId(),"test");
         grant.setCodeIssuedNow();
         this.saveGrant(grant);
 
@@ -571,7 +574,7 @@ public class Backplane2ControllerTest {
         request.setParameter("grant_type", "code");
 
         //create grant for test
-        Grant grant = new Grant(client.getClientId(),"mybus.com");
+        Grant grant = new Grant("fakeOwnerId", client.getClientId(),"mybus.com");
         grant.setCodeIssuedNow();
         this.saveGrant(grant);
 
@@ -595,7 +598,7 @@ public class Backplane2ControllerTest {
         request.setParameter("grant_type", "code");
 
         //create grant for test
-        Grant grant = new Grant(client.getClientId(),"test");
+        Grant grant = new Grant("fakeOwnerId", client.getClientId(),"test");
         grant.setCodeIssuedNow();
         this.saveGrant(grant);
 
@@ -946,8 +949,8 @@ public class Backplane2ControllerTest {
 
         // Create auth
         ArrayList<Grant> grants = new ArrayList<Grant>();
-        Grant grant1 = new Grant(client.getClientId(), "mybus.com");
-        Grant grant2 = new Grant(client.getClientId(), "thisbus.com");
+        Grant grant1 = new Grant("fakeOwnerId", client.getClientId(), "mybus.com");
+        Grant grant2 = new Grant("fakeOwnerId", client.getClientId(), "thisbus.com");
         this.saveGrant(grant1);
         this.saveGrant(grant2);
         grants.add(grant1);

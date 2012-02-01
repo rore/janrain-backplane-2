@@ -815,6 +815,7 @@ public class Backplane2Controller {
             } else {
                 // create grant/code
                 Grant grant = new Grant(
+                        authenticatedBusOwner,
                         authorizationRequest.get(AuthorizationRequest.Field.CLIENT_ID),
                         // todo: use (and check) scope posted back by bus owner
                         new Scope(checkScope(

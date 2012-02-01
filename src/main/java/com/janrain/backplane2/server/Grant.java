@@ -50,21 +50,25 @@ public class Grant extends Base {
      */
     public Grant() {};
 
-    Grant(String code, String clientId, String buses, Date expires) {
+    Grant(String code, String busOwnerId, String clientId, String buses, Date expires) {
         super(code, buses, expires);
 
         assert(StringUtils.isNotEmpty(clientId));
+        assert(StringUtils.isNotEmpty(busOwnerId));
+        assert(StringUtils.isNotEmpty(buses));
 
         put(GrantField.ISSUED_TO_CLIENT_ID.getFieldName(), clientId);
-        logger.info("Grant declared with buses: " + buses);
+        put(GrantField.ISSUED_BY_USER_ID.getFieldName(), busOwnerId);
+
+        logger.info("Grant declared by bus owner " + busOwnerId + " for client " + clientId + " with buses: " + buses);
     }
 
-    public Grant(String clientId, String buses) {
-        this(ChannelUtil.randomString(CODE_LENGTH), clientId, buses, null);
+    public Grant(String busOwnerId, String clientId, String buses) {
+        this(ChannelUtil.randomString(CODE_LENGTH), busOwnerId, clientId, buses, null);
     }
 
-    public Grant(String clientId, String buses, Date expires) {
-        this(ChannelUtil.randomString(CODE_LENGTH), clientId, buses, expires);
+    public Grant(String busOwnerId, String clientId, String buses, Date expires) {
+        this(ChannelUtil.randomString(CODE_LENGTH), busOwnerId, clientId, buses, expires);
     }
 
     public String getGrantClientId() {
@@ -109,7 +113,7 @@ public class Grant extends Base {
         return issued;
     }
 
-     public Date getCodeUsedDate() {
+    public Date getCodeUsedDate() {
 
         String usedString = get(GrantField.DATE_CODE_USED);
 
