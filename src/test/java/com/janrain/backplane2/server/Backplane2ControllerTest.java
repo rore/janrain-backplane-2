@@ -1,6 +1,7 @@
 package com.janrain.backplane2.server;
 
 
+import com.amazonaws.services.identitymanagement.model.MalformedPolicyDocumentException;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.backplane2.server.config.Client;
 import com.janrain.backplane2.server.config.User;
@@ -1001,12 +1002,74 @@ public class Backplane2ControllerTest {
             request.addParameter("client_id", client.getClientId());
             request.addHeader("Authorization", "Basic " + encodedCredentials);
             ModelAndView mv = handlerAdapter.handle(request, response, controller);
-            logger.info("testAuthenticate() -> view after  = " + mv.getViewName());
-            Cookie authCookie = response.getCookie("bp2.authorization.request");
+            logger.info("should be redirect view to authenticate => " + mv.getViewName());
+            Cookie authZCookie = response.getCookie("bp2.authorization.request");
+            assertNotNull(authZCookie);
+            logger.info("authZ cookie = " + authZCookie.getValue());
 
-            assertNotNull(authCookie);
-            logger.info("auth cookie = " + authCookie.getValue());
+            refreshRequestAndResponse();
 
+            logger.info("redirect to /authenticate endpoint");
+            request.setRequestURI("/v2/authenticate");
+            request.setMethod("GET");
+            mv = handlerAdapter.handle(request, response, controller);
+            logger.info("should be authentication view => " + mv.getViewName());
+
+            refreshRequestAndResponse();
+
+            request.setRequestURI("/v2/authenticate");
+            request.addParameter("busOwner", user.getIdValue());
+            request.addParameter("password", "foo");
+            request.setMethod("POST");
+            mv = handlerAdapter.handle(request, response, controller);
+            logger.info("should be redirect to authorize view => " + mv.getViewName());
+            Cookie authNCookie = response.getCookie("bp2.bus.owner.auth");
+            assertNotNull(authNCookie);
+            logger.info("authN cookie = " + authNCookie.getValue());
+
+            refreshRequestAndResponse();
+
+            logger.info("redirect back to /authorize endpoint");
+            request.setRequestURI("/v2/authorize");
+            request.setMethod("POST");
+            request.setAuthType("BASIC");
+            request.addParameter("redirect_uri", "http://foo.com");
+            request.addParameter("response_type", "authorization_code");
+            request.addParameter("client_id", client.getClientId());
+            request.setCookies(new Cookie[]{authNCookie, authZCookie});
+
+            request.addHeader("Authorization", "Basic " + encodedCredentials);
+            mv = handlerAdapter.handle(request, response, controller);
+            Map<String, Object> model = mv.getModel();
+            String authKey = (String) model.get("auth_key");
+
+            assertNotNull(authKey);
+            logger.info("auth_key=" + authKey);
+            logger.info("client_id=" + (String) model.get("client_id"));
+            logger.info("redirect_uri=" + (String) model.get("redirect_uri"));
+            logger.info("scope=" + (String) model.get("scope"));
+
+            logger.info("should be redirect to authorize view => " + mv.getViewName());
+
+            refreshRequestAndResponse();
+            logger.info("post bus owner grant to /authorize endpoint");
+            request.setRequestURI("/v2/authorize");
+            request.setMethod("POST");
+            request.setAuthType("BASIC");
+            request.addParameter("redirect_uri", (String) model.get("redirect_uri"));
+            request.addParameter("response_type", "authorization_code");
+            request.addParameter("client_id", (String) model.get("client_id"));
+            request.addParameter("auth_key", authKey);
+            request.addParameter("scope", (String) model.get("scope"));
+            // simulate button press
+            request.addParameter("authorize", "Authorize");
+
+            request.setCookies(new Cookie[]{authNCookie, authZCookie});
+
+            request.addHeader("Authorization", "Basic " + encodedCredentials);
+            mv = handlerAdapter.handle(request, response, controller);
+            logger.info("should be redirect back to client => " + mv.getViewName());
+            assertTrue(mv.getViewName().contains("?code="));
 
         } finally {
             daoFactory.getBusOwnerDAO().deleteBusOwner(user.getIdValue());

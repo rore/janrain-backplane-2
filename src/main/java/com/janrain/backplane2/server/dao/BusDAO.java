@@ -21,6 +21,6 @@ public class BusDAO extends DAO {
     public List<BusConfig2> retrieveBuses(String busOwner) throws SimpleDBException {
         return superSimpleDB.retrieveWhere(
                 bpConfig.getTableName(BP_V2_BUS_CONFIG), BusConfig2.class,
-                BusConfig2.Field.OWNER.getFieldName() + "=" + busOwner, true);
+                BusConfig2.Field.OWNER.getFieldName() + "='" + busOwner +"'", true);
     }
 }
