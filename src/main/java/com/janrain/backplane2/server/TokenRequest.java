@@ -20,6 +20,7 @@ import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.backplane2.server.config.Client;
 import com.janrain.backplane2.server.dao.DaoFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
+import com.janrain.crypto.HmacHashUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
@@ -156,7 +157,7 @@ public class TokenRequest {
 
             //check the client
             if (client == null ||
-                    !client_secret.equals(client.getClientSecret()) ||
+                    !HmacHashUtils.checkHmacHash(client_secret, client.getClientSecret()) ||
                     !redirect_uri.equals(client.getRedirectUri()) ||
                     !grant.getGrantClientId().equals(client.getClientId())) {
                 return error("invalid_client", "Client authentication failed");

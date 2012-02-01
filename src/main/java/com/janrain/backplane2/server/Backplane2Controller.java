@@ -85,6 +85,9 @@ public class Backplane2Controller {
         AuthorizationRequest authzRequest = null;
         String httpMethod = request.getMethod();
         String authZdecisionKey = request.getParameter(AUTHZ_DECISION_KEY);
+        if (authZdecisionKey != null) {
+            logger.debug("received valid authZdecisionKey:" + authZdecisionKey);
+        }
 
         // not return from /authenticate && not authz decision post
         if ( request.getParameterMap().size() > 0  &&  StringUtils.isEmpty(authZdecisionKey) ) { 
@@ -583,7 +586,7 @@ public class Backplane2Controller {
     private static final int AUTHORIZATION_REQUEST_COOKIE_LENGTH = 30;
     private static final String AUTHORIZATION_REQUEST_COOKIE = "bp2.authorization.request";
 
-    private static final String AUTHZ_DECISION_KEY = "bp2_authz_key";
+    public static final String AUTHZ_DECISION_KEY = "auth_key";
 
     private final MeterMetric posts =
             Metrics.newMeter(Backplane2Controller.class, "post", "posts", TimeUnit.MINUTES);
@@ -733,17 +736,18 @@ public class Backplane2Controller {
         Map<String,String> model = new HashMap<String, String>();
 
         // generate & persist authZdecisionKey
+        logger.debug("generate & persist authZdecisionKey");
         try {
             AuthorizationDecisionKey authorizationDecisionKey = new AuthorizationDecisionKey(authSessionCookie);
             daoFactory.getAuthorizationDecisionKeyDAO().persistAuthorizationDecisionKey(authorizationDecisionKey);
 
             model.put("auth_key", authorizationDecisionKey.get(AuthorizationDecisionKey.Field.KEY));
-            model.put(AuthorizationRequest.Field.CLIENT_ID.getFieldName(), authzRequest.get(AuthorizationRequest.Field.CLIENT_ID));
-            model.put(AuthorizationRequest.Field.REDIRECT_URI.getFieldName(), authzRequest.get(AuthorizationRequest.Field.REDIRECT_URI));
+            model.put(AuthorizationRequest.Field.CLIENT_ID.getFieldName().toLowerCase(), authzRequest.get(AuthorizationRequest.Field.CLIENT_ID));
+            model.put(AuthorizationRequest.Field.REDIRECT_URI.getFieldName().toLowerCase(), authzRequest.get(AuthorizationRequest.Field.REDIRECT_URI));
 
             String scope = authzRequest.get(AuthorizationRequest.Field.SCOPE);
             List<BusConfig2> ownedBuses = daoFactory.getBusDao().retrieveBuses(authenticatedBusOwner);
-            model.put(AuthorizationRequest.Field.SCOPE.getFieldName(), checkScope(scope, ownedBuses) );
+            model.put(AuthorizationRequest.Field.SCOPE.getFieldName().toLowerCase(), checkScope(scope, ownedBuses) );
 
             // return authZ form
             logger.info("Requesting bus owner authorization for :" + authzRequest.get(AuthorizationRequest.Field.CLIENT_ID) +
@@ -793,6 +797,9 @@ public class Backplane2Controller {
                                               String authenticatedBusOwner,
                                               String authorizationRequestCookie, HttpServletRequest request) throws OAuth2AuthorizationException {
         AuthorizationRequest authorizationRequest = null;
+
+        logger.debug("processAuthZdecision()");
+
         try {
             // retrieve authorization request
             authorizationRequest = daoFactory.getAuthorizationRequestDAO().retrieveAuthorizationRequest(authorizationRequestCookie);
@@ -810,9 +817,9 @@ public class Backplane2Controller {
                 Grant grant = new Grant(
                         authorizationRequest.get(AuthorizationRequest.Field.CLIENT_ID),
                         // todo: use (and check) scope posted back by bus owner
-                        getBuses(checkScope(
+                        new Scope(checkScope(
                                 authorizationRequest.get(AuthorizationRequest.Field.SCOPE),
-                                daoFactory.getBusDao().retrieveBuses(authenticatedBusOwner)))
+                                daoFactory.getBusDao().retrieveBuses(authenticatedBusOwner))).getBusesInScopeAsString()
                 );
 
                 grant.setCodeIssuedNow();
@@ -844,26 +851,11 @@ public class Backplane2Controller {
             }
         } catch (SimpleDBException e) {
             throw new OAuth2AuthorizationException(OAuth2.OAUTH2_AUTHZ_SERVER_ERROR, e.getMessage(), authorizationRequest, e);
+        } catch (BackplaneServerException e) {
+            throw new OAuth2AuthorizationException(OAuth2.OAUTH2_AUTHZ_SERVER_ERROR, e.getMessage(), authorizationRequest, e);
         }
     }
 
-    private String getBuses(String scope) {
-        if (StringUtils.isEmpty(scope)) {
-            return "";
-        } else {
-            StringBuilder result = new StringBuilder();
-            for(String scopeToken : scope.split(" ")) {
-                if(scopeToken.startsWith("bus:")) {
-                    result.append(scopeToken.substring(4)).append(" ");
-                }
-            }
-            if (result.length() > 0) {
-                result.deleteCharAt(result.length()-1);
-            }
-            return result.toString();
-        }
-    }
-    
     private static ModelAndView authzRequestError( final String oauthErrCode, final String errMsg,
                                                    final String redirectUri, final String state) {
         // direct or in/redirect

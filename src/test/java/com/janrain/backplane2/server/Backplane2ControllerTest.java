@@ -1,7 +1,9 @@
 package com.janrain.backplane2.server;
 
 
+import com.amazonaws.services.identitymanagement.model.MalformedPolicyDocumentException;
 import com.janrain.backplane2.server.config.Backplane2Config;
+import com.janrain.backplane2.server.config.BusConfig2;
 import com.janrain.backplane2.server.config.Client;
 import com.janrain.backplane2.server.config.User;
 import com.janrain.backplane2.server.dao.DaoFactory;
@@ -179,7 +181,7 @@ public class Backplane2ControllerTest {
     @Test
     public void testChannelGeneration() {
         String channel = ChannelUtil.randomString(1000);
-        logger.debug(channel);
+        logger.info(channel);
         assertTrue(Base64.isBase64(channel));
     }
 
@@ -195,7 +197,7 @@ public class Backplane2ControllerTest {
         //shouldn't contain the client_secret below
         request.setParameter("client_secret","meh");
         handlerAdapter.handle(request, response, controller);
-        logger.debug("testTokenEndPointAnonymousWithClientSecret() => " + response.getContentAsString());
+        logger.info("testTokenEndPointAnonymousWithClientSecret() => " + response.getContentAsString());
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
     }
 
@@ -224,7 +226,7 @@ public class Backplane2ControllerTest {
         request.setParameter("callback", callback);
 
         handlerAdapter.handle(request, response, controller);
-        logger.debug("testTokenEndPointAnonymousTokenRequest() => " + response.getContentAsString());
+        logger.info("testTokenEndPointAnonymousTokenRequest() => " + response.getContentAsString());
         //assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
 
         assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
@@ -255,7 +257,7 @@ public class Backplane2ControllerTest {
         request.setParameter("callback", callback);
 
         handlerAdapter.handle(request, response, controller);
-        logger.debug("testTokenEndPointAnonymousTokenRequestWithInvalidScope() => " + response.getContentAsString());
+        logger.info("testTokenEndPointAnonymousTokenRequestWithInvalidScope() => " + response.getContentAsString());
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
 
         refreshRequestAndResponse();
@@ -269,7 +271,7 @@ public class Backplane2ControllerTest {
         request.setParameter("callback", callback);
 
         handlerAdapter.handle(request, response, controller);
-        logger.debug("testTokenEndPointAnonymousTokenRequestWithInvalidScope() => " + response.getContentAsString());
+        logger.info("testTokenEndPointAnonymousTokenRequestWithInvalidScope() => " + response.getContentAsString());
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
 
     }
@@ -288,10 +290,10 @@ public class Backplane2ControllerTest {
 
         //will fail because the code below is not valid
         request.setParameter("code", "meh");
-        request.setParameter("client_secret", client.get(User.Field.PWDHASH));
+        request.setParameter("client_secret", "secret");
         request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
         handlerAdapter.handle(request, response, controller);
-        logger.debug("testTokenEndPointClientTokenRequestInvalidCode() => " + request.toString() + " => " + response.getContentAsString());
+        logger.info("testTokenEndPointClientTokenRequestInvalidCode() => " + request.toString() + " => " + response.getContentAsString());
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
 
     }
@@ -324,10 +326,10 @@ public class Backplane2ControllerTest {
         // return the scope it determined from the grant
 
         request.setParameter("code", grant.getIdValue());
-        request.setParameter("client_secret", client.get(User.Field.PWDHASH));
+        request.setParameter("client_secret", "secret");
         request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
         handlerAdapter.handle(request, response, controller);
-        logger.debug("testTokenEndPointClientTokenRequest() => " + response.getContentAsString());
+        logger.info("testTokenEndPointClientTokenRequest() => " + response.getContentAsString());
         //assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
 
         assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
@@ -361,10 +363,10 @@ public class Backplane2ControllerTest {
         // return the scope it determined from grant1 but not grant2
 
         request.setParameter("code", grant1.getIdValue());
-        request.setParameter("client_secret", client.get(User.Field.PWDHASH));
+        request.setParameter("client_secret", "secret");
         request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
         handlerAdapter.handle(request, response, controller);
-        logger.debug("testTokenGrantByCodeScopeIsolation() => " + response.getContentAsString());
+        logger.info("testTokenGrantByCodeScopeIsolation() => " + response.getContentAsString());
         //assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
 
         assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
@@ -393,10 +395,10 @@ public class Backplane2ControllerTest {
         // return the scope it determined from grant1 and grant2
 
         request.setParameter("code", "");
-        request.setParameter("client_secret", client.get(User.Field.PWDHASH));
+        request.setParameter("client_secret", "secret");
         request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
         handlerAdapter.handle(request, response, controller);
-        logger.debug("testTokenGrantByCodeScopeIsolation() => " + response.getContentAsString());
+        logger.info("testTokenGrantByCodeScopeIsolation() => " + response.getContentAsString());
         //assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
 
         assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
@@ -437,10 +439,10 @@ public class Backplane2ControllerTest {
         request.setParameter("grant_type", "code");
         request.setParameter("code", grant.getIdValue());
         request.setParameter("scope", "sticky:false sticky:true source:ftp://bla_source/");
-        request.setParameter("client_secret", client.get(User.Field.PWDHASH));
+        request.setParameter("client_secret", "secret");
         request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
         handlerAdapter.handle(request, response, controller);
-        logger.debug("testTokenGrantByCodeScopeComplexity() get token => " + response.getContentAsString());
+        logger.info("testTokenGrantByCodeScopeComplexity() get token => " + response.getContentAsString());
         //assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
 
         assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
@@ -466,7 +468,7 @@ public class Backplane2ControllerTest {
         request.setMethod("GET");
         request.setParameter("access_token", returnedToken);
         handlerAdapter.handle(request, response, controller);
-        logger.debug("testTokenGrantByCodeScopeComplexity()   => " + response.getContentAsString());
+        logger.info("testTokenGrantByCodeScopeComplexity()   => " + response.getContentAsString());
 
         assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
 
@@ -493,10 +495,10 @@ public class Backplane2ControllerTest {
         request.setParameter("client_id", client.get(User.Field.USER));
         request.setParameter("grant_type", "code");
         request.setParameter("code", grant.getIdValue());
-        request.setParameter("client_secret", client.get(User.Field.PWDHASH));
+        request.setParameter("client_secret", "secret");
         request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
         handlerAdapter.handle(request, response, controller);
-        logger.debug("testTokenEndPointClientUsedCode() => " + response.getContentAsString());
+        logger.info("testTokenEndPointClientUsedCode() => " + response.getContentAsString());
         //assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
 
         assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
@@ -515,7 +517,7 @@ public class Backplane2ControllerTest {
         request.setParameter("client_secret", client.get(User.Field.PWDHASH));
         request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
         handlerAdapter.handle(request, response, controller);
-        logger.debug("testTokenEndPointClientUsedCode() ====> " + response.getContentAsString());
+        logger.info("testTokenEndPointClientUsedCode() ====> " + response.getContentAsString());
 
         assertTrue(daoFactory.getGrantDao().retrieveGrant(grant.getIdValue()).isCodeUsed() == true);
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
@@ -540,11 +542,11 @@ public class Backplane2ControllerTest {
         this.saveGrant(grant);
 
         request.setParameter("code", grant.getIdValue());
-        request.setParameter("client_secret", client.get(User.Field.PWDHASH));
+        request.setParameter("client_secret",  "secret");
         request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
         request.setParameter("scope", "bus;mybus.com bus:yourbus.com");
         handlerAdapter.handle(request, response, controller);
-        logger.debug("TryToUseMalformedScopeTest() => " + response.getContentAsString());
+        logger.info("TryToUseMalformedScopeTest() => " + response.getContentAsString());
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
 
         // try again with anonymous access with privileged use of payload
@@ -553,7 +555,7 @@ public class Backplane2ControllerTest {
         request.setParameter("scope", "payload.blah.blah");
         handlerAdapter.handle(request, response, controller);
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
-        logger.debug("TryToUseMalformedScopetest() => " + response.getContentAsString());
+        logger.info("TryToUseMalformedScopetest() => " + response.getContentAsString());
 
     }
 
@@ -574,11 +576,11 @@ public class Backplane2ControllerTest {
         this.saveGrant(grant);
 
         request.setParameter("code", grant.getIdValue());
-        request.setParameter("client_secret", client.get(User.Field.PWDHASH));
+        request.setParameter("client_secret", "secret");
         request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
         request.setParameter("scope", "bus:mybus.com bus:yourbus.com");
         handlerAdapter.handle(request, response, controller);
-        logger.debug("TryToUseInvalidScopeTest() => " + response.getContentAsString());
+        logger.info("TryToUseInvalidScopeTest() => " + response.getContentAsString());
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
     }
 
@@ -602,7 +604,7 @@ public class Backplane2ControllerTest {
         //will fail because no redirect_uri value is included
         request.setParameter("redirect_uri","");
         handlerAdapter.handle(request, response, controller);
-        logger.debug("testTokenEndPointNoURI() => " + response.getContentAsString());
+        logger.info("testTokenEndPointNoURI() => " + response.getContentAsString());
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
     }
 
@@ -616,7 +618,7 @@ public class Backplane2ControllerTest {
         //will fail because no client_secret is included
         request.setParameter("client_secret","");
         handlerAdapter.handle(request, response, controller);
-        logger.debug("testTokenEndPointNoClientSecret() => " + response.getContentAsString());
+        logger.info("testTokenEndPointNoClientSecret() => " + response.getContentAsString());
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
     }
 
@@ -631,7 +633,7 @@ public class Backplane2ControllerTest {
         request.setParameter("code","");
         request.setParameter("redirect_uri","meh");
         handlerAdapter.handle(request, response, controller);
-        logger.debug("testTokenEndPointEmptyCode() => " + response.getContentAsString());
+        logger.info("testTokenEndPointEmptyCode() => " + response.getContentAsString());
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
     }
 
@@ -644,7 +646,7 @@ public class Backplane2ControllerTest {
         //will fail because bad grant type included
         request.setParameter("grant_type", "unexpected_value");
         handlerAdapter.handle(request, response, controller);
-        logger.debug("testTokenEndPointBadGrantType() => " + response.getContentAsString());
+        logger.info("testTokenEndPointBadGrantType() => " + response.getContentAsString());
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
     }
 
@@ -655,7 +657,7 @@ public class Backplane2ControllerTest {
         request.setRequestURI("/v2/token");
         request.setMethod("POST");
         handlerAdapter.handle(request, response, controller);
-        logger.debug("testTokenEndPointNoParams() => " + response.getContentAsString());
+        logger.info("testTokenEndPointNoParams() => " + response.getContentAsString());
 
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
         assertTrue(response.getStatus() == HttpServletResponse.SC_BAD_REQUEST);
@@ -682,7 +684,7 @@ public class Backplane2ControllerTest {
         request.setMethod("GET");
         request.setParameter("access_token", token.getIdValue());
         handlerAdapter.handle(request, response, controller);
-        logger.debug("testMessageEndPoint()  => " + response.getContentAsString());
+        logger.info("testMessageEndPoint()  => " + response.getContentAsString());
        // assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
 
         // {
@@ -732,7 +734,7 @@ public class Backplane2ControllerTest {
         request.setParameter("access_token", token.getIdValue());
         request.setParameter("callback", callbackName);
         handlerAdapter.handle(request, response, controller);
-        logger.debug("testMessageEndPointWithCallBack()  => " + response.getContentAsString());
+        logger.info("testMessageEndPointWithCallBack()  => " + response.getContentAsString());
 
         // callback({
         //  "messageURL": "https://bp.example.com/v2/message/097a5cc401001f95b45d37aca32a3bd2",
@@ -778,7 +780,7 @@ public class Backplane2ControllerTest {
         request.setMethod("GET");
         request.setParameter("access_token", token.getIdValue());
         handlerAdapter.handle(request, response, controller);
-        logger.debug("testMessageEndPointPAL()   => " + response.getContentAsString());
+        logger.info("testMessageEndPointPAL()   => " + response.getContentAsString());
        // assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
 
 
@@ -833,7 +835,7 @@ public class Backplane2ControllerTest {
         request.setMethod("GET");
         request.setParameter("access_token", token.getIdValue());
         handlerAdapter.handle(request, response, controller);
-        logger.debug("testMessagesEndPointPAL()   => " + response.getContentAsString());
+        logger.info("testMessagesEndPointPAL()   => " + response.getContentAsString());
 
         assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
     }
@@ -865,7 +867,7 @@ public class Backplane2ControllerTest {
         request.setParameter("access_token", token.getIdValue());
         request.setParameter("since", message1.getIdValue());
         handlerAdapter.handle(request, response, controller);
-        logger.debug("testMessagesEndPointRegular() => " + response.getContentAsString());
+        logger.info("testMessagesEndPointRegular() => " + response.getContentAsString());
 
         assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
 
@@ -965,7 +967,7 @@ public class Backplane2ControllerTest {
             request.setMethod("GET");
             request.setParameter("access_token", token.getIdValue());
             handlerAdapter.handle(request, response, controller);
-            logger.debug("testGrantAndRevoke() => " + response.getContentAsString());
+            logger.info("testGrantAndRevoke() => " + response.getContentAsString());
 
             assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
         } finally {
@@ -983,8 +985,15 @@ public class Backplane2ControllerTest {
 
         Client client = this.createTestClient();
 
+        BusConfig2 bus1 = new BusConfig2(ChannelUtil.randomString(30), user.getIdValue(), "100", "50000");
+        BusConfig2 bus2 = new BusConfig2(ChannelUtil.randomString(30), user.getIdValue(), "100", "50000");
+
         try {
             daoFactory.getBusOwnerDAO().persistBusOwner(user);
+
+            // create a few buses
+            daoFactory.getBusDao().persistBus(bus1);
+            daoFactory.getBusDao().persistBus(bus2);
 
             refreshRequestAndResponse();
 
@@ -996,20 +1005,103 @@ public class Backplane2ControllerTest {
             request.setRequestURI("/v2/authorize");
             request.setMethod("GET");
             request.setAuthType("BASIC");
-            request.addParameter("redirect_uri", "http://foo.com");
+            request.addParameter("redirect_uri", client.getRedirectUri());
             request.addParameter("response_type", "authorization_code");
             request.addParameter("client_id", client.getClientId());
             request.addHeader("Authorization", "Basic " + encodedCredentials);
             ModelAndView mv = handlerAdapter.handle(request, response, controller);
-            logger.info("testAuthenticate() -> view after  = " + mv.getViewName());
-            Cookie authCookie = response.getCookie("bp2.authorization.request");
+            logger.info("should be redirect view to authenticate => " + mv.getViewName());
+            Cookie authZCookie = response.getCookie("bp2.authorization.request");
+            assertNotNull(authZCookie);
+            logger.info("authZ cookie = " + authZCookie.getValue());
 
-            assertNotNull(authCookie);
-            logger.info("auth cookie = " + authCookie.getValue());
+            refreshRequestAndResponse();
+
+            logger.info("redirect to /authenticate endpoint");
+            request.setRequestURI("/v2/authenticate");
+            request.setMethod("GET");
+            mv = handlerAdapter.handle(request, response, controller);
+            logger.info("should be authentication view => " + mv.getViewName());
+
+            refreshRequestAndResponse();
+
+            request.setRequestURI("/v2/authenticate");
+            request.addParameter("busOwner", user.getIdValue());
+            request.addParameter("password", "foo");
+            request.setMethod("POST");
+            mv = handlerAdapter.handle(request, response, controller);
+            logger.info("should be redirect to authorize view => " + mv.getViewName());
+            Cookie authNCookie = response.getCookie("bp2.bus.owner.auth");
+            assertNotNull(authNCookie);
+            logger.info("authN cookie = " + authNCookie.getValue());
+
+            refreshRequestAndResponse();
+
+            logger.info("redirect back to /authorize endpoint");
+            request.setRequestURI("/v2/authorize");
+            request.setMethod("POST");
+            request.setAuthType("BASIC");
+            request.addParameter("redirect_uri", client.getRedirectUri());
+            request.addParameter("response_type", "authorization_code");
+            request.addParameter("client_id", client.getClientId());
+            request.setCookies(new Cookie[]{authNCookie, authZCookie});
+
+            request.addHeader("Authorization", "Basic " + encodedCredentials);
+            mv = handlerAdapter.handle(request, response, controller);
+            Map<String, Object> model = mv.getModel();
+            String authKey = (String) model.get("auth_key");
+
+            assertNotNull(authKey);
+            logger.info("auth_key=" + authKey);
+            logger.info("client_id=" + (String) model.get("client_id"));
+            logger.info("redirect_uri=" + (String) model.get("redirect_uri"));
+            logger.info("scope=" + (String) model.get("scope"));
+
+            logger.info("should be redirect to authorize view => " + mv.getViewName());
+
+            refreshRequestAndResponse();
+            logger.info("post bus owner grant to /authorize endpoint");
+            request.setRequestURI("/v2/authorize");
+            request.setMethod("POST");
+            request.setAuthType("BASIC");
+            request.addParameter("redirect_uri", (String) model.get("redirect_uri"));
+            request.addParameter("response_type", "authorization_code");
+            request.addParameter("client_id", (String) model.get("client_id"));
+            request.addParameter("auth_key", authKey);
+            request.addParameter("scope", (String) model.get("scope"));
+            // simulate button press
+            request.addParameter("authorize", "Authorize");
+
+            request.setCookies(new Cookie[]{authNCookie, authZCookie});
+
+            request.addHeader("Authorization", "Basic " + encodedCredentials);
+            mv = handlerAdapter.handle(request, response, controller);
+            logger.info("should be redirect back to client => " + mv.getViewName());
+            assertTrue(mv.getViewName().contains("?code="));
+
+            String code = mv.getViewName().substring(mv.getViewName().indexOf("code=")+5);
+            logger.info("using code: '" + code + "' to retrieve token");
+            // redeem the code for a token
+            refreshRequestAndResponse();
+
+            request.setRequestURI("/v2/token");
+            request.setMethod("POST");
+            request.setParameter("client_id", client.getClientId());
+            request.setParameter("grant_type", "code");
+            request.setParameter("code", code);
+            request.setParameter("client_secret", "secret");
+            request.setParameter("redirect_uri", client.get(Client.ClientField.REDIRECT_URI));
+
+            handlerAdapter.handle(request, response, controller);
+
+            logger.info("should be a token response => " + response.getContentAsString());
+            assertTrue(response.getContentAsString().contains("Bearer"));
 
 
         } finally {
             daoFactory.getBusOwnerDAO().deleteBusOwner(user.getIdValue());
+            daoFactory.getBusDao().deleteBus(bus1.getIdValue());
+            daoFactory.getBusDao().deleteBus(bus2.getIdValue());
         }
 
     }
