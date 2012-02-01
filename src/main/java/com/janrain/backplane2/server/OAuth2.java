@@ -32,6 +32,7 @@ public class OAuth2 {
     // - PUBLIC
 
 
+    // /authorize constants
     public static final String OAUTH2_AUTHZ_DIRECT_ERROR = "direct_error"; // internal code, not defined by OAuth
     public static final String OAUTH2_AUTHZ_ERROR_FIELD_NAME = "error";
     public static final String OAUTH2_AUTHZ_ERROR_DESC_FIELD_NAME = "error_description";
@@ -53,8 +54,12 @@ public class OAuth2 {
     public static final String OAUTH2_AUTHZ_RESPONSE_CODE = "code";
     public static final String OAUTH2_AUTHZ_RESPONSE_STATE = "state";
 
+    // token constants
+    public static final String OAUTH2_TOKEN_ERROR_FIELD_NAME = "error";
+    public static final String OAUTH2_TOKEN_ERROR_DESC_FIELD_NAME = "error_description";
 
     public static final String OAUTH2_TOKEN_INVALID_REQUEST = "invalid_request";
+    public static final String OAUTH2_TOKEN_INVALID_CLIENT = "invalid_client";
     public static final String OAUTH2_TOKEN_INVALID_GRANT = "invalid_grant";
 
 

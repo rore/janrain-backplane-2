@@ -28,6 +28,8 @@ import org.jetbrains.annotations.NotNull;
 import javax.inject.Inject;
 import java.util.HashMap;
 
+import static com.janrain.backplane2.server.OAuth2.*;
+
 /**
  * Token request
  * @author Tom Raney
@@ -49,9 +51,6 @@ public class TokenRequest {
 
     @Inject
     private Backplane2Config bpConfig;
-
-    private static final String ERR_MSG_FIELD = "error";
-    private static final String ERR_MSG_DESCRIPTION = "error_description";
 
     private static final Logger logger = Logger.getLogger(TokenRequest.class);
 
@@ -110,56 +109,56 @@ public class TokenRequest {
 
         if (StringUtils.isNotEmpty(callback)) {
             if (!callback.matches("[\\._a-zA-Z0-9]*")) {
-                return error("invalid_request", "callback parameter value is malformed");
+                return error(OAUTH2_TOKEN_INVALID_REQUEST, "callback parameter value is malformed");
             }
         }
 
         if (StringUtils.isEmpty(client_id)) {
-            return error("invalid_request", "Missing value for client_id");
+            return error(OAUTH2_TOKEN_INVALID_REQUEST, "Missing value for client_id");
         }
 
         if (!grant_type.equals("client_credentials") && !grant_type.equals("code")) {
-            return error("invalid_request", "Invalid grant type");
+            return error(OAUTH2_TOKEN_INVALID_REQUEST, "Invalid grant type");
         }
 
         if ((grant_type.equals("code") && StringUtils.isEmpty(codeId)) || (grant_type.equals("client_credentials") && StringUtils.isNotEmpty(codeId)) ) {
-            return error("invalid_request", "Missing code value");
+            return error(OAUTH2_TOKEN_INVALID_REQUEST, "Missing code value");
         }
 
         if (grant_type.equals("client_credentials") && !client_id.equals(Token.ANONYMOUS) && StringUtils.isEmpty(client_secret)) {
-            return error("invalid_request", "Missing client_secret value");
+            return error(OAUTH2_TOKEN_INVALID_REQUEST, "Missing client_secret value");
         }
 
         if (grant_type.equals("code") && StringUtils.isEmpty(redirect_uri)) {
-            return error("invalid_request", "Missing redirect_uri value");
+            return error(OAUTH2_TOKEN_INVALID_REQUEST, "Missing redirect_uri value");
         }
 
         if (grant_type.equals("client_credentials") && client_id.equals(Token.ANONYMOUS) && StringUtils.isNotEmpty(client_secret)) {
-            return error("invalid_request", "Must not include client_secret for anonymous requests");
+            return error(OAUTH2_TOKEN_INVALID_REQUEST, "Must not include client_secret for anonymous requests");
         }
 
         // check the codeId
         if (StringUtils.isNotEmpty(codeId)) {
             //did a grant record pull from the db?
             if (grant == null) {
-                return error("invalid_grant", "Authorization code is invalid");
+                return error(OAUTH2_TOKEN_INVALID_GRANT, "Authorization code is invalid");
             }
 
             if (grant.isCodeUsed()) {
                 // revoke related token, if one exists and has already been used
                 daoFactory.getTokenDao().revokeTokenByGrant(grant.getIdValue());
-                return error("invalid_grant", "Authorization code is invalid");
+                return error(OAUTH2_TOKEN_INVALID_GRANT, "Authorization code is invalid");
             }
 
             if (this.grant.isCodeExpired()) {
-                return error("invalid_grant", "Authorization code is expired");
+                return error(OAUTH2_TOKEN_INVALID_GRANT, "Authorization code is expired");
             }
 
             //check the client
             if (client == null ||
                     !HmacHashUtils.checkHmacHash(client_secret, client.getClientSecret()) ||
                     !grant.getGrantClientId().equals(client.getClientId())) {
-                return error("invalid_client", "Client authentication failed");
+                return error(OAUTH2_TOKEN_INVALID_CLIENT, "Client authentication failed");
             }
             
             // check redirect_uri
@@ -174,10 +173,10 @@ public class TokenRequest {
             try {
                 this.scopes = new Scope(scope);
                 if (this.grant != null && !grant.isAllowedBuses(scopes.getBusesInScope())) {
-                    return error("invalid_request", "Invalid scope");
+                    return error(OAUTH2_TOKEN_INVALID_REQUEST, "Invalid scope");
                 }
             } catch (BackplaneServerException e) {
-                return error("invalid_request", e.getMessage());
+                return error(OAUTH2_TOKEN_INVALID_REQUEST, e.getMessage());
             }
         }
 
@@ -186,9 +185,9 @@ public class TokenRequest {
 
     public HashMap<String, Object> error(@NotNull final String error, final String description) {
         return new HashMap<String, Object>() {{
-            put(ERR_MSG_FIELD, error);
+            put(OAUTH2_TOKEN_ERROR_FIELD_NAME, error);
             if (description != null) {
-                put(ERR_MSG_DESCRIPTION, description);
+                put(OAuth2.OAUTH2_TOKEN_ERROR_DESC_FIELD_NAME, description);
             }
         }};
     }
