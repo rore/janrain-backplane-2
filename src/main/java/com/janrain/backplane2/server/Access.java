@@ -33,9 +33,6 @@ import java.util.*;
  */
 public abstract class Access extends AbstractMessage {
 
-    private static final int CHANNEL_NAME_LENGTH = 32;
-    private static final Logger logger = Logger.getLogger(Access.class);
-
     /**
      * Empty default constructor for child classes to use
      */

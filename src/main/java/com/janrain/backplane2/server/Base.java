@@ -44,6 +44,8 @@ public abstract class Base extends Access {
         if (StringUtils.isNotEmpty(buses)) {
             put(BaseField.BUSES.getFieldName(), buses);
         }
+
+        validate();
     }
 
     public @Nullable
@@ -91,7 +93,7 @@ public abstract class Base extends Access {
 
         // - PUBLIC
 
-        BUSES("buses", true);
+        BUSES("buses", false);
 
         @Override
         public String getFieldName() {

@@ -27,6 +27,8 @@ import java.util.Date;
  */
 public class TokenAnonymous extends Token {
 
+    public static final int CHANNEL_NAME_LENGTH = 32;
+
     /**
      * Empty default constructor for AWS to use.
      */
@@ -38,7 +40,7 @@ public class TokenAnonymous extends Token {
         // verify that no channel or bus was submitted in the scopeString request
         Scope testScope = new Scope(scopeString);
         if (!testScope.getBusesInScope().isEmpty() || !testScope.getChannelsInScope().isEmpty()) {
-            throw new BackplaneServerException("Scope request not allowed for regular token");
+            throw new BackplaneServerException("Scope request not allowed");
         }
 
         String channel = ChannelUtil.randomString(CHANNEL_NAME_LENGTH);

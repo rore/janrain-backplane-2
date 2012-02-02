@@ -39,7 +39,6 @@ public class TokenPrivileged extends Token {
     public TokenPrivileged(String tokenString, String clientId, String buses, String scopeString, Date expires) throws BackplaneServerException {
         super("pr" + tokenString, TYPE.PRIVILEGED_TOKEN, buses, scopeString, expires);
 
-        assert(StringUtils.isNotEmpty(clientId));
         put(Field.ISSUED_TO_CLIENT_ID.getFieldName(), clientId);
 
         if (new Scope(scopeString).getBusesInScope().isEmpty()) {
@@ -53,9 +52,6 @@ public class TokenPrivileged extends Token {
             scopeString = getEncodedBusesAsString() + " " + scopeString;
             this.setMustReturnScopeInResponse(true);
         }
-
-        logger.debug("allowed buses: " + buses);
-        logger.debug("requested scope: " + scopeString);
 
         if (!isAllowedBuses(new Scope(scopeString).getBusesInScope())) {
             throw new BackplaneServerException("Scope request not allowed");
