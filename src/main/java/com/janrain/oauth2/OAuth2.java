@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.janrain.backplane2.server;
+package com.janrain.oauth2;
 
 import org.apache.commons.lang.StringUtils;
 import org.jetbrains.annotations.Nullable;

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.janrain.backplane2.server;
+package com.janrain.oauth2;
 
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;

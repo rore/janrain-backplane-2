@@ -16,7 +16,6 @@
 
 package com.janrain.backplane2.server.provision;
 
-import com.janrain.backplane2.server.ApplicationException;
 import com.janrain.backplane2.server.config.*;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
@@ -32,9 +31,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_BUS_OWNERS;
-import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_CLIENTS;
-import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_BUS_CONFIG;
+import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.*;
 
 /**
  * Controller handling the API calls for backplane customer configuration provisioning.
@@ -159,10 +156,6 @@ public class ProvisioningController2 {
             Exception thrown = null;
             try {
                 config = superSimpleDb.retrieve(tableName, entityType, entityName);
-                if (config == null) {
-                    throw new ApplicationException("Error looking up " + entityType.getSimpleName() + " " + entityName);
-                }
-
             } catch (Exception e) {
                 thrown = e;
             }

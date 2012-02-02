@@ -16,7 +16,7 @@
 
 package com.janrain.backplane2.server.dao;
 
-import com.janrain.backplane2.server.AuthorizationRequest;
+import com.janrain.oauth2.AuthorizationRequest;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;

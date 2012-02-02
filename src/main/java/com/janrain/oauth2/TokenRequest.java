@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-package com.janrain.backplane2.server;
+package com.janrain.oauth2;
 
+import com.janrain.backplane2.server.*;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.backplane2.server.config.Client;
 import com.janrain.backplane2.server.dao.DaoFactory;
@@ -28,7 +29,7 @@ import org.jetbrains.annotations.NotNull;
 import javax.inject.Inject;
 import java.util.HashMap;
 
-import static com.janrain.backplane2.server.OAuth2.*;
+import static com.janrain.oauth2.OAuth2.*;
 
 /**
  * Token request
@@ -54,7 +55,7 @@ public class TokenRequest {
 
     private static final Logger logger = Logger.getLogger(TokenRequest.class);
 
-    TokenRequest(DaoFactory daoFactory, String client_id, String grant_type, String redirect_uri, String codeId, String client_secret, String scope, String callback) {
+    public TokenRequest(DaoFactory daoFactory, String client_id, String grant_type, String redirect_uri, String codeId, String client_secret, String scope, String callback) {
         this.client_id = client_id;
         this.grant_type = grant_type;
         this.redirect_uri = redirect_uri;
@@ -80,7 +81,7 @@ public class TokenRequest {
         }
     }
 
-    TokenRequest(String client_id, String grant_type, String scope, String callback) {
+    public TokenRequest(String client_id, String grant_type, String scope, String callback) {
         this.client_id = client_id;
         this.grant_type = grant_type;
         this.scope = scope;

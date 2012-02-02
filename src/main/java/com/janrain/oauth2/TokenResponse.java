@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-package com.janrain.backplane2.server;
+package com.janrain.oauth2;
 
+import com.janrain.backplane2.server.*;
 import com.janrain.backplane2.server.dao.DaoFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import org.apache.log4j.Logger;
@@ -29,12 +30,12 @@ import java.util.List;
  * Response
  * @author Tom Raney
  */
-public class OAuth2Response {
+public class TokenResponse {
 
     TokenRequest request;
     private DaoFactory daoFactory;
 
-    OAuth2Response(TokenRequest request, DaoFactory daoFactory) {
+    public TokenResponse(TokenRequest request, DaoFactory daoFactory) {
         this.request = request;
         this.daoFactory = daoFactory;
     }
@@ -85,5 +86,5 @@ public class OAuth2Response {
     }
 
 
-    private static final Logger logger = Logger.getLogger(OAuth2Response.class);
+    private static final Logger logger = Logger.getLogger(TokenResponse.class);
 }

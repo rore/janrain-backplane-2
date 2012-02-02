@@ -14,31 +14,31 @@
  * limitations under the License.
  */
 
-package com.janrain.backplane2.server;
+package com.janrain.oauth2;
 
 import javax.servlet.http.HttpServletRequest;
 
 /**
  * @author Johnny Bufu
  */
-public class OAuth2AuthorizationException extends Exception {
+public class AuthorizationException extends Exception {
 
-    public OAuth2AuthorizationException(String oauthErrorCode, String message, HttpServletRequest request) {
+    public AuthorizationException(String oauthErrorCode, String message, HttpServletRequest request) {
         this(oauthErrorCode, message, request, null);
     }
 
-    public OAuth2AuthorizationException(String oauthErrorCode, String message, HttpServletRequest request, Throwable cause) {
+    public AuthorizationException(String oauthErrorCode, String message, HttpServletRequest request, Throwable cause) {
         super(message, cause);
         this.oauthErrorCode = oauthErrorCode;
         this.redirectUri = request.getParameter(AuthorizationRequest.Field.REDIRECT_URI.getFieldName().toLowerCase());
         this.state = request.getParameter(AuthorizationRequest.Field.STATE.getFieldName().toLowerCase());
     }
 
-    public OAuth2AuthorizationException(String oauthErrorCode, String message, AuthorizationRequest request) {
+    public AuthorizationException(String oauthErrorCode, String message, AuthorizationRequest request) {
         this(oauthErrorCode, message, request, null);
     }
 
-    public OAuth2AuthorizationException(String oauthErrorCode, String message, AuthorizationRequest request, Throwable cause) {
+    public AuthorizationException(String oauthErrorCode, String message, AuthorizationRequest request, Throwable cause) {
         super(message, cause);
         this.oauthErrorCode = oauthErrorCode;
         this.redirectUri = request.get(AuthorizationRequest.Field.REDIRECT_URI);

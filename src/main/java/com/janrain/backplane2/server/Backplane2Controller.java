@@ -19,6 +19,7 @@ package com.janrain.backplane2.server;
 import com.janrain.backplane2.server.config.*;
 import com.janrain.backplane2.server.dao.BackplaneMessageDAO;
 import com.janrain.backplane2.server.dao.DaoFactory;
+import com.janrain.oauth2.*;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.crypto.ChannelUtil;
 import com.janrain.crypto.HmacHashUtils;
@@ -80,7 +81,7 @@ public class Backplane2Controller {
                             HttpServletResponse response,
                             @CookieValue( value = AUTH_SESSION_COOKIE, required = false) String authSessionCookie,
                             @CookieValue( value = AUTHORIZATION_REQUEST_COOKIE, required = false) String authorizationRequestCookie,
-                            @RequestHeader(value = "Authorization", required = false) String basicAuth) throws OAuth2AuthorizationException {
+                            @RequestHeader(value = "Authorization", required = false) String basicAuth) throws AuthorizationException {
 
         AuthorizationRequest authzRequest = null;
         String httpMethod = request.getMethod();
@@ -104,7 +105,7 @@ public class Backplane2Controller {
                     daoFactory.getAuthorizationRequestDAO().persistAuthorizationRequest(authzRequest);
                     response.addCookie(new Cookie(AUTHORIZATION_REQUEST_COOKIE, authzRequest.get(AuthorizationRequest.Field.COOKIE)));
                 } catch (SimpleDBException e) {
-                    throw new OAuth2AuthorizationException(OAuth2.OAUTH2_AUTHZ_SERVER_ERROR, e.getMessage(), request, e);
+                    throw new AuthorizationException(OAuth2.OAUTH2_AUTHZ_SERVER_ERROR, e.getMessage(), request, e);
                 }
             }
             logger.info("Bus owner not authenticated, redirecting to /authenticate");
@@ -121,7 +122,7 @@ public class Backplane2Controller {
                     logger.info("Retrieved authorization request for client:" + authzRequest.get(AuthorizationRequest.Field.CLIENT_ID) +
                                 "[" + authzRequest.get(AuthorizationRequest.Field.COOKIE)+"]");
                 } catch (SimpleDBException e) {
-                    throw new OAuth2AuthorizationException(OAuth2.OAUTH2_AUTHZ_SERVER_ERROR, e.getMessage(), request, e);
+                    throw new AuthorizationException(OAuth2.OAUTH2_AUTHZ_SERVER_ERROR, e.getMessage(), request, e);
                 }
             }
             return processAuthZrequest(authzRequest, authSessionCookie, authenticatedBusOwner);
@@ -192,7 +193,7 @@ public class Backplane2Controller {
         HashMap<String, Object> hash;
 
         try {
-            hash= new OAuth2Response(tokenRequest, daoFactory).generateResponse();
+            hash= new TokenResponse(tokenRequest, daoFactory).generateResponse();
         } catch (final BackplaneServerException bpe) {
             return new HashMap<String,Object>() {{
                 put(ERR_MSG_FIELD, bpe.getMessage());
@@ -248,21 +249,19 @@ public class Backplane2Controller {
         TokenRequest tokenRequest = new TokenRequest(daoFactory, client_id, grant_type, redirect_uri,
                                                         code, client_secret, scope, null);
 
-        HashMap errors = tokenRequest.validate();
+        HashMap<String,Object> errors = tokenRequest.validate();
         if (!errors.isEmpty()) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             return errors;
         }
 
         try {
-            return new OAuth2Response(tokenRequest, daoFactory).generateResponse();
+            return new TokenResponse(tokenRequest, daoFactory).generateResponse();
         } catch (final BackplaneServerException bpe) {
             return new HashMap<String,Object>() {{
                 put(ERR_MSG_FIELD, bpe.getMessage());
             }};
-
         }
-
     }
 
     /**
@@ -511,7 +510,7 @@ public class Backplane2Controller {
     }
 
     @ExceptionHandler
-    public ModelAndView handleOauthAuthzError(final OAuth2AuthorizationException e) {
+    public ModelAndView handleOauthAuthzError(final AuthorizationException e) {
         return authzRequestError(e.getOauthErrorCode(), e.getMessage(), e.getRedirectUri(), e.getState());
     }
     
@@ -671,7 +670,7 @@ public class Backplane2Controller {
     }
 
     /** Parse, extract & validate an OAuth2 authorization request from the HTTP request and basic auth header */
-    private AuthorizationRequest parseAuthZrequest(HttpServletRequest request, String basicAuth) throws OAuth2AuthorizationException {
+    private AuthorizationRequest parseAuthZrequest(HttpServletRequest request, String basicAuth) throws AuthorizationException {
         try {
             // authenticate client
             Client authenticatedClient = getAuthenticatedClient(basicAuth);
@@ -683,14 +682,14 @@ public class Backplane2Controller {
             // check auth client_id == request param client_id
             String requestClient = authorizationRequest.get(AuthorizationRequest.Field.CLIENT_ID);
             if ( ! requestClient.equals(authenticatedClient.get(Client.Field.USER))) {
-                throw new OAuth2AuthorizationException(OAuth2.OAUTH2_AUTHZ_INVALID_REQUEST, "Mismatched client_id in request and basicauth header.", request);
+                throw new AuthorizationException(OAuth2.OAUTH2_AUTHZ_INVALID_REQUEST, "Mismatched client_id in request and basicauth header.", request);
             }
             logger.info("Parsed authorization request: " + authorizationRequest);
             return authorizationRequest;
         } catch (AuthException e) {
-            throw new OAuth2AuthorizationException(OAuth2.OAUTH2_AUTHZ_ACCESS_DENIED, "Client authentication failed.", request);
+            throw new AuthorizationException(OAuth2.OAUTH2_AUTHZ_ACCESS_DENIED, "Client authentication failed.", request);
         } catch (Exception e) {
-            throw new OAuth2AuthorizationException(OAuth2.OAUTH2_AUTHZ_INVALID_REQUEST, e.getMessage(), request, e);
+            throw new AuthorizationException(OAuth2.OAUTH2_AUTHZ_INVALID_REQUEST, e.getMessage(), request, e);
         }
     }
 
@@ -732,7 +731,7 @@ public class Backplane2Controller {
     }
 
     /** Present an authorization form to the bus owner and obtain authorization decision */
-    private ModelAndView processAuthZrequest(AuthorizationRequest authzRequest, String authSessionCookie, String authenticatedBusOwner) throws OAuth2AuthorizationException {
+    private ModelAndView processAuthZrequest(AuthorizationRequest authzRequest, String authSessionCookie, String authenticatedBusOwner) throws AuthorizationException {
         Map<String,String> model = new HashMap<String, String>();
 
         // generate & persist authZdecisionKey
@@ -755,7 +754,7 @@ public class Backplane2Controller {
             return new ModelAndView(CLIENT_AUTHORIZATION_FORM_JSP, model);
 
         } catch (SimpleDBException e) {
-            throw new OAuth2AuthorizationException(OAuth2.OAUTH2_AUTHZ_SERVER_ERROR, e.getMessage(), authzRequest, e);
+            throw new AuthorizationException(OAuth2.OAUTH2_AUTHZ_SERVER_ERROR, e.getMessage(), authzRequest, e);
         }
     }
 
@@ -795,7 +794,7 @@ public class Backplane2Controller {
 
     private ModelAndView processAuthZdecision(String authZdecisionKey, String authSessionCookie,
                                               String authenticatedBusOwner,
-                                              String authorizationRequestCookie, HttpServletRequest request) throws OAuth2AuthorizationException {
+                                              String authorizationRequestCookie, HttpServletRequest request) throws AuthorizationException {
         AuthorizationRequest authorizationRequest = null;
 
         logger.debug("processAuthZdecision()");
@@ -807,11 +806,11 @@ public class Backplane2Controller {
             // check authZdecisionKey
             AuthorizationDecisionKey authZdecisionKeyEntry = daoFactory.getAuthorizationDecisionKeyDAO().retrieveAuthorizationRequest(authZdecisionKey);
             if (null == authZdecisionKeyEntry || ! authSessionCookie.equals(authZdecisionKeyEntry.get(AuthorizationDecisionKey.Field.AUTH_COOKIE))) {
-                throw new OAuth2AuthorizationException(OAuth2.OAUTH2_AUTHZ_ACCESS_DENIED, "Presented authorization key was issued to a different authenticated bus owner.", authorizationRequest);
+                throw new AuthorizationException(OAuth2.OAUTH2_AUTHZ_ACCESS_DENIED, "Presented authorization key was issued to a different authenticated bus owner.", authorizationRequest);
             }
 
             if (! "Authorize".equals(request.getParameter("authorize"))) {
-                throw new OAuth2AuthorizationException(OAuth2.OAUTH2_AUTHZ_ACCESS_DENIED, "Bus owner denied authorization.", authorizationRequest);
+                throw new AuthorizationException(OAuth2.OAUTH2_AUTHZ_ACCESS_DENIED, "Bus owner denied authorization.", authorizationRequest);
             } else {
                 // create grant/code
                 Grant grant = new Grant(
@@ -851,9 +850,9 @@ public class Backplane2Controller {
                 }
             }
         } catch (SimpleDBException e) {
-            throw new OAuth2AuthorizationException(OAuth2.OAUTH2_AUTHZ_SERVER_ERROR, e.getMessage(), authorizationRequest, e);
+            throw new AuthorizationException(OAuth2.OAUTH2_AUTHZ_SERVER_ERROR, e.getMessage(), authorizationRequest, e);
         } catch (BackplaneServerException e) {
-            throw new OAuth2AuthorizationException(OAuth2.OAUTH2_AUTHZ_SERVER_ERROR, e.getMessage(), authorizationRequest, e);
+            throw new AuthorizationException(OAuth2.OAUTH2_AUTHZ_SERVER_ERROR, e.getMessage(), authorizationRequest, e);
         }
     }
 
