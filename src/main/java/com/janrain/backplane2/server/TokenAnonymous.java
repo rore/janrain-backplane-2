@@ -33,6 +33,23 @@ public class TokenAnonymous extends Token {
 
     public TokenAnonymous(String tokenString, String buses, String scopeString, Date expires) throws BackplaneServerException {
         super("an" + tokenString, TYPE.REGULAR_TOKEN, buses, scopeString, expires);
+
+        // verify that no channel or bus was submitted in the scopeString request
+        Scope testScope = new Scope(scopeString);
+        if (!testScope.getBusesInScope().isEmpty() || !testScope.getChannelsInScope().isEmpty()) {
+            throw new BackplaneServerException("Scope request not allowed for regular token");
+        }
+
+        String channel = ChannelUtil.randomString(CHANNEL_NAME_LENGTH);
+        put(TokenField.CHANNEL.getFieldName(), channel);
+        // set the scope string to include this new channel
+        if (StringUtils.isEmpty(scopeString)) {
+            scopeString = "channel:" + channel;
+        }  else {
+            scopeString += " channel:" + channel;
+        }
+
+        setScopeString(scopeString);
     }
 
     public TokenAnonymous(String buses, String scopeString, Date expires) throws BackplaneServerException {

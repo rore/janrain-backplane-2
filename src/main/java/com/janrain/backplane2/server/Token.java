@@ -29,7 +29,7 @@ import java.util.*;
 
 public abstract class Token extends Base {
 
-    private static final int CHANNEL_NAME_LENGTH = 32;
+    public static final int CHANNEL_NAME_LENGTH = 32;
     public static final int TOKEN_LENGTH = 20;
     public static final int EXPIRES_SECONDS = 3600;
     public static final String ANONYMOUS = "anonymous";
@@ -54,51 +54,12 @@ public abstract class Token extends Base {
         super(tokenString,buses,expires);
 
         logger.debug("creating token with id '" + tokenString + "'");
-        assert(tokenString.startsWith("an") || tokenString.startsWith("pr"));
+        assert( (accessType == TYPE.REGULAR_TOKEN && tokenString.startsWith("an")) ||
+                (accessType == TYPE.PRIVILEGED_TOKEN && tokenString.startsWith("pr")));
 
         put(TokenField.TYPE.getFieldName(), accessType.name());
 
-        if (accessType == TYPE.REGULAR_TOKEN) {
-
-            // verify that no channel or bus was submitted in the scopeString request
-            Scope testScope = new Scope(scopeString);
-            if (!testScope.getBusesInScope().isEmpty() || !testScope.getChannelsInScope().isEmpty()) {
-                throw new BackplaneServerException("Scope request not allowed");
-            }
-
-            String channel = ChannelUtil.randomString(CHANNEL_NAME_LENGTH);
-            put(TokenField.CHANNEL.getFieldName(), channel);
-            // set the scope string to include this new channel
-            if (StringUtils.isEmpty(scopeString)) {
-                scopeString = "channel:" + channel;
-            }  else {
-                scopeString += " channel:" + channel;
-            }
-
-        } else if (accessType == TYPE.PRIVILEGED_TOKEN) {
-            if (new Scope(scopeString).getBusesInScope().isEmpty()) {
-                // if a privileged user has requested a token without specifying a bus in the scope, copy
-                // over all authorized buses from the set of authorized buses
-
-                if (StringUtils.isBlank(scopeString)) {
-                    scopeString = "";
-                }
-
-                scopeString = getEncodedBusesAsString() + " " + scopeString;
-                this.setMustReturnScopeInResponse(true);
-            }
-
-            if (!isAllowedBuses(new Scope(scopeString).getBusesInScope())) {
-                throw new BackplaneServerException("Scope request not allowed");
-            }
-
-            logger.info("privileged token allowed scope:'" + scopeString + "' from auth'd buses:'" + getBusesAsString() + "'");
-        } else {
-            throw new BackplaneServerException("A server error has occurred");
-        }
-
         setScopeString(scopeString);
-
 
     }
 

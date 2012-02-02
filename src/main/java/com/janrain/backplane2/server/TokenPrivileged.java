@@ -41,6 +41,30 @@ public class TokenPrivileged extends Token {
 
         assert(StringUtils.isNotEmpty(clientId));
         put(Field.ISSUED_TO_CLIENT_ID.getFieldName(), clientId);
+
+        if (new Scope(scopeString).getBusesInScope().isEmpty()) {
+            // if a privileged user has requested a token without specifying a bus in the scope, copy
+            // over all authorized buses from the set of authorized buses
+
+            if (StringUtils.isBlank(scopeString)) {
+                scopeString = "";
+            }
+
+            scopeString = getEncodedBusesAsString() + " " + scopeString;
+            this.setMustReturnScopeInResponse(true);
+        }
+
+        logger.debug("allowed buses: " + buses);
+        logger.debug("requested scope: " + scopeString);
+
+        if (!isAllowedBuses(new Scope(scopeString).getBusesInScope())) {
+            throw new BackplaneServerException("Scope request not allowed");
+        }
+
+        logger.info("privileged token allowed scope:'" + scopeString + "' from auth'd buses:'" + getBusesAsString() + "'");
+
+        setScopeString(scopeString);
+
     }
 
     public TokenPrivileged(String clientId, String buses, String scopeString, Date expires) throws BackplaneServerException  {
