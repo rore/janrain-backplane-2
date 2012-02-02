@@ -65,6 +65,8 @@ public class TokenPrivileged extends Token {
 
         setScopeString(scopeString);
 
+        validate();
+
     }
 
     public TokenPrivileged(String clientId, String buses, String scopeString, Date expires) throws BackplaneServerException  {
@@ -79,6 +81,11 @@ public class TokenPrivileged extends Token {
     public TokenPrivileged(String clientId, List<Grant> grants, String scope) throws BackplaneServerException {
         this(ChannelUtil.randomString(TOKEN_LENGTH), clientId, Grant.getBusesAsString(grants), scope, null);
         this.setGrants(grants);
+    }
+
+    @Override
+    public String getChannelName() {
+        return null;
     }
 
     public String getClientId() {

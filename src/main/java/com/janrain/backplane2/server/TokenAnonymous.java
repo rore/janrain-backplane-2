@@ -16,6 +16,7 @@
 
 package com.janrain.backplane2.server;
 
+import com.janrain.commons.supersimpledb.message.MessageField;
 import com.janrain.crypto.ChannelUtil;
 import org.apache.commons.lang.StringUtils;
 
@@ -41,7 +42,7 @@ public class TokenAnonymous extends Token {
         }
 
         String channel = ChannelUtil.randomString(CHANNEL_NAME_LENGTH);
-        put(TokenField.CHANNEL.getFieldName(), channel);
+        put(Field.CHANNEL.getFieldName(), channel);
         // set the scope string to include this new channel
         if (StringUtils.isEmpty(scopeString)) {
             scopeString = "channel:" + channel;
@@ -50,10 +51,52 @@ public class TokenAnonymous extends Token {
         }
 
         setScopeString(scopeString);
+
+        validate();
     }
 
     public TokenAnonymous(String buses, String scopeString, Date expires) throws BackplaneServerException {
         this(ChannelUtil.randomString(TOKEN_LENGTH), buses, scopeString, expires);
+    }
+
+    @Override
+    public String getChannelName() {
+        return this.get(Field.CHANNEL);
+    }
+
+    public static enum Field implements MessageField {
+
+        CHANNEL("channel", true);
+
+
+        @Override
+        public String getFieldName() {
+            return fieldName;
+        }
+
+        @Override
+        public boolean isRequired() {
+            return required;
+        }
+
+        @Override
+        public void validate(String value) throws RuntimeException {
+            if (isRequired()) validateNotNull(getFieldName(), value);
+        }
+
+        // - PRIVATE
+
+        private String fieldName;
+        private boolean required = true;
+
+        private Field(String fieldName) {
+            this(fieldName, true);
+        }
+
+        private Field(String fieldName, boolean required) {
+            this.fieldName = fieldName;
+            this.required = required;
+        }
     }
 
 }

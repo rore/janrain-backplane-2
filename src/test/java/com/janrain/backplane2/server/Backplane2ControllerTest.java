@@ -910,7 +910,7 @@ public class Backplane2ControllerTest {
         // Create source token for the channel
         TokenAnonymous token1 = new TokenAnonymous("", "", null);
         // override the random channel name for our test channel
-        token1.put(Token.TokenField.CHANNEL.getFieldName(), "testchannel");
+        token1.put(TokenAnonymous.Field.CHANNEL.getFieldName(), "testchannel");
         this.saveToken(token1);
 
         // Create appropriate token

@@ -63,10 +63,6 @@ public abstract class Token extends Base {
 
     }
 
-    public String getChannelName() {
-        return this.get(TokenField.CHANNEL);
-    }
-
     public String getTokenType() {
         return "Bearer";
     }
@@ -104,11 +100,12 @@ public abstract class Token extends Base {
         return this.mustReturnScopeInResponse;
     }
 
+    public abstract String getChannelName();
+
 
     public static enum TokenField implements MessageField {
         TYPE("type", true),
-        SCOPE("scope", false),
-        CHANNEL("channel", false);
+        SCOPE("scope", false);
 
 
         @Override
