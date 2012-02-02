@@ -43,7 +43,7 @@ public class TokenResponse {
     public HashMap<String, Object> generateResponse() throws SimpleDBException, BackplaneServerException {
         if (request.grant_type.equals("client_credentials") && request.client_id.equals(Token.ANONYMOUS)) {
             // issue new channel id
-            final Token token = new Token(Token.TYPE.REGULAR_TOKEN,  null, request.scope, new Date(new Date().getTime() + Token.EXPIRES_SECONDS * 1000L));
+            final TokenAnonymous token = new TokenAnonymous(null, request.scope, new Date(new Date().getTime() + Token.EXPIRES_SECONDS * 1000L));
             daoFactory.getTokenDao().persistToken(token);
             return new LinkedHashMap<String, Object>() {{
                 put("access_token", token.getIdValue());

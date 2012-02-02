@@ -16,9 +16,7 @@
 
 package com.janrain.backplane2.server.dao;
 
-import com.janrain.backplane2.server.Access;
-import com.janrain.backplane2.server.Grant;
-import com.janrain.backplane2.server.Token;
+import com.janrain.backplane2.server.*;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
@@ -45,11 +43,19 @@ public class TokenDAO extends DAO {
     }
 
     public Token retrieveToken(String tokenId) throws SimpleDBException {
-        return superSimpleDB.retrieve(bpConfig.getTableName(BP_ACCESS_TOKEN), Token.class, tokenId);
+        if (tokenId.startsWith("an")) {
+            return superSimpleDB.retrieve(bpConfig.getTableName(BP_ACCESS_TOKEN), TokenAnonymous.class, tokenId);
+        } else if (tokenId.startsWith("pr")) {
+            return superSimpleDB.retrieve(bpConfig.getTableName(BP_ACCESS_TOKEN), TokenPrivileged.class, tokenId);
+        } else {
+            logger.error("invalid token! => '" + tokenId + "'");
+            return null; //invalid token id, don't even try
+        }
     }
 
-    public Token retrieveTokenByChannel(String channel) throws SimpleDBException {
-        List<Token> tokens = superSimpleDB.retrieveWhere(bpConfig.getTableName(BP_ACCESS_TOKEN), Token.class, "channel='" + channel + "'", false);
+    public TokenAnonymous retrieveTokenByChannel(String channel) throws SimpleDBException {
+        List<TokenAnonymous> tokens = superSimpleDB.retrieveWhere(bpConfig.getTableName(BP_ACCESS_TOKEN),
+                TokenAnonymous.class, "channel='" + channel + "'", false);
         if (tokens.isEmpty()) {
             return null;
         }

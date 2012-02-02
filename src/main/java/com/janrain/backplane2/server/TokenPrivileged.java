@@ -37,11 +37,14 @@ public class TokenPrivileged extends Token {
     public TokenPrivileged() {}
 
     public TokenPrivileged(String tokenString, String clientId, String buses, String scopeString, Date expires) throws BackplaneServerException {
-        super(tokenString, TYPE.PRIVILEGED_TOKEN, buses, scopeString, expires);
+        super("pr" + tokenString, TYPE.PRIVILEGED_TOKEN, buses, scopeString, expires);
 
         assert(StringUtils.isNotEmpty(clientId));
         put(Field.ISSUED_TO_CLIENT_ID.getFieldName(), clientId);
+    }
 
+    public TokenPrivileged(String clientId, String buses, String scopeString, Date expires) throws BackplaneServerException  {
+        this(ChannelUtil.randomString(TOKEN_LENGTH), clientId, buses, scopeString, null);
     }
 
     public TokenPrivileged(String clientId, Grant grant, String scope) throws BackplaneServerException {

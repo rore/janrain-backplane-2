@@ -19,6 +19,7 @@ package com.janrain.backplane2.server;
 import com.janrain.backplane2.server.dao.DaoFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.HashMap;
@@ -43,6 +44,7 @@ public class MessageRequest {
             setToken(daoFactory.getTokenDao().retrieveToken(tokenString));
         } catch (SimpleDBException e) {
             // do nothing for now
+            logger.debug("failed to load token '" + tokenString + "'", e);
         }
     }
 
@@ -83,6 +85,10 @@ public class MessageRequest {
             }
         }};
     }
+
+    // - PRIVATE
+
+    private static final Logger logger = Logger.getLogger(MessageRequest.class);
 
 
 }

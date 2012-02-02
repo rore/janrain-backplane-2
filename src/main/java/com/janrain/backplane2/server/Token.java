@@ -27,7 +27,7 @@ import java.util.*;
  * @author Tom Raney
  */
 
-public class Token extends Base {
+public abstract class Token extends Base {
 
     private static final int CHANNEL_NAME_LENGTH = 32;
     public static final int TOKEN_LENGTH = 20;
@@ -52,6 +52,9 @@ public class Token extends Base {
      */
     Token(String tokenString, TYPE accessType, String buses, String scopeString, Date expires) throws BackplaneServerException {
         super(tokenString,buses,expires);
+
+        logger.debug("creating token with id '" + tokenString + "'");
+        assert(tokenString.startsWith("an") || tokenString.startsWith("pr"));
 
         put(TokenField.TYPE.getFieldName(), accessType.name());
 
@@ -97,10 +100,6 @@ public class Token extends Base {
         setScopeString(scopeString);
 
 
-    }
-
-    public Token(TYPE accessType, String buses, String scope, Date expires) throws BackplaneServerException {
-        this(ChannelUtil.randomString(TOKEN_LENGTH), accessType, buses, scope, expires);
     }
 
     public String getChannelName() {

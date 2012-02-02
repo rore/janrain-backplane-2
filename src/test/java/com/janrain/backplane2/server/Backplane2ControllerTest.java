@@ -233,7 +233,7 @@ public class Backplane2ControllerTest {
         //assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
 
         assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
-                matches(callback + "[(][{]\\s*\"access_token\":\\s*\".{20}+\",\\s*" +
+                matches(callback + "[(][{]\\s*\"access_token\":\\s*\".{22}+\",\\s*" +
                         "\"expires_in\":\\s*3600,\\s*" +
                         "\"token_type\":\\s*\"Bearer\",\\s*" +
                         "\"backplane_channel\":\\s*\".{32}+\"\\s*[}][)]"));
@@ -337,7 +337,7 @@ public class Backplane2ControllerTest {
         //assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
 
         assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
-                matches("[{]\\s*\"access_token\":\\s*\".{20}+\",\\s*" +
+                matches("[{]\\s*\"access_token\":\\s*\".{22}+\",\\s*" +
                         "\"token_type\":\\s*\"Bearer\",\\s*" +
                         "\"scope\":\\s*\".*\"\\s*" +
                         "[}]"));
@@ -376,7 +376,7 @@ public class Backplane2ControllerTest {
         //assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
 
         assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
-                matches("[{]\\s*\"access_token\":\\s*\".{20}+\",\\s*" +
+                matches("[{]\\s*\"access_token\":\\s*\".{22}+\",\\s*" +
                         "\"token_type\":\\s*\"Bearer\",\\s*" +
                         "\"scope\":\\s*\".*\"\\s*" +
                         "[}]"));
@@ -408,7 +408,7 @@ public class Backplane2ControllerTest {
         //assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
 
         assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
-                matches("[{]\\s*\"access_token\":\\s*\".{20}+\",\\s*" +
+                matches("[{]\\s*\"access_token\":\\s*\".{22}+\",\\s*" +
                         "\"token_type\":\\s*\"Bearer\",\\s*" +
                         "\"scope\":\\s*\".*\"\\s*" +
                         "[}]"));
@@ -452,7 +452,7 @@ public class Backplane2ControllerTest {
         //assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
 
         assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
-                matches("[{]\\s*\"access_token\":\\s*\".{20}+\",\\s*" +
+                matches("[{]\\s*\"access_token\":\\s*\".{22}+\",\\s*" +
                         "\"token_type\":\\s*\"Bearer\",\\s*" +
                         "\"scope\":\\s*\".*\"\\s*" +
                         "[}]"));
@@ -508,7 +508,7 @@ public class Backplane2ControllerTest {
         //assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
 
         assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
-                matches("[{]\\s*\"access_token\":\\s*\".{20}+\",\\s*" +
+                matches("[{]\\s*\"access_token\":\\s*\".{22}+\",\\s*" +
                         "\"token_type\":\\s*\"Bearer\",\\s*" +
                         "\"scope\":\\s*\".*\"\\s*" +
                         "[}]"));
@@ -675,7 +675,7 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
 
         // Create appropriate token
-        Token token = new Token(Token.TYPE.REGULAR_TOKEN, "mybus.com", null, new Date(new Date().getTime() + Token.EXPIRES_SECONDS * 1000));
+        TokenAnonymous token = new TokenAnonymous("mybus.com", null, new Date(new Date().getTime() + Token.EXPIRES_SECONDS * 1000));
         this.saveToken(token);
 
         // Seed message
@@ -712,7 +712,6 @@ public class Backplane2ControllerTest {
 
         assertTrue("Expected " + HttpServletResponse.SC_OK + " but received: " + response.getStatus(), response.getStatus() == HttpServletResponse.SC_OK);
         assertTrue(response.getContentType().equals("application/json"));
-
     }
 
     @Test
@@ -723,7 +722,7 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
 
         // Create appropriate token
-        Token token = new Token(Token.TYPE.REGULAR_TOKEN, "mybus.com", null, new Date(new Date().getTime() + Token.EXPIRES_SECONDS * 1000));
+        TokenAnonymous token = new TokenAnonymous("mybus.com", null, new Date(new Date().getTime() + Token.EXPIRES_SECONDS * 1000));
         this.saveToken(token);
 
         // Seed message
@@ -771,7 +770,7 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
 
         // Create appropriate token
-        Token token = new Token(Token.TYPE.PRIVILEGED_TOKEN, "mybus.com", null, null);
+        TokenPrivileged token = new TokenPrivileged("fooClient", "mybus.com", null, null);
         this.saveToken(token);
 
         // Seed message
@@ -823,7 +822,7 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
 
         // Create appropriate token
-        Token token = new Token(Token.TYPE.PRIVILEGED_TOKEN, "mybus.com yourbus.com", "bus:mybus.com", null);
+        TokenPrivileged token = new TokenPrivileged("fooClient", "mybus.com yourbus.com", "bus:mybus.com", null);
         this.saveToken(token);
 
         // Seed 2 messages
@@ -854,7 +853,7 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
 
         // Create appropriate token
-        Token token = new Token(Token.TYPE.REGULAR_TOKEN, null, null, new Date(new Date().getTime() + Token.EXPIRES_SECONDS * 1000));
+        TokenAnonymous token = new TokenAnonymous(null, null, new Date(new Date().getTime() + Token.EXPIRES_SECONDS * 1000));
         this.saveToken(token);
 
         // Seed 2 messages
@@ -893,7 +892,7 @@ public class Backplane2ControllerTest {
 
         // Create inappropriate token
         try {
-            Token token = new Token(Token.TYPE.PRIVILEGED_TOKEN, "mybus.com yourbus.com", "bus:invalidbus.com", null);
+            TokenPrivileged token = new TokenPrivileged("fooClient", "mybus.com yourbus.com", "bus:invalidbus.com", null);
         } catch (BackplaneServerException bpe) {
             //expected
             return;
@@ -909,13 +908,13 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
 
         // Create source token for the channel
-        Token token1 = new Token(Token.TYPE.REGULAR_TOKEN, "", "", null);
+        TokenAnonymous token1 = new TokenAnonymous("", "", null);
         // override the random channel name for our test channel
         token1.put(Token.TokenField.CHANNEL.getFieldName(), "testchannel");
         this.saveToken(token1);
 
         // Create appropriate token
-        Token token2 = new Token(Token.TYPE.PRIVILEGED_TOKEN, "mybus.com yourbus.com", "bus:yourbus.com", null);
+        TokenPrivileged token2 = new TokenPrivileged("clientFoo", "mybus.com yourbus.com", "bus:yourbus.com", null);
         this.saveToken(token2);
 
         // Make the call
