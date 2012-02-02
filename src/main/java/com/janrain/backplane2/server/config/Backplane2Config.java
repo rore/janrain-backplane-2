@@ -21,6 +21,7 @@ import com.janrain.backplane2.server.dao.DaoFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.commons.supersimpledb.message.AbstractNamedMap;
+import com.janrain.commons.util.AwsUtility;
 import com.janrain.crypto.HmacHashUtils;
 import com.janrain.metrics.MetricMessage;
 import com.janrain.metrics.MetricsAccumulator;
@@ -138,6 +139,15 @@ public class Backplane2Config {
         return buildProperties.getProperty(BUILD_VERSION_PROPERTY);
     }
 
+    /**
+     * Retrieve the server instance id Amazon assigned
+     * @return
+     */
+
+    public static String getEC2InstanceId() {
+        return EC2InstanceId;
+    }
+
     // - PACKAGE
 
 
@@ -173,6 +183,9 @@ public class Backplane2Config {
     private final String bpInstanceId;
     private ScheduledExecutorService cleanup;
 
+    // Amazon specific instance-id value
+    private static String EC2InstanceId = "n/a";
+
     private final TimerMetric getMessagesTime =
             Metrics.newTimer(Backplane2Config.class, "cleanup_messages_time", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
 
@@ -186,6 +199,8 @@ public class Backplane2Config {
     @SuppressWarnings({"UnusedDeclaration"})
     private Backplane2Config() {
         this.bpInstanceId = getAwsProp(InitSystemProps.BP_AWS_INSTANCE_ID);
+        this.EC2InstanceId = new AwsUtility().retrieveEC2InstanceId();
+
         try {
             buildProperties.load(Backplane2Config.class.getResourceAsStream(BUILD_PROPERTIES));
         } catch (IOException e) {
