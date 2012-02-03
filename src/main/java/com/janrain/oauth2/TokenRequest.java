@@ -145,12 +145,6 @@ public class TokenRequest {
                 return error(OAUTH2_TOKEN_INVALID_GRANT, "Authorization code is invalid");
             }
 
-            if (grant.isCodeUsed()) {
-                // revoke related token, if one exists and has already been used
-                daoFactory.getTokenDao().revokeTokenByGrant(daoFactory.getGrantDao().retrieveGrant(grant.getIdValue()));
-                return error(OAUTH2_TOKEN_INVALID_GRANT, "Authorization code is invalid");
-            }
-
             if (this.grant.isCodeExpired()) {
                 return error(OAUTH2_TOKEN_INVALID_GRANT, "Authorization code is expired");
             }
