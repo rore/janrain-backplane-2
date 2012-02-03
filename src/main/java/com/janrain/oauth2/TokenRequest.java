@@ -66,6 +66,7 @@ public class TokenRequest {
         this.callback = callback;
 
         try {
+            // todo: grant DAO markCodeUsed / update grant
             setGrant(daoFactory.getGrantDao().retrieveGrant(codeId));
         } catch (Exception e) {
             //do nothing
@@ -119,7 +120,7 @@ public class TokenRequest {
         }
 
         if (!grant_type.equals("client_credentials") && !grant_type.equals("code")) {
-            return error(OAUTH2_TOKEN_INVALID_REQUEST, "Invalid grant type");
+            return error(OAUTH2_TOKEN_UNSUPPORTED_GRANT, "Invalid grant type");
         }
 
         if ((grant_type.equals("code") && StringUtils.isEmpty(codeId)) || (grant_type.equals("client_credentials") && StringUtils.isNotEmpty(codeId)) ) {
