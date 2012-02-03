@@ -102,6 +102,7 @@ public class ProvisioningController2 {
     @RequestMapping(value = "/client/update", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, String> clientUpdate(@RequestBody ClientUpdateRequest updateRequest) throws AuthException {
+        logger.debug("client updateRequest: '" + updateRequest + "'");
         return doUpdate(bpConfig.getTableName(BP_CLIENTS), Client.class, updateRequest);
     }
 
