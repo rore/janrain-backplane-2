@@ -49,7 +49,7 @@ window.Backplane = window.Backplane || (function() {
 })();
 
 /**
- * Initializes the backplane 2 library
+ * Initializes the Backplane 2 library
  *
  * @param {Object} config - Hash with configuration parameters.
  *   Possible hash keys:
@@ -66,7 +66,8 @@ Backplane.init = function(config) {
     this.config = config;
     this.config.serverBaseURL = this.normalizeURL(config.serverBaseURL);
 
-    this.channelByToken = this.getCookieChannels();
+    this.loadChannelFromCookie();
+
     this.cacheMax = config.cacheMax || this.cacheMax;
 
     if (typeof this.config.channelExpires == "undefined") {
@@ -76,7 +77,8 @@ Backplane.init = function(config) {
     }
 
     if (this.getChannelName()) {
-        this.finishInit(false);
+        this.onInit();
+        this.request();
     } else {
         this.fetchNewChannel();
     }
@@ -124,10 +126,10 @@ Backplane.getChannelID = function() {
 };
 
 /**
- * Notifies backplane library about the fact that subscribers are going
+ * Notifies Backplane library about the fact that subscribers are going
  * to receive backplane messages of any of the specified types
  *
- * @param {Array} List of expected backplane message types
+ * @param {Array} List of expected Backplane message types
  */
 Backplane.expectMessages = function(types) {
     this.expectMessagesWithin(60, types);
@@ -158,21 +160,31 @@ Backplane.expectMessagesWithin = function(interval, types) {
 
 /**
  * Internal functions
- * finishInit({"access_token":"anJeTstYkz64Xf3XGaANFE","expires_in":3600,"token_type":"Bearer","backplane_channel":"iEuR8VE9MDfmD3dBxbCtdqgYRtDsDnrh"})
+ *
+ */
+
+/**
+ * Init callback function
+ * @param initPayload in the form {"access_token":"anJeTstYkz64Xf3XGaANFE","expires_in":3600,
+ *              "token_type":"Bearer","backplane_channel":"iEuR8VE9MDfmD3dBxbCtdqgYRtDsDnrh"}
  */
 Backplane.finishInit = function (initPayload) {
 
     this.token = initPayload.access_token;
     this.channelName = initPayload.backplane_channel;
 
-    this.setCookieChannels();
-    this.config.channelID = this.generateChannelID();
+    this.setCookieChannel();
     this.onInit();
     this.request();
 };
 
-Backplane.generateChannelID = function() {
-    return this.config.serverBaseURL + "/v2/messages?access_token=" + this.token;
+Backplane.generateNextFrameURL = function() {
+     if (typeof this.since == "undefined") {
+        return this.config.serverBaseURL + "/messages?callback=Backplane.response" +
+        "&access_token=" + this.token + "&rnd=" + Math.random();
+     } else {
+         return this.since + "&access_token=" + this.token + "&rnd=" + Math.random();
+     }
 };
 
 Backplane.getChannelName = function() {
@@ -185,7 +197,7 @@ Backplane.getTS = function() {
     return Math.round((new Date()).valueOf() / 1000);
 };
 
-Backplane.getCookieChannels = function() {
+Backplane.loadChannelFromCookie = function() {
     var match = (document.cookie || "").match(/backplane2-channel=(.*?)(?:$|;)/);
     if (!match || !match[1]) return {};
     var parts = match[1].split(":");
@@ -271,9 +283,8 @@ Backplane.request = function() {
         var script = document.createElement("script");
         script.type = "text/javascript";
         script.charset = "utf-8";
-        script.src = self.config.channelID + "?callback=Backplane.response" +
-            (self.since ? "&since=" + encodeURIComponent(self.since) : "") +
-            "&rnd=" + Math.random();
+        script.src = Backplane.generateNextFrameURL();
+
         var container = document.getElementsByTagName("head")[0] || document.documentElement;
         container.insertBefore(script, container.firstChild);
         script.onload = script.onreadystatechange = function() {
@@ -288,32 +299,37 @@ Backplane.request = function() {
     }, this.calcTimeout());
 };
 
-Backplane.response = function(messages) {
+/**
+ * Callback function for message frame request
+ * @param messages
+ */
+
+Backplane.response = function(messageFrame) {
     var self = this;
     this.stopTimer("watchdog");
-    messages = messages || [];
-    var since = messages.length ? messages[messages.length - 1].id : this.since;
+
     if (typeof this.since == "undefined") {
         if (typeof this.config.initFrameFilter != "undefined") {
-            messages = this.config.initFrameFilter(messages);
+            messageFrame.messages = this.config.initFrameFilter(messageFrame.messages);
         } else {
-            messages = [];
+            messageFrame.messages = [];
         }
     }
 
-    this.since = since || "";
-    for (var i = 0; i < messages.length; i++) {
+    this.since = messageFrame.nextURL;
+
+    for (var i = 0; i < messageFrame.messages.length; i++) {
         // notify subscribers
         for (var j in this.subscribers) {
             if (this.subscribers.hasOwnProperty(j)) {
-                this.subscribers[j](messages[i].message);
+                this.subscribers[j](messageFrame.messages[i]);
             }
         }
         // stash message in cache
         if (this.cacheMax > 0) {
-            if (!this.cachedMessages.hasOwnProperty([messages[i].id])) {
-                this.cachedMessages[messages[i].id] = messages[i];
-                this.cachedMessagesIndex.push(messages[i].id);
+            if (!this.cachedMessages.hasOwnProperty(messageFrame.messages[messages[i].messageURL])) {
+                this.cachedMessages[messageFrame.messages[i].messageURL] = messageFrame.messages[i];
+                this.cachedMessagesIndex.push(messageFrame.messages[i].messageURL);
             }
             if (this.cachedMessagesIndex.length > this.cacheMax) {
                 delete this.cachedMessages[this.cachedMessagesIndex[0]];
@@ -326,7 +342,7 @@ Backplane.response = function(messages) {
         for (var k = 0; k < this.awaiting.queue.length; k++) {
             var satisfied = false;
             for (var l = 0; l < this.awaiting.queue[k].length; l++) {
-                if (this.awaiting.queue[k][l] == messages[i].message.type) {
+                if (this.awaiting.queue[k][l] == messageFrame.messages[i].type) {
                     satisfied = true;
                 }
             }

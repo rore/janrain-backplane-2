@@ -66,7 +66,7 @@ public class MessageRequest {
         }
 
         if (StringUtils.isNotEmpty(callback)) {
-            if (!callback.matches("[a-zA-Z0-9]*")) {
+            if (!callback.matches("[\\._a-zA-Z0-9]*")) {
                 return error("invalid_request", "Callback parameter value is malformed");
             }
         }
