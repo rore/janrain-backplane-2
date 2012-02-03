@@ -56,10 +56,6 @@ public class TokenResponse {
         if (request.grant_type.equals("code")) {
             final TokenPrivileged token = new TokenPrivileged(request.client_id, request.getGrant(), request.scope);
             daoFactory.getTokenDao().persistToken(token);
-            // mark the code as used
-            request.getGrant().setCodeUsedNow();
-            daoFactory.getGrantDao().persistGrant(request.getGrant());
-            logger.info("marking AuthCode " + request.getGrant().getIdValue() + " as used");
             return new LinkedHashMap<String, Object>() {{
                 put("access_token", token.getIdValue());
                 put("token_type", "Bearer");

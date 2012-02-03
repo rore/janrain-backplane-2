@@ -21,6 +21,8 @@ import com.janrain.backplane2.server.Scope;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
+import org.apache.log4j.Logger;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -42,6 +44,35 @@ public class GrantDAO extends DAO {
 
     public Grant retrieveGrant(String grantId) throws SimpleDBException {
         return superSimpleDB.retrieve(bpConfig.getTableName(BP_GRANT), Grant.class, grantId);
+    }
+
+    /**
+     * Retrieve grant from simpleDB, mark code used, return grant.
+     *
+     * If code re-used: delete grant, log error, return null.
+     */
+    public Grant getGrantSetCodeUsed(String codeId) throws SimpleDBException {
+        try {
+            Grant existing = superSimpleDB.retrieve(bpConfig.getTableName(BP_GRANT), Grant.class, codeId);
+            if (existing != null) {
+                Grant updated = new Grant(existing);
+                updated.setCodeUsedNow();
+                superSimpleDB.update(bpConfig.getTableName(BP_GRANT), Grant.class, existing, updated);
+                logger.info("marked authorization code: " + codeId + " as used");
+                return updated;
+            }
+            logger.warn("No grant found for code: " + codeId);
+        } catch (SimpleDBException e) {
+            // delete grant to invalidate all tokens backed by this grant if code was already used
+            // todo: actually delete all issued tokens?
+            Grant existing = superSimpleDB.retrieve(bpConfig.getTableName(BP_GRANT), Grant.class, codeId);
+            if (existing.isCodeUsed()) {
+                logger.error( "Authorization code: " + codeId + " already used at " + existing.getCodeUsedDate() +
+                              ", deleting grant to invalidate all related tokens");
+                deleteGrant(codeId);
+            }
+        }
+        return null;
     }
 
     public void deleteGrant(String grantId) throws SimpleDBException {
@@ -76,4 +107,7 @@ public class GrantDAO extends DAO {
         return selectedGrants;
     }
 
+    // - PRIVATE
+
+    private static final Logger logger = Logger.getLogger(GrantDAO.class);
 }

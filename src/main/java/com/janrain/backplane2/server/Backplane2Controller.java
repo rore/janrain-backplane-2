@@ -206,7 +206,7 @@ public class Backplane2Controller {
         } else {
             response.setContentType("application/x-javascript");
             try {
-                String responseBody = callback + "(" + new String(new ObjectMapper().writeValueAsString(hash) + ")");
+                String responseBody = callback + "(" + new ObjectMapper().writeValueAsString(hash) + ")";
                 response.getWriter().print(responseBody);
                 return null;
             } catch (IOException e) {
@@ -339,7 +339,7 @@ public class Backplane2Controller {
         } else {
             response.setContentType("application/x-javascript");
             try {
-                String responseBody = callback + "(" + new String(new ObjectMapper().writeValueAsString(hash) + ")");
+                String responseBody = callback + "(" + new ObjectMapper().writeValueAsString(hash) + ")";
 
                 response.getWriter().print(responseBody);
 
@@ -370,7 +370,7 @@ public class Backplane2Controller {
 
         MessageRequest messageRequest = new MessageRequest(daoFactory, access_token, callback);
 
-        HashMap error = messageRequest.validate();
+        HashMap<String,Object> error = messageRequest.validate();
         if (!error.isEmpty()) {
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
             return error;
@@ -421,7 +421,7 @@ public class Backplane2Controller {
             response.setContentType("application/x-javascript");
             try {
                 String responseBody = callback + "(" +
-                        new String(new ObjectMapper().writeValueAsString(message.asFrame(request.getServerName(), messageRequest.getToken().isPrivileged())) + ")");
+                        new ObjectMapper().writeValueAsString(message.asFrame(request.getServerName(), messageRequest.getToken().isPrivileged())) + ")";
 
                 response.getWriter().print(responseBody);
 
@@ -449,7 +449,7 @@ public class Backplane2Controller {
                                                               @RequestParam(required = false) String callback,
                                                               @RequestParam(required = false) String since) throws BackplaneServerException, SimpleDBException {
 
-        Token token = null;
+        Token token;
 
         if (StringUtils.isEmpty(access_token)) {
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);

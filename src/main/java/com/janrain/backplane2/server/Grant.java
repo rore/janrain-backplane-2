@@ -38,7 +38,7 @@ public class Grant extends Base {
     public static String getBusesAsString(List<Grant> grants) {
         StringBuilder sb = new StringBuilder();
         for (Grant grant: grants) {
-            sb.append(grant.getBusesAsString() + " ");
+            sb.append(grant.getBusesAsString()).append(" ");
         }
         return sb.toString().trim();
     }
@@ -48,7 +48,14 @@ public class Grant extends Base {
      * Empty default constructor for AWS to use.
      * Don't call directly.
      */
-    public Grant() {};
+    public Grant() {}
+    
+    /** Copy constructor */
+    public Grant(Grant other) {
+        Map<String,String> data = new HashMap<String, String>();
+        data.putAll(other);
+        super.init(other.getIdValue(), data);
+    }
 
     Grant(String code, String busOwnerId, String clientId, String buses, Date expires) {
 
@@ -165,7 +172,7 @@ public class Grant extends Base {
     }
 
     public void setCodeExpirationDefault() {
-        this.setCodeExpirationDate(new Date(new Date().getTime() + CODE_EXPIRATION*1000L ));
+        this.setCodeExpirationDate(new Date(new Date().getTime() + CODE_EXPIRATION * 1000L));
     }
 
     private String getIssuedTokenIdsAsString() {

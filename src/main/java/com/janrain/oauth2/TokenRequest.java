@@ -66,8 +66,7 @@ public class TokenRequest {
         this.callback = callback;
 
         try {
-            // todo: grant DAO markCodeUsed / update grant
-            setGrant(daoFactory.getGrantDao().retrieveGrant(codeId));
+            setGrant(daoFactory.getGrantDao().getGrantSetCodeUsed(codeId));
         } catch (Exception e) {
             //do nothing
         }
