@@ -77,6 +77,10 @@ public class Grant extends Base {
         return get(GrantField.ISSUED_TO_CLIENT_ID.getFieldName());
     }
 
+    public String getBusOwnerId() {
+        return get(GrantField.ISSUED_BY_USER_ID.getFieldName());
+    }
+
     public void revokeAuth() {
         throw new NotImplementedException();
     }

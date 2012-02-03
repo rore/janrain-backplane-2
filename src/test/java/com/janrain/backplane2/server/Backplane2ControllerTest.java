@@ -1112,7 +1112,16 @@ public class Backplane2ControllerTest {
             handlerAdapter.handle(request, response, controller);
 
             logger.info("should be a token response => " + response.getContentAsString());
-            assertTrue(response.getContentAsString().contains("Bearer"));
+
+            Map<String,Object> returnedBody = new ObjectMapper().readValue(response.getContentAsString(), new TypeReference<Map<String,Object>>() {});
+            String tokenId = (String) returnedBody.get("access_token");
+            assertNotNull(tokenId);
+
+            Grant grant = daoFactory.getGrantDao().retrieveGrant(code);
+            TokenPrivileged token = (TokenPrivileged) daoFactory.getTokenDao().retrieveToken(tokenId);
+
+            assertTrue(grant.getGrantClientId().equals(token.getClientId()));
+            assertTrue(grant.getBusOwnerId().equals(user.getIdValue()));
 
 
         } finally {
