@@ -66,44 +66,6 @@ public class Scope {
         return scopes.get("channel");
     }
 
-    /**
-     * Return query string from scope
-     * @return
-     */
-    public String buildQueryFromScope() {
-        StringBuilder sb = new StringBuilder();
-
-        boolean firstElement = true;
-        for (Map.Entry<String, ArrayList<String>> entry: scopes.entrySet()) {
-            if (!entry.getValue().isEmpty()) {
-                if (firstElement != true) {
-                    sb.append(" AND ");
-                }
-
-                if (!entry.getValue().isEmpty()) {
-                    sb.append(entry.getKey() + " IN (");
-
-                    boolean firstDisjunction = true;
-                    for (String value : entry.getValue()) {
-                        if (firstDisjunction != true) {
-                            sb.append(",");
-                        }
-                        sb.append("'" + value + "'");
-                        firstDisjunction = false;
-                    }
-                    sb.append(")");
-                }
-
-                firstElement = false;
-            }
-        }
-
-        logger.info("clause = " + sb.toString() + " generated from " + this.scopeString);
-
-        return sb.toString();
-
-    }
-
     public List<String> buildQueriesFromScope() {
 
         logger.info("build queries from scope: " + scopes.entrySet());
