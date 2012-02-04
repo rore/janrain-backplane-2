@@ -179,12 +179,16 @@ Backplane.finishInit = function (initPayload) {
 };
 
 Backplane.generateNextFrameURL = function() {
-     if (typeof this.since == "undefined") {
-        return this.config.serverBaseURL + "/messages?callback=Backplane.response" +
-        "&access_token=" + this.token + "&rnd=" + Math.random();
-     } else {
-         return this.since + "&access_token=" + this.token + "&rnd=" + Math.random();
-     }
+    if (typeof this.since == "undefined") {
+        this.since = this.config.serverBaseURL + "/messages";
+    }
+    if (this.since.indexOf('?') > -1) {
+        this.since += "&";
+    } else {
+        this.since += "?";
+    }
+
+    return this.since + "callback=Backplane.response&access_token=" + this.token + "&rnd=" + Math.random();
 };
 
 Backplane.getChannelName = function() {

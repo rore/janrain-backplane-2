@@ -133,7 +133,7 @@ public class Backplane2ControllerTest {
         try {
             for (String key:this.createdMessageKeys) {
                 logger.info("deleting Message " + key);
-                superSimpleDB.delete(bpConfig.getTableName(BP_MESSAGES), key);
+                //superSimpleDB.delete(bpConfig.getTableName(BP_MESSAGES), key);
             }
 
             try {
@@ -845,7 +845,7 @@ public class Backplane2ControllerTest {
         ObjectMapper mapper = new ObjectMapper();
         Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
 
-        BackplaneMessage message1 = new BackplaneMessage("123456", "this.com", "randomchannel", msg);
+        BackplaneMessage message1 = new BackplaneMessage("123456", "this.com", "qCDsQm3JTnhZ91RiPpri8R31ehJQ9lhp", msg);
         this.saveMessage(message1);
 
         BackplaneMessage message2 = new BackplaneMessage("1234567", "that.com", "randomchannel", msg);
