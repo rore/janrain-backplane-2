@@ -16,7 +16,10 @@
 
 package com.janrain.backplane2.server.provision;
 
+import com.janrain.backplane2.server.Grant;
 import com.janrain.backplane2.server.config.*;
+import com.janrain.backplane2.server.dao.DaoFactory;
+import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.crypto.HmacHashUtils;
@@ -26,10 +29,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.inject.Inject;
 import javax.servlet.http.HttpServletResponse;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.*;
 
@@ -106,6 +106,14 @@ public class ProvisioningController2 {
         return doUpdate(bpConfig.getTableName(BP_CLIENTS), Client.class, updateRequest);
     }
 
+    @RequestMapping(value = "/grant/add", method = RequestMethod.POST)
+    @ResponseBody
+    public Map<String, String> clientUpdate(@RequestBody GrantAddRequest grantAddRequest) throws AuthException {
+        logger.debug("grant add request: '" + grantAddRequest + "'");
+        return doGrant(grantAddRequest);
+    }
+
+
     /**
      * Handle auth errors
      */
@@ -146,6 +154,10 @@ public class ProvisioningController2 {
 
     @Inject
     private SuperSimpleDB superSimpleDb;
+    
+    @Inject
+    private DaoFactory daoFactory;
+            
 
     private <T extends AbstractMessage> Map<String, Map<String, String>> doList(String tableName, Class<T> entityType, List<String> entityNames) {
 
@@ -222,6 +234,28 @@ public class ProvisioningController2 {
                 updateStatus = e.getMessage();
             }
             result.put(config.getIdValue(), updateStatus);
+        }
+        return result;
+    }
+
+    private Map<String, String> doGrant(GrantAddRequest grantAddRequest) throws AuthException {
+        Map<String,String> result = new LinkedHashMap<String, String>();
+        bpConfig.checkAdminAuth(grantAddRequest.getAdmin(), grantAddRequest.getSecret());
+        for(Map.Entry<String,String> newGrantEntry : grantAddRequest.getGrants().entrySet()) {
+            String clientId = newGrantEntry.getKey();
+            String buses = newGrantEntry.getValue();
+            try {
+                if (null == daoFactory.getClientDAO().retrieveClient(clientId)) {
+                    result.put(clientId, "invalid client_id");
+                } else {
+                    Grant grant = new Grant(grantAddRequest.getAdmin(), clientId, buses);
+                    grant.setCodeUsedNow();
+                    daoFactory.getGrantDao().persistGrant(grant);
+                    result.put(clientId, "grant added successfully");
+                }
+            } catch (SimpleDBException e) {
+                result.put(clientId, e.getMessage());
+            }
         }
         return result;
     }
