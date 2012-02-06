@@ -16,12 +16,15 @@
 
 package com.janrain.backplane2.server.dao;
 
+import com.janrain.backplane2.server.BackplaneServerException;
 import com.janrain.backplane2.server.Grant;
 import com.janrain.backplane2.server.Scope;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -77,6 +80,7 @@ public class GrantDAO extends DAO {
 
     public void deleteGrant(String grantId) throws SimpleDBException {
         superSimpleDB.delete(bpConfig.getTableName(BP_GRANT), grantId);
+        logger.info("Deleted grant " + grantId);
     }
 
     /**
@@ -87,15 +91,16 @@ public class GrantDAO extends DAO {
      * @throws SimpleDBException
      */
 
-    public List<Grant> retrieveGrants(String clientId, Scope scope) throws SimpleDBException {
+    public List<Grant> retrieveGrants(String clientId, @Nullable Scope scope) throws SimpleDBException {
         List<Grant> allGrants = superSimpleDB.retrieveWhere(bpConfig.getTableName(BP_GRANT), Grant.class,
                 "issued_to_client='"+ clientId + "' AND date_code_used is not null", true);
-        ArrayList<Grant> selectedGrants = new ArrayList<Grant>();
+
         // if no buses exist in requested scope, return entire list
-        if (scope.getBusesInScope().isEmpty()) {
+        if (scope == null || scope.getBusesInScope().isEmpty()) {
             return allGrants;
         }
 
+        ArrayList<Grant> selectedGrants = new ArrayList<Grant>();
         for ( String bus: scope.getBusesInScope()) {
             for ( Grant grant : allGrants) {
                 if ( grant.getBusesAsList().contains(bus)) {
@@ -107,7 +112,27 @@ public class GrantDAO extends DAO {
         return selectedGrants;
     }
 
+    /**
+     *  Revokes buses across all grants that contain them.
+     *  Not atomic, best effort.
+     *  Stops on first error and reports error, even though some grants may have been updated.
+     */
+    public void revokeBuses(String clientId, String buses) throws SimpleDBException, BackplaneServerException {
+        Scope busesToRevoke = new Scope(buses);
+        for(Grant grant : retrieveGrants(clientId, busesToRevoke)) {
+            Grant updated = new Grant(grant);
+            String remainingBuses = updated.revokeBuses(busesToRevoke.getBusesInScope());
+            if(StringUtils.isEmpty(remainingBuses)) {
+                deleteGrant(grant.getIdValue());
+            } else {
+                superSimpleDB.update(bpConfig.getTableName(BP_GRANT), Grant.class, grant, updated);
+                logger.info("Buses updated updated for grant: " + updated.getIdValue() + " to '" + remainingBuses + "'");
+            }
+        }
+    }
+
     // - PRIVATE
 
     private static final Logger logger = Logger.getLogger(GrantDAO.class);
+
 }

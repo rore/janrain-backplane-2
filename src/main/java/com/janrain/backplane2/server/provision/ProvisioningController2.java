@@ -106,13 +106,40 @@ public class ProvisioningController2 {
         return doUpdate(bpConfig.getTableName(BP_CLIENTS), Client.class, updateRequest);
     }
 
-    @RequestMapping(value = "/grant/add", method = RequestMethod.POST)
+    @RequestMapping(value = "/grant/list", method = RequestMethod.POST)
     @ResponseBody
-    public Map<String, String> clientUpdate(@RequestBody GrantAddRequest grantAddRequest) throws AuthException {
-        logger.debug("grant add request: '" + grantAddRequest + "'");
-        return doGrant(grantAddRequest);
+    public Map<String, Map<String, String>> grantList(@RequestBody ListRequest listRequest) throws AuthException {
+        bpConfig.checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
+
+        Map<String,Map<String,String>> result = new LinkedHashMap<String, Map<String, String>>();
+
+        for(String clientId : listRequest.getEntities()) {
+            try {
+                Map<String,String> grantsList = new HashMap<String, String>();
+                for(Grant grant : daoFactory.getGrantDao().retrieveGrants(clientId, null)) {
+                    grantsList.put(grant.getIdValue(), grant.getBusesAsString());
+                }
+                result.put(clientId, grantsList);
+            } catch (final SimpleDBException e) {
+                result.put(clientId, new HashMap<String, String>() {{put("error", e.getMessage());}});
+            }
+        }
+        return result; 
     }
 
+    @RequestMapping(value = "/grant/add", method = RequestMethod.POST)
+    @ResponseBody
+    public Map<String, String> grantAdd(@RequestBody GrantRequest grantRequest) throws AuthException {
+        logger.debug("grant add request: '" + grantRequest + "'");
+        return doGrant(grantRequest, true);
+    }
+
+    @RequestMapping(value = "/grant/revoke", method = RequestMethod.POST)
+    @ResponseBody
+    public Map<String, String> gantRevoke(@RequestBody GrantRequest grantRequest) throws AuthException {
+        logger.debug("grant revoke request: '" + grantRequest + "'");
+        return doGrant(grantRequest, false);
+    }
 
     /**
      * Handle auth errors
@@ -238,26 +265,35 @@ public class ProvisioningController2 {
         return result;
     }
 
-    private Map<String, String> doGrant(GrantAddRequest grantAddRequest) throws AuthException {
+    private Map<String, String> doGrant(GrantRequest grantRequest, boolean addRevoke) throws AuthException {
         Map<String,String> result = new LinkedHashMap<String, String>();
-        bpConfig.checkAdminAuth(grantAddRequest.getAdmin(), grantAddRequest.getSecret());
-        for(Map.Entry<String,String> newGrantEntry : grantAddRequest.getGrants().entrySet()) {
+        bpConfig.checkAdminAuth(grantRequest.getAdmin(), grantRequest.getSecret());
+        for(Map.Entry<String,String> newGrantEntry : grantRequest.getGrants().entrySet()) {
             String clientId = newGrantEntry.getKey();
             String buses = newGrantEntry.getValue();
             try {
                 if (null == daoFactory.getClientDAO().retrieveClient(clientId)) {
                     result.put(clientId, "invalid client_id");
                 } else {
-                    Grant grant = new Grant(grantAddRequest.getAdmin(), clientId, buses);
-                    grant.setCodeUsedNow();
-                    daoFactory.getGrantDao().persistGrant(grant);
-                    result.put(clientId, "grant added successfully");
+                    if (addRevoke) {
+                        addGrant(grantRequest.getAdmin(), clientId, buses);
+                        result.put(clientId, "grant added successfully");
+                    } else {
+                        daoFactory.getGrantDao().revokeBuses(clientId, buses);
+                        result.put(clientId, "grant updated successfully, buses removed");
+                    }
                 }
-            } catch (SimpleDBException e) {
+            } catch (Exception e) {
                 result.put(clientId, e.getMessage());
             }
         }
         return result;
+    }
+
+    private void addGrant(String issuer, String clientId, String buses) throws SimpleDBException {
+        Grant grant = new Grant(issuer, clientId, buses);
+        grant.setCodeUsedNow();
+        daoFactory.getGrantDao().persistGrant(grant);
     }
 
     // type helper classes for JSON mapper

@@ -19,7 +19,6 @@ package com.janrain.backplane2.server;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import com.janrain.crypto.ChannelUtil;
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
@@ -88,8 +87,18 @@ public class Grant extends Base {
         return get(GrantField.ISSUED_BY_USER_ID.getFieldName());
     }
 
-    public void revokeAuth() {
-        throw new NotImplementedException();
+    public String revokeBuses(List<String> busesToRemove) {
+        StringBuilder newBuses = new StringBuilder();
+        for(String bus : getBusesAsList()) {
+            if( ! busesToRemove.contains(bus)) {
+                newBuses.append(bus).append(" ");
+            }
+        }
+        if (newBuses.length() > 0) {
+            newBuses.deleteCharAt(newBuses.length()-1);
+        }
+        put(BaseField.BUSES.getFieldName(), newBuses.toString());
+        return newBuses.toString();
     }
 
     public Date getCodeExpiresDate() {

@@ -6,7 +6,7 @@ import java.util.Map;
 /**
  * @author Johnny Bufu
  */
-public class GrantAddRequest extends AdminRequest {
+public class GrantRequest extends AdminRequest {
 
     // - PUBLIC
 
