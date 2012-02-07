@@ -1,29 +1,29 @@
 Backplane README
 ================
 
-This Backplane Server implements both the [backplane-core-v2] [2]
-specification and the previous [backplane-core-v1.2] [1] specifications.
+This Backplane Server implements both the [Backplane v2.0] [2] and the previous
+[Backplane v1.2] [1] specifications.
 
-Deployment configuration is detailed in this document.
-
-Specifics for each of the Backplane versions is described in the following README files:
+Specifics for each of the Backplane versions are described in the following README files:
 
 * [README12.md] [4]
 
 * [README20.md] [5]
 
 
-Deployment Configuration
-------------------------
+The deployment environment is Amazon AWS / Beanstalk and the storage engine used is SimpleDB.
 
-The deployment environment is Amazon AWS and the storage engine used is SimpleDB.
+Administrative accounts and configuration data described in this document is provisioned manually,
+e.g. using the [SimpleDB Shell] [6] tool.
 
-Each Backplane Server logical instance (hosted on AWS) is identified by its backplane-instance name.
-SimpleDB is used for keeping Backplane Server's configuration data.
+AWS Environment Configuration
+-----------------------------
+
+Each Backplane Server logical instance (hosted on AWS) is identified by its *instance ID*.
 
 The Backplane Server learns its bootstrap configuration parameters from the following environment variables:
 
-* `PARAM1`: The logical Backplane instance ID. Used to identify configuration data sets within SimpleDB
+* `PARAM1`: The logical Backplane **instance ID**. Used to identify configuration data sets within SimpleDB
 and allow multiple (AWS) instances to be part of the same logical Backplane Server deployment.
 
 * `AWS_ACCESS_KEY_ID`: Key ID for accessing SimpleDB.
@@ -34,6 +34,21 @@ and allow multiple (AWS) instances to be part of the same logical Backplane Serv
 (e.g., "samplebackplane.com").  Emails have a complete origin format of `${PARAM1}@${PARAM2}`.
 
 * `PARAM3`: Destination for log4j email notifications (e.g., "backplane-email@homedomain.com").
+
+Backplane Server Configuration
+------------------------------
+
+Server configuration data must defined in a SimpleDB table named **`<instance ID>_bpserverconfig`**.
+
+* `DEBUG_MODE`: boolean flag for debug logging and behavior
+
+* `CONFIG_CACHE_AGE_SECONDS`: how long to keep this server configuration data in a memory cache
+
+* `CLEANUP_INTERVAL_MINUTES`: how often to run a thread for cleaning up expired items,
+such as messages, tokens, sessions, etc.
+
+* `DEFAULT_MESSAGES_MAX`: the default maximum number of messages in a Backplane channel,
+if not explicitly configured for the channel's bus
 
 
 Administrator Authentication
@@ -46,13 +61,11 @@ Administrator credentials are kept in the `<backplane-instance>_Admin` table:
 
 * `PWDHASH`: admin password (hash)
 
-To retrieve the generated metrics, you must add the `<backplane-instance>__bpMetricAuth` table:
+To retrieve the generated metrics, you must add the `<backplane-instance>_bpMetricAuth` table:
 
 * `USER`: metrics username
 
 * `PWDHASH`: metrics password (hash)
-
-These Backplane admin users are provisioned manually, e.g. using the [SimpleDB Shell] [6] tool.
 
 To generate a password hash, see the HmacHashUtils class and its main() method.
 
