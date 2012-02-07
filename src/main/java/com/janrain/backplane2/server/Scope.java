@@ -92,14 +92,39 @@ public class Scope {
             buildQuery(queryList, query, scopeList, level+1);
         }
 
-        for (String val : entry.getValue()) {
+        ArrayList<String> originalDisjunctionList = entry.getValue();
+        ArrayList<String> compressedDisjunctionList = new ArrayList<String>();
+
+        int size = originalDisjunctionList.size();
+        int maxValuesInClause = 4, cnt=0;
+
+        String queryS = entry.getKey() + " IN (";
+        String body = "";
+
+        for (String val: originalDisjunctionList) {
+            if (cnt > 0) {
+                body += ",";
+            }
+            body += "'" + val + "'";
+
+            cnt++;
+            if (cnt >= maxValuesInClause || cnt >= size) {
+                logger.debug("added " + body);
+                compressedDisjunctionList.add(queryS + body + ")");
+                body = "";
+                size -= cnt;
+                cnt=0;
+            }
+        }
+
+
+        for (String val : compressedDisjunctionList) {
             String conjunction = "";
             if (StringUtils.isNotBlank(query)) {
                 conjunction = " AND ";
             }
 
-            String newQuery = query + conjunction + entry.getKey() + "='" + val + "'";
-
+            String newQuery = query + conjunction + val;
             buildQuery(queryList, newQuery, scopeList, level+1);
         }
 

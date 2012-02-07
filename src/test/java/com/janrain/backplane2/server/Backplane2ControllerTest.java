@@ -365,7 +365,7 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
         Client client = createTestClient();
 
-                //create grant for test
+        //create grant for test
         Grant grant1 = new Grant("fakeOwnerId", client.getClientId(),"foo");
         grant1.setCodeExpirationDefault();
         this.saveGrant(grant1);
@@ -446,7 +446,7 @@ public class Backplane2ControllerTest {
 
         //create grant for test
         ArrayList<String> randomBuses = new ArrayList<String>();
-        for (int i=0; i < 8; i++) {
+        for (int i=0; i < 60; i++) {
             randomBuses.add(ChannelUtil.randomString(10));
         }
         String buses = StringUtils.collectionToDelimitedString(randomBuses, " ");
