@@ -117,7 +117,6 @@ public class Scope {
             }
         }
 
-
         for (String val : compressedDisjunctionList) {
             String conjunction = "";
             if (StringUtils.isNotBlank(query)) {
