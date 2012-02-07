@@ -34,6 +34,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static com.janrain.backplane.server.config.Backplane1Config.SimpleDBTables.*;
+
 /**
  * Controller handling the API calls for backplane customer configuration provisioning.
  *
@@ -50,40 +52,40 @@ public class ProvisioningController {
     @ResponseBody
     public Map<String, Map<String, String>> busList(@RequestBody ListRequest listRequest) throws AuthException {
         bpConfig.checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
-        return doList(BusConfig1.class, listRequest.getEntities());
+        return doList(bpConfig.getTableName(BP1_BUS_CONFIG), BusConfig1.class, listRequest.getEntities());
     }
 
     @RequestMapping(value = "/user/list", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, Map<String, String>> userList(@RequestBody ListRequest listRequest) throws AuthException {
         bpConfig.checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
-        return doList(User.class, listRequest.getEntities());
+        return doList(bpConfig.getTableName(BP1_USERS), User.class, listRequest.getEntities());
     }
 
     @RequestMapping(value = "/bus/delete", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, String> busDelete(@RequestBody ListRequest deleteRequest) throws AuthException {
         bpConfig.checkAdminAuth(deleteRequest.getAdmin(), deleteRequest.getSecret());
-        return doDelete(BusConfig1.class, deleteRequest.getEntities());
+        return doDelete(bpConfig.getTableName(BP1_BUS_CONFIG), BusConfig1.class, deleteRequest.getEntities());
     }
 
     @RequestMapping(value = "/user/delete", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, String> userDelete(@RequestBody ListRequest deleteRequest) throws AuthException {
         bpConfig.checkAdminAuth(deleteRequest.getAdmin(), deleteRequest.getSecret());
-        return doDelete(User.class, deleteRequest.getEntities());
+        return doDelete(bpConfig.getTableName(BP1_USERS), User.class, deleteRequest.getEntities());
     }
 
     @RequestMapping(value = "/bus/update", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, String> busUpdate(@RequestBody BusUpdateRequest updateRequest) throws AuthException {
-        return doUpdate(BusConfig1.class, updateRequest);
+        return doUpdate(bpConfig.getTableName(BP1_BUS_CONFIG), BusConfig1.class, updateRequest);
     }
 
     @RequestMapping(value = "/user/update", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, String> userUpdate(@RequestBody UserUpdateRequest updateRequest) throws AuthException {
-        return doUpdate(User.class, updateRequest);
+        return doUpdate(bpConfig.getTableName(BP1_USERS), User.class, updateRequest);
     }
 
     /**
@@ -127,16 +129,16 @@ public class ProvisioningController {
     @Inject
     private SuperSimpleDB superSimpleDb;
 
-    private <T extends AbstractMessage> Map<String, Map<String, String>> doList(Class<T> entityType, List<String> entityNames) {
+    private <T extends AbstractMessage> Map<String, Map<String, String>> doList(String tableName, Class<T> entityType, List<String> entityNames) {
 
-        if (entityNames.size() == 0) return doListAll(entityType);
+        if (entityNames.size() == 0) return doListAll(tableName, entityType);
 
         final Map<String,Map<String,String>> result = new LinkedHashMap<String, Map<String, String>>();
         for(String entityName : entityNames) {
             T config = null;
             Exception thrown = null;
             try {
-                config = bpConfig.getConfig(entityName, entityType);
+                config = superSimpleDb.retrieve(tableName, entityType, entityName);
             } catch (Exception e) {
                 thrown = e;
             }
@@ -149,10 +151,10 @@ public class ProvisioningController {
         return result;
     }
 
-    private <T extends AbstractMessage> Map<String, Map<String, String>> doListAll(Class<T> entityType) {
+    private <T extends AbstractMessage> Map<String, Map<String, String>> doListAll(String tableName, Class<T> entityType) {
         Map<String,Map<String,String>> result = new LinkedHashMap<String, Map<String, String>>();
         try {
-            for(T config :  superSimpleDb.retrieve(bpConfig.getTableNameForType(entityType), entityType)) {
+            for(T config :  superSimpleDb.retrieve(tableName, entityType)) {
                 result.put(config.getIdValue(), config);
             }
         } catch (final Exception e) {
@@ -161,12 +163,12 @@ public class ProvisioningController {
         return result;
     }
 
-    private <T extends AbstractMessage> Map<String, String> doDelete(Class<T> entityType, List<String> entityNames) {
+    private <T extends AbstractMessage> Map<String, String> doDelete(String tableName, Class<T> entityType, List<String> entityNames) {
         Map<String,String> result = new LinkedHashMap<String, String>();
         for(String entityName : entityNames) {
             String deleteStatus = BACKPLANE_DELETE_SUCCESS;
             try {
-                superSimpleDb.delete(bpConfig.getTableNameForType(entityType), entityName);
+                superSimpleDb.delete(tableName, entityName);
             } catch (Exception e) {
                 deleteStatus = e.getMessage();
             }
@@ -175,10 +177,10 @@ public class ProvisioningController {
         return result;
     }
 
-    private <T extends AbstractMessage> Map<String, String> doUpdate(Class<T> entityType, UpdateRequest<T> updateRequest) throws AuthException {
+    private <T extends AbstractMessage> Map<String, String> doUpdate(String tableName, Class<T> entityType, UpdateRequest<T> updateRequest) throws AuthException {
         bpConfig.checkAdminAuth(updateRequest.getAdmin(), updateRequest.getSecret());
         validateConfigs(entityType, updateRequest);
-        return updateConfigs(entityType, updateRequest.getConfigs());
+        return updateConfigs(tableName, entityType, updateRequest.getConfigs());
     }
 
     private <T extends AbstractMessage> void validateConfigs(Class<T> entityType, UpdateRequest<T> updateRequest) {
@@ -187,7 +189,7 @@ public class ProvisioningController {
         }
     }
 
-    private <T extends AbstractMessage> Map<String, String> updateConfigs(Class<T> customerConfigType, List<T> bpConfigs) {
+    private <T extends AbstractMessage> Map<String, String> updateConfigs(String tableName, Class<T> customerConfigType, List<T> bpConfigs) {
         Map<String,String> result = new LinkedHashMap<String, String>();
         for(T config : bpConfigs) {
             if (config instanceof User) {
@@ -197,7 +199,7 @@ public class ProvisioningController {
             }
             String updateStatus = BACKPLANE_UPDATE_SUCCESS;
             try {
-                superSimpleDb.store(bpConfig.getTableNameForType(customerConfigType), customerConfigType, config);
+                superSimpleDb.store(tableName, customerConfigType, config);
             } catch (Exception e) {
                 updateStatus = e.getMessage();
             }

@@ -17,15 +17,13 @@
 package com.janrain.backplane.server.config;
 
 import com.janrain.InitSystemProps;
-import com.janrain.metrics.*;
-import com.janrain.backplane.server.ApplicationException;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
-import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.AbstractNamedMap;
-import com.janrain.commons.supersimpledb.message.NamedMap;
 import com.janrain.commons.util.AwsUtility;
 import com.janrain.crypto.HmacHashUtils;
+import com.janrain.metrics.MetricMessage;
+import com.janrain.metrics.MetricsAccumulator;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.TimerMetric;
 import org.apache.commons.lang.StringUtils;
@@ -47,6 +45,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import static com.janrain.backplane.server.BackplaneMessage.Field.*;
+import static com.janrain.backplane.server.config.Backplane1Config.SimpleDBTables.*;
 import static com.janrain.backplane.server.config.BusConfig1.Field.*;
 
 
@@ -74,39 +73,46 @@ public class Backplane1Config {
         checkAuth(getMetricAuthTableName(), user, password);
     }
 
-    public <T extends NamedMap> String getTableNameForType(Class<T> type) {
-        return bpInstanceId + "_" + type.getSimpleName();
+    public String getTableName(SimpleDBTables table) {
+        return Backplane1Config.this.bpInstanceId + table.getTableSuffix();
+    }
+
+    public enum SimpleDBTables {
+
+        BP_SERVER_CONFIG("_bpserverconfig"),
+        BP_ADMIN_AUTH("_Admin"),
+        BP1_BUS_CONFIG("_BusConfig1"),
+        BP1_USERS("_User"),
+        BP1_MESSAGES("_messages"),
+        BP1_SAMPLES("_samples"),
+        BP1_METRICS("_metrics"),
+        BP1_METRICS_AUTH("_bpMetricAuth");
+
+        public String getTableSuffix() {
+            return tableSuffix;
+        }
+
+        // - PRIVATE
+
+        private String tableSuffix;
+
+        private SimpleDBTables(String tableSuffix) {
+            this.tableSuffix = tableSuffix;
+        }
     }
 
     public String getMetricsTableName() {
-        return bpInstanceId +  BP_METRICS_TABLE_SUFFIX;
+        return bpInstanceId + BP1_METRICS.getTableSuffix();
     }
 
     public String getMessagesTableName() {
-        return bpInstanceId + BP_MESSAGES_TABLE_SUFFIX;
+        return bpInstanceId + BP1_MESSAGES.getTableSuffix();
     }
 
     public String getSamplesTableName() {
-        return bpInstanceId + BP_SAMPLES_TABLE_SUFFIX;
+        return bpInstanceId + BP1_SAMPLES.getTableSuffix();
     }
     
-    /**
-     * Retrieve a configuration entity by its name
-     *
-     *
-     * @param entityName	The entity name for the configuration
-     * @return		        The entity configuration
-     * @throws com.janrain.backplane.server.ApplicationException if no matching entity configuration is found
-     */
-    public <T extends AbstractMessage> T getConfig(String entityName, Class<T> entityType) throws SimpleDBException {
-        T config = superSimpleDb.retrieve(getTableNameForType(entityType), entityType, entityName);
-        if (config == null) {
-            throw new ApplicationException("Error looking up " + entityType.getSimpleName() + " " + entityName);
-        }
-        return config;
-    }
-
-
     /**
 	 * @return the debugMode
 	 */
@@ -177,15 +183,9 @@ public class Backplane1Config {
 
     private static final String BUILD_PROPERTIES = "/build.properties";
     private static final String BUILD_VERSION_PROPERTY = "build.version";
-    private static final Properties buildProperties = new Properties();
-    private static final String BP_SERVER_CONFIG_TABLE_SUFFIX = "_bpserverconfig";
-    private static final String BP_ADMIN_AUTH_TABLE_SUFFIX = "_Admin";
     private static final String BP_CONFIG_ENTRY_NAME = "bpserverconfig";
-    private static final String BP_MESSAGES_TABLE_SUFFIX = "_messages";
-    private static final String BP_SAMPLES_TABLE_SUFFIX = "_samples";
-    private static final String BP_METRICS_TABLE_SUFFIX = "_metrics";
-    private static final String BP_METRIC_AUTH_TABLE_SUFFIX = "_bpMetricAuth";
     private static final long BP_MAX_MESSAGES_DEFAULT = 100;
+    private static final Properties buildProperties = new Properties();
 
     private final String bpInstanceId;
     private ScheduledExecutorService cleanup;
@@ -303,7 +303,7 @@ public class Backplane1Config {
         try {
             logger.info("Backplane message cleanup task started.");
             String messagesTable = getMessagesTableName();
-            for(BusConfig1 busConfig : superSimpleDb.retrieve(getTableNameForType(BusConfig1.class), BusConfig1.class)) {
+            for(BusConfig1 busConfig : superSimpleDb.retrieve(getTableName(BP1_BUS_CONFIG), BusConfig1.class)) {
                 try {
                     // non-sticky
                     superSimpleDb.deleteWhere(messagesTable, getExpiredMessagesClause(busConfig.get(BUS_NAME), false, busConfig.get(RETENTION_TIME_SECONDS)));
@@ -381,15 +381,15 @@ public class Backplane1Config {
     }
 
     private String getBpServerConfigTableName() {
-        return bpInstanceId + BP_SERVER_CONFIG_TABLE_SUFFIX;
+        return bpInstanceId + BP_SERVER_CONFIG.getTableSuffix();
     }
 
     private String getAdminAuthTableName() {
-        return bpInstanceId + BP_ADMIN_AUTH_TABLE_SUFFIX;
+        return bpInstanceId + BP_ADMIN_AUTH.getTableSuffix();
     }
 
     private String getMetricAuthTableName() {
-        return bpInstanceId + BP_METRIC_AUTH_TABLE_SUFFIX;
+        return bpInstanceId + BP1_METRICS_AUTH.getTableSuffix();
     }
 
     private Long getMaxCacheAge() {

@@ -49,6 +49,8 @@ import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
+import static com.janrain.backplane.server.config.Backplane1Config.SimpleDBTables.BP1_BUS_CONFIG;
+
 /**
  * Backplane API implementation.
  *
@@ -287,7 +289,7 @@ public class Backplane1Controller {
 
         User userEntry = null;
         try {
-            userEntry = bpConfig.getConfig(user, User.class);
+            userEntry = superSimpleDb.retrieve(bpConfig.getTableName(Backplane1Config.SimpleDBTables.BP1_USERS), User.class, user);
         } catch (SimpleDBException e) {
             authError("Error looking up user: " + user);
         }
@@ -301,7 +303,7 @@ public class Backplane1Controller {
         // authZ
         BusConfig1 busConfig = null;
         try {
-            busConfig = bpConfig.getConfig(bus, BusConfig1.class);
+            busConfig = superSimpleDb.retrieve(bpConfig.getTableName(BP1_BUS_CONFIG), BusConfig1.class, bus);
         } catch (SimpleDBException e) {
             authError("Error looking up bus configuration for " + bus);
         }
