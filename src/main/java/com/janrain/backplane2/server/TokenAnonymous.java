@@ -37,6 +37,9 @@ public class TokenAnonymous extends Token {
     public TokenAnonymous(String tokenString, String buses, String scopeString, Date expires) throws BackplaneServerException {
         super("an" + tokenString, TYPE.REGULAR_TOKEN, buses, scopeString, expires);
 
+        //TODO: the expiration of anonymous tokens is a problem - one hour is too short and having
+        // them never expire will also cause excessive buildup.
+
         // verify that no channel or bus was submitted in the scopeString request
         Scope testScope = new Scope(scopeString);
         if (!testScope.getBusesInScope().isEmpty() || !testScope.getChannelsInScope().isEmpty()) {
