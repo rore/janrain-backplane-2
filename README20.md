@@ -291,7 +291,7 @@ Example curl command for the above HTTP API request:
 Backplane Clients Provisioning API
 ----------------------------------
 
-In addition to the atomated OAuth2-based client registration mechanism described in [Backplane v2.0 Section 6.2] [2],
+In addition to the automated OAuth2-based client registration mechanism described in [Backplane v2.0 Section 6.2] [2],
 this API is provided for manual backplane clients registration.
 
 #### Create or Update Backplane Client Entry
