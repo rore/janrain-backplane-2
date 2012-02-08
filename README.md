@@ -90,10 +90,10 @@ Use the following modification to the Maven build command (be sure to add your p
 Maven will create a WAR file for deployment in the `/target/` directory.
 
 
-[1]: https://sites.google.com/site/backplanespec/documentation/backplane1-2
-[2]: https://sites.google.com/site/backplanespec/documentation/backplane2-0-draft08
+[1]: http://sites.google.com/site/backplanespec/documentation/backplane1-2
+[2]: http://sites.google.com/site/backplanespec/documentation/backplane2-0-draft08
 [3]: http://maven.apache.org/guides/getting-started/maven-in-five-minutes.html
-[4]: README12.md "Backplane v1.2"
-[5]: README20.md "Backplane v2.0"
+[4]: http://github.com/janrain/janrain-backplane-2/blob/master/README12.md "Backplane v1.2"
+[5]: http://github.com/janrain/janrain-backplane-2/blob/master/README12.md "Backplane v2.0"
 [6]: http://typica.googlecode.com/files/sdbShell.jar
 

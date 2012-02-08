@@ -153,8 +153,9 @@ If the post exceeds the maximum number of message allowed (default of 100 per ch
 this value may be overridden by placing an entry in the `<backplane-instance>_bpserverconfig` table called
 `DEFAULT_MESSAGES_MAX` with an appropriate value.
 
-        json
-        {"ERR_MSG":"Message limit exceeded for this channel"}
+```json
+{"ERR_MSG":"Message limit exceeded for this channel"}
+```
 
 This value may be overridden by placing an entry in the `<backplane-instance>_bpserverconfig` table called
 `DEFAULT_MESSAGES_MAX` with an appropriate value.
