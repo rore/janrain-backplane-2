@@ -50,6 +50,9 @@ such as messages, tokens, sessions, etc.
 * `DEFAULT_MESSAGES_MAX`: the default maximum number of messages in a Backplane channel,
 if not explicitly configured for the channel's bus
 
+This configuration table can be initialized by editing the simpledb_init.txt file and then running:
+
+    java -jar ~/bin/sdbShell1.1a.jar <access key> <secret key> ./extra/bpserverconfig/simpledb_init.txt
 
 Administrator Authentication
 ----------------------------
