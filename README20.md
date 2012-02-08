@@ -100,7 +100,7 @@ callback(
 {
     "messageURL": "https://bp.example.com/v2/message/097a5cc401001f95b45d37aca32a3bd2",
     "source": "http://aboutecho.com",
-    "type": "identity/ack"m
+    "type": "identity/ack"
     "sticky": true,
     "bus": "customer.com",
     "channel": "67dc880cc265b0dbc755ea959b257118",
@@ -310,13 +310,13 @@ Content-Type: application/json
     {
         "USER": "client1",
         "PWDHASH": "clear_password_1",
-        "SOURCE_URL": "url1,
+        "SOURCE_URL": "url1",
         "REDIRECT_URI": "uri1"
     },
     {
         "USER": "client2",
         "PWDHASH": "clear_password_2",
-        "SOURCE_URL": "url2,
+        "SOURCE_URL": "url2",
         "REDIRECT_URI": "uri2"
     }
   ]

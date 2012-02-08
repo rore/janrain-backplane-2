@@ -131,7 +131,7 @@ Content-Type: application/json
 
 Example curl command for the above HTTP API request:
 
-        curl -i --data @json_data_file.txt -H "Content-type: application/json" http://backplanesample.com/v1.1/provision/user/update
+    curl -i --data @json_data_file.txt -H "Content-type: application/json" http://backplanesample.com/v1.1/provision/user/update
 
 
 #### List All Users
@@ -152,7 +152,7 @@ Content-Type: application/json
 
 Example curl command for the above HTTP API request:
 
-        curl -i --data @json_data_file.txt -H "Content-type: application/json" http://backplanesample.com/v1.1/provision/user/list
+    curl -i --data @json_data_file.txt -H "Content-type: application/json" http://backplanesample.com/v1.1/provision/user/list
 
 #### Delete User(s)
 
@@ -172,7 +172,7 @@ Host: backplanesample.com
 
 Example curl command for the above HTTP API request:
 
-        curl -i --data @json_data_file.txt -H "Content-type: application/json" http://backplanesample.com/v1.1/provision/user/delete
+    curl -i --data @json_data_file.txt -H "Content-type: application/json" http://backplanesample.com/v1.1/provision/user/delete
 
 
 
@@ -212,15 +212,15 @@ Response:
         {
             "BUS_NAME": "customer1",
             "RETENTION_TIME_SECONDS": "600",
-            "<username1>: "<permission1>,<permission2>,...",
-            "<username2>: "<permission3>,<permission4>,...",
+            "<username1>": "<permission1>,<permission2>,...",
+            "<username2>": "<permission3>,<permission4>,...",
             ...
         },
 ...
 }
 ```
 
-`curl -i --data @json_data_file.txt -H "Content-type: application/json" http://backplanesample.com/v1.1/provision/bus/list`
+    curl -i --data @json_data_file.txt -H "Content-type: application/json" http://backplanesample.com/v1.1/provision/bus/list
 
 #### Delete Bus
 
@@ -254,7 +254,7 @@ Response:
 }
 ```
 
-`curl -i --data @json_data_file.txt -H "Content-type: application/json" http://backplanesample.com/v1.1/provision/bus/delete`
+    curl -i --data @json_data_file.txt -H "Content-type: application/json" http://backplanesample.com/v1.1/provision/bus/delete
 
 *NOTE:* Deleting a bus configuration removes all Privileged Access Level defined for it; it does *NOT* remove any existing Backplane Messages from any of its channels. They will still be available for retrieval through the "Get Channel Messages" Backplane operation until they expire.
 
@@ -278,8 +278,8 @@ Request (v1.1):
         {
             "BUS_NAME": "customer1",
             "RETENTION_TIME_SECONDS": "600",
-            "<username1>: "<permission1>,<permission2>,...",
-            "<username2>: "<permission3>,<permission4>,...",
+            "<username1>": "<permission1>,<permission2>,...",
+            "<username2>": "<permission3>,<permission4>,...",
             ...
             },
             ...
@@ -304,8 +304,8 @@ Request (v1.2):
             "BUS_NAME": "customer1",
             "RETENTION_TIME_SECONDS": "600",
             "RETENTION_STICKY_TIME_SECONDS": "28800",
-            "<username1>: "<permission1>,<permission2>,...",
-            "<username2>: "<permission3>,<permission4>,...",
+            "<username1>": "<permission1>,<permission2>,...",
+            "<username2>": "<permission3>,<permission4>,...",
             ...
             },
             ...
