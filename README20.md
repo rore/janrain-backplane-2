@@ -23,12 +23,12 @@ All endpoints are available at paths starting with the `/v2/`.
 
   Example:
 
-    json
+```json
         {
           "access_token": "465203f03680f59b7ddd5e1e5d851461",
           "token_type": "Bearer"
         }
-
+```
 
 ### Anonymous Access Token Request
 
