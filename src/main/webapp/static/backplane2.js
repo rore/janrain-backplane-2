@@ -23,6 +23,21 @@ window.Backplane = window.Backplane || (function() {
             })();
         }
     };
+    BP.log = function(msg) {
+        if (window.console && window.console.log) {
+            console.log("Backplane: " + msg);
+        }
+    }
+    BP.warn = function(msg) {
+        if (window.console && window.console.warn) {
+            console.warn("Backplane WARNING: " + msg)
+        }
+    }
+    BP.error = function(msg) {
+        if (window.console && window.console.error) {
+            console.error("Backplane ERROR: " + msg);
+        }
+    }
     BP.version = "2.0.0";
     BP.token = null;
     BP.channelName = null;
@@ -45,6 +60,7 @@ window.Backplane = window.Backplane || (function() {
         "slowdown": 120
     };
     BP.onInit = function() {};
+    BP.log("backplane2.js loaded");
     return BP;
 })();
 
@@ -59,12 +75,22 @@ window.Backplane = window.Backplane || (function() {
  *     cacheMax (optional) - how many messages to cache for late arriving widgets
  */
 Backplane.init = function(config) {
+    this.log("initializing");
     config = config || {};
     if (this.initialized || !config.serverBaseURL) return false;
     this.initialized = true;
     this.timers = {};
     this.config = config;
     this.config.serverBaseURL = this.normalizeURL(config.serverBaseURL);
+
+    if (this.config.serverBaseURL.indexOf("/v2") < 0) {
+        this.error("serverBaseURL must include '/v2'");
+        return false;
+    }
+
+    if (config.busName != "undefined") {
+        this.warn("busName is not required for v2");
+    }
 
     this.loadChannelFromCookie();
 
@@ -170,6 +196,7 @@ Backplane.expectMessagesWithin = function(interval, types) {
  */
 Backplane.finishInit = function (initPayload) {
 
+    this.log("received access token and channel from server");
     this.token = initPayload.access_token;
     this.channelName = initPayload.backplane_channel;
 
