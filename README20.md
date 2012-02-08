@@ -24,10 +24,10 @@ All endpoints are available at paths starting with the `/v2/`.
   Example:
 
 ```json
-        {
-          "access_token": "465203f03680f59b7ddd5e1e5d851461",
-          "token_type": "Bearer"
-        }
+{
+  "access_token": "465203f03680f59b7ddd5e1e5d851461",
+  "token_type": "Bearer"
+}
 ```
 
 ### Anonymous Access Token Request
@@ -42,16 +42,16 @@ All endpoints are available at paths starting with the `/v2/`.
 
   Example:
 
-        json
-        callback(
-            {
-                "access_token": "465203f03680f59b7ddd5e1e5d851461",
-                "token_type": "Bearer",
-                "expires_in": 3600,
-                "backplane_channel": "0a92d76f54f7877a68abe19c5b3ffcf8"
-            }
-        )
-
+```json
+callback(
+    {
+        "access_token": "465203f03680f59b7ddd5e1e5d851461",
+        "token_type": "Bearer",
+        "expires_in": 3600,
+        "backplane_channel": "0a92d76f54f7877a68abe19c5b3ffcf8"
+    }
+)
+```
 
 ### Get Messages
 
@@ -65,24 +65,24 @@ All endpoints are available at paths starting with the `/v2/`.
 
   Example:
 
-        json
+```json
+{
+    "nextURL": "https://bp.example.com/v2/messages?since=958bfa2dd8aed82c86afbd54b4a314a5",
+    "messages": [
         {
-            "nextURL": "https://bp.example.com/v2/messages?since=958bfa2dd8aed82c86afbd54b4a314a5",
-            "messages": [
-                {
-                    "bus": "customer.com",
-                    "channel": "67dc880cc265b0dbc755ea959b257118",
-                    "messageURL": "https://bp.example.com/v2/message/097a5cc401001f95b45d37aca32a3bd2",
-                    "payload": {
-                    "role": "administrator"
-                },
-                    "source": "http://aboutecho.com",
-                    "type": "identity/ack",
-                    "sticky": true
-                }
-            ]
+            "bus": "customer.com",
+            "channel": "67dc880cc265b0dbc755ea959b257118",
+            "messageURL": "https://bp.example.com/v2/message/097a5cc401001f95b45d37aca32a3bd2",
+            "payload": {
+            "role": "administrator"
+        },
+            "source": "http://aboutecho.com",
+            "type": "identity/ack",
+            "sticky": true
         }
-
+    ]
+}
+```
 
 ### Get Single Message
 
@@ -96,18 +96,19 @@ All endpoints are available at paths starting with the `/v2/`.
 
   Example:
 
-        json
-        {
-            "messageURL": "https://bp.example.com/v2/message/097a5cc401001f95b45d37aca32a3bd2",
-            "source": "http://aboutecho.com",
-            "type": "identity/ack"m
-            "sticky": true,
-            "bus": "customer.com",
-            "channel": "67dc880cc265b0dbc755ea959b257118",
-            "payload": {
-                "role": "administrator"
-            },
-        }
+```json
+{
+    "messageURL": "https://bp.example.com/v2/message/097a5cc401001f95b45d37aca32a3bd2",
+    "source": "http://aboutecho.com",
+    "type": "identity/ack"m
+    "sticky": true,
+    "bus": "customer.com",
+    "channel": "67dc880cc265b0dbc755ea959b257118",
+    "payload": {
+        "role": "administrator"
+    },
+}
+```
 
 ### Post Messages
 
@@ -121,29 +122,30 @@ All endpoints are available at paths starting with the `/v2/`.
 
   Example request:
 
-         json
-         {
-            "messages": [
-                {
-                    "type": "identity/ack",
-                    "sticky": true,
-                    "bus": "customer.com",
-                    "channel": "67dc880cc265b0dbc755ea959b257118",
-                    "payload": {
-                        "role": "administrator"
-                    },
-                },
-                {
-                    "type": "identity/ack",
-                    "sticky": true,
-                    "bus": "organization.org",
-                    "channel": "d7a592b31fbbc2baf5f9476884b9acd5",
-                    "payload": {
-                        "role": "moderator"
-                    },
-                }
-            ]
+```json
+ {
+    "messages": [
+        {
+            "type": "identity/ack",
+            "sticky": true,
+            "bus": "customer.com",
+            "channel": "67dc880cc265b0dbc755ea959b257118",
+            "payload": {
+                "role": "administrator"
+            },
+        },
+        {
+            "type": "identity/ack",
+            "sticky": true,
+            "bus": "organization.org",
+            "channel": "d7a592b31fbbc2baf5f9476884b9acd5",
+            "payload": {
+                "role": "moderator"
+            },
         }
+    ]
+}
+```
 
 #### Post Error Response
 
@@ -223,22 +225,22 @@ POST `/v2/provision/user/update`
 Host: backplanesample.com
 Content-Type: application/json
 
-        json
-        {
-          "admin": "admin",
-          "secret": "admin",
-          "configs": [
-            {
-                "USER": "busowner1",
-                "PWDHASH": "clear_password_1"
-            },
-            {
-                "USER": "busowner2",
-                "PWDHASH": "clear_password_2"
-            }
-          ]
-        }
-
+```json
+{
+  "admin": "admin",
+  "secret": "admin",
+  "configs": [
+    {
+        "USER": "busowner1",
+        "PWDHASH": "clear_password_1"
+    },
+    {
+        "USER": "busowner2",
+        "PWDHASH": "clear_password_2"
+    }
+  ]
+}
+```
 
 Example curl command for the above HTTP API request:
 
@@ -253,13 +255,13 @@ POST `/v2/provision/user/list`
 Host: backplanesample.com
 Content-Type: application/json
 
-        json
-        {
-          "admin": "admin",
-          "secret": "admin",
-          "entities": []
-        }
-
+```json
+{
+  "admin": "admin",
+  "secret": "admin",
+  "entities": []
+}
+```
 
 Example curl command for the above HTTP API request:
 
@@ -273,13 +275,13 @@ POST `/v2/provision/user/delete`
 Host: backplanesample.com
 `Content-Type: application/json`
 
-        json
-        {
-          "admin": "admin",
-          "secret": "admin",
-          "entities": [ "busowner1", "busowner2" ]
-        }
-
+```json
+{
+  "admin": "admin",
+  "secret": "admin",
+  "entities": [ "busowner1", "busowner2" ]
+}
+```
 
 Example curl command for the above HTTP API request:
 
@@ -299,25 +301,26 @@ POST `/v2/provision/client/update`
 Host: backplanesample.com
 Content-Type: application/json
 
-        json
-        {
-          "admin": "admin",
-          "secret": "admin",
-          "configs": [
-            {
-                "USER": "client1",
-                "PWDHASH": "clear_password_1",
-                "SOURCE_URL": "url1,
-                "REDIRECT_URI": "uri1"
-            },
-            {
-                "USER": "client2",
-                "PWDHASH": "clear_password_2",
-                "SOURCE_URL": "url2,
-                "REDIRECT_URI": "uri2"
-            }
-          ]
-        }
+```json
+{
+  "admin": "admin",
+  "secret": "admin",
+  "configs": [
+    {
+        "USER": "client1",
+        "PWDHASH": "clear_password_1",
+        "SOURCE_URL": "url1,
+        "REDIRECT_URI": "uri1"
+    },
+    {
+        "USER": "client2",
+        "PWDHASH": "clear_password_2",
+        "SOURCE_URL": "url2,
+        "REDIRECT_URI": "uri2"
+    }
+  ]
+}
+```
 
 Example curl command for the above HTTP API request:
 
@@ -332,12 +335,13 @@ POST `/v2/provision/client/list`
 Host: backplanesample.com
 Content-Type: application/json
 
-        json
-        {
-          "admin": "admin",
-          "secret": "admin",
-          "entities": []
-        }
+```json
+{
+  "admin": "admin",
+  "secret": "admin",
+  "entities": []
+}
+```
 
 Example curl command for the above HTTP API request:
 
@@ -351,13 +355,13 @@ POST `/v2/provision/client/delete`
 Host: backplanesample.com
 `Content-Type: application/json`
 
-        json
-        {
-          "admin": "admin",
-          "secret": "admin",
-          "entities": [ "client1", "client2" ]
-        }
-
+```json
+{
+  "admin": "admin",
+  "secret": "admin",
+  "entities": [ "client1", "client2" ]
+}
+```
 
 Example curl command for the above HTTP API request:
 
@@ -383,13 +387,13 @@ Request:
 
 * body format:
 
-        json
-        {
-            "admin": "<adminUsername>",
-            "secret": "<adminPassword>",
-            "entities": [ "customer1.com", "customer2.net" ]
-        }
-
+```json
+{
+    "admin": "<adminUsername>",
+    "secret": "<adminPassword>",
+    "entities": [ "customer1.com", "customer2.net" ]
+}
+```
 
 Response:
 
@@ -401,18 +405,18 @@ Response:
 
 * body format:
 
-        json
+```json
+{
+    "customer1":
         {
-            "customer1":
-                {
-                    "BUS_NAME": "customer1",
-                    "OWNER": "busowner1",
-                    "RETENTION_TIME_SECONDS": 600,
-                    "RETENTION_STICKY_TIME_SECONDS": 28800,
-                },
-        ...
-        }
-
+            "BUS_NAME": "customer1",
+            "OWNER": "busowner1",
+            "RETENTION_TIME_SECONDS": 600,
+            "RETENTION_STICKY_TIME_SECONDS": 28800,
+        },
+    ...
+}
+```
 
         curl -i --data @json_data_file.txt -H "Content-type: application/json" http://backplanesample.com/v2/provision/bus/list
 
@@ -430,13 +434,13 @@ Request:
 
 * body format:
 
-        json
-        {
-            "admin": "<adminUsername>",
-            "secret": "<adminPassword>",
-            "entities": [ "customer1.com", "customer2.net" ]
-        }
-
+```json
+{
+    "admin": "<adminUsername>",
+    "secret": "<adminPassword>",
+    "entities": [ "customer1.com", "customer2.net" ]
+}
+```
 
 Response:
 
@@ -444,12 +448,12 @@ Response:
 * an entry is returned for each bus configuration with the status of the delete operation - either "`BACKPLANE_DELETE_SUCCESS`" or an error message if the deletion was not completed successfully
 * body format:
 
-        json
-        {
-            "customer1.com": "BACKPLANE_DELETE_SUCCESS",
-            "customer2.net": "<delete error message>"
-        }
-
+```json
+{
+    "customer1.com": "BACKPLANE_DELETE_SUCCESS",
+    "customer2.net": "<delete error message>"
+}
+```
 
         curl -i --data @json_data_file.txt -H "Content-type: application/json" http://backplanesample.com/v2/provision/bus/delete
 
@@ -469,21 +473,21 @@ Request:
 
 * body format:
 
-        json
+```json
+{
+    "admin": "<adminUsername>",
+    "secret": "<adminPassword>",
+    "configs": [
         {
-            "admin": "<adminUsername>",
-            "secret": "<adminPassword>",
-            "configs": [
-                {
-                    "BUS_NAME": "customer1",
-                    "OWNER": "busowner1",
-                    "RETENTION_TIME_SECONDS": "600",
-                    "RETENTION_STICKY_TIME_SECONDS": "28800"
-                },
-                    ...
-            ]
-        }
-
+            "BUS_NAME": "customer1",
+            "OWNER": "busowner1",
+            "RETENTION_TIME_SECONDS": "600",
+            "RETENTION_STICKY_TIME_SECONDS": "28800"
+        },
+            ...
+    ]
+}
+```
 
 Response / success:
 
@@ -491,11 +495,12 @@ Response / success:
 * an entry is returned for each bus configuration with the status of the update operation - either `"BACKPLANE_UPDATE_SUCCESS"` or an error message if the deletion was not completed successfully.
 * body format:
 
-        json
-        {
-            "customer1.com": "BACKPLANE_UPDATE_SUCCESS",
-            "customer2.net": "<update error message>"
-        }
+```json
+{
+    "customer1.com": "BACKPLANE_UPDATE_SUCCESS",
+    "customer2.net": "<update error message>"
+}
+```
 
 Grant Provisioning API
 ----------------------
@@ -516,26 +521,28 @@ The grant's issuer is set to the admin username used for this provisioning opera
 
 * body format:
 
-        json
+```json
+{
+    "admin": "<adminUsername>",
+    "secret": "<adminPassword>",
+    "grants":
         {
-            "admin": "<adminUsername>",
-            "secret": "<adminPassword>",
-            "grants":
-                {
-                    "client_id1": "customer_bus_A customer_bus_B ...",
-                    "client_id2": "customer_bus_X customer_bus_Y ...",
-                    ...
-                }
+            "client_id1": "customer_bus_A customer_bus_B ...",
+            "client_id2": "customer_bus_X customer_bus_Y ...",
+            ...
         }
+}
+```
 
 * response format:
 
-        json
-        {
-            "client_id1": "GRANT_UPDATE_SUCCESS",
-            "client_id2": "<grant error message>",
-            ...
-        }
+```json
+{
+    "client_id1": "GRANT_UPDATE_SUCCESS",
+    "client_id2": "<grant error message>",
+    ...
+}
+```
 
 #### Revoke Authorization Grant
 
@@ -549,26 +556,28 @@ Removes the specified buses from all of Backplane client's grants.
 
 * body format:
 
-        json
+```json
+{
+    "admin": "<adminUsername>",
+    "secret": "<adminPassword>",
+    "grants":
         {
-            "admin": "<adminUsername>",
-            "secret": "<adminPassword>",
-            "grants":
-                {
-                    "client_id1": "customer_bus_A customer_bus_B ...",
-                    "client_id2": "customer_bus_X customer_bus_Y ...",
-                    ...
-                }
+            "client_id1": "customer_bus_A customer_bus_B ...",
+            "client_id2": "customer_bus_X customer_bus_Y ...",
+            ...
         }
+}
+```
 
 * response format:
 
-        json
-        {
-            "client_id1": "GRANT_UPDATE_SUCCESS",
-            "client_id2": "<grant error message>",
-            ...
-        }
+```json
+{
+    "client_id1": "GRANT_UPDATE_SUCCESS",
+    "client_id2": "<grant error message>",
+    ...
+}
+```
 
 #### List Authorization Grants
 
@@ -582,31 +591,32 @@ Lists existing authorization grants for the Backplane client identified by the p
 
 * body format:
 
-        json
-        {
-          "admin": "admin",
-          "secret": "admin",
-          "entities": [ "client_id1", "client_id2" ]
-        }
+```json
+{
+  "admin": "admin",
+  "secret": "admin",
+  "entities": [ "client_id1", "client_id2" ]
+}
+```
 
 * response format:
 
-        json
-        {
-            "client_id1": {
-                "grant_id1": "<buses_in_grant>",
-                "grant_id2": "<buses_in_grant>",
-                ...
-            },
+```json
+{
+    "client_id1": {
+        "grant_id1": "<buses_in_grant>",
+        "grant_id2": "<buses_in_grant>",
+        ...
+    },
 
-            "client_id2": {
-                "grant_idA": "<buses_in_grant>",
-                "grant_idB": "<buses_in_grant>",
-                ...
-            },
-            ...
-        }
-
+    "client_id2": {
+        "grant_idA": "<buses_in_grant>",
+        "grant_idB": "<buses_in_grant>",
+        ...
+    },
+    ...
+}
+```
 
 Metrics API
 -----------
@@ -624,35 +634,35 @@ Request:
 * all entries are required
 * body format:
 
-        json
-        {
-            "user": "metrics",
-            "secret": "someSecretKey"
-        }
-
+```json
+{
+    "user": "metrics",
+    "secret": "someSecretKey"
+}
+```
 
 Response success:
 
 * status 200 for requests with valid format that were processed successfully
 * body format (sample data, with metric details removed for brevity)
 
-        json
-        [
-           {
-              "id":"6e3d41e0-2206-4c1e-93d2-42ed0d21e377",
-              "time_collected":"2011-10-17T22:42:09.177Z",
-              "metrics":{
-              ...
-              }
-           },
-              "id":"blah",
-              "time_collected":"blah",
-              "metrics":{
-              ...
-              }
-           }
-        ]
-
+```json
+[
+   {
+      "id":"6e3d41e0-2206-4c1e-93d2-42ed0d21e377",
+      "time_collected":"2011-10-17T22:42:09.177Z",
+      "metrics":{
+      ...
+      }
+   },
+      "id":"blah",
+      "time_collected":"blah",
+      "metrics":{
+      ...
+      }
+   }
+]
+```
 
 ### Error Responses
 
@@ -661,11 +671,11 @@ status 400 Bad Request - invalid request format / syntax
 
 Each error response body will contain an error message in the following format:
 
-        json
-        {
-            "ERR_MSG": "<message>"
-        }
-
+```json
+{
+    "ERR_MSG": "<message>"
+}
+```
 
 
 [1]: http://tools.ietf.org/html/draft-ietf-oauth-v2-23#section-4.1.3 "OAuth 2 Section 4.1.3"

@@ -48,9 +48,9 @@ All endpoints are available at paths starting with `/v1.2/`, `/v1.1/` and `/v1/`
 entry in the `<backplane-instance>_bpserverconfig` table called `DEFAULT_MESSAGES_MAX`
 with an appropriate value.
 
-        json
-        {"ERR_MSG":"Message limit exceeded for this channel"}
-
+```json
+{"ERR_MSG":"Message limit exceeded for this channel"}
+```
 
 
 Configuration
@@ -112,21 +112,22 @@ POST `/v1.1/provision/user/update`
 Host: backplanesample.com
 Content-Type: application/json
 
-        json
-        {
-          "admin": "admin",
-          "secret": "admin",
-          "configs": [
-            {
-                "USER": "user1",
-                "PWDHASH": "user1"
-            },
-            {
-                "USER": "user2",
-                "PWDHASH": "user2"
-            }
-          ]
-        }
+```json
+{
+  "admin": "admin",
+  "secret": "admin",
+  "configs": [
+    {
+        "USER": "user1",
+        "PWDHASH": "user1"
+    },
+    {
+        "USER": "user2",
+        "PWDHASH": "user2"
+    }
+  ]
+}
+```
 
 Example curl command for the above HTTP API request:
 
@@ -141,12 +142,13 @@ POST `/v1.1/provision/user/list`
 Host: backplanesample.com
 Content-Type: application/json
 
-        json
-        {
-          "admin": "admin",
-          "secret": "admin",
-          "entities": []
-        }
+```json
+{
+  "admin": "admin",
+  "secret": "admin",
+  "entities": []
+}
+```
 
 Example curl command for the above HTTP API request:
 
@@ -160,12 +162,13 @@ POST `/v1.1/provision/user/delete`
 Host: backplanesample.com
 `Content-Type: application/json`
 
-        json
-        {
-          "admin": "admin",
-          "secret": "admin",
-          "entities": [ "user1", "user2" ]
-        }
+```json
+{
+  "admin": "admin",
+  "secret": "admin",
+  "entities": [ "user1", "user2" ]
+}
+```
 
 Example curl command for the above HTTP API request:
 
@@ -188,12 +191,13 @@ Request:
 * the value for the entities entry can be empty, in which case all Backplane Bus configurations are returned
 * body format:
 
-        json
-        {
-            "admin": "<adminUsername>",
-            "secret": "<adminPassword>",
-            "entities": [ "customer1.com", "customer2.net" ]
-        }
+```json
+{
+    "admin": "<adminUsername>",
+    "secret": "<adminPassword>",
+    "entities": [ "customer1.com", "customer2.net" ]
+}
+```
 
 Response:
 
@@ -202,19 +206,19 @@ Response:
 * requested bus configurations that encountered retrieval errors will result in a `"ERR_MSG": "<error_message>"` entry
 * body format:
 
-        json
+```json
+{
+    "customer1":
         {
-            "customer1":
-                {
-                    "BUS_NAME": "customer1",
-                    "RETENTION_TIME_SECONDS": "600",
-                    "<username1>: "<permission1>,<permission2>,...",
-                    "<username2>: "<permission3>,<permission4>,...",
-                    ...
-                },
-        ...
-        }
-
+            "BUS_NAME": "customer1",
+            "RETENTION_TIME_SECONDS": "600",
+            "<username1>: "<permission1>,<permission2>,...",
+            "<username2>: "<permission3>,<permission4>,...",
+            ...
+        },
+...
+}
+```
 
 `curl -i --data @json_data_file.txt -H "Content-type: application/json" http://backplanesample.com/v1.1/provision/bus/list`
 
@@ -229,13 +233,13 @@ Request:
 * all entries are required
 * body format:
 
-        json
-        {
-            "admin": "<adminUsername>",
-            "secret": "<adminPassword>",
-            "entities": [ "customer1.com", "customer2.net" ]
-        }
-
+```json
+{
+    "admin": "<adminUsername>",
+    "secret": "<adminPassword>",
+    "entities": [ "customer1.com", "customer2.net" ]
+}
+```
 
 Response:
 
@@ -243,12 +247,12 @@ Response:
 * an entry is returned for each bus configuration with the status of the delete operation - either "`BACKPLANE_DELETE_SUCCESS`" or an error message if the deletion was not completed successfully
 * body format:
 
-        json
-        {
-            "customer1.com": "BACKPLANE_DELETE_SUCCESS",
-            "customer2.net": "<delete error message>"
-        }
-
+```json
+{
+    "customer1.com": "BACKPLANE_DELETE_SUCCESS",
+    "customer2.net": "<delete error message>"
+}
+```
 
 `curl -i --data @json_data_file.txt -H "Content-type: application/json" http://backplanesample.com/v1.1/provision/bus/delete`
 
@@ -266,22 +270,22 @@ Request (v1.1):
 * provided Bus configurations must be in the valid format for the specified endpoint type
 * body format:
 
-        json
+```json
+{
+    "admin": "<adminUsername>",
+    "secret": "<adminPassword>",
+    "configs": [
         {
-            "admin": "<adminUsername>",
-            "secret": "<adminPassword>",
-            "configs": [
-                {
-                    "BUS_NAME": "customer1",
-                    "RETENTION_TIME_SECONDS": "600",
-                    "<username1>: "<permission1>,<permission2>,...",
-                    "<username2>: "<permission3>,<permission4>,...",
-                    ...
-                    },
-                    ...
-            ]
-        }
-
+            "BUS_NAME": "customer1",
+            "RETENTION_TIME_SECONDS": "600",
+            "<username1>: "<permission1>,<permission2>,...",
+            "<username2>: "<permission3>,<permission4>,...",
+            ...
+            },
+            ...
+    ]
+}
+```
 
 Request (v1.2):
 
@@ -291,23 +295,23 @@ Request (v1.2):
 * provided Bus configurations must be in the valid format for the specified endpoint type
 * body format:
 
-        json
+```json
+{
+    "admin": "<adminUsername>",
+    "secret": "<adminPassword>",
+    "configs": [
         {
-            "admin": "<adminUsername>",
-            "secret": "<adminPassword>",
-            "configs": [
-                {
-                    "BUS_NAME": "customer1",
-                    "RETENTION_TIME_SECONDS": "600",
-                    "RETENTION_STICKY_TIME_SECONDS": "28800",
-                    "<username1>: "<permission1>,<permission2>,...",
-                    "<username2>: "<permission3>,<permission4>,...",
-                    ...
-                    },
-                    ...
-            ]
-        }
-
+            "BUS_NAME": "customer1",
+            "RETENTION_TIME_SECONDS": "600",
+            "RETENTION_STICKY_TIME_SECONDS": "28800",
+            "<username1>: "<permission1>,<permission2>,...",
+            "<username2>: "<permission3>,<permission4>,...",
+            ...
+            },
+            ...
+    ]
+}
+```
 
 Response / success:
 
@@ -315,12 +319,12 @@ Response / success:
 * an entry is returned for each bus configuration with the status of the update operation - either `"BACKPLANE_UPDATE_SUCCESS"` or an error message if the deletion was not completed successfully.
 * body format:
 
-        json
-        {
-            "customer1.com": "BACKPLANE_UPDATE_SUCCESS",
-            "customer2.net": "<update error message>"
-        }
-
+```json
+{
+    "customer1.com": "BACKPLANE_UPDATE_SUCCESS",
+    "customer2.net": "<update error message>"
+}
+```
 
 #### Retrieve Metrics
 
@@ -335,35 +339,35 @@ Request:
 * all entries are required
 * body format:
 
-        json
-        {
-            "user": "metrics",
-            "secret": "someSecretKey"
-        }
-
+```json
+{
+    "user": "metrics",
+    "secret": "someSecretKey"
+}
+```
 
 Response success:
 
 * status 200 for requests with valid format that were processed successfully
 * body format (sample data, with metric details removed for brevity)
 
-        json
-        [
-           {
-              "id":"6e3d41e0-2206-4c1e-93d2-42ed0d21e377",
-              "time_collected":"2011-10-17T22:42:09.177Z",
-              "metrics":{
-              ...
-              }
-           },
-              "id":"blah",
-              "time_collected":"blah",
-              "metrics":{
-              ...
-              }
-           }
-        ]
-
+```json
+[
+   {
+      "id":"6e3d41e0-2206-4c1e-93d2-42ed0d21e377",
+      "time_collected":"2011-10-17T22:42:09.177Z",
+      "metrics":{
+      ...
+      }
+   },
+      "id":"blah",
+      "time_collected":"blah",
+      "metrics":{
+      ...
+      }
+   }
+]
+```
 
 ### Error Responses
 
@@ -372,10 +376,10 @@ status 400 Bad Request - invalid request format / syntax
 
 Each error response body will contain an error message in the following format:
 
-        json
-        {
-            "ERR_MSG": "<message>"
-        }
-
+```json
+{
+    "ERR_MSG": "<message>"
+}
+```
 
 [1]: http://www.backplaneworkinggroup.org/documentation/backplane1-2#backplane.server.api "Backplane v1.1 Section 13"
