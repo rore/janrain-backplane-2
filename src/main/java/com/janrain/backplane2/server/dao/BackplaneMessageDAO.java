@@ -25,9 +25,7 @@ import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 import static com.janrain.backplane2.server.BackplaneMessage.Field.BUS;
 import static com.janrain.backplane2.server.BackplaneMessage.Field.ID;
@@ -62,6 +60,8 @@ public class BackplaneMessageDAO extends DAO {
         // If the scope is complex, the risk is that we over-run SDB's query size restrictions.
         // So, here we break the query into chunks to run against SDB and build the result set
         // up incrementally.
+        // TODO: there is a risk that messages arrive and are lost with this approach
+        // because we are building the query results up from pieces.
 
         List<String> queries = scope.buildQueriesFromScope();
 
@@ -73,10 +73,21 @@ public class BackplaneMessageDAO extends DAO {
                 query += " AND id > '" + sinceMessageId + "'";
             }
 
+            query += " ORDER BY id";
+
             logger.info("message query => " + query);
 
             messages.addAll(superSimpleDB.retrieveWhere(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class, query, true));
         }
+
+        // we need to sort the results, because they are built up from individual queries and
+        // may not be in order when merged.
+        Collections.sort(messages, new Comparator<BackplaneMessage>() {
+            @Override
+            public int compare(BackplaneMessage msg1, BackplaneMessage msg2) {
+                return msg1.getIdValue().compareTo(msg1.getIdValue());
+            }
+        });
 
         return messages;
     }

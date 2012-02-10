@@ -83,6 +83,8 @@ public class Backplane2Controller {
                             @CookieValue( value = AUTHORIZATION_REQUEST_COOKIE, required = false) String authorizationRequestCookie,
                             @RequestHeader(value = "Authorization", required = false) String basicAuth) throws AuthorizationException {
 
+        assert(request.isSecure());
+
         AuthorizationRequest authzRequest = null;
         String httpMethod = request.getMethod();
         String authZdecisionKey = request.getParameter(AUTHZ_DECISION_KEY);
@@ -147,6 +149,9 @@ public class Backplane2Controller {
                           HttpServletResponse response,
                           @RequestParam(required = false) String busOwner,
                           @RequestParam(required = false) String password) throws AuthException, SimpleDBException {
+
+        assert(request.isSecure());
+
         String httpMethod = request.getMethod();
         if ("GET".equals(httpMethod)) {
             logger.debug("returning view for GET");
@@ -164,8 +169,6 @@ public class Backplane2Controller {
      * The OAuth "Token Endpoint" is used to obtain an access token to be used
      * for retrieving messages from the Get Messages endpoint.
      *
-     * @param request
-     * @param response
      * @param scope     optional
      * @param callback  required
      * @return
@@ -180,6 +183,8 @@ public class Backplane2Controller {
                                            @RequestParam(value = "scope", required = false) String scope,
                                            @RequestParam(required = true) String callback)
             throws AuthException, SimpleDBException, BackplaneServerException {
+
+        assert(request.isSecure());
 
         TokenRequest tokenRequest = new TokenRequest("anonymous", "client_credentials", scope, callback);
 
@@ -221,8 +226,6 @@ public class Backplane2Controller {
      * The OAuth "Token Endpoint" is used to obtain an access token to be used
      * for retrieving messages from the Get Messages endpoint.
      *
-     * @param request
-     * @param response
      * @param client_id
      * @param grant_type
      * @param redirect_uri
@@ -246,6 +249,8 @@ public class Backplane2Controller {
                                         @RequestParam(value = "scope", required = false) String scope)
             throws AuthException, SimpleDBException, BackplaneServerException {
 
+        assert(request.isSecure());
+
         TokenRequest tokenRequest = new TokenRequest(daoFactory, client_id, grant_type, redirect_uri,
                                                         code, client_secret, scope, null);
 
@@ -266,9 +271,14 @@ public class Backplane2Controller {
 
     /**
      * Retrieve messages from the server.
-     * @param request
-     * @param response
-     * @return
+     *
+     * @param access_token required
+     * @param block        optional
+     * @param callback     optional
+     * @param since        optional
+     * @return json object
+     * @throws SimpleDBException
+     * @throws BackplaneServerException
      */
 
     @RequestMapping(value = "/messages", method = { RequestMethod.GET})
@@ -279,7 +289,11 @@ public class Backplane2Controller {
                                 @RequestParam(value = "since", required = false) String since)
             throws SimpleDBException, BackplaneServerException {
 
+        assert(request.isSecure());
+
         //TODO: add support for block?
+        boolean moreMessages = false;
+        BackplaneMessage lastMessage = null;
 
         MessageRequest messageRequest = new MessageRequest(daoFactory, access_token, callback);
 
@@ -293,22 +307,17 @@ public class Backplane2Controller {
 
         String nextUrl = "https://" + request.getServerName() + "/v2/messages";
 
-        //TODO: the spec (sec 12, last paragraph) suggests that the "since" id must specify a message that exists and
-        // if it does NOT exist, then we remove the "since" value from the query to allow the filter to be applied
-        // against the entire message "current buffer".  Fix.
-
-        if (messages.isEmpty()) {
-            if (!StringUtils.isBlank(since)) {
-                nextUrl += "?since=" + since;
-            }
-        } else {
-                nextUrl += "?since=" + messages.get(messages.size()-1).getIdValue();
-        }
-
         //String nextUrl = "https://" + request.getServerName() + "/v2/messages?since=" + messages.get(messages.size()-1).getIdValue();
         List<Map<String,Object>> frames = new ArrayList<Map<String, Object>>();
 
+        int messageCount = 0;
         for (BackplaneMessage message : messages) {
+            if (messageCount++ > MAX_MSGS_IN_FRAME) {
+                moreMessages = true;
+                break;
+            }
+
+            lastMessage = message;
             frames.add(message.asFrame(request.getServerName(), messageRequest.getToken().isPrivileged()));
 
             // verify the proper permissions
@@ -329,8 +338,17 @@ public class Backplane2Controller {
             }
         }
 
+        if (lastMessage == null) {
+            if (!StringUtils.isBlank(since)) {
+                nextUrl += "?since=" + since;
+            }
+        } else {
+            nextUrl += "?since=" + lastMessage.getIdValue();
+        }
+
         HashMap<String, Object> hash = new HashMap<String, Object>();
         hash.put("nextURL", nextUrl);
+        hash.put("moreMessages", moreMessages);
         hash.put("messages", frames);
 
         if (StringUtils.isBlank(callback)) {
@@ -367,6 +385,8 @@ public class Backplane2Controller {
                                                         @RequestParam(value = "access_token", required = false) String access_token,
                                                         @RequestParam(required = false) String callback)
             throws BackplaneServerException {
+
+        assert(request.isSecure());
 
         MessageRequest messageRequest = new MessageRequest(daoFactory, access_token, callback);
 
@@ -448,6 +468,8 @@ public class Backplane2Controller {
                                                               @RequestParam(value = "access_token", required = false) String access_token,
                                                               @RequestParam(required = false) String callback,
                                                               @RequestParam(required = false) String since) throws BackplaneServerException, SimpleDBException {
+
+        assert(request.isSecure());
 
         Token token;
 
@@ -576,6 +598,7 @@ public class Backplane2Controller {
 
     private static final String ERR_MSG_FIELD = "error";
     private static final String ERR_MSG_DESCRIPTION = "error_description";
+    private static final int MAX_MSGS_IN_FRAME = 25;
 
     private static final String BUS_OWNER_AUTH_FORM_JSP = "bus_owner_auth";
     private static final String CLIENT_AUTHORIZATION_FORM_JSP = "client_authorization";
