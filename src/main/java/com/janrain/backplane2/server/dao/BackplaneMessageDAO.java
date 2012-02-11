@@ -73,15 +73,16 @@ public class BackplaneMessageDAO extends DAO {
                 query += " AND id > '" + sinceMessageId + "'";
             }
 
-            query += " ORDER BY id";
+            query += " AND id IS NOT NULL ORDER BY id";
 
             logger.info("message query => " + query);
 
-            messages.addAll(superSimpleDB.retrieveWhere(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class, query, true));
+            messages.addAll(superSimpleDB.retrieveWhere(bpConfig.getTableName(BP_MESSAGES),
+                    BackplaneMessage.class, query, true));
         }
 
         // we need to sort the results, because they are built up from individual queries and
-        // may not be in order when merged.
+        // may not be in the correct order when merged.
         Collections.sort(messages, new Comparator<BackplaneMessage>() {
             @Override
             public int compare(BackplaneMessage msg1, BackplaneMessage msg2) {

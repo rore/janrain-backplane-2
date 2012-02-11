@@ -83,7 +83,7 @@ public class Backplane2Controller {
                             @CookieValue( value = AUTHORIZATION_REQUEST_COOKIE, required = false) String authorizationRequestCookie,
                             @RequestHeader(value = "Authorization", required = false) String basicAuth) throws AuthorizationException {
 
-        assert(request.isSecure());
+        //assert(request.isSecure());
 
         AuthorizationRequest authzRequest = null;
         String httpMethod = request.getMethod();
@@ -150,7 +150,7 @@ public class Backplane2Controller {
                           @RequestParam(required = false) String busOwner,
                           @RequestParam(required = false) String password) throws AuthException, SimpleDBException {
 
-        assert(request.isSecure());
+        //assert(request.isSecure());
 
         String httpMethod = request.getMethod();
         if ("GET".equals(httpMethod)) {
@@ -184,7 +184,7 @@ public class Backplane2Controller {
                                            @RequestParam(required = true) String callback)
             throws AuthException, SimpleDBException, BackplaneServerException {
 
-        assert(request.isSecure());
+        //assert(request.isSecure());
 
         TokenRequest tokenRequest = new TokenRequest("anonymous", "client_credentials", scope, callback);
 
@@ -249,7 +249,7 @@ public class Backplane2Controller {
                                         @RequestParam(value = "scope", required = false) String scope)
             throws AuthException, SimpleDBException, BackplaneServerException {
 
-        assert(request.isSecure());
+       // assert(request.isSecure());
 
         TokenRequest tokenRequest = new TokenRequest(daoFactory, client_id, grant_type, redirect_uri,
                                                         code, client_secret, scope, null);
@@ -289,7 +289,7 @@ public class Backplane2Controller {
                                 @RequestParam(value = "since", required = false) String since)
             throws SimpleDBException, BackplaneServerException {
 
-        assert(request.isSecure());
+        //assert(request.isSecure());
 
         //TODO: add support for block?
         boolean moreMessages = false;
@@ -386,7 +386,7 @@ public class Backplane2Controller {
                                                         @RequestParam(required = false) String callback)
             throws BackplaneServerException {
 
-        assert(request.isSecure());
+        //assert(request.isSecure());
 
         MessageRequest messageRequest = new MessageRequest(daoFactory, access_token, callback);
 
@@ -469,7 +469,7 @@ public class Backplane2Controller {
                                                               @RequestParam(required = false) String callback,
                                                               @RequestParam(required = false) String since) throws BackplaneServerException, SimpleDBException {
 
-        assert(request.isSecure());
+        //assert(request.isSecure());
 
         Token token;
 
