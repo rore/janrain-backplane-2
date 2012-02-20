@@ -173,6 +173,7 @@ public class ProvisioningController2 {
 
     private static final String BACKPLANE_UPDATE_SUCCESS = "BACKPLANE_UPDATE_SUCCESS";
     private static final String BACKPLANE_DELETE_SUCCESS = "BACKPLANE_DELETE_SUCCESS";
+    private static final String BACKPLANE_ENTRY_NOT_FOUND = "BACKPLANE_ENTRY_NOT_FOUND";
     private static final String ERR_MSG_FIELD = "ERR_MSG";
     private static final String CONFIG_NOT_FOUND = "CONFIG_NOT_FOUND";
 
@@ -225,7 +226,11 @@ public class ProvisioningController2 {
         for(String entityName : entityNames) {
             String deleteStatus = BACKPLANE_DELETE_SUCCESS;
             try {
-                superSimpleDb.delete(tableName, entityName);
+                if (superSimpleDb.retrieve(tableName, entityType, entityName) == null) {
+                    deleteStatus = BACKPLANE_ENTRY_NOT_FOUND;
+                } else {
+                    superSimpleDb.delete(tableName, entityName);
+                }
             } catch (Exception e) {
                 deleteStatus = e.getMessage();
             }

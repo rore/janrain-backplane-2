@@ -139,6 +139,43 @@ public class ProvisioningController2Test {
 
     }
 
+    @Test
+    public void testProvisioningDelete() throws Exception {
+
+        refreshRequestAndResponse();
+
+        String delete = " { \"entities\":[\"does\", \"not\", \"exist\"], \"admin\":\"" + user.get(User.Field.USER) + "\", \"secret\":\"" + pw + "\"}";
+        request.setContent(delete.getBytes());
+        request.addHeader("Content-type", "application/json");
+        request.setRequestURI("/v2/provision/user/delete");
+        request.setMethod("POST");
+
+        handlerAdapter.handle(request, response, controller);
+        logger.info("testProvisioningDelete() -> " + response.getContentAsString());
+        assertTrue(response.getContentAsString().equals("{\"does\":\"BACKPLANE_ENTRY_NOT_FOUND\",\"not\":\"BACKPLANE_ENTRY_NOT_FOUND\",\"exist\":\"BACKPLANE_ENTRY_NOT_FOUND\"}"));
+
+        refreshRequestAndResponse();
+        request.setContent(delete.getBytes());
+        request.addHeader("Content-type", "application/json");
+        request.setRequestURI("/v2/provision/bus/delete");
+        request.setMethod("POST");
+
+        handlerAdapter.handle(request, response, controller);
+        logger.info("testProvisioningDelete() -> " + response.getContentAsString());
+        assertTrue(response.getContentAsString().equals("{\"does\":\"BACKPLANE_ENTRY_NOT_FOUND\",\"not\":\"BACKPLANE_ENTRY_NOT_FOUND\",\"exist\":\"BACKPLANE_ENTRY_NOT_FOUND\"}"));
+
+        refreshRequestAndResponse();
+        request.setContent(delete.getBytes());
+        request.addHeader("Content-type", "application/json");
+        request.setRequestURI("/v2/provision/client/delete");
+        request.setMethod("POST");
+
+        handlerAdapter.handle(request, response, controller);
+        logger.info("testProvisioningDelete() -> " + response.getContentAsString());
+        assertTrue(response.getContentAsString().equals("{\"does\":\"BACKPLANE_ENTRY_NOT_FOUND\",\"not\":\"BACKPLANE_ENTRY_NOT_FOUND\",\"exist\":\"BACKPLANE_ENTRY_NOT_FOUND\"}"));
+
+    }
+
     private void refreshRequestAndResponse() {
 		request = new MockHttpServletRequest();
 		response = new MockHttpServletResponse();
