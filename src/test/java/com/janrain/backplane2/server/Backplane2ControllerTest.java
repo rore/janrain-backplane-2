@@ -133,7 +133,7 @@ public class Backplane2ControllerTest {
         try {
             for (String key:this.createdMessageKeys) {
                 logger.info("deleting Message " + key);
-                //superSimpleDB.delete(bpConfig.getTableName(BP_MESSAGES), key);
+                superSimpleDB.delete(bpConfig.getTableName(BP_MESSAGES), key);
             }
 
             try {
@@ -838,7 +838,7 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
 
         // Create appropriate token
-        TokenPrivileged token = new TokenPrivileged("fooClient", "mybus.com yourbus.com", "bus:mybus.com", null);
+        TokenPrivileged token = new TokenPrivileged("fooClient", "this.com that.com", "bus:this.com bus:that.com", null);
         this.saveToken(token);
 
         // Seed 2 messages
@@ -858,7 +858,9 @@ public class Backplane2ControllerTest {
         handlerAdapter.handle(request, response, controller);
         logger.info("testMessagesEndPointPAL()   => " + response.getContentAsString());
 
-        assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
+        Map<String,Object> returnedBody = mapper.readValue(response.getContentAsString(), new TypeReference<Map<String,Object>>() {});
+        List<Map<String,Object>> returnedMsgs = (List<Map<String, Object>>) returnedBody.get("messages");
+        assertTrue(returnedMsgs.size() == 2);
     }
 
     @Test
@@ -1144,6 +1146,57 @@ public class Backplane2ControllerTest {
             daoFactory.getBusOwnerDAO().deleteBusOwner(user.getIdValue());
             daoFactory.getBusDao().deleteBus(bus1.getIdValue());
             daoFactory.getBusDao().deleteBus(bus2.getIdValue());
+        }
+
+    }
+
+    @Test
+    public void testMessageOrder() throws Exception {
+
+        refreshRequestAndResponse();
+
+        // Create appropriate token
+        String bus = ChannelUtil.randomString(10) + ".com";
+
+        TokenPrivileged token = new TokenPrivileged("fooClient", bus + " yourbus.com", "bus:" + bus, null);
+        this.saveToken(token);
+
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
+
+        // seed messages
+        int numMessages = 10;
+        ArrayList<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
+        String channel = ChannelUtil.randomString(TokenAnonymous.CHANNEL_NAME_LENGTH);
+
+        for (int i=0;i < numMessages; i++) {
+            BackplaneMessage message = new BackplaneMessage(BackplaneMessage.generateMessageId(), bus, channel, msg);
+            messages.add(message);
+        }
+
+        // reverse the list
+        Collections.reverse(messages);
+
+        for (BackplaneMessage message : messages) {
+            this.saveMessage(message);
+        }
+
+         // Make the call
+        request.setRequestURI("/v2/messages");
+        request.setMethod("GET");
+        request.setParameter("access_token", token.getIdValue());
+        handlerAdapter.handle(request, response, controller);
+        logger.info("testMessageOrder()  => " + response.getContentAsString());
+
+        Map<String,Object> returnedBody = mapper.readValue(response.getContentAsString(), new TypeReference<Map<String,Object>>() {});
+        List<Map<String,Object>> returnedMsgs = (List<Map<String, Object>>) returnedBody.get("messages");
+        assertTrue(returnedMsgs.size() == numMessages);
+
+        // they should be returned in lexicographic order by ID
+        String prev = "";
+        for (Map<String,Object> m : returnedMsgs) {
+            assertTrue(m.get("messageURL").toString().compareTo(prev) > 0);
+            prev = (String)m.get("messageURL");
         }
 
     }
