@@ -37,6 +37,19 @@ public class Scope {
         return Arrays.asList(VALID_PRIVILEGED_KEYS).contains(key);
     }
 
+    /**
+     * Reformulate space-delimited list of buses "busA.com busB.com ..."
+     * to "bus:busA.com bus:busB.com ..."
+     * @param spaceDelimitedBuses
+     * @return
+     */
+    public static String convertToBusScope(String spaceDelimitedBuses) {
+        StringBuilder sb = new StringBuilder();
+        for (String scopeToken : spaceDelimitedBuses.split(" ")) {
+            sb.append("bus:" + scopeToken);
+        }
+        return sb.toString();
+    }
 
     public Scope(String scopeString) throws BackplaneServerException {
         this.scopes = parseScopeString(scopeString);

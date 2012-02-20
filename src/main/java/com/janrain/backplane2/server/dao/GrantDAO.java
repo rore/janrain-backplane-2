@@ -118,7 +118,7 @@ public class GrantDAO extends DAO {
      *  Stops on first error and reports error, even though some grants may have been updated.
      */
     public void revokeBuses(String clientId, String buses) throws SimpleDBException, BackplaneServerException {
-        Scope busesToRevoke = new Scope(buses);
+        Scope busesToRevoke = new Scope(Scope.convertToBusScope(buses));
         for(Grant grant : retrieveGrants(clientId, busesToRevoke)) {
             Grant updated = new Grant(grant);
             String remainingBuses = updated.revokeBuses(busesToRevoke.getBusesInScope());

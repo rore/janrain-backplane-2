@@ -40,6 +40,11 @@ public class ClientDAO extends DAO {
     public Client retrieveClient(String client) throws SimpleDBException {
         return superSimpleDB.retrieve(bpConfig.getTableName(BP_CLIENTS), Client.class, client);
     }
+
+    public void deleteClient(String clientId) throws SimpleDBException {
+        //TODO: be sure to remove all grants issued to this client
+        superSimpleDB.delete(bpConfig.getTableName(BP_CLIENTS), clientId);
+    }
 }
 
 

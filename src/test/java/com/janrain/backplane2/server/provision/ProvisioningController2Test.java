@@ -96,6 +96,8 @@ public class ProvisioningController2Test {
         superSimpleDB.store(bpConfig.getTableName(Backplane2Config.SimpleDBTables.BP_ADMIN_AUTH), User.class, user);
 
         client = new Client( ChannelUtil.randomString(20), pw, "http://source.com", "http://redirect.com" );
+        daoFactory.getClientDAO().persistClient(client);
+        logger.info("Created test client: " + client.getClientId());
 
 
 	}
@@ -104,6 +106,7 @@ public class ProvisioningController2Test {
     public void cleanup() throws SimpleDBException {
         superSimpleDB.delete(bpConfig.getTableName(Backplane2Config.SimpleDBTables.BP_ADMIN_AUTH), user.getIdValue());
         superSimpleDB.delete(bpConfig.getTableName(Backplane2Config.SimpleDBTables.BP_CLIENTS), client.getIdValue());
+        daoFactory.getClientDAO().deleteClient(client.getClientId());
     }
 
     @Test
@@ -144,7 +147,7 @@ public class ProvisioningController2Test {
 
         refreshRequestAndResponse();
 
-        String delete = " { \"entities\":[\"does\", \"not\", \"exist\"], \"admin\":\"" + user.get(User.Field.USER) + "\", \"secret\":\"" + pw + "\"}";
+        String delete = "{ \"entities\":[\"does\", \"not\", \"exist\"], \"admin\":\"" + user.get(User.Field.USER) + "\", \"secret\":\"" + pw + "\"}";
         request.setContent(delete.getBytes());
         request.addHeader("Content-type", "application/json");
         request.setRequestURI("/v2/provision/user/delete");
@@ -173,6 +176,34 @@ public class ProvisioningController2Test {
         handlerAdapter.handle(request, response, controller);
         logger.info("testProvisioningDelete() -> " + response.getContentAsString());
         assertTrue(response.getContentAsString().equals("{\"does\":\"BACKPLANE_ENTRY_NOT_FOUND\",\"not\":\"BACKPLANE_ENTRY_NOT_FOUND\",\"exist\":\"BACKPLANE_ENTRY_NOT_FOUND\"}"));
+
+    }
+
+    @Test
+    public void testProvisioningGrant() throws Exception {
+
+        refreshRequestAndResponse();
+
+        String addGrant = "{\"grants\":{\"" + client.getClientId() + "\":\"qa-test-bus\"},\"admin\":\"" + user.get(User.Field.USER) + "\", \"secret\":\"" + pw + "\"}";
+        request.setContent(addGrant.getBytes());
+        request.addHeader("Content-type", "application/json");
+        request.setRequestURI("/v2/provision/grant/add");
+        request.setMethod("POST");
+
+        handlerAdapter.handle(request, response, controller);
+        logger.info("testProvisioningGrant() -> " + response.getContentAsString());
+        assertTrue("Invalid response", response.getContentAsString().equals("{\"" + client.getClientId() + "\":\"grant added successfully\"}"));
+
+        refreshRequestAndResponse();
+        request.setContent(addGrant.getBytes());
+        request.addHeader("Content-type", "application/json");
+        request.setRequestURI("/v2/provision/grant/revoke");
+        request.setMethod("POST");
+
+        handlerAdapter.handle(request, response, controller);
+        logger.info("testProvisioningGrant() -> " + response.getContentAsString());
+        assertTrue(response.getContentAsString().contains("grant updated successfully, buses removed"));
+
 
     }
 
