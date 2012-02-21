@@ -41,7 +41,7 @@ public class TokenResponse {
     }
 
     public HashMap<String, Object> generateResponse() throws SimpleDBException, BackplaneServerException {
-        if (request.grant_type.equals("client_credentials") && request.client_id.equals(Token.ANONYMOUS)) {
+        if (request.grant_type.equals("client_credentials") && request.client.getClientId().equals(Token.ANONYMOUS)) {
             // issue new channel id
             final TokenAnonymous token = new TokenAnonymous(null, request.scope, new Date(new Date().getTime() + Token.EXPIRES_SECONDS * 1000L));
             daoFactory.getTokenDao().persist(token);
@@ -54,7 +54,7 @@ public class TokenResponse {
         }
 
         if (request.grant_type.equals("code")) {
-            final TokenPrivileged token = new TokenPrivileged(request.client_id, request.getGrant(), request.scope);
+            final TokenPrivileged token = new TokenPrivileged(request.client.getClientId(), request.getGrant(), request.scope);
             daoFactory.getTokenDao().persist(token);
             return new LinkedHashMap<String, Object>() {{
                 put("access_token", token.getIdValue());
@@ -66,8 +66,8 @@ public class TokenResponse {
         }
 
         if (request.grant_type.equals("client_credentials")) {
-            List<Grant> grants = daoFactory.getGrantDao().retrieveGrants(request.client_id, new Scope(request.scope));
-            final TokenPrivileged token = new TokenPrivileged(request.client_id, grants, null);
+            List<Grant> grants = daoFactory.getGrantDao().retrieveGrants(request.client.getClientId(), new Scope(request.scope));
+            final TokenPrivileged token = new TokenPrivileged(request.client.getClientId(), grants, null);
             daoFactory.getTokenDao().persist(token);
             return new LinkedHashMap<String, Object>() {{
                 put("access_token", token.getIdValue());

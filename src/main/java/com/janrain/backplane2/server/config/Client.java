@@ -16,6 +16,7 @@
 
 package com.janrain.backplane2.server.config;
 
+import com.janrain.backplane2.server.Token;
 import com.janrain.commons.supersimpledb.message.MessageField;
 
 import java.util.LinkedHashMap;
@@ -26,10 +27,14 @@ import java.util.Map;
  */
 public class Client extends User {
 
+    public static final Client ANONYMOUS_CLIENT = new Client() {{ // bypass regular field validation
+        put(Field.USER.getFieldName(), Token.ANONYMOUS);
+    }};
+    
     /**
      * Empty default constructor for AWS to use
      */
-    public Client() {};
+    public Client() {}
 
     public Client(String client_id, String client_secret, String source_url, String redirect_uri) {
         Map<String,String> d = new LinkedHashMap<String, String>();
@@ -75,6 +80,4 @@ public class Client extends User {
             if (isRequired()) validateNotNull(name(), value);
         }
     }
-
-
 }

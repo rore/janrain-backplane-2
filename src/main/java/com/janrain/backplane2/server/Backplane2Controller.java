@@ -19,11 +19,11 @@ package com.janrain.backplane2.server;
 import com.janrain.backplane2.server.config.*;
 import com.janrain.backplane2.server.dao.BackplaneMessageDAO;
 import com.janrain.backplane2.server.dao.DaoFactory;
-import com.janrain.oauth2.*;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.crypto.ChannelUtil;
 import com.janrain.crypto.HmacHashUtils;
 import com.janrain.metrics.MetricsAccumulator;
+import com.janrain.oauth2.*;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.HistogramMetric;
 import com.yammer.metrics.core.MeterMetric;
@@ -42,10 +42,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -186,7 +183,7 @@ public class Backplane2Controller {
 
         //assert(request.isSecure());
 
-        TokenRequest tokenRequest = new TokenRequest("anonymous", "client_credentials", scope, callback);
+        TokenRequest tokenRequest = new TokenRequest(Client.ANONYMOUS_CLIENT, "client_credentials", scope, callback);
 
         HashMap<String,Object> errors = tokenRequest.validate();
 
@@ -246,15 +243,27 @@ public class Backplane2Controller {
                                         @RequestParam(value = "redirect_uri", required = false) String redirect_uri,
                                         @RequestParam(value = "code", required = false) String code,
                                         @RequestParam(value = "client_secret", required = false) String client_secret,
-                                        @RequestParam(value = "scope", required = false) String scope)
-            throws AuthException, SimpleDBException, BackplaneServerException {
+                                        @RequestParam(value = "scope", required = false) String scope,
+                                        @RequestHeader(value = "Authorization", required = false) String basicAuth)
+            throws SimpleDBException, BackplaneServerException {
 
        // assert(request.isSecure());
 
-        TokenRequest tokenRequest = new TokenRequest(daoFactory, client_id, grant_type, redirect_uri,
-                                                        code, client_secret, scope, null);
+        Client authenticatedClient;
+        try {
+            checkClientCredentialsBasicAuthOnly(request.getQueryString(), client_id, client_secret);
+            authenticatedClient = getAuthenticatedClient(basicAuth);
+        } catch (AuthException e) {
+            logger.error(e.getMessage());
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return new HashMap<String, Object>() {{
+                put(OAuth2.OAUTH2_TOKEN_INVALID_CLIENT, "Client authentication failed");
+            }};
+        }
 
-        HashMap<String,Object> errors = tokenRequest.validate();
+        TokenRequest tokenRequest = new TokenRequest(daoFactory, authenticatedClient, grant_type, redirect_uri, code, scope, null);
+
+        HashMap<String, Object> errors = tokenRequest.validate();
         if (!errors.isEmpty()) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             return errors;
@@ -716,6 +725,7 @@ public class Backplane2Controller {
         }
     }
 
+    /** Returns an authenticated Client, never null, or throws AuthException */
     private Client getAuthenticatedClient(String basicAuth) throws AuthException {
         String userPass = null;
         if (basicAuth == null || !basicAuth.startsWith("Basic ") || basicAuth.length() < 7) {
@@ -904,6 +914,27 @@ public class Backplane2Controller {
                     put("DIRECT_RESPONSE", errMsg);
                 }});
             }
+        }
+    }
+
+    /**
+     * Throws AuthException if either of the following fail:
+     *   Client credentials MUST NOT be included in the request URI (OAuth2 2.3.1)
+     *   Client credentials in request body are NOT RECOMMENDED (OAuth2 2.3.1)
+     *
+     * @param queryString request query string
+     * @param client_id from request parameters (may be from POST/request body)
+     * @param client_secret from request parameters (may be from POST/request body)
+     */
+    private void checkClientCredentialsBasicAuthOnly(String queryString, String client_id, String client_secret) throws AuthException {
+        if (StringUtils.isNotEmpty(queryString)) {
+            List<String> queryParams = Arrays.asList(queryString.split("&"));
+            if(queryParams.contains("client_id") || queryParams.contains("client_secret")) {
+                throw new AuthException("Client credentials MUST NOT be included in the request URI (OAuth2 2.3.1)");
+            }
+        }
+        if (StringUtils.isNotEmpty(client_id) || StringUtils.isNotEmpty(client_secret)) {
+            throw new AuthException("Client credentials in request body are NOT RECOMMENDED (OAuth2 2.3.1)");
         }
     }
 }

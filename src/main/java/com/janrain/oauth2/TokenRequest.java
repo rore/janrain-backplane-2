@@ -16,12 +16,14 @@
 
 package com.janrain.oauth2;
 
-import com.janrain.backplane2.server.*;
+import com.janrain.backplane2.server.BackplaneServerException;
+import com.janrain.backplane2.server.Grant;
+import com.janrain.backplane2.server.Scope;
+import com.janrain.backplane2.server.Token;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.backplane2.server.config.Client;
 import com.janrain.backplane2.server.dao.DaoFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.crypto.HmacHashUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
@@ -38,11 +40,9 @@ import static com.janrain.oauth2.OAuth2.*;
 
 public class TokenRequest {
 
-    String client_id;
     String grant_type;
     String redirect_uri;
     String codeId;
-    String client_secret;
     String scope;
     String callback;
     Grant grant;
@@ -55,12 +55,11 @@ public class TokenRequest {
 
     private static final Logger logger = Logger.getLogger(TokenRequest.class);
 
-    public TokenRequest(DaoFactory daoFactory, String client_id, String grant_type, String redirect_uri, String codeId, String client_secret, String scope, String callback) {
-        this.client_id = client_id;
+    public TokenRequest(DaoFactory daoFactory, Client client, String grant_type, String redirect_uri, String codeId, String scope, String callback) {
+        this.client = client;
         this.grant_type = grant_type;
         this.redirect_uri = redirect_uri;
         this.codeId = codeId;
-        this.client_secret = client_secret;
         this.scope = scope;
         this.daoFactory = daoFactory;
         this.callback = callback;
@@ -70,19 +69,10 @@ public class TokenRequest {
         } catch (Exception e) {
             //do nothing
         }
-
-        try {
-            if (StringUtils.isNotEmpty(client_id) && !client_id.equals(Token.ANONYMOUS)) {
-                setClient(daoFactory.getClientDAO().retrieveClient(client_id));
-            }
-        } catch (Exception e) {
-            //do nothing
-            logger.info("could not retrieve client with id '" + client_id + "'", e);
-        }
     }
 
-    public TokenRequest(String client_id, String grant_type, String scope, String callback) {
-        this.client_id = client_id;
+    public TokenRequest(Client anonymousClient, String grant_type, String scope, String callback) {
+        this.client = anonymousClient;
         this.grant_type = grant_type;
         this.scope = scope;
         this.callback = callback;
@@ -94,10 +84,6 @@ public class TokenRequest {
 
     public void setGrant(Grant grant) {
         this.grant = grant;
-    }
-
-    public void setClient(Client client) {
-        this.client = client;
     }
 
     /**
@@ -114,9 +100,12 @@ public class TokenRequest {
             }
         }
 
-        if (StringUtils.isEmpty(client_id)) {
+        if (client == null || StringUtils.isEmpty(client.getClientId())) {
             return error(OAUTH2_TOKEN_INVALID_REQUEST, "Missing value for client_id");
         }
+
+        String client_id = client.getClientId();
+        String client_secret = client.getClientSecret();
 
         if (!grant_type.equals("client_credentials") && !grant_type.equals("code")) {
             return error(OAUTH2_TOKEN_UNSUPPORTED_GRANT, "Invalid grant type");
@@ -149,11 +138,9 @@ public class TokenRequest {
                 return error(OAUTH2_TOKEN_INVALID_GRANT, "Authorization code is expired");
             }
 
-            //check the client
-            if (client == null ||
-                    !HmacHashUtils.checkHmacHash(client_secret, client.getClientSecret()) ||
-                    !grant.getGrantClientId().equals(client.getClientId())) {
-                return error(OAUTH2_TOKEN_INVALID_CLIENT, "Client authentication failed");
+            //check the client - grant binding
+            if ( ! grant.getGrantClientId().equals(client.getClientId()) ) {
+                return error(OAUTH2_TOKEN_INVALID_GRANT, "Invalid grant");
             }
             
             // check redirect_uri
