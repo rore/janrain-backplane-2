@@ -224,11 +224,10 @@ public class Backplane2ControllerTest {
     @Test
     public void testTokenEndPointAuthenticationFailure() throws Exception {
         refreshRequestAndResponse();
-        Client client = createTestClient();
         request.setRequestURI("/v2/token");
         request.setMethod("POST");
         request.setParameter("grant_type", "client_credentials");
-        setOAuthBasicAuthentication(request, client.get(User.Field.USER), "wrong_secret");
+        setOAuthBasicAuthentication(request, testClient.get(User.Field.USER), "wrong_secret");
         handlerAdapter.handle(request, response, controller);
         logger.info("testTokenEndPointAuthenticationFailure() => " + response.getContentAsString());
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
