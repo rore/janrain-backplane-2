@@ -21,11 +21,13 @@ public class BusOwnerDAO extends DAO {
         superSimpleDB.store(bpConfig.getTableName(BP_BUS_OWNERS), User.class, (User) user);
     }
 
+    @Override
+    public void delete(String id) throws SimpleDBException {
+        superSimpleDB.delete(bpConfig.getTableName(BP_BUS_OWNERS), id);
+    }
+
     public User retrieveBusOwner(String userId) throws SimpleDBException {
         return superSimpleDB.retrieve(bpConfig.getTableName(BP_BUS_OWNERS), User.class, userId);
     }
 
-    public void deleteBusOwner(String userId) throws SimpleDBException {
-        superSimpleDB.delete(bpConfig.getTableName(BP_BUS_OWNERS), userId);
-    }
 }

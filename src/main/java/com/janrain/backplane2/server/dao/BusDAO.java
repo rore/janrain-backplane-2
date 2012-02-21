@@ -39,6 +39,11 @@ public class BusDAO extends DAO {
         superSimpleDB.store(bpConfig.getTableName(BP_BUS_CONFIG), BusConfig2.class, (BusConfig2) bus);
     }
 
+    @Override
+    public void delete(String id) throws SimpleDBException {
+        superSimpleDB.delete(bpConfig.getTableName(BP_BUS_CONFIG), id);
+    }
+
     public List<BusConfig2> retrieveBuses() throws SimpleDBException {
         return superSimpleDB.retrieve(bpConfig.getTableName(BP_BUS_CONFIG), BusConfig2.class);
     }
@@ -53,7 +58,4 @@ public class BusDAO extends DAO {
                 BusConfig2.Field.OWNER.getFieldName() + "='" + busOwner +"'", true);
     }
 
-    public void deleteBus(String busId) throws SimpleDBException {
-        superSimpleDB.delete(bpConfig.getTableName(BP_BUS_CONFIG), busId);
-    }
 }

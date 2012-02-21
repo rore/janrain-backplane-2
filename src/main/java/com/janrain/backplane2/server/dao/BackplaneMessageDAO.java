@@ -50,6 +50,11 @@ public class BackplaneMessageDAO extends DAO {
         superSimpleDB.store(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class, (BackplaneMessage) message);
     }
 
+    @Override
+    public void delete(String id) throws SimpleDBException {
+        superSimpleDB.delete(bpConfig.getTableName(BP_MESSAGES), id);
+    }
+
     public BackplaneMessage retrieveBackplaneMessage(String messageId) throws SimpleDBException {
         return superSimpleDB.retrieve(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class, messageId);
     }

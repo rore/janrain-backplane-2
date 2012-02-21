@@ -17,7 +17,6 @@
 package com.janrain.backplane2.server;
 
 
-import com.amazonaws.services.identitymanagement.model.MalformedPolicyDocumentException;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.backplane2.server.config.BusConfig2;
 import com.janrain.backplane2.server.config.Client;
@@ -47,7 +46,6 @@ import org.springframework.web.servlet.ModelAndView;
 import javax.inject.Inject;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletResponse;
-import java.lang.reflect.Array;
 import java.util.*;
 
 import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_CLIENTS;
@@ -155,7 +153,7 @@ public class Backplane2ControllerTest {
                 logger.info("deleting Grant " + key);
                 Grant grant = daoFactory.getGrantDao().retrieveGrant(key);
                 daoFactory.getTokenDao().revokeTokenByGrant(grant);
-                daoFactory.getGrantDao().deleteGrant(key);
+                daoFactory.getGrantDao().deleteGrantById(key);
             }
             //superSimpleDB.delete(bpConfig.getClientsTableName(), "random_id");
         } catch (SimpleDBException e) {
@@ -1005,7 +1003,7 @@ public class Backplane2ControllerTest {
 
             assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
         } finally {
-            daoFactory.getTokenDao().deleteToken(token);
+            daoFactory.getTokenDao().delete(token.getIdValue());
         }
 
     }
@@ -1143,9 +1141,9 @@ public class Backplane2ControllerTest {
 
 
         } finally {
-            daoFactory.getBusOwnerDAO().deleteBusOwner(user.getIdValue());
-            daoFactory.getBusDao().deleteBus(bus1.getIdValue());
-            daoFactory.getBusDao().deleteBus(bus2.getIdValue());
+            daoFactory.getBusOwnerDAO().delete(user.getIdValue());
+            daoFactory.getBusDao().delete(bus1.getIdValue());
+            daoFactory.getBusDao().delete(bus2.getIdValue());
         }
 
     }

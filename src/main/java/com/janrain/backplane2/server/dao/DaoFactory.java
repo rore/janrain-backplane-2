@@ -17,6 +17,9 @@
 package com.janrain.backplane2.server.dao;
 
 import com.janrain.backplane2.server.config.Backplane2Config;
+import com.janrain.backplane2.server.config.BusConfig2;
+import com.janrain.backplane2.server.config.Client;
+import com.janrain.backplane2.server.config.User;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import org.springframework.context.annotation.Scope;
 
@@ -63,6 +66,19 @@ public class DaoFactory {
 
     public AuthorizationDecisionKeyDAO getAuthorizationDecisionKeyDAO() {
         return new AuthorizationDecisionKeyDAO(superSimpleDB, bpConfig);
+    }
+
+    public DAO getDaoByObjectType(Object obj) {
+
+        if (obj instanceof Client) {
+            return getClientDAO();
+        } else if (obj instanceof User) {
+            return getBusOwnerDAO();
+        } else if (obj instanceof BusConfig2) {
+            return getBusDao();
+        }
+
+        return null;
     }
 
     @Inject

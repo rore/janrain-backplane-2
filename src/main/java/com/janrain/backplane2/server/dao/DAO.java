@@ -35,4 +35,6 @@ public abstract class DAO {
     };
 
     abstract public void persist(Object obj) throws SimpleDBException;
+    abstract public void delete(String id) throws SimpleDBException;
+
 }

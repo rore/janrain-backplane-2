@@ -40,6 +40,11 @@ public class AuthorizationRequestDAO extends DAO {
         superSimpleDB.store(bpConfig.getTableName(BP_AUTHORIZATION_REQUEST), AuthorizationRequest.class, (AuthorizationRequest) authorizationRequest);
     }
 
+    @Override
+    public void delete(String id) throws SimpleDBException {
+        superSimpleDB.delete(bpConfig.getTableName(BP_AUTHORIZATION_REQUEST), id);
+    }
+
     public AuthorizationRequest retrieveAuthorizationRequest(String cookie) throws SimpleDBException {
         return superSimpleDB.retrieve(bpConfig.getTableName(BP_AUTHORIZATION_REQUEST), AuthorizationRequest.class, cookie);
     }

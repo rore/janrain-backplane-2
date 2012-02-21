@@ -43,6 +43,11 @@ public class TokenDAO extends DAO {
         superSimpleDB.store(bpConfig.getTableName(BP_ACCESS_TOKEN), Token.class, (Token) token, true);
     }
 
+    @Override
+    public void delete(String id) throws SimpleDBException {
+        deleteTokenById(id);
+    }
+
     public Token retrieveToken(String tokenId) throws SimpleDBException {
         if (tokenId.startsWith("an")) {
             return superSimpleDB.retrieve(bpConfig.getTableName(BP_ACCESS_TOKEN), TokenAnonymous.class, tokenId);
@@ -61,10 +66,6 @@ public class TokenDAO extends DAO {
             return null;
         }
         return tokens.get(0);
-    }
-
-    public void deleteToken(Token token) throws SimpleDBException {
-        deleteTokenById(token.getIdValue());
     }
 
     public void deleteTokenById(String tokenId) throws SimpleDBException {
@@ -102,7 +103,7 @@ public class TokenDAO extends DAO {
     public void revokeTokenByGrant(Grant grant) throws SimpleDBException {
         List<Token> tokens = retrieveTokensByGrant(grant);
         for (Token token : tokens) {
-            deleteToken(token);
+            delete(token.getIdValue());
             logger.info("revoked token " + token.getIdValue());
         }
         logger.info("all tokens for grant " + grant.getIdValue() + " have been revoked");

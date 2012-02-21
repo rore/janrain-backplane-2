@@ -40,6 +40,11 @@ public class AuthorizationDecisionKeyDAO extends DAO {
         superSimpleDB.store(bpConfig.getTableName(BP_AUTHORIZATION_DECISION_KEY), AuthorizationDecisionKey.class, (AuthorizationDecisionKey) authorizationDecisionKey);
     }
 
+    @Override
+    public void delete(String id) throws SimpleDBException {
+        superSimpleDB.delete(bpConfig.getTableName(BP_AUTHORIZATION_DECISION_KEY), id);
+    }
+
     public AuthorizationDecisionKey retrieveAuthorizationRequest(String key) throws SimpleDBException {
         return superSimpleDB.retrieve(bpConfig.getTableName(BP_AUTHORIZATION_DECISION_KEY), AuthorizationDecisionKey.class, key);
     }

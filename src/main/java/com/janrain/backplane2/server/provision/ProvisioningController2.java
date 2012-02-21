@@ -229,7 +229,7 @@ public class ProvisioningController2 {
                 if (superSimpleDb.retrieve(tableName, entityType, entityName) == null) {
                     deleteStatus = BACKPLANE_ENTRY_NOT_FOUND;
                 } else {
-                    superSimpleDb.delete(tableName, entityName);
+                    daoFactory.getDaoByObjectType(entityType).delete(entityName);
                 }
             } catch (Exception e) {
                 deleteStatus = e.getMessage();

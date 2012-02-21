@@ -106,7 +106,7 @@ public class ProvisioningController2Test {
     public void cleanup() throws SimpleDBException {
         superSimpleDB.delete(bpConfig.getTableName(Backplane2Config.SimpleDBTables.BP_ADMIN_AUTH), user.getIdValue());
         superSimpleDB.delete(bpConfig.getTableName(Backplane2Config.SimpleDBTables.BP_CLIENTS), client.getIdValue());
-        daoFactory.getClientDAO().deleteClient(client.getClientId());
+        daoFactory.getClientDAO().delete(client.getClientId());
     }
 
     @Test

@@ -16,10 +16,14 @@
 
 package com.janrain.backplane2.server.dao;
 
+import com.janrain.backplane2.server.Grant;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.backplane2.server.config.Client;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
+import org.apache.log4j.Logger;
+
+import java.util.List;
 
 import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_CLIENTS;
 
@@ -37,14 +41,32 @@ public class ClientDAO extends DAO {
         superSimpleDB.store(bpConfig.getTableName(BP_CLIENTS), Client.class, (Client) client);
     }
 
+    @Override
+    public void delete(String id) throws SimpleDBException {
+        try {
+            superSimpleDB.delete(bpConfig.getTableName(BP_CLIENTS), id);
+            GrantDAO grantDao = new GrantDAO(superSimpleDB, bpConfig);
+            TokenDAO tokenDao = new TokenDAO(superSimpleDB, bpConfig);
+            List<Grant> grants = grantDao.retrieveGrants(id, null);
+            for (Grant grant : grants) {
+                grantDao.delete(grant.getIdValue());
+                tokenDao.revokeTokenByGrant(grant);
+            }
+            logger.info("Client " + id + " deleted successfully");
+        } catch (SimpleDBException sdbe) {
+            logger.error("An exception occurred during an atomic operation.  Corruption may have occurred while removing client: " + id);
+            throw sdbe;
+        }
+    }
+
     public Client retrieveClient(String client) throws SimpleDBException {
         return superSimpleDB.retrieve(bpConfig.getTableName(BP_CLIENTS), Client.class, client);
     }
 
-    public void deleteClient(String clientId) throws SimpleDBException {
-        //TODO: be sure to remove all grants issued to this client
-        superSimpleDB.delete(bpConfig.getTableName(BP_CLIENTS), clientId);
-    }
+    // - PRIVATE
+
+    private static final Logger logger = Logger.getLogger(ClientDAO.class);
+
 }
 
 

@@ -21,9 +21,7 @@ import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import org.apache.log4j.Logger;
-
 import java.util.Date;
-
 import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_ACCESS_TOKEN;
 import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_AUTH_SESSION;
 
@@ -39,6 +37,11 @@ public class AuthSessionDAO extends DAO {
     @Override
     public void persist(Object authSession) throws SimpleDBException {
         superSimpleDB.store(bpConfig.getTableName(BP_AUTH_SESSION), AuthSession.class, (AuthSession) authSession);
+    }
+
+    @Override
+    public void delete(String id) throws SimpleDBException {
+        superSimpleDB.delete(bpConfig.getTableName(BP_AUTH_SESSION), id);
     }
 
     public AuthSession retrieveAuthSession(String cookie) throws SimpleDBException {
