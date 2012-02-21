@@ -257,7 +257,8 @@ public class Backplane2Controller {
             logger.error(e.getMessage());
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return new HashMap<String, Object>() {{
-                put(OAuth2.OAUTH2_TOKEN_INVALID_CLIENT, "Client authentication failed");
+                put(OAuth2.OAUTH2_TOKEN_ERROR_FIELD_NAME, OAuth2.OAUTH2_TOKEN_INVALID_CLIENT);
+                put(OAuth2.OAUTH2_TOKEN_ERROR_DESC_FIELD_NAME, "Client authentication failed");
             }};
         }
 
