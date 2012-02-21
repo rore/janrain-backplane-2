@@ -44,6 +44,7 @@ public class ClientDAO extends DAO {
     @Override
     public void delete(String id) throws SimpleDBException {
         try {
+            logger.info("=== BEGIN CLIENT DELETE ===");
             superSimpleDB.delete(bpConfig.getTableName(BP_CLIENTS), id);
             GrantDAO grantDao = new GrantDAO(superSimpleDB, bpConfig);
             TokenDAO tokenDao = new TokenDAO(superSimpleDB, bpConfig);
@@ -53,6 +54,7 @@ public class ClientDAO extends DAO {
                 tokenDao.revokeTokenByGrant(grant);
             }
             logger.info("Client " + id + " deleted successfully");
+            logger.info("=== END CLIENT DELETE ===");
         } catch (SimpleDBException sdbe) {
             logger.error("An exception occurred during an atomic operation.  Corruption may have occurred while removing client: " + id);
             throw sdbe;

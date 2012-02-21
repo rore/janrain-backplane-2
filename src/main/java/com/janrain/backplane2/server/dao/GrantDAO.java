@@ -48,12 +48,8 @@ public class GrantDAO extends DAO {
 
     @Override
     public void delete(String id) throws SimpleDBException {
-        deleteGrantById(id);
-    }
-
-    public void deleteGrantById(String grantId) throws SimpleDBException {
-        superSimpleDB.delete(bpConfig.getTableName(BP_GRANT), grantId);
-        logger.info("Deleted grant " + grantId);
+        superSimpleDB.delete(bpConfig.getTableName(BP_GRANT), id);
+        logger.info("Deleted grant " + id);
     }
 
     public Grant retrieveGrant(String grantId) throws SimpleDBException {
@@ -83,7 +79,7 @@ public class GrantDAO extends DAO {
             if (existing.isCodeUsed()) {
                 logger.error( "Authorization code: " + codeId + " already used at " + existing.getCodeUsedDate() +
                               ", deleting grant to invalidate all related tokens");
-                deleteGrantById(codeId);
+                delete(codeId);
             }
         }
         return null;
@@ -129,7 +125,7 @@ public class GrantDAO extends DAO {
             Grant updated = new Grant(grant);
             String remainingBuses = updated.revokeBuses(busesToRevoke.getBusesInScope());
             if(StringUtils.isEmpty(remainingBuses)) {
-                deleteGrantById(grant.getIdValue());
+                delete(grant.getIdValue());
             } else {
                 superSimpleDB.update(bpConfig.getTableName(BP_GRANT), Grant.class, grant, updated);
                 logger.info("Buses updated updated for grant: " + updated.getIdValue() + " to '" + remainingBuses + "'");
