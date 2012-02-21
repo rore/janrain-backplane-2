@@ -219,6 +219,21 @@ public class Backplane2ControllerTest {
         handlerAdapter.handle(request, response, controller);
         logger.info("testTokenEndPointAnonymousWithClientSecret() => " + response.getContentAsString());
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
+        assertTrue(HttpServletResponse.SC_UNAUTHORIZED == response.getStatus());
+    }
+
+    @Test
+    public void testTokenEndPointAuthenticationFailure() throws Exception {
+        refreshRequestAndResponse();
+        Client client = createTestClient();
+        request.setRequestURI("/v2/token");
+        request.setMethod("POST");
+        request.setParameter("grant_type", "client_credentials");
+        setOAuthBasicAuthentication(request, client.get(User.Field.USER), "wrong_secret");
+        handlerAdapter.handle(request, response, controller);
+        logger.info("testTokenEndPointAuthenticationFailure() => " + response.getContentAsString());
+        assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
+        assertTrue(HttpServletResponse.SC_UNAUTHORIZED == response.getStatus());
     }
 
     @Test
@@ -292,7 +307,6 @@ public class Backplane2ControllerTest {
         handlerAdapter.handle(request, response, controller);
         logger.info("testTokenEndPointAnonymousTokenRequestWithInvalidScope() => " + response.getContentAsString());
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
-
     }
 
 
@@ -313,7 +327,6 @@ public class Backplane2ControllerTest {
         handlerAdapter.handle(request, response, controller);
         logger.info("testTokenEndPointClientTokenRequestInvalidCode() => " + request.toString() + " => " + response.getContentAsString());
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
-
     }
 
     @Test
