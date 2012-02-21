@@ -35,8 +35,9 @@ public class AuthorizationDecisionKeyDAO extends DAO {
         super(superSimpleDB, bpConfig);
     }
 
-    public void persistAuthorizationDecisionKey(AuthorizationDecisionKey authorizationDecisionKey) throws SimpleDBException {
-        superSimpleDB.store(bpConfig.getTableName(BP_AUTHORIZATION_DECISION_KEY), AuthorizationDecisionKey.class, authorizationDecisionKey);
+    @Override
+    public void persist(Object authorizationDecisionKey) throws SimpleDBException {
+        superSimpleDB.store(bpConfig.getTableName(BP_AUTHORIZATION_DECISION_KEY), AuthorizationDecisionKey.class, (AuthorizationDecisionKey) authorizationDecisionKey);
     }
 
     public AuthorizationDecisionKey retrieveAuthorizationRequest(String key) throws SimpleDBException {

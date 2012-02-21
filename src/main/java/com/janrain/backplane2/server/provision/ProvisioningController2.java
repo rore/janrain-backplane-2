@@ -298,7 +298,7 @@ public class ProvisioningController2 {
     private void addGrant(String issuer, String clientId, String buses) throws SimpleDBException {
         Grant grant = new Grant(issuer, clientId, buses);
         grant.setCodeUsedNow();
-        daoFactory.getGrantDao().persistGrant(grant);
+        daoFactory.getGrantDao().persist(grant);
     }
 
     // type helper classes for JSON mapper

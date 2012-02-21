@@ -45,8 +45,9 @@ public class BackplaneMessageDAO extends DAO {
         this.daoFactory = daoFactory;
     }
 
-    public void persistBackplaneMessage(BackplaneMessage message) throws SimpleDBException {
-        superSimpleDB.store(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class, message);
+    @Override
+    public void persist(Object message) throws SimpleDBException {
+        superSimpleDB.store(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class, (BackplaneMessage) message);
     }
 
     public BackplaneMessage retrieveBackplaneMessage(String messageId) throws SimpleDBException {
@@ -133,4 +134,5 @@ public class BackplaneMessageDAO extends DAO {
                 Backplane2Config.ISO8601.format(new Date(System.currentTimeMillis() - Long.valueOf(retentionTimeSeconds) * 1000))
                 + "'";
     }
+
 }

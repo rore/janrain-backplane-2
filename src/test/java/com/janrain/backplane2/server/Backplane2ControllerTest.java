@@ -178,19 +178,19 @@ public class Backplane2ControllerTest {
 	}
 
     private void saveMessage(BackplaneMessage message) throws SimpleDBException {
-        daoFactory.getBackplaneMessageDAO().persistBackplaneMessage(message);
+        daoFactory.getBackplaneMessageDAO().persist(message);
         this.createdMessageKeys.add(message.getIdValue());
         logger.info("created Message " + message.getIdValue());
     }
 
     private void saveGrant(Grant grant) throws SimpleDBException {
-        daoFactory.getGrantDao().persistGrant(grant);
+        daoFactory.getGrantDao().persist(grant);
         logger.info("saved grant: " + grant.getIdValue());
         this.createdGrantsKeys.add(grant.getIdValue());
     }
 
     private void saveToken(Token token) throws SimpleDBException {
-        daoFactory.getTokenDao().persistToken(token);
+        daoFactory.getTokenDao().persist(token);
         logger.info("saved token: " + token.getIdValue());
         this.createdTokenKeys.add(token.getIdValue());
     }
@@ -979,9 +979,9 @@ public class Backplane2ControllerTest {
         // Create appropriate token
         TokenPrivileged token = new TokenPrivileged(client.getClientId(), grants, "");
         grant1.addIssuedTokenId(token.getIdValue());
-        daoFactory.getGrantDao().persistGrant(grant1);
+        daoFactory.getGrantDao().persist(grant1);
         grant2.addIssuedTokenId(token.getIdValue());
-        daoFactory.getGrantDao().persistGrant(grant2);
+        daoFactory.getGrantDao().persist(grant2);
         saveToken(token);
 
         // quick validation
@@ -1023,11 +1023,11 @@ public class Backplane2ControllerTest {
         BusConfig2 bus2 = new BusConfig2(ChannelUtil.randomString(30), user.getIdValue(), "100", "50000");
 
         try {
-            daoFactory.getBusOwnerDAO().persistBusOwner(user);
+            daoFactory.getBusOwnerDAO().persist(user);
 
             // create a few buses
-            daoFactory.getBusDao().persistBus(bus1);
-            daoFactory.getBusDao().persistBus(bus2);
+            daoFactory.getBusDao().persist(bus1);
+            daoFactory.getBusDao().persist(bus2);
 
             refreshRequestAndResponse();
 

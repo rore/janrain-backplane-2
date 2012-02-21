@@ -16,9 +16,9 @@ public class BusOwnerDAO extends DAO {
         super(superSimpleDB, bpConfig);
     }
 
-
-    public void persistBusOwner(User user) throws SimpleDBException {
-        superSimpleDB.store(bpConfig.getTableName(BP_BUS_OWNERS), User.class, user);
+    @Override
+    public void persist(Object user) throws SimpleDBException {
+        superSimpleDB.store(bpConfig.getTableName(BP_BUS_OWNERS), User.class, (User) user);
     }
 
     public User retrieveBusOwner(String userId) throws SimpleDBException {

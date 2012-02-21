@@ -104,7 +104,7 @@ public class Backplane2Controller {
                 try {
                     logger.info("Persisting authorization request for client: " + authzRequest.get(AuthorizationRequest.Field.CLIENT_ID) +
                                 "[" + authzRequest.get(AuthorizationRequest.Field.COOKIE)+"]");
-                    daoFactory.getAuthorizationRequestDAO().persistAuthorizationRequest(authzRequest);
+                    daoFactory.getAuthorizationRequestDAO().persist(authzRequest);
                     response.addCookie(new Cookie(AUTHORIZATION_REQUEST_COOKIE, authzRequest.get(AuthorizationRequest.Field.COOKIE)));
                 } catch (SimpleDBException e) {
                     throw new AuthorizationException(OAuth2.OAUTH2_AUTHZ_SERVER_ERROR, e.getMessage(), request, e);
@@ -523,7 +523,7 @@ public class Backplane2Controller {
         // do it all again and store the messages in the db
         BackplaneMessageDAO bmd = daoFactory.getBackplaneMessageDAO();
         for(Map<String,Object> messageData : msgs) {
-            bmd.persistBackplaneMessage(new BackplaneMessage(messageData));
+            bmd.persist(new BackplaneMessage(messageData));
         }
 
         response.setStatus(HttpServletResponse.SC_CREATED);
@@ -658,7 +658,7 @@ public class Backplane2Controller {
 
     private void persistAuthenticatedSession(HttpServletResponse response, String busOwner) throws SimpleDBException {
         String authCookie = ChannelUtil.randomString(AUTH_SESSION_COOKIE_LENGTH);
-        daoFactory.getAuthSessionDAO().persistAuthSession(new AuthSession(busOwner, authCookie));
+        daoFactory.getAuthSessionDAO().persist(new AuthSession(busOwner, authCookie));
         response.addCookie(new Cookie(AUTH_SESSION_COOKIE, authCookie));
     }
 
@@ -761,7 +761,7 @@ public class Backplane2Controller {
         logger.debug("generate & persist authZdecisionKey");
         try {
             AuthorizationDecisionKey authorizationDecisionKey = new AuthorizationDecisionKey(authSessionCookie);
-            daoFactory.getAuthorizationDecisionKeyDAO().persistAuthorizationDecisionKey(authorizationDecisionKey);
+            daoFactory.getAuthorizationDecisionKeyDAO().persist(authorizationDecisionKey);
 
             model.put("auth_key", authorizationDecisionKey.get(AuthorizationDecisionKey.Field.KEY));
             model.put(AuthorizationRequest.Field.CLIENT_ID.getFieldName().toLowerCase(), authzRequest.get(AuthorizationRequest.Field.CLIENT_ID));
@@ -846,7 +846,7 @@ public class Backplane2Controller {
                 );
 
                 grant.setCodeIssuedNow();
-                daoFactory.getGrantDao().persistGrant(grant);
+                daoFactory.getGrantDao().persist(grant);
                 
                 logger.info("Authorized " + authorizationRequest.get(AuthorizationRequest.Field.CLIENT_ID)+
                         "[" + authorizationRequest.get(AuthorizationRequest.Field.COOKIE)+"]" + "grant ID: " + grant.getIdValue());

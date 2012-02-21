@@ -32,9 +32,9 @@ public class ClientDAO extends DAO {
         super(superSimpleDB, bpConfig);
     }
 
-
-    public void persistClient(Client client) throws SimpleDBException {
-        superSimpleDB.store(bpConfig.getTableName(BP_CLIENTS), Client.class, client);
+    @Override
+    public void persist(Object client) throws SimpleDBException {
+        superSimpleDB.store(bpConfig.getTableName(BP_CLIENTS), Client.class, (Client) client);
     }
 
     public Client retrieveClient(String client) throws SimpleDBException {

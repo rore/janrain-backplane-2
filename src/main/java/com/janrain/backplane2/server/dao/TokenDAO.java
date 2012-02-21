@@ -38,8 +38,9 @@ public class TokenDAO extends DAO {
         super(superSimpleDB, bpConfig);
     }
 
-    public void persistToken(Token token) throws SimpleDBException {
-        superSimpleDB.store(bpConfig.getTableName(BP_ACCESS_TOKEN), Token.class, token, true);
+    @Override
+    public void persist(Object token) throws SimpleDBException {
+        superSimpleDB.store(bpConfig.getTableName(BP_ACCESS_TOKEN), Token.class, (Token) token, true);
     }
 
     public Token retrieveToken(String tokenId) throws SimpleDBException {

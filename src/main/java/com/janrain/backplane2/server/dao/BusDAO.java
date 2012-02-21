@@ -34,8 +34,9 @@ public class BusDAO extends DAO {
         super(superSimpleDB, bpConfig);
     }
 
-    public void persistBus(BusConfig2 bus) throws SimpleDBException {
-        superSimpleDB.store(bpConfig.getTableName(BP_BUS_CONFIG), BusConfig2.class, bus);
+    @Override
+    public void persist(Object bus) throws SimpleDBException {
+        superSimpleDB.store(bpConfig.getTableName(BP_BUS_CONFIG), BusConfig2.class, (BusConfig2) bus);
     }
 
     public List<BusConfig2> retrieveBuses() throws SimpleDBException {

@@ -96,7 +96,7 @@ public class ProvisioningController2Test {
         superSimpleDB.store(bpConfig.getTableName(Backplane2Config.SimpleDBTables.BP_ADMIN_AUTH), User.class, user);
 
         client = new Client( ChannelUtil.randomString(20), pw, "http://source.com", "http://redirect.com" );
-        daoFactory.getClientDAO().persistClient(client);
+        daoFactory.getClientDAO().persist(client);
         logger.info("Created test client: " + client.getClientId());
 
 

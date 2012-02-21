@@ -36,8 +36,9 @@ public class AuthSessionDAO extends DAO {
         super(superSimpleDB, bpConfig);
     }
 
-    public void persistAuthSession(AuthSession authSession) throws SimpleDBException {
-        superSimpleDB.store(bpConfig.getTableName(BP_AUTH_SESSION), AuthSession.class, authSession);
+    @Override
+    public void persist(Object authSession) throws SimpleDBException {
+        superSimpleDB.store(bpConfig.getTableName(BP_AUTH_SESSION), AuthSession.class, (AuthSession) authSession);
     }
 
     public AuthSession retrieveAuthSession(String cookie) throws SimpleDBException {

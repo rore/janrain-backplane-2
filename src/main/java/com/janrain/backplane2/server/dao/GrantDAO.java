@@ -41,8 +41,9 @@ public class GrantDAO extends DAO {
         super(superSimpleDB, bpConfig);
     }
 
-    public void persistGrant(Grant grant) throws SimpleDBException {
-        superSimpleDB.store(bpConfig.getTableName(BP_GRANT), Grant.class, grant, true);
+    @Override
+    public void persist(Object grant) throws SimpleDBException {
+        superSimpleDB.store(bpConfig.getTableName(BP_GRANT), Grant.class, (Grant) grant, true);
     }
 
     public Grant retrieveGrant(String grantId) throws SimpleDBException {

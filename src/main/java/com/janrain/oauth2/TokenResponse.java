@@ -44,7 +44,7 @@ public class TokenResponse {
         if (request.grant_type.equals("client_credentials") && request.client_id.equals(Token.ANONYMOUS)) {
             // issue new channel id
             final TokenAnonymous token = new TokenAnonymous(null, request.scope, new Date(new Date().getTime() + Token.EXPIRES_SECONDS * 1000L));
-            daoFactory.getTokenDao().persistToken(token);
+            daoFactory.getTokenDao().persist(token);
             return new LinkedHashMap<String, Object>() {{
                 put("access_token", token.getIdValue());
                 put("expires_in", Token.EXPIRES_SECONDS);
@@ -55,7 +55,7 @@ public class TokenResponse {
 
         if (request.grant_type.equals("code")) {
             final TokenPrivileged token = new TokenPrivileged(request.client_id, request.getGrant(), request.scope);
-            daoFactory.getTokenDao().persistToken(token);
+            daoFactory.getTokenDao().persist(token);
             return new LinkedHashMap<String, Object>() {{
                 put("access_token", token.getIdValue());
                 put("token_type", "Bearer");
@@ -68,7 +68,7 @@ public class TokenResponse {
         if (request.grant_type.equals("client_credentials")) {
             List<Grant> grants = daoFactory.getGrantDao().retrieveGrants(request.client_id, new Scope(request.scope));
             final TokenPrivileged token = new TokenPrivileged(request.client_id, grants, null);
-            daoFactory.getTokenDao().persistToken(token);
+            daoFactory.getTokenDao().persist(token);
             return new LinkedHashMap<String, Object>() {{
                 put("access_token", token.getIdValue());
                 put("token_type", "Bearer");

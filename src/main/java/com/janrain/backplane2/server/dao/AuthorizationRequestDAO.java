@@ -35,8 +35,9 @@ public class AuthorizationRequestDAO extends DAO {
         super(superSimpleDB, bpConfig);
     }
 
-    public void persistAuthorizationRequest(AuthorizationRequest authorizationRequest) throws SimpleDBException {
-        superSimpleDB.store(bpConfig.getTableName(BP_AUTHORIZATION_REQUEST), AuthorizationRequest.class, authorizationRequest);
+    @Override
+    public void persist(Object authorizationRequest) throws SimpleDBException {
+        superSimpleDB.store(bpConfig.getTableName(BP_AUTHORIZATION_REQUEST), AuthorizationRequest.class, (AuthorizationRequest) authorizationRequest);
     }
 
     public AuthorizationRequest retrieveAuthorizationRequest(String cookie) throws SimpleDBException {
