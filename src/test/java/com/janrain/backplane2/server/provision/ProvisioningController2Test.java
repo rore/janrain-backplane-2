@@ -39,8 +39,6 @@ import org.springframework.web.servlet.HandlerAdapter;
 import javax.inject.Inject;
 import javax.servlet.http.HttpServletResponse;
 
-import java.util.UUID;
-
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -188,7 +186,7 @@ public class ProvisioningController2Test {
 
         handlerAdapter.handle(request, response, controller);
         logger.info("testProvisioningGrant() -> " + response.getContentAsString());
-        assertTrue("Invalid response", response.getContentAsString().equals("{\"" + client.getClientId() + "\":\"grant added successfully\"}"));
+        assertTrue("Invalid response", response.getContentAsString().equals("{\"" + client.getClientId() + "\":\"GRANT_UPDATE_SUCCESS\"}"));
 
         refreshRequestAndResponse();
         request.setContent(addGrant.getBytes());
@@ -198,7 +196,7 @@ public class ProvisioningController2Test {
 
         handlerAdapter.handle(request, response, controller);
         logger.info("testProvisioningGrant() -> " + response.getContentAsString());
-        assertTrue(response.getContentAsString().contains("grant updated successfully, buses removed"));
+        assertTrue(response.getContentAsString().contains("GRANT_UPDATE_SUCCESS"));
 
 
     }

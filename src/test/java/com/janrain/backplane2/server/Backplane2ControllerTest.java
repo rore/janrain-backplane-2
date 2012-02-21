@@ -49,7 +49,6 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.UnsupportedEncodingException;
 import java.util.*;
 
-import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_CLIENTS;
 import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_MESSAGES;
 import static org.junit.Assert.*;
 
@@ -470,6 +469,7 @@ public class Backplane2ControllerTest {
         request.setParameter("code", grant.getIdValue());
         request.setParameter("scope", "sticky:false sticky:true source:ftp://bla_source/");
         request.setParameter("redirect_uri", testClient.get(Client.ClientField.REDIRECT_URI));
+        setOAuthBasicAuthentication(request, testClient.getClientId(), "secret");
         handlerAdapter.handle(request, response, controller);
         logger.info("testTokenGrantByCodeScopeComplexity() get token => " + response.getContentAsString());
         //assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
@@ -1121,7 +1121,6 @@ public class Backplane2ControllerTest {
             request.setMethod("POST");
             request.setParameter("grant_type", "code");
             request.setParameter("code", code);
-            request.setParameter("client_secret", "secret");
             request.setParameter("redirect_uri", testClient.get(Client.ClientField.REDIRECT_URI));
             setOAuthBasicAuthentication(request, testClient.getClientId(), "secret");
 
