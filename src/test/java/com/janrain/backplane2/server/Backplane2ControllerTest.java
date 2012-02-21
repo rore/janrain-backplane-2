@@ -155,7 +155,7 @@ public class Backplane2ControllerTest {
                 logger.info("deleting Grant " + key);
                 Grant grant = daoFactory.getGrantDao().retrieveGrant(key);
                 daoFactory.getTokenDao().revokeTokenByGrant(grant);
-                daoFactory.getGrantDao().deleteGrantById(key);
+                daoFactory.getGrantDao().delete(key);
             }
 
             daoFactory.getClientDAO().delete(testClient.getIdValue());
