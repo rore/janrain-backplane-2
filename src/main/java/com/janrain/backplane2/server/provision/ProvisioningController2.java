@@ -173,6 +173,7 @@ public class ProvisioningController2 {
 
     private static final String BACKPLANE_UPDATE_SUCCESS = "BACKPLANE_UPDATE_SUCCESS";
     private static final String BACKPLANE_DELETE_SUCCESS = "BACKPLANE_DELETE_SUCCESS";
+    private static final String GRANT_UPDATE_SUCCESS = "GRANT_UPDATE_SUCCESS";
     private static final String BACKPLANE_ENTRY_NOT_FOUND = "BACKPLANE_ENTRY_NOT_FOUND";
     private static final String ERR_MSG_FIELD = "ERR_MSG";
     private static final String CONFIG_NOT_FOUND = "CONFIG_NOT_FOUND";
@@ -282,10 +283,10 @@ public class ProvisioningController2 {
                 } else {
                     if (addRevoke) {
                         addGrant(grantRequest.getAdmin(), clientId, buses);
-                        result.put(clientId, "grant added successfully");
+                        result.put(clientId, "GRANT_UPDATE_SUCCESS");
                     } else {
                         daoFactory.getGrantDao().revokeBuses(clientId, buses);
-                        result.put(clientId, "grant updated successfully, buses removed");
+                        result.put(clientId, "GRANT_UPDATE_SUCCESS");
                     }
                 }
             } catch (Exception e) {
