@@ -6,7 +6,7 @@ Backplane API
 -------------
 
 The Backplane Server exposes the following Backplane API endpoints, as defined by the
-[Backplane v2.0 Section 13] [4].
+[Backplane v2.0 Section 13] [5].
 
 All endpoints are available at paths starting with the `/v2/`.
 
@@ -16,8 +16,9 @@ All endpoints are available at paths starting with the `/v2/`.
 
 * Security: HTTPS POST, OAuth2 client credentials
 
-* Request parameters ([OAuth2 code or client_credential authorization request] [1]): `client_id`, `client_secret`, `grant_type`, `code` (required for `authorization_code` grant type),
-`redirect_uri` (required for `authorization_code` grant type), `scope` (optional)
+* Request parameters ([OAuth2 code or client_credential authorization request] [1]):
+  Authorization: Basic header: `client_id`, `client_secret`
+  POST body, www-form-urlencoded: `grant_type`, `code` (required for `authorization_code` grant type), `redirect_uri` (required for `authorization_code` grant type), `scope` (optional)
 
 * Response body (OAuth 2 Access Token Response):
 
@@ -291,7 +292,7 @@ Example curl command for the above HTTP API request:
 Backplane Clients Provisioning API
 ----------------------------------
 
-In addition to the automated OAuth2-based client registration mechanism described in [Backplane v2.0 Section 6.2] [2],
+In addition to the automated OAuth2-based client registration mechanism described in [Backplane v2.0 Section 6.2] [3],
 this API is provided for manual backplane clients registration.
 
 #### Create or Update Backplane Client Entry
@@ -506,7 +507,7 @@ Response / success:
 Grant Provisioning API
 ----------------------
 
-In addition to the OAuth2 authorization mechanism described in [Backplane v2.0 Section 6.3] [3],
+In addition to the OAuth2 authorization mechanism described in [Backplane v2.0 Section 6.3] [4],
 this API is provided for manual client_credentials grant type authorization.
 
 #### Add Authorization Grant
@@ -619,6 +620,46 @@ Lists existing authorization grants for the Backplane client identified by the p
 }
 ```
 
+Authorization and Authentication
+--------------------------------
+
+#### Authentication
+
+Endpoint: /authenticate
+
+GET:
+
+ * request: no parameters
+
+ * response: authentication form HTML
+
+POST:
+
+ * request: form submit of authentication credentials
+
+ * response: redirects back to /authorize (or blank page if the bus owner did not hit this endpoint from a /authorize redirect)
+
+Web form where bus owners authenticate before granting authorization acess (via OAuth2) to Backplane clients.
+
+#### Authorization
+
+Endpoint: /authorize
+
+OAuth2 authorization endpoint handling `authorization_code` grant type. [2]
+
+ * Request1: OAuth2 authorizatoin request.
+
+ * Response1: Web form HTML where an authorization prompt is presented to authenticated bus owners.
+
+ * Request2: Form submit with bus owner's authorization decision.
+
+ * Response2: OAuth2 authorizatinon response, sent via redirect to the Backplane client's redirect_uri
+
+If the bus owner is not yet authenticated, the authorization request is persisted and bound to the user making
+the request with a cookie, then the user is redirected to /authenticate where they can prove they are a bus owner.
+After authentication they are redirected back to /authorize where the authorization request is retrieved
+and the authenticated bus owner can complete the OAuth2 authorization flow.
+
 Metrics API
 -----------
 
@@ -680,6 +721,8 @@ Each error response body will contain an error message in the following format:
 
 
 [1]: http://tools.ietf.org/html/draft-ietf-oauth-v2-23#section-4.1.3 "OAuth 2 Section 4.1.3"
-[2]: https://sites.google.com/site/backplanespec/documentation/backplane2-0-draft08#client.registration "Backplane v2.0 Section 6.2"
-[3]: https://sites.google.com/site/backplanespec/documentation/backplane2-0-draft08#authorization "Backplane v2.0 Section 6.3"
-[4]: https://sites.google.com/site/backplanespec/documentation/backplane2-0-draft08#server.api "Backplane v2.0 Section 13"
+[2]: http://tools.ietf.org/html/draft-ietf-oauth-v2-23#section-4.1
+[3]: https://sites.google.com/site/backplanespec/documentation/backplane2-0-draft08#client.registration "Backplane v2.0 Section 6.2"
+[4]: https://sites.google.com/site/backplanespec/documentation/backplane2-0-draft08#authorization "Backplane v2.0 Section 6.3"
+[5]: https://sites.google.com/site/backplanespec/documentation/backplane2-0-draft08#server.api "Backplane v2.0 Section 13"
+
