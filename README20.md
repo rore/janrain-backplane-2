@@ -31,6 +31,8 @@ All endpoints are available at paths starting with the `/v2/`.
 }
 ```
 
+Note: If the granted scope differs than the requested scope, it will be provided in the response.
+
 ### Anonymous Access Token Request
 
 * Endpoint:  `/v2/token`
