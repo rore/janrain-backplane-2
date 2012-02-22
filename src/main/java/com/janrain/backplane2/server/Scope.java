@@ -184,7 +184,10 @@ public class Scope {
                 }
 
                 List<String> values = scopes.get(key);
-                values.add(value);
+                // prevent duplicate scopes
+                if (!values.contains(value)) {
+                    values.add(value);
+                }
             }
         }
         logger.info("map " + scopes + " generated from " + scopeString);

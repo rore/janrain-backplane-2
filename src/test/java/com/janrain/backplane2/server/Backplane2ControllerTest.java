@@ -384,6 +384,13 @@ public class Backplane2ControllerTest {
         grant2.setCodeUsedNow();
         this.saveGrant(grant2);
 
+        // add grant with duplicate bus
+        Grant grant3 = new Grant("fakeOwernId", testClient.getClientId(), "foo");
+        grant3.setCodeExpirationDefault();
+        // make it eligible for "client credentials" access
+        grant3.setCodeUsedNow();
+        this.saveGrant(grant3);
+
         request.setRequestURI("/v2/token");
         request.setMethod("POST");
         request.setParameter("grant_type", "code");
@@ -408,10 +415,10 @@ public class Backplane2ControllerTest {
         ObjectMapper mapper = new ObjectMapper();
         Map<String,Object> msg = mapper.readValue(response.getContentAsString(), new TypeReference<Map<String,Object>>() {});
 
-        assertFalse("Invalid scope: " + msg.get("scope").toString(), msg.get("scope").toString().contains("bar"));
+        assertFalse("Invalid scope: " + (String)msg.get("scope"), msg.get("scope").toString().contains("bar"));
 
         //
-        // make the call again with "client_credentials" and verify that scope covers both grants
+        // make the call again with "client_credentials" and verify that scope covers all grants
         //
 
         refreshRequestAndResponse();
@@ -441,6 +448,7 @@ public class Backplane2ControllerTest {
         String scope = msg.get("scope").toString();
 
         assertTrue("Invalid scope: " + scope, scope.contains("bar") && scope.contains("foo") );
+        assertTrue(new Scope(scope).getBusesInScope().size() == 2);
 
 
     }
@@ -453,9 +461,14 @@ public class Backplane2ControllerTest {
 
         //create grant for test
         ArrayList<String> randomBuses = new ArrayList<String>();
-        for (int i=0; i < 60; i++) {
+        int numBuses = 60;
+        for (int i=0; i < numBuses; i++) {
             randomBuses.add(ChannelUtil.randomString(10));
         }
+
+        // add a duplicate bus in the grant - it should be ignored in the issued token
+        randomBuses.add(randomBuses.get(0));
+
         String buses = StringUtils.collectionToDelimitedString(randomBuses, " ");
 
         Grant grant = new Grant("fakeOwnerId", testClient.getClientId(),buses);
@@ -483,7 +496,9 @@ public class Backplane2ControllerTest {
 
         ObjectMapper mapper = new ObjectMapper();
         Map<String,Object> reply = mapper.readValue(response.getContentAsString(), new TypeReference<Map<String,Object>>() {});
-        String returnedToken = reply.get("access_token").toString();
+        String returnedToken = (String)reply.get("access_token");
+        Scope scope = new Scope((String)reply.get("scope"));
+        assertTrue(scope.getBusesInScope().size() == numBuses);
 
         Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
 
@@ -503,7 +518,7 @@ public class Backplane2ControllerTest {
         // should just receive one message on the last bus
         Map<String,Object> returnedBody = mapper.readValue(response.getContentAsString(), new TypeReference<Map<String,Object>>() {});
         List<Map<String,Object>> returnedMsgs = (List<Map<String, Object>>) returnedBody.get("messages");
-        assertTrue(returnedMsgs.size() == 1);
+        assertTrue("messages returned " + returnedMsgs.size() + " but should have been 1", returnedMsgs.size() == 1);
 
     }
 
