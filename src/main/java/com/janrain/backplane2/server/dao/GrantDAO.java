@@ -105,7 +105,7 @@ public class GrantDAO extends DAO {
         ArrayList<Grant> selectedGrants = new ArrayList<Grant>();
         for ( String bus: scope.getBusesInScope()) {
             for ( Grant grant : allGrants) {
-                if ( grant.getBusesAsList().contains(bus)) {
+                if ( grant.getBusesAsList().contains(bus) && ! selectedGrants.contains(grant)) {
                     selectedGrants.add(grant);
                 }
             }

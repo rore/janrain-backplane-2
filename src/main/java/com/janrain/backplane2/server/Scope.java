@@ -46,7 +46,10 @@ public class Scope {
     public static String convertToBusScope(String spaceDelimitedBuses) {
         StringBuilder sb = new StringBuilder();
         for (String scopeToken : spaceDelimitedBuses.split(" ")) {
-            sb.append("bus:" + scopeToken);
+            sb.append("bus:").append(scopeToken).append(" ");
+        }
+        if (sb.length() > 0) {
+            sb.deleteCharAt(sb.length()-1);
         }
         return sb.toString();
     }

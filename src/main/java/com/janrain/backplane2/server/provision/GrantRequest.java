@@ -19,6 +19,15 @@ public class GrantRequest extends AdminRequest {
         this.grants.putAll(grants);
     }
 
+    @Override
+    public String toString() {
+        StringBuilder result = new StringBuilder();
+        for (String client_id : grants.keySet()) {
+            result.append(client_id).append(": ").append(grants.get(client_id)).append("\n");
+        }
+        return result.toString();
+    }
+
     // - PRIVATE
 
     // client_id -> space separated buses
