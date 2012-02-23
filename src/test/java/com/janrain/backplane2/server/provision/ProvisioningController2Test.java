@@ -70,12 +70,14 @@ public class ProvisioningController2Test {
         user.put(User.Field.PWDHASH.getFieldName(), HmacHashUtils.hmacHash(pw));
 
         superSimpleDB.store(bpConfig.getTableName(Backplane2Config.SimpleDBTables.BP_ADMIN_AUTH), User.class, user);
+        
+        busOwner = new User();
+        busOwner.put(User.Field.USER.getFieldName(), ChannelUtil.randomString(20));
+        busOwner.put(User.Field.PWDHASH.getFieldName(), HmacHashUtils.hmacHash(pw));
 
         client = new Client( ChannelUtil.randomString(20), pw, "http://source.com", "http://redirect.com" );
         daoFactory.getClientDAO().persist(client);
         logger.info("Created test client: " + client.getClientId());
-
-
 	}
 
     @After
@@ -86,10 +88,59 @@ public class ProvisioningController2Test {
     }
 
     @Test
-    public void testClientList() throws Exception {
+    public void testBusOwnerCRUD() throws Exception {
 
         refreshRequestAndResponse();
+        // create bus owner
+        String jsonUpdateBusOwner = "{ \"admin\": \"" + user.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\"," +
+                " \"configs\": [ { \"USER\":\"" + busOwner.get(User.Field.USER) + "\", \"PWDHASH\":\"" + busOwner.get(User.Field.PWDHASH) + "\"} ] }";
+        logger.info("passing in json " + jsonUpdateBusOwner);
+        request.setContent(jsonUpdateBusOwner.getBytes());
+        request.addHeader("Content-type", "application/json");
+        request.setRequestURI("/v2/provision/user/update");
+        request.setMethod("POST");
+        handlerAdapter.handle(request, response, controller);
+        logger.info("testClientUpdate -> " + response.getContentAsString());
+        assertTrue(response.getStatus() == HttpServletResponse.SC_OK);
 
+        refreshRequestAndResponse();
+        String listJson = "{ \"admin\": \"" + user.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\", \"entities\": [] }";
+        logger.info("passing in json " + listJson);
+        request.setContent(listJson.getBytes());
+        request.addHeader("Content-type", "application/json");
+        request.setRequestURI("/v2/provision/user/list");
+        request.setMethod("POST");
+        handlerAdapter.handle(request, response, controller);
+        logger.info("testClientList() => " + response.getContentAsString());
+        assertTrue(response.getContentAsString().contains(busOwner.get(User.Field.USER)));
+
+        refreshRequestAndResponse();
+        String deleteJson = "{ \"admin\": \"" + user.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\", " +
+                            "\"entities\": [\"" + busOwner.get(User.Field.USER)+ "\"] }";
+        logger.info("passing in json " + deleteJson);
+        request.setContent(deleteJson.getBytes());
+        request.addHeader("Content-type", "application/json");
+        request.setRequestURI("/v2/provision/user/delete");
+        request.setMethod("POST");
+        handlerAdapter.handle(request, response, controller);
+        logger.info("testClientList() => " + response.getContentAsString());
+        assertTrue(response.getContentAsString().contains(busOwner.get(User.Field.USER)));
+
+        refreshRequestAndResponse();
+        logger.info("passing in json " + listJson);
+        request.setContent(listJson.getBytes());
+        request.addHeader("Content-type", "application/json");
+        request.setRequestURI("/v2/provision/user/list");
+        request.setMethod("POST");
+        handlerAdapter.handle(request, response, controller);
+        logger.info("testClientList() => " + response.getContentAsString());
+        assertFalse(response.getContentAsString().contains(busOwner.get(User.Field.USER)));
+    }
+
+    @Test
+    public void testClientCRUD() throws Exception {
+
+        refreshRequestAndResponse();
         // create client
         String jsonUpdateClient = "{ \"admin\": \"" + user.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\"," +
                 " \"configs\": [ { \"USER\":\"" + client.getClientId() + "\", \"PWDHASH\":\"" + pw + "\"} ] }";
@@ -98,28 +149,112 @@ public class ProvisioningController2Test {
         request.addHeader("Content-type", "application/json");
         request.setRequestURI("/v2/provision/client/update");
         request.setMethod("POST");
-
         handlerAdapter.handle(request, response, controller);
         logger.info("testClientUpdate -> " + response.getContentAsString());
         assertTrue(response.getStatus() == HttpServletResponse.SC_OK);
 
         refreshRequestAndResponse();
-
-        String queryJson = "{ \"admin\": \"" + user.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\", \"entities\": [] }";
-        logger.info("passing in json " + queryJson);
-        request.setContent(queryJson.getBytes());
+        String listJson = "{ \"admin\": \"" + user.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\", \"entities\": [] }";
+        logger.info("passing in json " + listJson);
+        request.setContent(listJson.getBytes());
         request.addHeader("Content-type", "application/json");
         request.setRequestURI("/v2/provision/client/list");
         request.setMethod("POST");
-
         handlerAdapter.handle(request, response, controller);
         logger.info("testClientList() => " + response.getContentAsString());
         assertTrue(response.getContentAsString().contains(client.getClientId()));
 
+        refreshRequestAndResponse();
+        String deleteJson = "{ \"admin\": \"" + user.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\", " +
+                            "\"entities\": [\"" + client.getClientId()+ "\"] }";
+        logger.info("passing in json " + deleteJson);
+        request.setContent(deleteJson.getBytes());
+        request.addHeader("Content-type", "application/json");
+        request.setRequestURI("/v2/provision/client/delete");
+        request.setMethod("POST");
+        handlerAdapter.handle(request, response, controller);
+        logger.info("testClientList() => " + response.getContentAsString());
+        assertTrue(response.getContentAsString().contains(client.getClientId()));
+
+        refreshRequestAndResponse();
+        logger.info("passing in json " + listJson);
+        request.setContent(listJson.getBytes());
+        request.addHeader("Content-type", "application/json");
+        request.setRequestURI("/v2/provision/client/list");
+        request.setMethod("POST");
+        handlerAdapter.handle(request, response, controller);
+        logger.info("testClientList() => " + response.getContentAsString());
+        assertFalse(response.getContentAsString().contains(client.getClientId()));
     }
 
     @Test
-    public void testProvisioningDelete() throws Exception {
+    public void testBusCRUD() throws Exception {
+
+        refreshRequestAndResponse();
+        // create client
+        String jsonUpdateBus = "{ \"admin\": \"" + user.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\"," +
+                " \"configs\": [ {\n" +
+                "            \"BUS_NAME\": \"customer1\",\n" +
+                "            \"OWNER\": \"busowner1\",\n" +
+                "            \"RETENTION_TIME_SECONDS\": \"600\",\n" +
+                "            \"RETENTION_STICKY_TIME_SECONDS\": \"28800\"\n" +
+                "        } ] }";
+        logger.info("passing in json " + jsonUpdateBus);
+        request.setContent(jsonUpdateBus.getBytes());
+        request.addHeader("Content-type", "application/json");
+        request.setRequestURI("/v2/provision/bus/update");
+        request.setMethod("POST");
+        handlerAdapter.handle(request, response, controller);
+        logger.info("testClientUpdate -> " + response.getContentAsString());
+        assertTrue(response.getStatus() == HttpServletResponse.SC_OK);
+
+        refreshRequestAndResponse();
+        String listJson = "{ \"admin\": \"" + user.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\", \"entities\": [] }";
+        logger.info("passing in json " + listJson);
+        request.setContent(listJson.getBytes());
+        request.addHeader("Content-type", "application/json");
+        request.setRequestURI("/v2/provision/bus/list");
+        request.setMethod("POST");
+        handlerAdapter.handle(request, response, controller);
+        logger.info("testClientList() => " + response.getContentAsString());
+        assertTrue(response.getContentAsString().contains("customer1"));
+        assertTrue(response.getContentAsString().contains("busowner1"));
+
+        refreshRequestAndResponse();
+        String deleteJson = "{ \"admin\": \"" + user.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\", " +
+                            "\"entities\": [\"customer1\"] }";
+        logger.info("passing in json " + deleteJson);
+        request.setContent(deleteJson.getBytes());
+        request.addHeader("Content-type", "application/json");
+        request.setRequestURI("/v2/provision/bus/delete");
+        request.setMethod("POST");
+        handlerAdapter.handle(request, response, controller);
+        logger.info("testClientList() => " + response.getContentAsString());
+        assertTrue(response.getContentAsString().contains("customer1"));
+
+        refreshRequestAndResponse();
+        logger.info("passing in json " + listJson);
+        request.setContent(listJson.getBytes());
+        request.addHeader("Content-type", "application/json");
+        request.setRequestURI("/v2/provision/bus/list");
+        request.setMethod("POST");
+        handlerAdapter.handle(request, response, controller);
+        logger.info("testClientList() => " + response.getContentAsString());
+        assertFalse(response.getContentAsString().contains("customer1"));
+    }
+
+    @Test
+    public void testProvisioningCreateDelete() throws Exception {
+        refreshRequestAndResponse();
+        String jsonUpdateClient = "{ \"admin\": \"" + user.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\"," +
+                " \"configs\": [ { \"USER\":\"" + client.getClientId() + "\", \"PWDHASH\":\"" + pw + "\"} ] }";
+
+        String addBusOwner = "{ \"admin\": \"" + user.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\"," +
+                " \"entities\": [ \"" + client.getClientId() + "\", \"PWDHASH\":\"" + pw + "\"} ] }";
+    }
+
+    @Test
+    public void testProvisioningDeleteNonExisting() throws Exception {
 
         refreshRequestAndResponse();
 
@@ -336,6 +471,7 @@ public class ProvisioningController2Test {
 
     private static final Logger logger = Logger.getLogger(ProvisioningController2Test.class);
     private User user;
+    private User busOwner;
     private Client client;
     private String pw;
 
@@ -361,5 +497,4 @@ public class ProvisioningController2Test {
 
         return busesGranted.containsAll(busesToCheck);
     }
-
 }
