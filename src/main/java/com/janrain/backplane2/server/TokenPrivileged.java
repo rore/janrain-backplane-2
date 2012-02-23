@@ -18,6 +18,8 @@ package com.janrain.backplane2.server;
 
 import com.janrain.commons.supersimpledb.message.MessageField;
 import com.janrain.crypto.ChannelUtil;
+import com.janrain.oauth2.OAuth2;
+import com.janrain.oauth2.TokenException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
@@ -36,7 +38,7 @@ public class TokenPrivileged extends Token {
      */
     public TokenPrivileged() {}
 
-    public TokenPrivileged(String tokenString, String clientId, String buses, String scopeString, Date expires) throws BackplaneServerException {
+    public TokenPrivileged(String tokenString, String clientId, String buses, String scopeString, Date expires) throws TokenException {
         super("pr" + tokenString, TYPE.PRIVILEGED_TOKEN, buses, scopeString, expires);
 
         put(Field.ISSUED_TO_CLIENT_ID.getFieldName(), clientId);
@@ -54,7 +56,7 @@ public class TokenPrivileged extends Token {
         }
 
         if (!isAllowedBuses(new Scope(scopeString).getBusesInScope())) {
-            throw new BackplaneServerException("Scope request not allowed");
+            throw new TokenException(OAuth2.OAUTH2_TOKEN_INVALID_SCOPE, "Scope request not allowed");
         }
 
         logger.info("privileged token allowed scope:'" + scopeString + "' from auth'd buses:'" + getBusesAsString() + "'");
@@ -65,16 +67,16 @@ public class TokenPrivileged extends Token {
 
     }
 
-    public TokenPrivileged(String clientId, String buses, String scopeString, Date expires) throws BackplaneServerException  {
-        this(ChannelUtil.randomString(TOKEN_LENGTH), clientId, buses, scopeString, null);
+    public TokenPrivileged(String clientId, String buses, String scopeString, Date expires) throws TokenException  {
+        this(ChannelUtil.randomString(TOKEN_LENGTH), clientId, buses, scopeString, expires);
     }
 
-    public TokenPrivileged(String clientId, Grant grant, String scope) throws BackplaneServerException {
+    public TokenPrivileged(String clientId, Grant grant, String scope) throws TokenException {
         this(ChannelUtil.randomString(TOKEN_LENGTH), clientId, grant.getBusesAsString(), scope, null);
         this.addGrant(grant);
     }
 
-    public TokenPrivileged(String clientId, List<Grant> grants, String scope) throws BackplaneServerException {
+    public TokenPrivileged(String clientId, List<Grant> grants, String scope) throws TokenException {
         this(ChannelUtil.randomString(TOKEN_LENGTH), clientId, Grant.getBusesAsString(grants), scope, null);
         this.setGrants(grants);
     }
@@ -122,10 +124,6 @@ public class TokenPrivileged extends Token {
 
         private String fieldName;
         private boolean required = true;
-
-        private Field(String fieldName) {
-            this(fieldName, true);
-        }
 
         private Field(String fieldName, boolean required) {
             this.fieldName = fieldName;

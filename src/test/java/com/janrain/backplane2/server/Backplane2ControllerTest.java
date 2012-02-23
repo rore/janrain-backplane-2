@@ -26,6 +26,7 @@ import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.crypto.ChannelUtil;
 import com.janrain.crypto.HmacHashUtils;
+import com.janrain.oauth2.TokenException;
 import org.apache.catalina.util.Base64;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -679,6 +680,19 @@ public class Backplane2ControllerTest {
     }
 
     @Test
+    public void testClientCredentialsUnauthorizedScope() throws Exception {
+        refreshRequestAndResponse();
+        request.setRequestURI("/v2/token");
+        request.setMethod("POST");
+        request.setParameter("grant_type", "client_credentials");
+        request.setParameter("scope", "bus:someunauthorized.bus");
+        setOAuthBasicAuthentication(request, testClient.get(User.Field.USER), "secret");
+        handlerAdapter.handle(request, response, controller);
+        logger.info("testClientCredentialsUnauthorizedScope() => " + response.getContentAsString());
+        assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
+    }
+
+    @Test
     public void testTokenEndPointNoURI() throws Exception {
         refreshRequestAndResponse();
 
@@ -983,7 +997,7 @@ public class Backplane2ControllerTest {
         // Create inappropriate token
         try {
             TokenPrivileged token = new TokenPrivileged("fooClient", "mybus.com yourbus.com", "bus:invalidbus.com", null);
-        } catch (BackplaneServerException bpe) {
+        } catch (TokenException bpe) {
             //expected
             return;
         }

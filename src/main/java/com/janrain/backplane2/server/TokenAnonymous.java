@@ -18,6 +18,8 @@ package com.janrain.backplane2.server;
 
 import com.janrain.commons.supersimpledb.message.MessageField;
 import com.janrain.crypto.ChannelUtil;
+import com.janrain.oauth2.OAuth2;
+import com.janrain.oauth2.TokenException;
 import org.apache.commons.lang.StringUtils;
 
 import java.util.Date;
@@ -34,7 +36,7 @@ public class TokenAnonymous extends Token {
      */
     public TokenAnonymous() {}
 
-    public TokenAnonymous(String tokenString, String buses, String scopeString, Date expires) throws BackplaneServerException {
+    public TokenAnonymous(String tokenString, String buses, String scopeString, Date expires) throws TokenException {
         super("an" + tokenString, TYPE.REGULAR_TOKEN, buses, scopeString, expires);
 
         //TODO: the expiration of anonymous tokens is a problem - one hour is too short and having
@@ -43,7 +45,7 @@ public class TokenAnonymous extends Token {
         // verify that no channel or bus was submitted in the scopeString request
         Scope testScope = new Scope(scopeString);
         if (!testScope.getBusesInScope().isEmpty() || !testScope.getChannelsInScope().isEmpty()) {
-            throw new BackplaneServerException("Scope request not allowed");
+            throw new TokenException(OAuth2.OAUTH2_TOKEN_INVALID_SCOPE, "Scope request not allowed");
         }
 
         String channel = ChannelUtil.randomString(CHANNEL_NAME_LENGTH);
@@ -60,7 +62,7 @@ public class TokenAnonymous extends Token {
         validate();
     }
 
-    public TokenAnonymous(String buses, String scopeString, Date expires) throws BackplaneServerException {
+    public TokenAnonymous(String buses, String scopeString, Date expires) throws TokenException {
         this(ChannelUtil.randomString(TOKEN_LENGTH), buses, scopeString, expires);
     }
 
@@ -93,10 +95,6 @@ public class TokenAnonymous extends Token {
 
         private String fieldName;
         private boolean required = true;
-
-        private Field(String fieldName) {
-            this(fieldName, true);
-        }
 
         private Field(String fieldName, boolean required) {
             this.fieldName = fieldName;

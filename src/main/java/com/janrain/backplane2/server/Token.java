@@ -17,11 +17,11 @@
 package com.janrain.backplane2.server;
 
 import com.janrain.commons.supersimpledb.message.MessageField;
-import com.janrain.crypto.ChannelUtil;
+import com.janrain.oauth2.TokenException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
-import java.util.*;
+import java.util.Date;
 
 /**
  * @author Tom Raney
@@ -49,7 +49,7 @@ public abstract class Token extends Base {
      * @param expires     if null, token does not expire
      * @throws BackplaneServerException
      */
-    Token(String tokenString, TYPE accessType, String buses, String scopeString, Date expires) throws BackplaneServerException {
+    Token(String tokenString, TYPE accessType, String buses, String scopeString, Date expires) throws TokenException {
         super(tokenString,buses,expires);
 
         logger.debug("creating token with id '" + tokenString + "'");
@@ -72,7 +72,7 @@ public abstract class Token extends Base {
         return TYPE.valueOf(this.get(TokenField.TYPE));
     }
 
-    public Scope getScope() throws BackplaneServerException {
+    public Scope getScope() throws TokenException {
         return new Scope(this.get(TokenField.SCOPE));
     }
 
@@ -128,10 +128,6 @@ public abstract class Token extends Base {
 
         private String fieldName;
         private boolean required = true;
-
-        private TokenField(String fieldName) {
-            this(fieldName, true);
-        }
 
         private TokenField(String fieldName, boolean required) {
             this.fieldName = fieldName;

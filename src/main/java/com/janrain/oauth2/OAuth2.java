@@ -61,6 +61,7 @@ public class OAuth2 {
     public static final String OAUTH2_TOKEN_INVALID_CLIENT = "invalid_client";
     public static final String OAUTH2_TOKEN_UNSUPPORTED_GRANT = "unsupported_grant_type";
     public static final String OAUTH2_TOKEN_INVALID_GRANT = "invalid_grant";
+    public static final String OAUTH2_TOKEN_INVALID_SCOPE = "invalid_scope";
 
 
     public static void validateRedirectUri(String redirectUri) throws ValidationException {

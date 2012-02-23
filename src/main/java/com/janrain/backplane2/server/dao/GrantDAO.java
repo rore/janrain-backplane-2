@@ -22,6 +22,7 @@ import com.janrain.backplane2.server.Scope;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
+import com.janrain.oauth2.TokenException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.Nullable;
@@ -119,7 +120,7 @@ public class GrantDAO extends DAO {
      *  Not atomic, best effort.
      *  Stops on first error and reports error, even though some grants may have been updated.
      */
-    public void revokeBuses(String clientId, String buses) throws SimpleDBException, BackplaneServerException {
+    public void revokeBuses(String clientId, String buses) throws SimpleDBException, BackplaneServerException, TokenException {
         Scope busesToRevoke = new Scope(Scope.convertToBusScope(buses));
         for(Grant grant : retrieveGrants(clientId, busesToRevoke)) {
             Grant updated = new Grant(grant);

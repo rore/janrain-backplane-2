@@ -21,15 +21,14 @@ import javax.servlet.http.HttpServletRequest;
 /**
  * @author Johnny Bufu
  */
-public class AuthorizationException extends Exception {
+public class AuthorizationException extends OAuth2Exception {
 
     public AuthorizationException(String oauthErrorCode, String message, HttpServletRequest request) {
         this(oauthErrorCode, message, request, null);
     }
 
     public AuthorizationException(String oauthErrorCode, String message, HttpServletRequest request, Throwable cause) {
-        super(message, cause);
-        this.oauthErrorCode = oauthErrorCode;
+        super(oauthErrorCode, message, cause);
         this.redirectUri = request.getParameter(AuthorizationRequest.Field.REDIRECT_URI.getFieldName().toLowerCase());
         this.state = request.getParameter(AuthorizationRequest.Field.STATE.getFieldName().toLowerCase());
     }
@@ -39,14 +38,9 @@ public class AuthorizationException extends Exception {
     }
 
     public AuthorizationException(String oauthErrorCode, String message, AuthorizationRequest request, Throwable cause) {
-        super(message, cause);
-        this.oauthErrorCode = oauthErrorCode;
+        super(oauthErrorCode, message, cause);
         this.redirectUri = request.get(AuthorizationRequest.Field.REDIRECT_URI);
         this.state = request.get(AuthorizationRequest.Field.STATE);
-    }
-
-    public String getOauthErrorCode() {
-        return oauthErrorCode;
     }
 
     public String getRedirectUri() {
@@ -57,7 +51,6 @@ public class AuthorizationException extends Exception {
         return state;
     }
 
-    private final String oauthErrorCode;
     private final String redirectUri;
     private final String state;
 }

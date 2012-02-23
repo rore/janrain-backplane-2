@@ -16,7 +16,6 @@
 
 package com.janrain.oauth2;
 
-import com.janrain.backplane2.server.BackplaneServerException;
 import com.janrain.backplane2.server.Grant;
 import com.janrain.backplane2.server.Scope;
 import com.janrain.backplane2.server.Token;
@@ -157,8 +156,8 @@ public class TokenRequest {
                 if (this.grant != null && !grant.isAllowedBuses(scopes.getBusesInScope())) {
                     return error(OAUTH2_TOKEN_INVALID_REQUEST, "Invalid scope");
                 }
-            } catch (BackplaneServerException e) {
-                return error(OAUTH2_TOKEN_INVALID_REQUEST, e.getMessage());
+            } catch (TokenException e) {
+                return error(e.getOauthErrorCode(), e.getMessage());
             }
         }
 

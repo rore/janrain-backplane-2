@@ -35,13 +35,24 @@ public class Grant extends Base {
     public static final int CODE_EXPIRATION = 3600;
 
     public static String getBusesAsString(List<Grant> grants) {
-        StringBuilder sb = new StringBuilder();
+        Set<String> buses = new LinkedHashSet<String>();
         for (Grant grant: grants) {
-            sb.append(grant.getBusesAsString()).append(" ");
+            buses.addAll(grant.getBusesAsList());
         }
-        return sb.toString().trim();
+        StringBuilder result = new StringBuilder();
+        for(String bus : buses) {
+            result.append(bus).append(" ");
+        }
+        return result.toString().trim();
     }
 
+    public static List<String> getBusesAsList(List<Grant> grants) {
+        Set<String> buses = new LinkedHashSet<String>();
+        for (Grant grant: grants) {
+            buses.addAll(grant.getBusesAsList());
+        }
+        return new ArrayList<String>(buses);
+    }
 
     /**
      * Empty default constructor for AWS to use.

@@ -16,6 +16,8 @@
 
 package com.janrain.backplane2.server;
 
+import com.janrain.oauth2.OAuth2;
+import com.janrain.oauth2.TokenException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
@@ -77,9 +79,8 @@ public class Scope {
         return sb.toString();
     }
 
-    public Scope(String scopeString) throws BackplaneServerException {
+    public Scope(String scopeString) throws TokenException {
         this.scopes = parseScopeString(scopeString);
-        this.scopeString = scopeString;
         logger.debug("Client requested scopes: " + scopeString);
     }
 
@@ -111,13 +112,13 @@ public class Scope {
 
         ArrayList<String> queries = new ArrayList<String>();
 
-        ArrayList scopeList = new ArrayList(scopes.entrySet());
+        List<Map.Entry<String,ArrayList<String>>> scopeList = new ArrayList<Map.Entry<String, ArrayList<String>>>(scopes.entrySet());
 
         buildQuery(queries, "", scopeList, 0);
         return queries;
     }
 
-    private void buildQuery(List<String> queryList, String query, List scopeList, int level) {
+    private void buildQuery(List<String> queryList, String query, List<Map.Entry<String,ArrayList<String>>> scopeList, int level) {
 
         if (level > scopeList.size()-1) {
             logger.info("add " + query);
@@ -125,7 +126,7 @@ public class Scope {
             return;
         }
 
-        Map.Entry<String,ArrayList<String>> entry = (Map.Entry<String, ArrayList<String>>) scopeList.get(level);
+        Map.Entry<String,ArrayList<String>> entry = scopeList.get(level);
 
         if (entry.getValue().isEmpty()) {
             buildQuery(queryList, query, scopeList, level+1);
@@ -170,11 +171,10 @@ public class Scope {
 
     //private
 
-    private String scopeString;
     private Map<String,ArrayList<String>> scopes;
     private static final Logger logger = Logger.getLogger(Scope.class);
 
-    private Map<String,ArrayList<String>> parseScopeString(String scopeString) throws BackplaneServerException {
+    private Map<String,ArrayList<String>> parseScopeString(String scopeString) throws TokenException {
         HashMap<String,ArrayList<String>> scopes = new HashMap<String, ArrayList<String>>();
 
         // guarantee bus and channel have an entry
@@ -193,13 +193,13 @@ public class Scope {
             for (String token:tokens) {
                 if (!token.contains(Scope.DELIMITER)) {
                     logger.debug("Malformed scope: '" + scopeString + "'");
-                    throw new BackplaneServerException("Malformed scope");
+                    throw new TokenException(OAuth2.OAUTH2_TOKEN_INVALID_SCOPE, "Malformed scope");
                 }
                 String value = token.substring(token.indexOf(Scope.DELIMITER)+1);
                 String key = token.substring(0, token.indexOf(Scope.DELIMITER));
 
                 if (!Scope.isValid(key, value)) {
-                    throw new BackplaneServerException("the scope " + key + ":'" + value + "' is invalid");
+                    throw new TokenException(OAuth2.OAUTH2_TOKEN_INVALID_SCOPE, "the scope " + key + ":'" + value + "' is invalid");
                 }
 
                 if (!scopes.containsKey(key)) {

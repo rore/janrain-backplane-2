@@ -176,7 +176,7 @@ public class Backplane2Controller {
 
     @RequestMapping(value = "/token", method = { RequestMethod.GET})
     @ResponseBody
-    public HashMap<String,Object> getToken(HttpServletRequest request, HttpServletResponse response,
+    public Map<String,Object> getToken(HttpServletRequest request, HttpServletResponse response,
                                            @RequestParam(value = "scope", required = false) String scope,
                                            @RequestParam(required = true) String callback)
             throws AuthException, SimpleDBException, BackplaneServerException {
@@ -196,11 +196,8 @@ public class Backplane2Controller {
 
         try {
             hash= new TokenResponse(tokenRequest, daoFactory).generateResponse();
-        } catch (final BackplaneServerException bpe) {
-            return new HashMap<String,Object>() {{
-                put(ERR_MSG_FIELD, bpe.getMessage());
-            }};
-
+        } catch (TokenException e) {
+            return handleTokenException(e, response);
         }
 
         if (StringUtils.isBlank(callback)) {
@@ -237,7 +234,7 @@ public class Backplane2Controller {
 
     @RequestMapping(value = "/token", method = { RequestMethod.POST})
     @ResponseBody
-    public HashMap<String,Object> token(HttpServletRequest request, HttpServletResponse response,
+    public Map<String,Object> token(HttpServletRequest request, HttpServletResponse response,
                                         @RequestParam(value = "client_id", required = false) String client_id,
                                         @RequestParam(value = "grant_type", required = false) String grant_type,
                                         @RequestParam(value = "redirect_uri", required = false) String redirect_uri,
@@ -245,7 +242,7 @@ public class Backplane2Controller {
                                         @RequestParam(value = "client_secret", required = false) String client_secret,
                                         @RequestParam(value = "scope", required = false) String scope,
                                         @RequestHeader(value = "Authorization", required = false) String basicAuth)
-            throws SimpleDBException, BackplaneServerException {
+            throws SimpleDBException {
 
        // assert(request.isSecure());
 
@@ -272,10 +269,8 @@ public class Backplane2Controller {
 
         try {
             return new TokenResponse(tokenRequest, daoFactory).generateResponse();
-        } catch (final BackplaneServerException bpe) {
-            return new HashMap<String,Object>() {{
-                put(ERR_MSG_FIELD, bpe.getMessage());
-            }};
+        } catch (TokenException e) {
+            return handleTokenException(e, response);
         }
     }
 
@@ -292,7 +287,7 @@ public class Backplane2Controller {
      */
 
     @RequestMapping(value = "/messages", method = { RequestMethod.GET})
-    public @ResponseBody HashMap<String,Object> messages(HttpServletRequest request, HttpServletResponse response,
+    public @ResponseBody Map<String,Object> messages(HttpServletRequest request, HttpServletResponse response,
                                 @RequestParam(value = "access_token", required = false) String access_token,
                                 @RequestParam(value = "block", defaultValue = "0", required = false) Integer block,
                                 @RequestParam(required = false) String callback,
@@ -313,7 +308,12 @@ public class Backplane2Controller {
         }
 
         List<BackplaneMessage> messages =
-                daoFactory.getBackplaneMessageDAO().retrieveAllMesssagesPerScope(messageRequest.getToken().getScope(), since);
+                null;
+        try {
+            messages = daoFactory.getBackplaneMessageDAO().retrieveAllMesssagesPerScope(messageRequest.getToken().getScope(), since);
+        } catch (TokenException e) {
+            return handleTokenException(e, response);
+        }
 
         String nextUrl = "https://" + request.getServerName() + "/v2/messages";
 
@@ -546,6 +546,17 @@ public class Backplane2Controller {
         return authzRequestError(e.getOauthErrorCode(), e.getMessage(), e.getRedirectUri(), e.getState());
     }
     
+    @ExceptionHandler
+    @ResponseBody
+    public Map<String,Object> handleTokenException(final TokenException e, HttpServletResponse response) {
+        logger.error("Error processing token request: " + e);
+        response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+        return new HashMap<String,Object>() {{
+            put(ERR_MSG_FIELD, e.getOauthErrorCode());
+            put(ERR_MSG_DESCRIPTION, e.getMessage());
+        }};
+    }
+    
     /**
      * Handle auth errors
      */
@@ -566,7 +577,7 @@ public class Backplane2Controller {
     @ResponseBody
     public Map<String, String> handle(final Exception e, HttpServletResponse response) {
         logger.error("Error handling backplane request", bpConfig.getDebugException(e));
-        response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+        response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         return new HashMap<String,String>() {{
             try {
                 put(ERR_MSG_FIELD, bpConfig.isDebugMode() ? e.getMessage() : "Error processing request.");
@@ -846,15 +857,21 @@ public class Backplane2Controller {
             if (! "Authorize".equals(request.getParameter("authorize"))) {
                 throw new AuthorizationException(OAuth2.OAUTH2_AUTHZ_ACCESS_DENIED, "Bus owner denied authorization.", authorizationRequest);
             } else {
+                // todo: use (and check) scope posted back by bus owner
+                String scopeString = checkScope(
+                        authorizationRequest.get(AuthorizationRequest.Field.SCOPE),
+                        daoFactory.getBusDao().retrieveBuses(authenticatedBusOwner));
                 // create grant/code
-                Grant grant = new Grant(
-                        authenticatedBusOwner,
-                        authorizationRequest.get(AuthorizationRequest.Field.CLIENT_ID),
-                        // todo: use (and check) scope posted back by bus owner
-                        new Scope(checkScope(
-                                authorizationRequest.get(AuthorizationRequest.Field.SCOPE),
-                                daoFactory.getBusDao().retrieveBuses(authenticatedBusOwner))).getBusesInScopeAsString()
-                );
+                Grant grant = null;
+                try {
+                    grant = new Grant(
+                            authenticatedBusOwner,
+                            authorizationRequest.get(AuthorizationRequest.Field.CLIENT_ID),
+                            new Scope(scopeString).getBusesInScopeAsString()
+                    );
+                } catch (TokenException e) {
+                    throw new AuthorizationException(e.getOauthErrorCode(), e.getMessage(), request);
+                }
 
                 grant.setCodeIssuedNow();
                 daoFactory.getGrantDao().persist(grant);
@@ -884,8 +901,6 @@ public class Backplane2Controller {
                 }
             }
         } catch (SimpleDBException e) {
-            throw new AuthorizationException(OAuth2.OAUTH2_AUTHZ_SERVER_ERROR, e.getMessage(), authorizationRequest, e);
-        } catch (BackplaneServerException e) {
             throw new AuthorizationException(OAuth2.OAUTH2_AUTHZ_SERVER_ERROR, e.getMessage(), authorizationRequest, e);
         }
     }

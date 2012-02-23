@@ -32,16 +32,14 @@ import java.util.List;
  */
 public class TokenResponse {
 
-    TokenRequest request;
-    private DaoFactory daoFactory;
-
     public TokenResponse(TokenRequest request, DaoFactory daoFactory) {
         this.request = request;
         this.daoFactory = daoFactory;
     }
 
-    public HashMap<String, Object> generateResponse() throws SimpleDBException, BackplaneServerException {
+    public HashMap<String, Object> generateResponse() throws SimpleDBException, TokenException {
         if (request.grant_type.equals("client_credentials") && request.client.getClientId().equals(Token.ANONYMOUS)) {
+            logger.info("Responding to anonymous token request...");
             // issue new channel id
             final TokenAnonymous token = new TokenAnonymous(null, request.scope, new Date(new Date().getTime() + Token.EXPIRES_SECONDS * 1000L));
             daoFactory.getTokenDao().persist(token);
@@ -54,6 +52,8 @@ public class TokenResponse {
         }
 
         if (request.grant_type.equals("code")) {
+            logger.info("Responding to authorization_code token request...");
+            // one grant per authorization_code grant type, enforced not null in TokenRequest validation, no extra checks needed here
             final TokenPrivileged token = new TokenPrivileged(request.client.getClientId(), request.getGrant(), request.scope);
             daoFactory.getTokenDao().persist(token);
             return new LinkedHashMap<String, Object>() {{
@@ -66,8 +66,15 @@ public class TokenResponse {
         }
 
         if (request.grant_type.equals("client_credentials")) {
-            List<Grant> grants = daoFactory.getGrantDao().retrieveGrants(request.client.getClientId(), new Scope(request.scope));
-            final TokenPrivileged token = new TokenPrivileged(request.client.getClientId(), grants, null);
+            logger.info("Responding to client_credentials token request...");
+            Scope scope = new Scope(request.scope);
+            List<Grant> grants = daoFactory.getGrantDao().retrieveGrants(request.client.getClientId(), scope);
+
+            // if not all buses in requested scope are granted access, return invalid_scope error (13.1)
+            if (! Grant.getBusesAsList(grants).containsAll(scope.getBusesInScope())) {
+                throw new TokenException(OAuth2.OAUTH2_TOKEN_INVALID_SCOPE, "requested scope exceeds grants");
+            }
+            final TokenPrivileged token = new TokenPrivileged(request.client.getClientId(), grants, request.scope);
             daoFactory.getTokenDao().persist(token);
             return new LinkedHashMap<String, Object>() {{
                 put("access_token", token.getIdValue());
@@ -81,6 +88,10 @@ public class TokenResponse {
         return null;
     }
 
+    // - PRIVATE
 
     private static final Logger logger = Logger.getLogger(TokenResponse.class);
+
+    private final TokenRequest request;
+    private final DaoFactory daoFactory;
 }
