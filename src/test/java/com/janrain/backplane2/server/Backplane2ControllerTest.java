@@ -307,6 +307,27 @@ public class Backplane2ControllerTest {
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
     }
 
+    @Test
+    public void testScope() throws Exception {
+        refreshRequestAndResponse();
+
+        //TODO: the spec doesn't allow '.' in the callback name but this likely needs to change
+        String callback = "Backplane.callback";
+
+        request.setRequestURI("/v2/token");
+        request.setMethod("GET");
+        request.setParameter("grant_type", "client_credentials");
+        setOAuthBasicAuthentication(request, "anonymous", "");
+        request.setParameter("scope","type: sticky:");
+        request.setParameter("callback", callback);
+
+        handlerAdapter.handle(request, response, controller);
+        logger.info("testTokenEndPointAnonymousTokenRequestWithInvalidScope() => " + response.getContentAsString());
+        assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
+
+
+    }
+
 
 
     @Test

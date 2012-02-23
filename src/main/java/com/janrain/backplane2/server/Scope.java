@@ -165,7 +165,7 @@ public class Scope {
             logger.info("scopeString = '" + scopeString + "'");
             String[] tokens = scopeString.split(Scope.SEPARATOR,Scope.MAX_PARAMETERS);
             // all scope tokens need to have the ":" key/value delimiter
-            // and, if they have the ":" in the value (like the source field MUST have)
+            // if they have the ":" in the value (like the source field MUST have)
             // we will use the first ":" as the key/value delimiter.
             for (String token:tokens) {
                 if (!token.contains(Scope.DELIMITER)) {
@@ -179,6 +179,10 @@ public class Scope {
                     throw new BackplaneServerException(key + " is not a valid scope field name");
                 }
 
+                if (StringUtils.isBlank(value)) {
+                    throw new BackplaneServerException("scope values may not be blank");
+                }
+
                 if (!scopes.containsKey(key)) {
                     scopes.put(key, new ArrayList<String>());
                 }
@@ -186,6 +190,7 @@ public class Scope {
                 List<String> values = scopes.get(key);
                 // prevent duplicate scopes
                 if (!values.contains(value)) {
+                    logger.debug("adding " + key + ":'" + value + "'");
                     values.add(value);
                 }
             }
