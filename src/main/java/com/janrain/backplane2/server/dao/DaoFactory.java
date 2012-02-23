@@ -68,13 +68,13 @@ public class DaoFactory {
         return new AuthorizationDecisionKeyDAO(superSimpleDB, bpConfig);
     }
 
-    public DAO getDaoByObjectType(Object obj) {
+    public DAO getDaoByObjectType(Class<?> obj) {
 
-        if (obj instanceof Client) {
+        if (Client.class.isAssignableFrom(obj)) {
             return getClientDAO();
-        } else if (obj instanceof User) {
+        } else if (User.class.isAssignableFrom(obj)) {
             return getBusOwnerDAO();
-        } else if (obj instanceof BusConfig2) {
+        } else if (BusConfig2.class.isAssignableFrom(obj)) {
             return getBusDao();
         }
 
