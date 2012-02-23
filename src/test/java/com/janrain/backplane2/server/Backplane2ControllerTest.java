@@ -324,10 +324,45 @@ public class Backplane2ControllerTest {
         handlerAdapter.handle(request, response, controller);
         logger.info("testTokenEndPointAnonymousTokenRequestWithInvalidScope() => " + response.getContentAsString());
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
-
-
     }
 
+    @Test
+    public void testScope2() throws Exception {
+        refreshRequestAndResponse();
+
+        //TODO: the spec doesn't allow '.' in the callback name but this likely needs to change
+        String callback = "Backplane.callback";
+
+        request.setRequestURI("/v2/token");
+        request.setMethod("GET");
+        request.setParameter("grant_type", "client_credentials");
+        setOAuthBasicAuthentication(request, "anonymous", "");
+        request.setParameter("scope","sticky:meh");
+        request.setParameter("callback", callback);
+
+        handlerAdapter.handle(request, response, controller);
+        logger.info("testTokenEndPointAnonymousTokenRequestWithInvalidScope() => " + response.getContentAsString());
+        assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
+    }
+
+    @Test
+    public void testScope3() throws Exception {
+        refreshRequestAndResponse();
+
+        //TODO: the spec doesn't allow '.' in the callback name but this likely needs to change
+        String callback = "Backplane.callback";
+
+        request.setRequestURI("/v2/token");
+        request.setMethod("GET");
+        request.setParameter("grant_type", "client_credentials");
+        setOAuthBasicAuthentication(request, "anonymous", "");
+        request.setParameter("scope","source:httpgoogle.com");
+        request.setParameter("callback", callback);
+
+        handlerAdapter.handle(request, response, controller);
+        logger.info("testTokenEndPointAnonymousTokenRequestWithInvalidScope() => " + response.getContentAsString());
+        assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
+    }
 
 
     @Test

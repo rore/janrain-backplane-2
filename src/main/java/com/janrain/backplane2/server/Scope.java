@@ -19,6 +19,9 @@ package com.janrain.backplane2.server;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
+
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.*;
 
 /**
@@ -33,8 +36,28 @@ public class Scope {
 
     public static final String[] VALID_PRIVILEGED_KEYS = {"source","type","bus","channel","sticky","messageURL"};
 
-    public static boolean isValidKey(String key) {
-        return Arrays.asList(VALID_PRIVILEGED_KEYS).contains(key);
+    public static boolean isValid(String key, String value) {
+        if (!Arrays.asList(VALID_PRIVILEGED_KEYS).contains(key)) {
+            return false;
+        }
+        if (StringUtils.isBlank(value)) {
+            return false;
+        }
+        if ("source".equals(key) || "messageURL".equals(key)) {
+            // should be a URL
+            try {
+                logger.debug("url? =>" + value);
+                new URL(value);
+            } catch (MalformedURLException e) {
+                return false;
+            }
+        } else if ("sticky".equals(key)) {
+            if (value != null && ! Boolean.TRUE.toString().equalsIgnoreCase(value) && ! Boolean.FALSE.toString().equalsIgnoreCase(value)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -175,12 +198,8 @@ public class Scope {
                 String value = token.substring(token.indexOf(Scope.DELIMITER)+1);
                 String key = token.substring(0, token.indexOf(Scope.DELIMITER));
 
-                if (!Scope.isValidKey(key)) {
-                    throw new BackplaneServerException(key + " is not a valid scope field name");
-                }
-
-                if (StringUtils.isBlank(value)) {
-                    throw new BackplaneServerException("scope values may not be blank");
+                if (!Scope.isValid(key, value)) {
+                    throw new BackplaneServerException("the scope " + key + ":'" + value + "' is invalid");
                 }
 
                 if (!scopes.containsKey(key)) {
