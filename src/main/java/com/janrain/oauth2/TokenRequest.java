@@ -136,7 +136,7 @@ public class TokenRequest {
                 throw new TokenException(OAUTH2_TOKEN_INVALID_GRANT, "Authorization code is expired");
             }
 
-            //check the client - grant binding
+            // check the client - grant binding
             if ( ! grant.getGrantClientId().equals(client.getClientId()) ) {
                 throw new TokenException(OAUTH2_TOKEN_INVALID_GRANT, "Invalid grant");
             }

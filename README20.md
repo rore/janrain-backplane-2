@@ -51,7 +51,7 @@ callback(
         "access_token": "465203f03680f59b7ddd5e1e5d851461",
         "token_type": "Bearer",
         "expires_in": 3600,
-        "backplane_channel": "0a92d76f54f7877a68abe19c5b3ffcf8"
+        "scope": "channel:0a92d76f54f7877a68abe19c5b3ffcf8"
     }
 )
 ```

@@ -212,8 +212,9 @@ public class Backplane2ControllerTest {
         //satisfy 13.1.1
         refreshRequestAndResponse();
         request.setRequestURI("/v2/token");
+        // this could go to either the POST or GET enabled endpoint
         request.setMethod("POST");
-        request.setParameter("grant_type", "client_credentials");
+        //request.setParameter("grant_type", "client_credentials");
         //shouldn't contain the client_secret below
         setOAuthBasicAuthentication(request, "anonymous", "meh");
         handlerAdapter.handle(request, response, controller);
@@ -247,15 +248,13 @@ public class Backplane2ControllerTest {
         //      "access_token": "l5feG0KjdXTpgDAfOvN6pU6YWxNb7qyn",
         //      "expires_in":3600,
         //      "token_type": "Bearer",
-        //      "backplane_channel": "Tm5FUzstWmUOdp0xU5UW83r2q9OXrrxt"
+        //      "scope": "channel:Tm5FUzstWmUOdp0xU5UW83r2q9OXrrxt"
         // })
 
         refreshRequestAndResponse();
 
         request.setRequestURI("/v2/token");
         request.setMethod("GET");
-        request.setParameter("grant_type", "client_credentials");
-        setOAuthBasicAuthentication(request, "anonymous", "");
         request.setParameter("callback", callback);
 
         handlerAdapter.handle(request, response, controller);
@@ -265,7 +264,7 @@ public class Backplane2ControllerTest {
                 matches(callback + "[(][{]\\s*\"access_token\":\\s*\".{22}+\",\\s*" +
                         "\"expires_in\":\\s*3600,\\s*" +
                         "\"token_type\":\\s*\"Bearer\",\\s*" +
-                        "\"backplane_channel\":\\s*\".{32}+\"\\s*[}][)]"));
+                        "\"scope\":\\s*\"channel:.{32}+\"\\s*[}][)]"));
 
         // cleanup test token
         String result = response.getContentAsString().substring(response.getContentAsString().indexOf("{"), response.getContentAsString().indexOf(")"));
@@ -317,13 +316,11 @@ public class Backplane2ControllerTest {
 
         request.setRequestURI("/v2/token");
         request.setMethod("GET");
-        request.setParameter("grant_type", "client_credentials");
-        setOAuthBasicAuthentication(request, "anonymous", "");
         request.setParameter("scope","type: sticky:");
         request.setParameter("callback", callback);
 
         handlerAdapter.handle(request, response, controller);
-        logger.info("testTokenEndPointAnonymousTokenRequestWithInvalidScope() => " + response.getContentAsString());
+        logger.info("testScope() => " + response.getContentAsString());
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
     }
 
@@ -336,13 +333,11 @@ public class Backplane2ControllerTest {
 
         request.setRequestURI("/v2/token");
         request.setMethod("GET");
-        request.setParameter("grant_type", "client_credentials");
-        setOAuthBasicAuthentication(request, "anonymous", "");
         request.setParameter("scope","sticky:meh");
         request.setParameter("callback", callback);
 
         handlerAdapter.handle(request, response, controller);
-        logger.info("testTokenEndPointAnonymousTokenRequestWithInvalidScope() => " + response.getContentAsString());
+        logger.info("testScope2() => " + response.getContentAsString());
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
     }
 
@@ -355,14 +350,38 @@ public class Backplane2ControllerTest {
 
         request.setRequestURI("/v2/token");
         request.setMethod("GET");
-        request.setParameter("grant_type", "client_credentials");
-        setOAuthBasicAuthentication(request, "anonymous", "");
         request.setParameter("scope","source:httpgoogle.com");
         request.setParameter("callback", callback);
 
         handlerAdapter.handle(request, response, controller);
-        logger.info("testTokenEndPointAnonymousTokenRequestWithInvalidScope() => " + response.getContentAsString());
+        logger.info("testScope3() => " + response.getContentAsString());
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
+    }
+
+    @Test
+    public void testScope4() throws Exception {
+        refreshRequestAndResponse();
+
+        //TODO: the spec doesn't allow '.' in the callback name but this likely needs to change
+        String callback = "Backplane.callback";
+
+        request.setRequestURI("/v2/token");
+        request.setMethod("GET");
+        request.setParameter("scope","sticky:false source:http://test.com");
+        request.setParameter("callback", callback);
+
+        handlerAdapter.handle(request, response, controller);
+        logger.info("testScope4() => " + response.getContentAsString());
+        assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
+
+        String result = response.getContentAsString().substring(response.getContentAsString().indexOf("{"), response.getContentAsString().indexOf(")"));
+
+        Map<String,Object> msg = new ObjectMapper().readValue(result, new TypeReference<Map<String,Object>>() {});
+        String scope = msg.get("scope").toString();
+
+        assertTrue(scope.contains("sticky:false"));
+        assertTrue(scope.contains("source:http://test.com"));
+        assertTrue(scope.contains("channel:"));
     }
 
 
@@ -407,9 +426,10 @@ public class Backplane2ControllerTest {
         grant.setCodeExpirationDefault();
         this.saveGrant(grant);
 
-        // because we didn't specify the "scope" parameter, the server will
+        // because we didn't specify a bus in the "scope" parameter, the server will
         // return the scope it determined from the grant
 
+        request.setParameter("scope", "sticky:true");
         request.setParameter("code", grant.getIdValue());
         request.setParameter("redirect_uri", testClient.get(Client.ClientField.REDIRECT_URI));
         setOAuthBasicAuthentication(request, testClient.get(User.Field.USER), "secret");
@@ -423,6 +443,14 @@ public class Backplane2ControllerTest {
                         "\"token_type\":\\s*\"Bearer\",\\s*" +
                         "\"scope\":\\s*\".*\"\\s*" +
                         "[}]"));
+
+        Map<String,Object> msg = new ObjectMapper().readValue(response.getContentAsString(),
+                new TypeReference<Map<String,Object>>() {});
+        String scope = msg.get("scope").toString();
+
+        assertTrue(scope.contains("sticky:true"));
+        assertTrue(scope.contains("bus:test"));
+
     }
 
     @Test

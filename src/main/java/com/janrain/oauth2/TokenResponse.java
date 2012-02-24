@@ -47,7 +47,10 @@ public class TokenResponse {
                 put("access_token", token.getIdValue());
                 put("expires_in", Token.EXPIRES_SECONDS);
                 put("token_type", token.getTokenType());
-                put("backplane_channel", token.getChannelName());
+                //put("backplane_channel", token.getChannelName());
+                if (token.mustReturnScopeInResponse()) {
+                    put("scope", token.getScopeString());
+                }
             }};
         }
 
