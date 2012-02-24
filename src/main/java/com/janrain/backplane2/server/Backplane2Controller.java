@@ -45,6 +45,11 @@ import java.io.UnsupportedEncodingException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
+import static com.janrain.oauth2.OAuth2.OAUTH2_TOKEN_INVALID_CLIENT;
+import static com.janrain.oauth2.OAuth2.OAUTH2_TOKEN_INVALID_REQUEST;
+import static com.janrain.oauth2.OAuth2.OAUTH2_TOKEN_SERVER_ERROR;
+import static javax.servlet.http.HttpServletResponse.SC_UNAUTHORIZED;
+
 /**
  * Backplane API implementation.
  *
@@ -178,41 +183,26 @@ public class Backplane2Controller {
     @ResponseBody
     public Map<String,Object> getToken(HttpServletRequest request, HttpServletResponse response,
                                            @RequestParam(value = "scope", required = false) String scope,
-                                           @RequestParam(required = true) String callback)
-            throws AuthException, SimpleDBException, BackplaneServerException {
+                                           @RequestParam(required = true) String callback) {
 
         //assert(request.isSecure());
 
-        TokenRequest tokenRequest = new TokenRequest(Client.ANONYMOUS_CLIENT, "client_credentials", scope, callback);
-
-        HashMap<String,Object> errors = tokenRequest.validate();
-
-        if (!errors.isEmpty()) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            return errors;
+        if (StringUtils.isBlank(callback)) {
+            return handleTokenException(new TokenException(OAUTH2_TOKEN_INVALID_REQUEST, "Callback cannot be blank"), response);
         }
-
-        HashMap<String, Object> hash;
 
         try {
-            hash= new TokenResponse(tokenRequest, daoFactory).generateResponse();
+            TokenRequest tokenRequest = new TokenRequest(Client.ANONYMOUS_CLIENT, "client_credentials", scope, callback);
+            tokenRequest.validate();
+            HashMap<String, Object> hash= new TokenResponse(tokenRequest, daoFactory).generateResponse();
+            String responseBody = callback + "(" + new ObjectMapper().writeValueAsString(hash) + ")";
+            response.setContentType("application/x-javascript");
+            response.getWriter().print(responseBody);
+            return null;
         } catch (TokenException e) {
             return handleTokenException(e, response);
-        }
-
-        if (StringUtils.isBlank(callback)) {
-            throw new IllegalArgumentException("Callback cannot be blank");
-        } else {
-            response.setContentType("application/x-javascript");
-            try {
-                String responseBody = callback + "(" + new ObjectMapper().writeValueAsString(hash) + ")";
-                response.getWriter().print(responseBody);
-                return null;
-            } catch (IOException e) {
-                String errMsg = "Error converting frames to JSON: " + e.getMessage();
-                logger.error(errMsg, bpConfig.getDebugException(e));
-                throw new BackplaneServerException(errMsg, e);
-            }
+        } catch (Exception e) {
+            return handleTokenException(new TokenException(OAUTH2_TOKEN_SERVER_ERROR, "Error converting frames to JSON: " + e.getMessage(), HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e), response);
         }
     }
 
@@ -241,10 +231,9 @@ public class Backplane2Controller {
                                         @RequestParam(value = "code", required = false) String code,
                                         @RequestParam(value = "client_secret", required = false) String client_secret,
                                         @RequestParam(value = "scope", required = false) String scope,
-                                        @RequestHeader(value = "Authorization", required = false) String basicAuth)
-            throws SimpleDBException {
+                                        @RequestHeader(value = "Authorization", required = false) String basicAuth) {
 
-       // assert(request.isSecure());
+        // assert(request.isSecure());
 
         Client authenticatedClient;
         try {
@@ -252,25 +241,17 @@ public class Backplane2Controller {
             authenticatedClient = getAuthenticatedClient(basicAuth);
         } catch (AuthException e) {
             logger.error(e.getMessage());
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            return new HashMap<String, Object>() {{
-                put(OAuth2.OAUTH2_TOKEN_ERROR_FIELD_NAME, OAuth2.OAUTH2_TOKEN_INVALID_CLIENT);
-                put(OAuth2.OAUTH2_TOKEN_ERROR_DESC_FIELD_NAME, "Client authentication failed");
-            }};
-        }
-
-        TokenRequest tokenRequest = new TokenRequest(daoFactory, authenticatedClient, grant_type, redirect_uri, code, scope, null);
-
-        HashMap<String, Object> errors = tokenRequest.validate();
-        if (!errors.isEmpty()) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            return errors;
+            return handleTokenException(new TokenException(OAUTH2_TOKEN_INVALID_CLIENT, "Client authentication failed", SC_UNAUTHORIZED), response);
         }
 
         try {
+            TokenRequest tokenRequest = new TokenRequest(daoFactory, authenticatedClient, grant_type, redirect_uri, code, scope, null);
+            tokenRequest.validate();
             return new TokenResponse(tokenRequest, daoFactory).generateResponse();
         } catch (TokenException e) {
             return handleTokenException(e, response);
+        } catch (Exception e) {
+            return handleTokenException(new TokenException(OAUTH2_TOKEN_SERVER_ERROR, e.getMessage(), HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e), response);
         }
     }
 
@@ -549,8 +530,8 @@ public class Backplane2Controller {
     @ExceptionHandler
     @ResponseBody
     public Map<String,Object> handleTokenException(final TokenException e, HttpServletResponse response) {
-        logger.error("Error processing token request: " + e);
-        response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+        logger.error("Error processing token request: " + e.getMessage(), bpConfig.getDebugException(e));
+        response.setStatus(e.getHttpResponseCode());
         return new HashMap<String,Object>() {{
             put(ERR_MSG_FIELD, e.getOauthErrorCode());
             put(ERR_MSG_DESCRIPTION, e.getMessage());
@@ -564,7 +545,7 @@ public class Backplane2Controller {
     @ResponseBody
     public Map<String, String> handle(final AuthException e, HttpServletResponse response) {
         logger.error("Backplane authentication error: " + bpConfig.getDebugException(e));
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setStatus(SC_UNAUTHORIZED);
         return new HashMap<String,String>() {{
             put(ERR_MSG_FIELD, e.getMessage());
         }};
