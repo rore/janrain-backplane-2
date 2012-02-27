@@ -183,7 +183,7 @@ public class Backplane2Controller {
     @ResponseBody
     public Map<String,Object> getToken(HttpServletRequest request, HttpServletResponse response,
                                            @RequestParam(value = "scope", required = false) String scope,
-                                           @RequestParam(required = true) String callback) {
+                                           @RequestParam(required = false) String callback) {
 
         //assert(request.isSecure());
 
