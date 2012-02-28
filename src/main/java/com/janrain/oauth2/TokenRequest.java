@@ -105,7 +105,7 @@ public class TokenRequest {
         String client_id = client.getClientId();
         String client_secret = client.getClientSecret();
 
-        if (!grant_type.equals("client_credentials") && !grant_type.equals("code")) {
+        if (!"client_credentials".equals(grant_type) && !"code".equals(grant_type)) {
             throw new TokenException(OAUTH2_TOKEN_UNSUPPORTED_GRANT, "Invalid grant type");
         }
 

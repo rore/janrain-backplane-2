@@ -241,7 +241,7 @@ public class Backplane2Controller {
             authenticatedClient = getAuthenticatedClient(basicAuth);
         } catch (AuthException e) {
             logger.error(e.getMessage());
-            return handleTokenException(new TokenException(OAUTH2_TOKEN_INVALID_CLIENT, "Client authentication failed", SC_UNAUTHORIZED), response);
+            return handleTokenException(new TokenException(OAUTH2_TOKEN_INVALID_CLIENT, "Client authentication failed", SC_UNAUTHORIZED, e), response);
         }
 
         try {
