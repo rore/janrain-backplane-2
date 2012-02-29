@@ -122,7 +122,11 @@ public class GrantDAO extends DAO {
      */
     public void revokeBuses(String clientId, String buses) throws SimpleDBException, BackplaneServerException, TokenException {
         Scope busesToRevoke = new Scope(Scope.convertToBusScope(buses));
-        for(Grant grant : retrieveGrants(clientId, busesToRevoke)) {
+        List<Grant> grants = retrieveGrants(clientId, busesToRevoke);
+        if (grants == null || grants.isEmpty()) {
+            throw new BackplaneServerException("No grants found to revoke for buses: " + buses);
+        }
+        for(Grant grant : grants) {
             Grant updated = new Grant(grant);
             String remainingBuses = updated.revokeBuses(busesToRevoke.getBusesInScope());
             if(StringUtils.isEmpty(remainingBuses)) {
