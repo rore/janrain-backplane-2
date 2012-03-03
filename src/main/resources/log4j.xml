@@ -27,6 +27,7 @@
 		</layout>
 	</appender>
 
+    <!-- The SMTPAppender is created in code in the InitSystemProps class
     <appender name="mail" class="org.apache.log4j.net.SMTPAppender">
         <param name="BufferSize" value="10"/>
         <param name="From" value="${PARAM1}@${PARAM2}"/>
@@ -36,6 +37,7 @@
             <param name="ConversionPattern" value="%d %-5p [%t]: %c:%L - %m%n"/>
         </layout>
     </appender>
+    -->
 	
 	<!-- Janrain logger -->
 	<logger name="com.janrain">
@@ -79,7 +81,7 @@
 	<root>
 		<priority value="warn" />
 		<appender-ref ref="console" />
-        <appender-ref ref="mail" />
+        <!--<appender-ref ref="mail" /> -->
 	</root>
 	
 </log4j:configuration>

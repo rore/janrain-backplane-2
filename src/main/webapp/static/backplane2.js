@@ -192,7 +192,7 @@ Backplane.expectMessagesWithin = function(interval, types) {
 /**
  * Init callback function
  * @param initPayload in the form {"access_token":"anJeTstYkz64Xf3XGaANFE","expires_in":3600,
- *              "token_type":"Bearer","backplane_channel":"iEuR8VE9MDfmD3dBxbCtdqgYRtDsDnrh"}
+ *              "token_type":"Bearer","scope":"channel:iEuR8VE9MDfmD3dBxbCtdqgYRtDsDnrh"}
  */
 Backplane.finishInit = function (initPayload) {
 
