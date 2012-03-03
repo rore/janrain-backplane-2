@@ -49,12 +49,9 @@ public class TokenDAO extends DAO {
     }
 
     public Token retrieveToken(String tokenId) throws SimpleDBException {
-        if (tokenId.startsWith("an")) {
-            return superSimpleDB.retrieve(bpConfig.getTableName(BP_ACCESS_TOKEN), TokenAnonymous.class, tokenId);
-        } else if (tokenId.startsWith("pr")) {
-            return superSimpleDB.retrieve(bpConfig.getTableName(BP_ACCESS_TOKEN), TokenPrivileged.class, tokenId);
-        } else {
-            logger.error("invalid token! => '" + tokenId + "'");
+        try{
+            return superSimpleDB.retrieve(bpConfig.getTableName(BP_ACCESS_TOKEN), Token.TYPE.fromTokenString(tokenId).getTokenClass(), tokenId);
+        } catch (IllegalArgumentException e) {
             return null; //invalid token id, don't even try
         }
     }

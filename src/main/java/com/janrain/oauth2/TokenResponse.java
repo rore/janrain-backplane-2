@@ -26,6 +26,10 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 
+import static com.janrain.oauth2.OAuth2.OAUTH2_ACCESS_TOKEN_PARAM_NAME;
+import static com.janrain.oauth2.OAuth2.OAUTH2_TOKEN_TYPE_PARAM_NAME;
+import static com.janrain.oauth2.OAuth2.OAUTH2_SCOPE_PARAM_NAME;
+
 /**
  * Response
  * @author Tom Raney
@@ -44,12 +48,12 @@ public class TokenResponse {
             final TokenAnonymous token = new TokenAnonymous(null, request.scope, new Date(new Date().getTime() + Token.EXPIRES_SECONDS * 1000L));
             daoFactory.getTokenDao().persist(token);
             return new LinkedHashMap<String, Object>() {{
-                put("access_token", token.getIdValue());
+                put(OAUTH2_ACCESS_TOKEN_PARAM_NAME, token.getIdValue());
                 put("expires_in", Token.EXPIRES_SECONDS);
-                put("token_type", token.getTokenType());
+                put(OAUTH2_TOKEN_TYPE_PARAM_NAME, Token.getTokenType());
                 //put("backplane_channel", token.getChannelName());
                 if (token.mustReturnScopeInResponse()) {
-                    put("scope", token.getScopeString());
+                    put(OAUTH2_SCOPE_PARAM_NAME, token.getScopeString());
                 }
             }};
         }
@@ -60,10 +64,10 @@ public class TokenResponse {
             final TokenPrivileged token = new TokenPrivileged(request.client.getClientId(), request.getGrant(), request.scope);
             daoFactory.getTokenDao().persist(token);
             return new LinkedHashMap<String, Object>() {{
-                put("access_token", token.getIdValue());
-                put("token_type", "Bearer");
+                put(OAUTH2_ACCESS_TOKEN_PARAM_NAME, token.getIdValue());
+                put(OAUTH2_TOKEN_TYPE_PARAM_NAME, Token.getTokenType());
                 if (token.mustReturnScopeInResponse()) {
-                    put("scope", token.getScopeString());
+                    put(OAUTH2_SCOPE_PARAM_NAME, token.getScopeString());
                 }
             }};
         }
@@ -80,10 +84,10 @@ public class TokenResponse {
             final TokenPrivileged token = new TokenPrivileged(request.client.getClientId(), grants, request.scope);
             daoFactory.getTokenDao().persist(token);
             return new LinkedHashMap<String, Object>() {{
-                put("access_token", token.getIdValue());
-                put("token_type", "Bearer");
+                put(OAUTH2_ACCESS_TOKEN_PARAM_NAME, token.getIdValue());
+                put(OAUTH2_TOKEN_TYPE_PARAM_NAME, Token.getTokenType());
                 if (token.mustReturnScopeInResponse()) {
-                    put("scope", token.getScopeString());
+                    put(OAUTH2_SCOPE_PARAM_NAME, token.getScopeString());
                 }
             }};
         }

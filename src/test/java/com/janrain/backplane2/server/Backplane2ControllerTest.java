@@ -51,6 +51,7 @@ import java.io.UnsupportedEncodingException;
 import java.util.*;
 
 import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_MESSAGES;
+import static com.janrain.oauth2.OAuth2.OAUTH2_ACCESS_TOKEN_PARAM_NAME;
 import static org.junit.Assert.*;
 
 /**
@@ -269,7 +270,7 @@ public class Backplane2ControllerTest {
         // cleanup test token
         String result = response.getContentAsString().substring(response.getContentAsString().indexOf("{"), response.getContentAsString().indexOf(")"));
         Map<String,Object> returnedBody = new ObjectMapper().readValue(result, new TypeReference<Map<String,Object>>() {});
-        daoFactory.getTokenDao().delete((String)returnedBody.get("access_token"));
+        daoFactory.getTokenDao().delete((String)returnedBody.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME));
 
     }
 
@@ -581,7 +582,7 @@ public class Backplane2ControllerTest {
 
         ObjectMapper mapper = new ObjectMapper();
         Map<String,Object> reply = mapper.readValue(response.getContentAsString(), new TypeReference<Map<String,Object>>() {});
-        String returnedToken = (String)reply.get("access_token");
+        String returnedToken = (String)reply.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME);
         Scope scope = new Scope((String)reply.get("scope"));
         assertTrue(scope.getBusesInScope().size() == numBuses);
 
@@ -594,7 +595,7 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
         request.setRequestURI("/v2/messages");
         request.setMethod("GET");
-        request.setParameter("access_token", returnedToken);
+        request.setParameter(OAUTH2_ACCESS_TOKEN_PARAM_NAME, returnedToken);
         handlerAdapter.handle(request, response, controller);
         logger.info("testTokenGrantByCodeScopeComplexity()   => " + response.getContentAsString());
 
@@ -818,7 +819,7 @@ public class Backplane2ControllerTest {
         // Make the call
         request.setRequestURI("/v2/message/123456");
         request.setMethod("GET");
-        request.setParameter("access_token", token.getIdValue());
+        request.setParameter(OAUTH2_ACCESS_TOKEN_PARAM_NAME, token.getIdValue());
         handlerAdapter.handle(request, response, controller);
         logger.info("testMessageEndPoint()  => " + response.getContentAsString());
        // assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
@@ -866,7 +867,7 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
         request.setRequestURI("/v2/message/123456");
         request.setMethod("GET");
-        request.setParameter("access_token", token.getIdValue());
+        request.setParameter(OAUTH2_ACCESS_TOKEN_PARAM_NAME, token.getIdValue());
         request.setParameter("callback", callbackName);
         handlerAdapter.handle(request, response, controller);
         logger.info("testMessageEndPointWithCallBack()  => " + response.getContentAsString());
@@ -913,7 +914,7 @@ public class Backplane2ControllerTest {
         // Make the call
         request.setRequestURI("/v2/message/123456");
         request.setMethod("GET");
-        request.setParameter("access_token", token.getIdValue());
+        request.setParameter(OAUTH2_ACCESS_TOKEN_PARAM_NAME, token.getIdValue());
         handlerAdapter.handle(request, response, controller);
         logger.info("testMessageEndPointPAL()   => " + response.getContentAsString());
        // assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
@@ -968,7 +969,7 @@ public class Backplane2ControllerTest {
          // Make the call
         request.setRequestURI("/v2/messages");
         request.setMethod("GET");
-        request.setParameter("access_token", token.getIdValue());
+        request.setParameter(OAUTH2_ACCESS_TOKEN_PARAM_NAME, token.getIdValue());
         handlerAdapter.handle(request, response, controller);
         logger.info("testMessagesEndPointPAL()   => " + response.getContentAsString());
 
@@ -1001,7 +1002,7 @@ public class Backplane2ControllerTest {
          // Make the call
         request.setRequestURI("/v2/messages");
         request.setMethod("GET");
-        request.setParameter("access_token", token.getIdValue());
+        request.setParameter(OAUTH2_ACCESS_TOKEN_PARAM_NAME, token.getIdValue());
         request.setParameter("since", message1.getIdValue());
         handlerAdapter.handle(request, response, controller);
         logger.info("testMessagesEndPointRegular() => " + response.getContentAsString());
@@ -1052,7 +1053,7 @@ public class Backplane2ControllerTest {
         // Make the call
         request.setRequestURI("/v2/messages");
         request.setMethod("POST");
-        request.setParameter("access_token", token2.getIdValue());
+        request.setParameter(OAUTH2_ACCESS_TOKEN_PARAM_NAME, token2.getIdValue());
         request.addHeader("Content-type", "application/json");
         //request.setContentType("application/json");
         //request.setParameter("messages", TEST_MSG);
@@ -1111,7 +1112,7 @@ public class Backplane2ControllerTest {
             // Make the call
             request.setRequestURI("/v2/messages");
             request.setMethod("GET");
-            request.setParameter("access_token", token.getIdValue());
+            request.setParameter(OAUTH2_ACCESS_TOKEN_PARAM_NAME, token.getIdValue());
             handlerAdapter.handle(request, response, controller);
             logger.info("testGrantAndRevoke() => " + response.getContentAsString());
 
@@ -1241,7 +1242,7 @@ public class Backplane2ControllerTest {
             logger.info("should be a token response => " + response.getContentAsString());
 
             Map<String,Object> returnedBody = new ObjectMapper().readValue(response.getContentAsString(), new TypeReference<Map<String,Object>>() {});
-            String tokenId = (String) returnedBody.get("access_token");
+            String tokenId = (String) returnedBody.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME);
             assertNotNull(tokenId);
 
             Grant grant = daoFactory.getGrantDao().retrieveGrant(code);
@@ -1293,7 +1294,7 @@ public class Backplane2ControllerTest {
          // Make the call
         request.setRequestURI("/v2/messages");
         request.setMethod("GET");
-        request.setParameter("access_token", token.getIdValue());
+        request.setParameter(OAUTH2_ACCESS_TOKEN_PARAM_NAME, token.getIdValue());
         handlerAdapter.handle(request, response, controller);
         logger.info("testMessageOrder()  => " + response.getContentAsString());
 

@@ -20,6 +20,7 @@ import com.janrain.backplane2.server.config.*;
 import com.janrain.backplane2.server.dao.BackplaneMessageDAO;
 import com.janrain.backplane2.server.dao.DaoFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
+import com.janrain.commons.util.Pair;
 import com.janrain.crypto.ChannelUtil;
 import com.janrain.crypto.HmacHashUtils;
 import com.janrain.metrics.MetricsAccumulator;
@@ -45,9 +46,7 @@ import java.io.UnsupportedEncodingException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-import static com.janrain.oauth2.OAuth2.OAUTH2_TOKEN_INVALID_CLIENT;
-import static com.janrain.oauth2.OAuth2.OAUTH2_TOKEN_INVALID_REQUEST;
-import static com.janrain.oauth2.OAuth2.OAUTH2_TOKEN_SERVER_ERROR;
+import static com.janrain.oauth2.OAuth2.*;
 import static javax.servlet.http.HttpServletResponse.SC_UNAUTHORIZED;
 
 /**
@@ -182,7 +181,7 @@ public class Backplane2Controller {
     @RequestMapping(value = "/token", method = { RequestMethod.GET})
     @ResponseBody
     public Map<String,Object> getToken(HttpServletRequest request, HttpServletResponse response,
-                                           @RequestParam(value = "scope", required = false) String scope,
+                                           @RequestParam(value = OAUTH2_SCOPE_PARAM_NAME, required = false) String scope,
                                            @RequestParam(required = false) String callback) {
 
         //assert(request.isSecure());
@@ -269,38 +268,30 @@ public class Backplane2Controller {
 
     @RequestMapping(value = "/messages", method = { RequestMethod.GET})
     public @ResponseBody Map<String,Object> messages(HttpServletRequest request, HttpServletResponse response,
-                                @RequestParam(value = "access_token", required = false) String access_token,
+                                @RequestParam(value = OAUTH2_ACCESS_TOKEN_PARAM_NAME, required = false) String access_token,
                                 @RequestParam(value = "block", defaultValue = "0", required = false) Integer block,
                                 @RequestParam(required = false) String callback,
-                                @RequestParam(value = "since", required = false) String since)
+                                @RequestParam(value = "since", required = false) String since,
+                                @RequestHeader(value = "Authorization", required = false) String authorizationHeader)
             throws SimpleDBException, BackplaneServerException {
 
         //assert(request.isSecure());
-
         //TODO: add support for block?
-        boolean moreMessages = false;
-        BackplaneMessage lastMessage = null;
 
-        MessageRequest messageRequest = new MessageRequest(daoFactory, access_token, callback);
-
-        HashMap<String, Object> errors = messageRequest.validate();
-        if (!errors.isEmpty()) {
-            return errors;
-        }
-
-        List<BackplaneMessage> messages =
-                null;
+        MessageRequest messageRequest;
         try {
-            messages = daoFactory.getBackplaneMessageDAO().retrieveAllMesssagesPerScope(messageRequest.getToken().getScope(), since);
-        } catch (TokenException e) {
-            return handleTokenException(e, response);
+            Pair<String, EnumSet<Token.Source>> tokenAndSource = extractAccessToken(request.getQueryString(), access_token, authorizationHeader);
+            messageRequest = new MessageRequest(daoFactory, callback, tokenAndSource.getLeft(), tokenAndSource.getRight());
+        } catch (InvalidRequestException e) {
+            return handleInvalidRequest(e, response);
         }
-
-        String nextUrl = "https://" + request.getServerName() + "/v2/messages";
+        List<BackplaneMessage> messages = daoFactory.getBackplaneMessageDAO().retrieveAllMesssagesPerScope(messageRequest.getToken().getScope(), since);
 
         //String nextUrl = "https://" + request.getServerName() + "/v2/messages?since=" + messages.get(messages.size()-1).getIdValue();
         List<Map<String,Object>> frames = new ArrayList<Map<String, Object>>();
 
+        boolean moreMessages = false;
+        BackplaneMessage lastMessage = null;
         int messageCount = 0;
         for (BackplaneMessage message : messages) {
             if (messageCount++ > MAX_MSGS_IN_FRAME) {
@@ -329,6 +320,7 @@ public class Backplane2Controller {
             }
         }
 
+        String nextUrl = "https://" + request.getServerName() + "/v2/messages";
         if (lastMessage == null) {
             if (!StringUtils.isBlank(since)) {
                 nextUrl += "?since=" + since;
@@ -361,8 +353,6 @@ public class Backplane2Controller {
         }
     }
 
-
-
     /**
      * Retrieve a single message from the server.
      * @param request
@@ -371,24 +361,24 @@ public class Backplane2Controller {
      */
 
     @RequestMapping(value = "/message/{msg_id}", method = { RequestMethod.GET})
-    public @ResponseBody HashMap<String,Object> message(HttpServletRequest request, HttpServletResponse response,
+    public @ResponseBody Map<String,Object> message(HttpServletRequest request, HttpServletResponse response,
                                                         @PathVariable String msg_id,
-                                                        @RequestParam(value = "access_token", required = false) String access_token,
-                                                        @RequestParam(required = false) String callback)
+                                                        @RequestParam(value = OAUTH2_ACCESS_TOKEN_PARAM_NAME, required = false) String access_token,
+                                                        @RequestParam(required = false) String callback,
+                                                        @RequestHeader(value = "Authorization", required = false) String authorizationHeader)
             throws BackplaneServerException {
 
         //assert(request.isSecure());
 
-        MessageRequest messageRequest = new MessageRequest(daoFactory, access_token, callback);
-
-        HashMap<String,Object> error = messageRequest.validate();
-        if (!error.isEmpty()) {
-            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            return error;
+        MessageRequest messageRequest;
+        try {
+            Pair<String, EnumSet<Token.Source>> tokenAndSource = extractAccessToken(request.getQueryString(), access_token, authorizationHeader);
+            messageRequest = new MessageRequest(daoFactory, callback, tokenAndSource.getLeft(), tokenAndSource.getRight());
+        } catch (InvalidRequestException e) {
+            return handleInvalidRequest(e, response);
         }
 
         BackplaneMessage message = null;
-
         try {
             message = daoFactory.getBackplaneMessageDAO().retrieveBackplaneMessage(msg_id);
         } catch (SimpleDBException e) {
@@ -417,12 +407,6 @@ public class Backplane2Controller {
                     }};
                 }
             }
-        }
-
-        error = messageRequest.validate();
-        if (!error.isEmpty()) {
-            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            return error;
         }
 
         if (StringUtils.isBlank(callback)) {
@@ -456,7 +440,7 @@ public class Backplane2Controller {
     @RequestMapping(value = "/messages", method = { RequestMethod.POST})
     public @ResponseBody HashMap<String,Object>  postMessages(HttpServletRequest request, HttpServletResponse response,
                                                               @RequestBody Map<String,List<Map<String,Object>>> messages,
-                                                              @RequestParam(value = "access_token", required = false) String access_token,
+                                                              @RequestParam(value = OAUTH2_ACCESS_TOKEN_PARAM_NAME, required = false) String access_token,
                                                               @RequestParam(required = false) String callback,
                                                               @RequestParam(required = false) String since) throws BackplaneServerException, SimpleDBException {
 
@@ -548,6 +532,20 @@ public class Backplane2Controller {
         response.setStatus(SC_UNAUTHORIZED);
         return new HashMap<String,String>() {{
             put(ERR_MSG_FIELD, e.getMessage());
+        }};
+    }
+
+    @ExceptionHandler
+    @ResponseBody
+    public Map<String, Object> handleInvalidRequest(final InvalidRequestException e, HttpServletResponse response) {
+        logger.error("Error handling backplane request", bpConfig.getDebugException(e));
+        response.setStatus(e.getHttpResponseCode());
+        return new HashMap<String,Object>() {{
+            put(ERR_MSG_FIELD, e.getMessage());
+            String errorDescription = e.getErrorDescription();
+            if (StringUtils.isNotEmpty(errorDescription)) {
+                put(ERR_MSG_DESCRIPTION, errorDescription);
+            }
         }};
     }
 
@@ -925,13 +923,47 @@ public class Backplane2Controller {
      */
     private void checkClientCredentialsBasicAuthOnly(String queryString, String client_id, String client_secret) throws AuthException {
         if (StringUtils.isNotEmpty(queryString)) {
-            List<String> queryParams = Arrays.asList(queryString.split("&"));
-            if(queryParams.contains("client_id") || queryParams.contains("client_secret")) {
+            Map<String,String> queryParamsMap = new HashMap<String, String>();
+            for(String queryParamPair : Arrays.asList(queryString.split("&"))) {
+                String[] nameVal = queryParamPair.split("=", 2);
+                queryParamsMap.put(nameVal[0], nameVal.length >0 ? nameVal[1] : null);
+            }
+            if(queryParamsMap.containsKey("client_id") || queryParamsMap.containsKey("client_secret")) {
                 throw new AuthException("Client credentials MUST NOT be included in the request URI (OAuth2 2.3.1)");
             }
         }
         if (StringUtils.isNotEmpty(client_id) || StringUtils.isNotEmpty(client_secret)) {
             throw new AuthException("Client credentials in request body are NOT RECOMMENDED (OAuth2 2.3.1)");
         }
+    }
+    
+    private Pair<String,EnumSet<Token.Source>> extractAccessToken(String queryString, String requestParam, String authHeader) {
+        String token = null;
+        EnumSet<Token.Source> foundIn = EnumSet.noneOf(Token.Source.class);
+
+        if (StringUtils.isNotEmpty(queryString)) {
+            Map<String,String> queryParamsMap = new HashMap<String, String>();
+            for(String queryParamPair : Arrays.asList(queryString.split("&"))) {
+                String[] nameVal = queryParamPair.split("=", 2);
+                queryParamsMap.put(nameVal[0], nameVal.length >0 ? nameVal[1] : null);
+            }
+            if(queryParamsMap.containsKey(OAUTH2_ACCESS_TOKEN_PARAM_NAME)) {
+                token = queryParamsMap.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME);
+                foundIn.add(Token.Source.QUERYPARAM);
+            }
+        }
+        
+        if (requestParam != null) {
+            token = requestParam;
+            foundIn.add(Token.Source.POSTBODY);
+        }
+
+        int tokenTypeLength = Token.getTokenType().length();
+        if (authHeader != null && authHeader.startsWith(Token.getTokenType()) && authHeader.length() > tokenTypeLength) {
+            token = authHeader.substring(tokenTypeLength + 1);
+            foundIn.add(Token.Source.AUTHHEADER);
+        }
+        
+        return new Pair<String, EnumSet<Token.Source>>(token, foundIn);
     }
 }

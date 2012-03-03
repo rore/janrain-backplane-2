@@ -64,6 +64,9 @@ public class OAuth2 {
     public static final String OAUTH2_TOKEN_INVALID_SCOPE = "invalid_scope";
     public static final String OAUTH2_TOKEN_SERVER_ERROR = "server_error"; // not actually defined in OAuth2 5.2, what should one do?!
 
+    public static final String OAUTH2_ACCESS_TOKEN_PARAM_NAME = "access_token";
+    public static final String OAUTH2_TOKEN_TYPE_PARAM_NAME = "token_type";
+    public static final String OAUTH2_SCOPE_PARAM_NAME = "scope";
 
     public static void validateRedirectUri(String redirectUri) throws ValidationException {
         validateRedirectUri(redirectUri, null);

@@ -20,75 +20,55 @@ import com.janrain.backplane2.server.dao.DaoFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import org.jetbrains.annotations.NotNull;
 
-import java.util.HashMap;
+import javax.servlet.http.HttpServletResponse;
+import java.util.EnumSet;
 
 /**
  * @author Tom Raney
  */
 public class MessageRequest {
 
-    final String tokenString;
-    final String callback;
-    Token token;
-
-    private static final String ERR_MSG_FIELD = "error";
-    private static final String ERR_MSG_DESCRIPTION = "error_description";
-
-    public MessageRequest(DaoFactory daoFactory, String tokenString, String callback) {
-        this.tokenString = tokenString;
+    public MessageRequest(DaoFactory daoFactory, String callback, String tokenString, EnumSet<Token.Source> tokenFoundIn) {
         this.callback = callback;
-
+        this.tokenFoundIn = tokenFoundIn;
         try {
-            setToken(daoFactory.getTokenDao().retrieveToken(tokenString));
+            this.token = daoFactory.getTokenDao().retrieveToken(tokenString);
         } catch (SimpleDBException e) {
             // do nothing for now
             logger.debug("failed to load token '" + tokenString + "'", e);
         }
-    }
-
-
-
-    private void setToken(Token token) {
-        this.token = token;
+        validate();
     }
 
     public Token getToken() {
         return this.token;
     }
 
-
-    public HashMap<String, Object> validate() {
-
-        if (token == null || token.isExpired()) {
-            return error("Not authorized",null);
-        }
-
-        if (StringUtils.isNotEmpty(callback)) {
-            if (!callback.matches("[\\._a-zA-Z0-9]*")) {
-                return error("invalid_request", "Callback parameter value is malformed");
-            }
-        }
-
-        // is the token properly scoped for this message id?
-
-        return new HashMap<String, Object>();
-    }
-
-
-    public HashMap<String, Object> error(@NotNull final String error, final String description) {
-        return new HashMap<String, Object>() {{
-            put(ERR_MSG_FIELD, error);
-            if (description != null) {
-                put(ERR_MSG_DESCRIPTION, description);
-            }
-        }};
-    }
-
     // - PRIVATE
 
     private static final Logger logger = Logger.getLogger(MessageRequest.class);
 
+    private final String callback;
+    private Token token;
+    private final EnumSet<Token.Source> tokenFoundIn;
 
+    private void validate() throws InvalidRequestException {
+
+        if (StringUtils.isNotEmpty(callback)) {
+            if (!callback.matches("[\\._a-zA-Z0-9]*")) {
+                throw new InvalidRequestException("invalid_request", "Callback parameter value is malformed");
+            }
+        }
+
+        if (token == null || token.isExpired()) {
+            throw new InvalidRequestException("Not authorized", HttpServletResponse.SC_FORBIDDEN);
+        }
+        
+        if (! token.isAllowedSources(tokenFoundIn)) {
+            throw new InvalidRequestException("invalid_request", "token source(s) not allowed: " + tokenFoundIn);
+        }
+
+        // is the token properly scoped for this message id?
+    }
 }

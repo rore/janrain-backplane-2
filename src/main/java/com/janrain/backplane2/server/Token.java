@@ -21,7 +21,7 @@ import com.janrain.oauth2.TokenException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
-import java.util.Date;
+import java.util.*;
 
 /**
  * @author Tom Raney
@@ -32,7 +32,69 @@ public abstract class Token extends Base {
     public static final int TOKEN_LENGTH = 20;
     public static final int EXPIRES_SECONDS = 3600;
     public static final String ANONYMOUS = "anonymous";
-    public static enum TYPE {REGULAR_TOKEN, PRIVILEGED_TOKEN}
+
+    public boolean isAllowedSources(Collection<Source> tokenFoundIn) {
+        if (tokenFoundIn == null || tokenFoundIn.size() > 1) return false;
+        for(Source tokenSource : tokenFoundIn) {
+            if (! getAccessType().getAllowedSources().contains(tokenSource)) return false;
+        }
+        return true;
+    }
+
+    public static enum Source {QUERYPARAM, POSTBODY, AUTHHEADER }
+    
+    public static enum TYPE {
+
+        REGULAR_TOKEN("an", TokenAnonymous.class, EnumSet.allOf(Source.class)),
+
+        PRIVILEGED_TOKEN("pr", TokenPrivileged.class, EnumSet.of(Source.POSTBODY, Source.AUTHHEADER));
+
+        public String getPrefix() {
+            return prefix;
+        }
+
+        public Class<? extends Token> getTokenClass() {
+            return tokenClass;
+        }
+
+        public EnumSet<Source> getAllowedSources() {
+            return allowedSources;
+        }
+
+        public static TYPE fromTokenString(String token) {
+            TYPE type = null;
+            try {
+                type = typesByPrefix.get(token.substring(0, PREFIX_LENGTH));
+            } catch (Exception e) {
+                // do nothing
+            }
+            if (type == null) {
+                logger.error("invalid token! => '" + token + "'");
+                throw new IllegalArgumentException();
+            }
+            return type;
+        }
+
+        // - PRIVATE
+
+        private final static int PREFIX_LENGTH = 2;
+        private final String prefix;
+        private final Class<? extends Token> tokenClass;
+        private final EnumSet<Source> allowedSources;
+        
+        private static final Map<String,TYPE> typesByPrefix = new HashMap<String, TYPE>();
+        static {
+            for (TYPE t : values()) {
+                typesByPrefix.put(t.getPrefix(), t);
+            }
+        }
+
+        private TYPE(String prefix, Class<? extends Token> tokenClass, EnumSet<Source> allowedSources) {
+            this.prefix = prefix;
+            this.tokenClass = tokenClass;
+            this.allowedSources = allowedSources;
+        }
+    }
 
     /**
      * Empty default constructor for AWS to use.
@@ -53,8 +115,7 @@ public abstract class Token extends Base {
         super(tokenString,buses,expires);
 
         logger.debug("creating token with id '" + tokenString + "'");
-        assert( (accessType == TYPE.REGULAR_TOKEN && tokenString.startsWith("an")) ||
-                (accessType == TYPE.PRIVILEGED_TOKEN && tokenString.startsWith("pr")));
+        assert( tokenString.startsWith(accessType.getPrefix()) );
 
         put(TokenField.TYPE.getFieldName(), accessType.name());
 
@@ -64,7 +125,8 @@ public abstract class Token extends Base {
 
     }
 
-    public String getTokenType() {
+    /** Support only one OAuth token type */
+    public static String getTokenType() {
         return "Bearer";
     }
 
@@ -72,8 +134,12 @@ public abstract class Token extends Base {
         return TYPE.valueOf(this.get(TokenField.TYPE));
     }
 
-    public Scope getScope() throws TokenException {
-        return new Scope(this.get(TokenField.SCOPE));
+    public Scope getScope()  {
+        try {
+            return new Scope(this.get(TokenField.SCOPE));
+        } catch (TokenException e) {
+            throw new IllegalStateException("Invalid scope on get(), should have been validated on token creation: " + this.get(TokenField.SCOPE));
+        }
     }
 
     public boolean isPrivileged() {
@@ -105,9 +171,20 @@ public abstract class Token extends Base {
 
 
     public static enum TokenField implements MessageField {
-        TYPE("type", true),
-        SCOPE("scope", false);
 
+        TYPE("type", true),
+
+        SCOPE("scope", false) {
+            @Override
+            public void validate(String value) throws RuntimeException {
+                super.validate(value);
+                try {
+                    new Scope(value);
+                } catch (TokenException e) {
+                    throw new IllegalArgumentException("Invalid scope: " + value);
+                }
+            }
+        };
 
         @Override
         public String getFieldName() {

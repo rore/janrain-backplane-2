@@ -57,7 +57,6 @@ public class TokenAnonymous extends Token {
             scopeString += " channel:" + channel;
         }
 
-        // TODO: always return scope?  The channel is not known so it must?
         setMustReturnScopeInResponse(true);
         setScopeString(scopeString);
 
