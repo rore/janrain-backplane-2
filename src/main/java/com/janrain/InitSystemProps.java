@@ -56,38 +56,43 @@ public class InitSystemProps {
         load(SMTP);
         load(FROM);
 
-        logger.info("Creating SMTPAppender for log4j");
+        logger.info("Attempting to create SMTPAppender for log4j");
         //Create the Log4j smtp appender - which must be created programmatically to
         //be sure the parameters are loaded first.
-        String smtp[] = System.getProperty(SMTP).split(":");
-        if (smtp.length != 5) {
-            logger.error("Missing parameters.  Expected 'protocol:host:port:username:password' from PARAM4 but received: '" + System.getProperty(SMTP) + "'");
+        String smtpProps = System.getProperty("SMTP");
+        if (smtpProps != null) {
+            String smtp[] = smtpProps.split(":");
+            if (smtp.length != 5) {
+                logger.error("Missing parameters.  Expected 'protocol:host:port:username:password' from PARAM4 but received: '" + System.getProperty(SMTP) + "'");
+            }
+            if (StringUtils.isBlank(System.getProperty(FROM))) {
+                logger.error("Missing FROM [PARAM5] for SMTPAppender");
+            }
+            String smtpProtocol = smtp[0];
+            String host = smtp[1];
+            String port = smtp[2];
+            String userName = smtp[3];
+            String password = smtp[4];
+
+            org.apache.log4j.net.SMTPAppender appender = new org.apache.log4j.net.SMTPAppender();
+            appender.setName("mail");
+            appender.setBufferSize(10);
+            appender.setSMTPHost(host);
+            appender.setSMTPProtocol(smtpProtocol);
+            appender.setSMTPPort(Integer.parseInt(port));
+
+            appender.setSMTPUsername(userName);
+            appender.setSMTPPassword(password);
+            appender.setFrom(System.getProperty(FROM));
+            appender.setTo(System.getProperty(BP_EMAIL_TARGET));
+            appender.setSubject(System.getProperty(BP_AWS_INSTANCE_ID) + " Backplane Errors");
+            appender.setLayout(new EnhancedPatternLayout("%d %-5p [%t]: %c:%L - %m%n"));
+            appender.activateOptions();
+
+            Logger.getRootLogger().addAppender(appender);
+        } else {
+            logger.error("No email credentials to create SMTPAppender");
         }
-        if (StringUtils.isBlank(System.getProperty(FROM))) {
-            logger.error("Missing FROM [PARAM5] for SMTPAppender");
-        }
-        String smtpProtocol = smtp[0];
-        String host = smtp[1];
-        String port = smtp[2];
-        String userName = smtp[3];
-        String password = smtp[4];
-
-        org.apache.log4j.net.SMTPAppender appender = new org.apache.log4j.net.SMTPAppender();
-        appender.setName("mail");
-        appender.setBufferSize(10);
-        appender.setSMTPHost(host);
-        appender.setSMTPProtocol(smtpProtocol);
-        appender.setSMTPPort(Integer.parseInt(port));
-
-        appender.setSMTPUsername(userName);
-        appender.setSMTPPassword(password);
-        appender.setFrom(System.getProperty(FROM));
-        appender.setTo(System.getProperty(BP_EMAIL_TARGET));
-        appender.setSubject(System.getProperty(BP_AWS_INSTANCE_ID) + " Backplane Errors");
-        appender.setLayout(new EnhancedPatternLayout("%d %-5p [%t]: %c:%L - %m%n"));
-        appender.activateOptions();
-
-        Logger.getRootLogger().addAppender(appender);
 
     }
 
