@@ -59,7 +59,7 @@ public class InitSystemProps {
         logger.info("Attempting to create SMTPAppender for log4j");
         //Create the Log4j smtp appender - which must be created programmatically to
         //be sure the parameters are loaded first.
-        String smtpProps = System.getProperty("SMTP");
+        String smtpProps = System.getProperty(SMTP);
         if (smtpProps != null) {
             String smtp[] = smtpProps.split(":");
             if (smtp.length != 5) {
