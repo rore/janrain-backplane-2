@@ -188,10 +188,9 @@ public class ProvisioningController2Test {
     }
 
     @Test
-    public void testBusCRUD() throws Exception {
-
-        refreshRequestAndResponse();
+    public void testBusCRUDinvalidBusOwner() throws Exception {
         // create client
+        refreshRequestAndResponse();
         String jsonUpdateBus = "{ \"admin\": \"" + user.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\"," +
                 " \"configs\": [ {\n" +
                 "            \"BUS_NAME\": \"customer1\",\n" +
@@ -205,8 +204,46 @@ public class ProvisioningController2Test {
         request.setRequestURI("/v2/provision/bus/update");
         request.setMethod("POST");
         handlerAdapter.handle(request, response, controller);
+        logger.info("testBusUpdate -> " + response.getContentAsString());
+        assertTrue(response.getStatus() == HttpServletResponse.SC_OK);
+        assertTrue(response.getContentAsString().contains("Invalid bus owner: busowner1"));
+    }
+
+    @Test
+    public void testBusCRUD() throws Exception {
+
+        // create bus owner
+        refreshRequestAndResponse();
+        String jsonUpdateBusOwner = "{ \"admin\": \"" + user.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\"," +
+                " \"configs\": [ { \"USER\":\"" + busOwner.get(User.Field.USER) + "\", \"PWDHASH\":\"" + busOwner.get(User.Field.PWDHASH) + "\"} ] }";
+        logger.info("passing in json " + jsonUpdateBusOwner);
+        request.setContent(jsonUpdateBusOwner.getBytes());
+        request.addHeader("Content-type", "application/json");
+        request.setRequestURI("/v2/provision/user/update");
+        request.setMethod("POST");
+        handlerAdapter.handle(request, response, controller);
         logger.info("testClientUpdate -> " + response.getContentAsString());
         assertTrue(response.getStatus() == HttpServletResponse.SC_OK);
+        assertTrue(response.getContentAsString().contains("{\"" + busOwner.get(User.Field.USER) + "\":\"BACKPLANE_UPDATE_SUCCESS\"}"));
+
+        // create bus
+        refreshRequestAndResponse();
+        String jsonUpdateBus = "{ \"admin\": \"" + user.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\"," +
+                " \"configs\": [ {\n" +
+                "            \"BUS_NAME\": \"customer1\",\n" +
+                "            \"OWNER\": \"" + busOwner.get(User.Field.USER) + "\",\n" +
+                "            \"RETENTION_TIME_SECONDS\": \"600\",\n" +
+                "            \"RETENTION_STICKY_TIME_SECONDS\": \"28800\"\n" +
+                "        } ] }";
+        logger.info("passing in json " + jsonUpdateBus);
+        request.setContent(jsonUpdateBus.getBytes());
+        request.addHeader("Content-type", "application/json");
+        request.setRequestURI("/v2/provision/bus/update");
+        request.setMethod("POST");
+        handlerAdapter.handle(request, response, controller);
+        logger.info("testBusUpdate -> " + response.getContentAsString());
+        assertTrue(response.getStatus() == HttpServletResponse.SC_OK);
+        assertTrue(response.getContentAsString().contains("{\"customer1\":\"BACKPLANE_UPDATE_SUCCESS\"}"));
 
         refreshRequestAndResponse();
         String listJson = "{ \"admin\": \"" + user.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\", \"entities\": [] }";
@@ -216,9 +253,9 @@ public class ProvisioningController2Test {
         request.setRequestURI("/v2/provision/bus/list");
         request.setMethod("POST");
         handlerAdapter.handle(request, response, controller);
-        logger.info("testClientList() => " + response.getContentAsString());
+        logger.info("testBusList() => " + response.getContentAsString());
         assertTrue(response.getContentAsString().contains("customer1"));
-        assertTrue(response.getContentAsString().contains("busowner1"));
+        assertTrue(response.getContentAsString().contains(busOwner.get(User.Field.USER)));
 
         refreshRequestAndResponse();
         String deleteJson = "{ \"admin\": \"" + user.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\", " +

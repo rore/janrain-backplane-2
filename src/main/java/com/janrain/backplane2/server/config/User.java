@@ -16,7 +16,8 @@
 
 package com.janrain.backplane2.server.config;
 
-import com.janrain.commons.supersimpledb.message.AbstractMessage;
+import com.janrain.backplane2.server.dao.DaoFactory;
+import com.janrain.backplane2.server.provision.ProvisioningConfig;
 import com.janrain.commons.supersimpledb.message.MessageField;
 
 import java.util.EnumSet;
@@ -25,7 +26,7 @@ import java.util.Set;
 /**
  * @author Johnny Bufu
  */
-public class User extends AbstractMessage {
+public class User extends ProvisioningConfig {
 
     // - PUBLIC
 
@@ -37,6 +38,11 @@ public class User extends AbstractMessage {
     @Override
     public Set<? extends MessageField> getFields() {
         return EnumSet.allOf(Field.class);
+    }
+
+    @Override
+    public void validate(DaoFactory daoFactory) throws Exception {
+        // do nothing
     }
 
     public static enum Field implements MessageField {

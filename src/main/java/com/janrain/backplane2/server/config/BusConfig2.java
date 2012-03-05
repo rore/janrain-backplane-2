@@ -16,7 +16,8 @@
 
 package com.janrain.backplane2.server.config;
 
-import com.janrain.commons.supersimpledb.message.AbstractMessage;
+import com.janrain.backplane2.server.dao.DaoFactory;
+import com.janrain.backplane2.server.provision.ProvisioningConfig;
 import com.janrain.commons.supersimpledb.message.MessageField;
 
 import java.util.EnumSet;
@@ -27,7 +28,7 @@ import java.util.Set;
 /**
  * @author Johnny Bufu
  */
-public class BusConfig2 extends AbstractMessage {
+public class BusConfig2 extends ProvisioningConfig {
 
     // - PUBLIC
 
@@ -50,6 +51,14 @@ public class BusConfig2 extends AbstractMessage {
     @Override
     public Set<? extends MessageField> getFields() {
         return EnumSet.allOf(Field.class);
+    }
+
+    @Override
+    public void validate(DaoFactory daoFactory) throws Exception {
+        User user = daoFactory.getBusOwnerDAO().retrieveBusOwner(get(Field.OWNER.getFieldName()));
+        if (user == null) {
+            throw new IllegalArgumentException("Invalid bus owner: " + get(Field.OWNER.getFieldName()));
+        }
     }
 
     public static enum Field implements MessageField {
