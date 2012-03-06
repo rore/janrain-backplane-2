@@ -90,7 +90,6 @@ public class Backplane2ControllerTest {
             "    {\n" +
             "        \"bus\": \"mybus.com\",\n" +
             "        \"channel\": \"testchannel\",\n" +
-            "        \"source\": \"ftp://bla_source/\",\n" +
             "        \"type\": \"bla_type\",\n" +
             "        \"sticky\": \"false\",\n" +
             "        \"payload\":{\n" +
@@ -170,7 +169,7 @@ public class Backplane2ControllerTest {
 
 
     private Client createTestClient() throws SimpleDBException {
-        Client client = new Client(ChannelUtil.randomString(15), HmacHashUtils.hmacHash("secret"), "source_url", "http://redirect.com");
+        Client client = new Client(ChannelUtil.randomString(15), HmacHashUtils.hmacHash("secret"), "http://source_url.com", "http://redirect.com");
         daoFactory.getClientDAO().persist(client);
         return client;
     }
@@ -565,7 +564,7 @@ public class Backplane2ControllerTest {
         request.setMethod("POST");
         request.setParameter("grant_type", "code");
         request.setParameter("code", grant.getIdValue());
-        request.setParameter("scope", "sticky:false sticky:true source:ftp://bla_source/");
+        request.setParameter("scope", "sticky:false sticky:true source:" + testClient.getSourceUrl());
         request.setParameter("redirect_uri", testClient.get(Client.ClientField.REDIRECT_URI));
         setOAuthBasicAuthentication(request, testClient.getClientId(), "secret");
         handlerAdapter.handle(request, response, controller);
@@ -588,6 +587,7 @@ public class Backplane2ControllerTest {
 
         Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
 
+        msg.put(BackplaneMessage.Field.SOURCE.getFieldName(), testClient.getSourceUrl());
         BackplaneMessage message1 = new BackplaneMessage("123456", randomBuses.get(randomBuses.size()-1), "randomchannel", msg);
         this.saveMessage(message1);
 
@@ -813,6 +813,7 @@ public class Backplane2ControllerTest {
         ObjectMapper mapper = new ObjectMapper();
         Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
 
+        msg.put(BackplaneMessage.Field.SOURCE.getFieldName(), testClient.getSourceUrl());
         BackplaneMessage message = new BackplaneMessage("123456", "mybus.com", token.getChannelName(), msg);
         this.saveMessage(message);
 
@@ -860,6 +861,7 @@ public class Backplane2ControllerTest {
         ObjectMapper mapper = new ObjectMapper();
         Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
 
+        msg.put(BackplaneMessage.Field.SOURCE.getFieldName(), testClient.getSourceUrl());
         BackplaneMessage message = new BackplaneMessage("123456", "mybus.com", token.getChannelName(), msg);
         this.saveMessage(message);
 
@@ -908,6 +910,7 @@ public class Backplane2ControllerTest {
         ObjectMapper mapper = new ObjectMapper();
         Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
 
+        msg.put(BackplaneMessage.Field.SOURCE.getFieldName(), testClient.getSourceUrl());
         BackplaneMessage message = new BackplaneMessage("123456", "mybus.com", "randomchannel", msg);
         this.saveMessage(message);
 
@@ -959,6 +962,7 @@ public class Backplane2ControllerTest {
         // Seed 2 messages
         ObjectMapper mapper = new ObjectMapper();
         Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
+        msg.put(BackplaneMessage.Field.SOURCE.getFieldName(), testClient.getSourceUrl());
 
         BackplaneMessage message1 = new BackplaneMessage("123456", "this.com", "qCDsQm3JTnhZ91RiPpri8R31ehJQ9lhp", msg);
         this.saveMessage(message1);
@@ -992,6 +996,7 @@ public class Backplane2ControllerTest {
         // Seed 2 messages
         ObjectMapper mapper = new ObjectMapper();
         Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
+        msg.put(BackplaneMessage.Field.SOURCE.getFieldName(), testClient.getSourceUrl());
 
         BackplaneMessage message1 = new BackplaneMessage(BackplaneMessage.generateMessageId(), "a.com", token.getChannelName(), msg);
         this.saveMessage(message1);
@@ -1047,7 +1052,7 @@ public class Backplane2ControllerTest {
         this.saveToken(token1);
 
         // Create appropriate token
-        TokenPrivileged token2 = new TokenPrivileged("clientFoo", "mybus.com yourbus.com", "bus:yourbus.com", null);
+        TokenPrivileged token2 = new TokenPrivileged(testClient.getClientId(), "mybus.com yourbus.com", "bus:yourbus.com", null);
         this.saveToken(token2);
 
         // Make the call
@@ -1068,6 +1073,8 @@ public class Backplane2ControllerTest {
         request.setContent(msgsString.getBytes());
 
         handlerAdapter.handle(request, response, controller);
+        logger.info(response.getContentAsString());
+
 
         assertTrue(response.getStatus() == HttpServletResponse.SC_CREATED);
 
@@ -1273,6 +1280,7 @@ public class Backplane2ControllerTest {
 
         ObjectMapper mapper = new ObjectMapper();
         Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
+        msg.put(BackplaneMessage.Field.SOURCE.getFieldName(), testClient.getSourceUrl());
 
         // seed messages
         int numMessages = 10;

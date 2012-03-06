@@ -57,6 +57,10 @@ public class Client extends User {
         return this.get(ClientField.REDIRECT_URI);
     }
 
+    public String getSourceUrl() {
+        return this.get(ClientField.SOURCE_URL);
+    }
+
     public static enum ClientField implements MessageField {
 
         // - PUBLIC

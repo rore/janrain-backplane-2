@@ -474,10 +474,29 @@ public class Backplane2Controller {
         //TODO: add logic to verify the message cap per channel has not been exceeded
         // and confirm what to do if the Nth message went over the limit but the first N-1
         // messages succeeded in one request...
+        TokenPrivileged tokenPrivileged = (TokenPrivileged) token;
+        Client postingClient = daoFactory.getClientDAO().retrieveClient(tokenPrivileged.getClientId());
+        if (postingClient == null) {
+            logger.error("Could not retrieve client " + tokenPrivileged.getClientId() + " associate with token " + tokenPrivileged.getIdValue());
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            return new HashMap<String,Object>() {{
+                put(ERR_MSG_FIELD, "A server error has occurred");
+            }};
+        }
 
         // analyze each message for proper bus
         List<Map<String,Object>> msgs = messages.get("messages");
         for(Map<String,Object> messageData : msgs) {
+
+            //TODO: should we check for additional fields?
+            if (messageData.containsKey(BackplaneMessage.Field.SOURCE)) {
+                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                return new HashMap<String,Object>() {{
+                    put(ERR_MSG_FIELD, "Must not include the field 'source' in an upstream message");
+                }};
+            }
+
+            messageData.put(BackplaneMessage.Field.SOURCE.getFieldName(), postingClient.getSourceUrl());
             BackplaneMessage message = new BackplaneMessage(messageData);
             if (!token.isAllowedBus(message.get(BackplaneMessage.Field.BUS))) {
                 response.setStatus(HttpServletResponse.SC_FORBIDDEN);
