@@ -16,12 +16,12 @@
 
 package com.janrain.backplane2.server.config;
 
-import com.janrain.InitSystemProps;
 import com.janrain.backplane2.server.dao.DaoFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.commons.supersimpledb.message.AbstractNamedMap;
 import com.janrain.commons.util.AwsUtility;
+import com.janrain.commons.util.InitSystemProps;
 import com.janrain.crypto.HmacHashUtils;
 import com.janrain.metrics.MetricMessage;
 import com.janrain.metrics.MetricsAccumulator;
@@ -198,7 +198,7 @@ public class Backplane2Config {
 
     @SuppressWarnings({"UnusedDeclaration"})
     private Backplane2Config() {
-        this.bpInstanceId = getAwsProp(InitSystemProps.BP_AWS_INSTANCE_ID);
+        this.bpInstanceId = getAwsProp(InitSystemProps.AWS_INSTANCE_ID);
         this.EC2InstanceId = new AwsUtility().retrieveEC2InstanceId();
 
         try {

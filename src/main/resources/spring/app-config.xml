@@ -25,7 +25,7 @@
 		http://www.springframework.org/schema/context/spring-context-3.0.xsd">
 
     <!-- pre-load system properties from application context, if it exists -->
-    <bean id="loadSystemProps" class="com.janrain.InitSystemProps" />
+    <bean id="loadSystemProps" class="com.janrain.commons.util.InitSystemProps" />
 
 	<!-- Scans the classpath of this application for @Components to deploy as beans -->
 	<context:component-scan base-package="com.janrain" />
@@ -45,7 +45,7 @@
 
     <bean id="simpleDB" class="com.amazonaws.services.simpledb.AmazonSimpleDBClient">
         <constructor-arg>
-            <bean class="com.janrain.backplane2.server.config.SystemPropsAWSCredentials"/>
+            <bean class="com.janrain.commons.util.SystemPropsAWSCredentials"/>
         </constructor-arg>
     </bean>
 
