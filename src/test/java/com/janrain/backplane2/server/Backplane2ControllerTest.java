@@ -586,7 +586,6 @@ public class Backplane2ControllerTest {
         assertTrue(scope.getBusesInScope().size() == numBuses);
 
         Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
-        msg.put(BackplaneMessage.Field.ID.getFieldName(), "123456");
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), randomBuses.get(randomBuses.size()-1));
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), "randomchannel");
         BackplaneMessage message1 = new BackplaneMessage(testClient.getSourceUrl(), msg);

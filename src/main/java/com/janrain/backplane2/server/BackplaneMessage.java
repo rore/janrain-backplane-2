@@ -82,7 +82,8 @@ public class BackplaneMessage extends AbstractMessage {
         frame.put(Field.SOURCE.getFieldName(), get(Field.SOURCE));
         frame.put(Field.TYPE.getFieldName(), get(Field.TYPE));
         frame.put(Field.BUS.getFieldName(), get(Field.BUS));
-        frame.put(Field.CHANNEL.getFieldName(), get(Field.CHANNEL.getFieldName()));
+        frame.put(Field.CHANNEL.getFieldName(), get(Field.CHANNEL));
+        frame.put(Field.STICKY.getFieldName(), containsKey(Field.STICKY.getFieldName()) ? get(Field.STICKY) : Boolean.FALSE.toString());
 
         try {
             if (includePayload) {
