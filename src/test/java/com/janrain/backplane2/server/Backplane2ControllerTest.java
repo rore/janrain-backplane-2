@@ -1129,6 +1129,7 @@ public class Backplane2ControllerTest {
             handlerAdapter.handle(request, response, controller);
             logger.info("testGrantAndRevoke() => " + response.getContentAsString());
 
+            assertTrue(HttpServletResponse.SC_FORBIDDEN == response.getStatus());
             assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
         } finally {
             daoFactory.getTokenDao().delete(token.getIdValue());

@@ -52,6 +52,11 @@ public class BackplaneMessage extends AbstractMessage {
         if (! d.containsKey(Field.STICKY.getFieldName())) {
             d.put(Field.STICKY.getFieldName(), Boolean.FALSE.toString());
         }
+
+        if (getFields().size() < d.size()) {
+                throw new IllegalArgumentException("Extra invalid parameter(s)");
+        }
+
         super.init(id, d);
     }
 
@@ -176,4 +181,5 @@ public class BackplaneMessage extends AbstractMessage {
             throw new BackplaneServerException(errMsg, e);
         }
     }
+
 }

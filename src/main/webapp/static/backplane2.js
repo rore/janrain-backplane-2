@@ -198,7 +198,18 @@ Backplane.finishInit = function (initPayload) {
 
     this.log("received access token and channel from server");
     this.token = initPayload.access_token;
-    this.channelName = initPayload.backplane_channel;
+    var scopes = initPayload.scope.split(" ");
+    for (var k = 0; k < scopes.length; k++) {
+        if (scopes[k].indexOf("channel:") > -1) {
+            var channel = scopes[k].split(":");
+            this.channelName = channel[1];
+            this.log("channel set to: " + this.channelName);
+        }
+    }
+
+    if (this.channelName == null) {
+        this.error("No channel found in the returned scope");
+    }
 
     this.setCookieChannel();
     this.onInit();
@@ -209,13 +220,14 @@ Backplane.generateNextFrameURL = function() {
     if (typeof this.since == "undefined") {
         this.since = this.config.serverBaseURL + "/messages";
     }
-    if (this.since.indexOf('?') > -1) {
-        this.since += "&";
+    var localSince = this.since;
+    if (localSince.indexOf('?') > -1 )  {
+        localSince += "&";
     } else {
-        this.since += "?";
+        localSince += "?";
     }
 
-    return this.since + "callback=Backplane.response&access_token=" + this.token + "&rnd=" + Math.random();
+    return localSince + "callback=Backplane.response&access_token=" + this.token + "&rnd=" + Math.random();
 };
 
 Backplane.getChannelName = function() {
@@ -234,6 +246,11 @@ Backplane.loadChannelFromCookie = function() {
     var parts = match[1].split(":");
     this.token = decodeURIComponent(parts[0]);
     this.channelName = decodeURIComponent(parts[1]);
+    if (this.token.length < 20 || this.channelName.length < 30) {
+        this.error("backplane2-channel value: '" + match[1] + "' is corrupt");
+    } else {
+        this.log("retrieved token and channel from cookie");
+    }
 };
 
 Backplane.setCookieChannel = function() {
