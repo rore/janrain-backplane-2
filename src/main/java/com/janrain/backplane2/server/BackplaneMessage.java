@@ -54,7 +54,7 @@ public class BackplaneMessage extends AbstractMessage {
         }
 
         if (getFields().size() < d.size()) {
-                throw new IllegalArgumentException("Extra invalid parameter(s)");
+            throw new IllegalArgumentException("Extra invalid parameter(s)");
         }
 
         super.init(id, d);

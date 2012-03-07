@@ -1081,6 +1081,8 @@ public class Backplane2ControllerTest {
         request.setContent(msgsString.getBytes());
 
         handlerAdapter.handle(request, response, controller);
+        logger.info(response.getContentAsString());
+
 
         assertTrue(response.getStatus() == HttpServletResponse.SC_CREATED);
 
