@@ -61,7 +61,7 @@ public class TokenResponse {
         if (request.grant_type.equals("code")) {
             logger.info("Responding to authorization_code token request...");
             // one grant per authorization_code grant type, enforced not null in TokenRequest validation, no extra checks needed here
-            final TokenPrivileged token = new TokenPrivileged(request.client.getClientId(), request.getGrant(), request.scope);
+            final TokenPrivileged token = new TokenPrivileged(request.client.getClientId(), request.client.getSourceUrl(), request.getGrant(), request.scope);
             daoFactory.getTokenDao().persist(token);
             return new LinkedHashMap<String, Object>() {{
                 put(OAUTH2_ACCESS_TOKEN_PARAM_NAME, token.getIdValue());
@@ -81,7 +81,7 @@ public class TokenResponse {
             if (! Grant.getBusesAsList(grants).containsAll(scope.getBusesInScope())) {
                 throw new TokenException(OAuth2.OAUTH2_TOKEN_INVALID_SCOPE, "requested scope exceeds grants");
             }
-            final TokenPrivileged token = new TokenPrivileged(request.client.getClientId(), grants, request.scope);
+            final TokenPrivileged token = new TokenPrivileged(request.client.getClientId(), request.client.getSourceUrl(), grants, request.scope);
             daoFactory.getTokenDao().persist(token);
             return new LinkedHashMap<String, Object>() {{
                 put(OAUTH2_ACCESS_TOKEN_PARAM_NAME, token.getIdValue());

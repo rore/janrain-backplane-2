@@ -57,7 +57,7 @@ public abstract class Token extends Base {
             return tokenClass;
         }
 
-        public EnumSet<Source> getAllowedSources() {
+        public Collection<Source> getAllowedSources() {
             return allowedSources;
         }
 
@@ -122,7 +122,6 @@ public abstract class Token extends Base {
         setScopeString(scopeString);
 
         validate();
-
     }
 
     /** Support only one OAuth token type */
@@ -154,9 +153,8 @@ public abstract class Token extends Base {
         if (StringUtils.isBlank(scopeString)) {
             return;
         }
-        scopeString = scopeString.trim();
+        put(TokenField.SCOPE.getFieldName(), scopeString.trim());
         logger.debug("new scope string: '" + scopeString + "'");
-        put(TokenField.SCOPE.getFieldName(), scopeString);
     }
 
     public void setMustReturnScopeInResponse(boolean flag) {
@@ -214,6 +212,4 @@ public abstract class Token extends Base {
 
     private static final Logger logger = Logger.getLogger(Token.class);
     private boolean mustReturnScopeInResponse = false;
-
-
 }

@@ -34,20 +34,25 @@ public class BackplaneMessage extends AbstractMessage {
 
     // - PUBLIC
 
-    public BackplaneMessage(String id, String bus, String channel, Map<String, Object> data) throws BackplaneServerException {
+    @SuppressWarnings("UnusedDeclaration")
+    public BackplaneMessage() {}
+
+    public BackplaneMessage(String clientSourceUrl, Map<String, Object> data) throws BackplaneServerException {
+        if (data.containsKey(Field.SOURCE.getFieldName())) {
+            throw new IllegalArgumentException("Upstream messages must not include the 'source' field.");
+        }
         Map<String,String> d = new LinkedHashMap<String, String>(toStringMap(data));
+        String id = generateMessageId();
         d.put(Field.ID.getFieldName(), id);
-        d.put(Field.BUS.getFieldName(), bus);
-        d.put(Field.CHANNEL.getFieldName(), channel);
+        d.put(Field.TYPE.getFieldName(), data.get(Field.TYPE.getFieldName()).toString());
+        d.put(Field.SOURCE.getFieldName(), clientSourceUrl);
+        d.put(Field.BUS.getFieldName(), data.get(Field.BUS.getFieldName()).toString());
+        d.put(Field.CHANNEL.getFieldName(), data.get(Field.CHANNEL.getFieldName()).toString());
         d.put(Field.PAYLOAD.getFieldName(), extractFieldValueAsJsonString(Field.PAYLOAD, data));
         if (! d.containsKey(Field.STICKY.getFieldName())) {
             d.put(Field.STICKY.getFieldName(), Boolean.FALSE.toString());
         }
         super.init(id, d);
-    }
-
-    public BackplaneMessage(Map<String, Object> data) throws BackplaneServerException {
-        this(generateMessageId(), (String)data.get(Field.BUS.getFieldName()), (String)data.get(Field.CHANNEL.getFieldName()), data);
     }
 
     /**
@@ -67,7 +72,7 @@ public class BackplaneMessage extends AbstractMessage {
         return EnumSet.allOf(Field.class);
     }
 
-    public HashMap<String, Object> asFrame(String serverDomain, boolean includePayload) throws BackplaneServerException {
+    public Map<String, Object> asFrame(String serverDomain, boolean includePayload) throws BackplaneServerException {
 
         HashMap<String, Object> frame = new LinkedHashMap<String, Object>();
 
@@ -154,11 +159,6 @@ public class BackplaneMessage extends AbstractMessage {
             this.fieldName = fieldName;
             this.required = required;
         }
-    }
-
-    // - PACKAGE
-
-    public BackplaneMessage() {
     }
 
     // - PRIVATE

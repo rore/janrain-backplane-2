@@ -18,7 +18,6 @@ package com.janrain.backplane2.server;
 
 import com.janrain.commons.supersimpledb.message.MessageField;
 import org.apache.commons.lang.StringUtils;
-import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -36,7 +35,7 @@ public abstract class Base extends Access {
      * Empty default constructor for AWS to use.
      * Don't call directly.
      */
-    public Base() {};
+    public Base() {}
 
     public Base(String id, String buses, Date expires) {
         super(id, expires);
@@ -124,6 +123,4 @@ public abstract class Base extends Access {
             this.required = required;
         }
     }
-
-    private static final Logger logger = Logger.getLogger(Access.class);
 }

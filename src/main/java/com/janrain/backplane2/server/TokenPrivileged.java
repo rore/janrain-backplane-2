@@ -38,46 +38,30 @@ public class TokenPrivileged extends Token {
      */
     public TokenPrivileged() {}
 
-    public TokenPrivileged(String tokenString, String clientId, String buses, String scopeString, Date expires) throws TokenException {
+    public TokenPrivileged(String tokenString, String clientId, String clientSourceUrl,
+                           String buses, String scopeString, Date expires) throws TokenException {
+
         super("pr" + tokenString, TYPE.PRIVILEGED_TOKEN, buses, scopeString, expires);
 
         put(Field.ISSUED_TO_CLIENT_ID.getFieldName(), clientId);
+        put(Field.CLIENT_SOURCE_URL.getFieldName(), clientSourceUrl);
 
-        if (new Scope(scopeString).getBusesInScope().isEmpty()) {
-            // if a privileged user has requested a token without specifying a bus in the scope, copy
-            // over all authorized buses from the set of authorized buses
-
-            if (StringUtils.isBlank(scopeString)) {
-                scopeString = "";
-            }
-
-            scopeString = getEncodedBusesAsString() + " " + scopeString;
-            this.setMustReturnScopeInResponse(true);
-        }
-
-        if (!isAllowedBuses(new Scope(scopeString).getBusesInScope())) {
-            throw new TokenException(OAuth2.OAUTH2_TOKEN_INVALID_SCOPE, "Scope request not allowed");
-        }
-
-        logger.info("privileged token allowed scope:'" + scopeString + "' from auth'd buses:'" + getBusesAsString() + "'");
-
-        setScopeString(scopeString);
+        setScopeString(processScope(scopeString));
 
         validate();
-
     }
 
-    public TokenPrivileged(String clientId, String buses, String scopeString, Date expires) throws TokenException  {
-        this(ChannelUtil.randomString(TOKEN_LENGTH), clientId, buses, scopeString, expires);
+    public TokenPrivileged(String clientId, String clientSourceUrl, String buses, String scopeString, Date expires) throws TokenException  {
+        this(ChannelUtil.randomString(TOKEN_LENGTH), clientId, clientSourceUrl, buses, scopeString, expires);
     }
 
-    public TokenPrivileged(String clientId, Grant grant, String scope) throws TokenException {
-        this(ChannelUtil.randomString(TOKEN_LENGTH), clientId, grant.getBusesAsString(), scope, null);
+    public TokenPrivileged(String clientId, String clientSourceUrl, Grant grant, String scope) throws TokenException {
+        this(ChannelUtil.randomString(TOKEN_LENGTH), clientId, clientSourceUrl, grant.getBusesAsString(), scope, null);
         this.addGrant(grant);
     }
 
-    public TokenPrivileged(String clientId, List<Grant> grants, String scope) throws TokenException {
-        this(ChannelUtil.randomString(TOKEN_LENGTH), clientId, Grant.getBusesAsString(grants), scope, null);
+    public TokenPrivileged(String clientId, String clientSourceUrl, List<Grant> grants, String scope) throws TokenException {
+        this(ChannelUtil.randomString(TOKEN_LENGTH), clientId, clientSourceUrl, Grant.getBusesAsString(grants), scope, null);
         this.setGrants(grants);
     }
 
@@ -103,7 +87,8 @@ public class TokenPrivileged extends Token {
 
     public static enum Field implements MessageField {
 
-        ISSUED_TO_CLIENT_ID("issued_to_client", true);
+        ISSUED_TO_CLIENT_ID("issued_to_client"),
+        CLIENT_SOURCE_URL("client_source_url");
 
         @Override
         public String getFieldName() {
@@ -112,7 +97,7 @@ public class TokenPrivileged extends Token {
 
         @Override
         public boolean isRequired() {
-            return required;
+            return true;
         }
 
         @Override
@@ -123,11 +108,9 @@ public class TokenPrivileged extends Token {
         // - PRIVATE
 
         private String fieldName;
-        private boolean required = true;
 
-        private Field(String fieldName, boolean required) {
+        private Field(String fieldName) {
             this.fieldName = fieldName;
-            this.required = required;
         }
     }
 
@@ -137,5 +120,32 @@ public class TokenPrivileged extends Token {
     private void addGrant(Grant grant) {
         assert(grant.getGrantClientId().equals(this.getClientId()));
         this.sourceGrants.add(grant);
+    }
+
+    /**
+     * Expand empty scope to all authorized buses.
+     * Check that all buses in scopeString are contained in the authorized buses with which the token was created.
+     */
+    private String processScope(String scopeString) throws TokenException {
+        String processedScopeString = scopeString;
+        if (new Scope(processedScopeString).getBusesInScope().isEmpty()) {
+            // if a privileged user has requested a token without specifying a bus in the scope, copy
+            // over all authorized buses from the set of authorized buses
+
+            if (StringUtils.isBlank(processedScopeString)) {
+                processedScopeString = "";
+            }
+
+            processedScopeString = getEncodedBusesAsString() + " " + processedScopeString;
+            this.setMustReturnScopeInResponse(true);
+        }
+
+        if ( ! isAllowedBuses(new Scope(processedScopeString).getBusesInScope()) ) {
+            throw new TokenException(OAuth2.OAUTH2_TOKEN_INVALID_SCOPE, "Scope request not allowed");
+        }
+
+        logger.info("privileged token allowed scope:'" + processedScopeString + "' from auth'd buses:'" + getBusesAsString() + "'");
+
+        return processedScopeString;
     }
 }

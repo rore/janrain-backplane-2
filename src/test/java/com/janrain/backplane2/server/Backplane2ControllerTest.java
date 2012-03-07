@@ -586,9 +586,10 @@ public class Backplane2ControllerTest {
         assertTrue(scope.getBusesInScope().size() == numBuses);
 
         Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
-
-        msg.put(BackplaneMessage.Field.SOURCE.getFieldName(), testClient.getSourceUrl());
-        BackplaneMessage message1 = new BackplaneMessage("123456", randomBuses.get(randomBuses.size()-1), "randomchannel", msg);
+        msg.put(BackplaneMessage.Field.ID.getFieldName(), "123456");
+        msg.put(BackplaneMessage.Field.BUS.getFieldName(), randomBuses.get(randomBuses.size()-1));
+        msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), "randomchannel");
+        BackplaneMessage message1 = new BackplaneMessage(testClient.getSourceUrl(), msg);
         this.saveMessage(message1);
 
          // Make the call
@@ -813,12 +814,13 @@ public class Backplane2ControllerTest {
         ObjectMapper mapper = new ObjectMapper();
         Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
 
-        msg.put(BackplaneMessage.Field.SOURCE.getFieldName(), testClient.getSourceUrl());
-        BackplaneMessage message = new BackplaneMessage("123456", "mybus.com", token.getChannelName(), msg);
+        msg.put(BackplaneMessage.Field.BUS.getFieldName(), "mybus.com");
+        msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), token.getChannelName());
+        BackplaneMessage message = new BackplaneMessage(testClient.getSourceUrl(), msg);
         this.saveMessage(message);
 
         // Make the call
-        request.setRequestURI("/v2/message/123456");
+        request.setRequestURI("/v2/message/" + message.getIdValue());
         request.setMethod("GET");
         request.setParameter(OAUTH2_ACCESS_TOKEN_PARAM_NAME, token.getIdValue());
         handlerAdapter.handle(request, response, controller);
@@ -860,14 +862,14 @@ public class Backplane2ControllerTest {
         // Seed message
         ObjectMapper mapper = new ObjectMapper();
         Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
-
-        msg.put(BackplaneMessage.Field.SOURCE.getFieldName(), testClient.getSourceUrl());
-        BackplaneMessage message = new BackplaneMessage("123456", "mybus.com", token.getChannelName(), msg);
+        msg.put(BackplaneMessage.Field.BUS.getFieldName(), "mybus.com");
+        msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), token.getChannelName());
+        BackplaneMessage message = new BackplaneMessage(testClient.getSourceUrl(), msg);
         this.saveMessage(message);
 
         // now, try it via callback
         refreshRequestAndResponse();
-        request.setRequestURI("/v2/message/123456");
+        request.setRequestURI("/v2/message/" + message.getIdValue());
         request.setMethod("GET");
         request.setParameter(OAUTH2_ACCESS_TOKEN_PARAM_NAME, token.getIdValue());
         request.setParameter("callback", callbackName);
@@ -903,19 +905,20 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
 
         // Create appropriate token
-        TokenPrivileged token = new TokenPrivileged("fooClient", "mybus.com", null, null);
+        TokenPrivileged token = new TokenPrivileged("fooClient", testClient.getSourceUrl(), "mybus.com", null, null);
         this.saveToken(token);
 
         // Seed message
         ObjectMapper mapper = new ObjectMapper();
         Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
 
-        msg.put(BackplaneMessage.Field.SOURCE.getFieldName(), testClient.getSourceUrl());
-        BackplaneMessage message = new BackplaneMessage("123456", "mybus.com", "randomchannel", msg);
+        msg.put(BackplaneMessage.Field.BUS.getFieldName(), "mybus.com");
+        msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), "randomchannel");
+        BackplaneMessage message = new BackplaneMessage(testClient.getSourceUrl(), msg);
         this.saveMessage(message);
 
         // Make the call
-        request.setRequestURI("/v2/message/123456");
+        request.setRequestURI("/v2/message/" + message.getIdValue());
         request.setMethod("GET");
         request.setParameter(OAUTH2_ACCESS_TOKEN_PARAM_NAME, token.getIdValue());
         handlerAdapter.handle(request, response, controller);
@@ -956,18 +959,21 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
 
         // Create appropriate token
-        TokenPrivileged token = new TokenPrivileged("fooClient", "this.com that.com", "bus:this.com bus:that.com", null);
+        TokenPrivileged token = new TokenPrivileged("fooClient", testClient.getSourceUrl(), "this.com that.com", "bus:this.com bus:that.com", null);
         this.saveToken(token);
 
         // Seed 2 messages
         ObjectMapper mapper = new ObjectMapper();
         Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
-        msg.put(BackplaneMessage.Field.SOURCE.getFieldName(), testClient.getSourceUrl());
 
-        BackplaneMessage message1 = new BackplaneMessage("123456", "this.com", "qCDsQm3JTnhZ91RiPpri8R31ehJQ9lhp", msg);
+        msg.put(BackplaneMessage.Field.BUS.getFieldName(), "this.com");
+        msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), "qCDsQm3JTnhZ91RiPpri8R31ehJQ9lhp");
+        BackplaneMessage message1 = new BackplaneMessage(testClient.getSourceUrl(), msg);
         this.saveMessage(message1);
 
-        BackplaneMessage message2 = new BackplaneMessage("1234567", "that.com", "randomchannel", msg);
+        msg.put(BackplaneMessage.Field.BUS.getFieldName(), "that.com");
+        msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), "randomchannel");
+        BackplaneMessage message2 = new BackplaneMessage(testClient.getSourceUrl(), msg);
         this.saveMessage(message2);
 
          // Make the call
@@ -996,12 +1002,15 @@ public class Backplane2ControllerTest {
         // Seed 2 messages
         ObjectMapper mapper = new ObjectMapper();
         Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
-        msg.put(BackplaneMessage.Field.SOURCE.getFieldName(), testClient.getSourceUrl());
 
-        BackplaneMessage message1 = new BackplaneMessage(BackplaneMessage.generateMessageId(), "a.com", token.getChannelName(), msg);
+        msg.put(BackplaneMessage.Field.BUS.getFieldName(), "a.com");
+        msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), token.getChannelName());
+        BackplaneMessage message1 = new BackplaneMessage(testClient.getSourceUrl(), msg);
         this.saveMessage(message1);
 
-        BackplaneMessage message2 = new BackplaneMessage(BackplaneMessage.generateMessageId(), "b.com", token.getChannelName(), msg);
+        msg.put(BackplaneMessage.Field.BUS.getFieldName(), "b.com");
+        msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), token.getChannelName());
+        BackplaneMessage message2 = new BackplaneMessage(testClient.getSourceUrl(), msg);
         this.saveMessage(message2);
 
          // Make the call
@@ -1030,7 +1039,7 @@ public class Backplane2ControllerTest {
 
         // Create inappropriate token
         try {
-            TokenPrivileged token = new TokenPrivileged("fooClient", "mybus.com yourbus.com", "bus:invalidbus.com", null);
+            TokenPrivileged token = new TokenPrivileged("fooClient", testClient.getSourceUrl(), "mybus.com yourbus.com", "bus:invalidbus.com", null);
         } catch (TokenException bpe) {
             //expected
             return;
@@ -1052,7 +1061,7 @@ public class Backplane2ControllerTest {
         this.saveToken(token1);
 
         // Create appropriate token
-        TokenPrivileged token2 = new TokenPrivileged(testClient.getClientId(), "mybus.com yourbus.com", "bus:yourbus.com", null);
+        TokenPrivileged token2 = new TokenPrivileged("clientFoo", testClient.getSourceUrl(), "mybus.com yourbus.com", "bus:yourbus.com", null);
         this.saveToken(token2);
 
         // Make the call
@@ -1073,8 +1082,6 @@ public class Backplane2ControllerTest {
         request.setContent(msgsString.getBytes());
 
         handlerAdapter.handle(request, response, controller);
-        logger.info(response.getContentAsString());
-
 
         assertTrue(response.getStatus() == HttpServletResponse.SC_CREATED);
 
@@ -1097,7 +1104,7 @@ public class Backplane2ControllerTest {
         grants.add(grant2);
 
         // Create appropriate token
-        TokenPrivileged token = new TokenPrivileged(testClient.getClientId(), grants, "");
+        TokenPrivileged token = new TokenPrivileged(testClient.getClientId(), testClient.getSourceUrl(), grants, "");
         grant1.addIssuedTokenId(token.getIdValue());
         daoFactory.getGrantDao().persist(grant1);
         grant2.addIssuedTokenId(token.getIdValue());
@@ -1275,12 +1282,11 @@ public class Backplane2ControllerTest {
         // Create appropriate token
         String bus = ChannelUtil.randomString(10) + ".com";
 
-        TokenPrivileged token = new TokenPrivileged("fooClient", bus + " yourbus.com", "bus:" + bus, null);
+        TokenPrivileged token = new TokenPrivileged("fooClient", testClient.getSourceUrl(), bus + " yourbus.com", "bus:" + bus, null);
         this.saveToken(token);
 
         ObjectMapper mapper = new ObjectMapper();
         Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
-        msg.put(BackplaneMessage.Field.SOURCE.getFieldName(), testClient.getSourceUrl());
 
         // seed messages
         int numMessages = 10;
@@ -1288,7 +1294,9 @@ public class Backplane2ControllerTest {
         String channel = ChannelUtil.randomString(TokenAnonymous.CHANNEL_NAME_LENGTH);
 
         for (int i=0;i < numMessages; i++) {
-            BackplaneMessage message = new BackplaneMessage(BackplaneMessage.generateMessageId(), bus, channel, msg);
+            msg.put(BackplaneMessage.Field.BUS.getFieldName(), bus);
+            msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), channel);
+            BackplaneMessage message = new BackplaneMessage(testClient.getSourceUrl(), msg);
             messages.add(message);
         }
 
