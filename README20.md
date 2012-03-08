@@ -64,6 +64,9 @@ callback(
 
 * Request parameters: `block` (optional, default 0), `callback` (optional), `since` (optional)
 
+[ An Authenticated Access Token MUST be presented in the header only, for example: `Authorization: Bearer vF9dft4qmT`
+while an Anonymous Access Token may be presented as the URL parameter `access_token`. ]
+
 * Response body: JSON with the fields `nextUrl` (continuation URL) and `messages` (array of backplane messages)
 
   Example:
@@ -95,7 +98,10 @@ callback(
 
 * Request parameters: `callback` (optional)
 
-* Response body: JSON backplane messge
+[ An Authenticated Access Token MUST be presented in the header only, for example: `Authorization: Bearer vF9dft4qmT`
+while an Anonymous Access Token may be presented as the URL parameter `access_token`. ]
+
+* Response body: JSON backplane message
 
   Example:
 
@@ -118,6 +124,8 @@ callback(
 * Endpoint:  `/v2/messages`
 
 * Security: HTTPS POST, OAuth2 access token
+
+[ The access token MUST be presented in the header only, for example: `Authorization: Bearer vF9dft4qmT` ]
 
 * Request parameters: JSON data with a `messages` array field of backplane messages to be posted
 
