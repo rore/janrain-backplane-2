@@ -595,7 +595,7 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
         request.setRequestURI("/v2/messages");
         request.setMethod("GET");
-        request.setParameter(OAUTH2_ACCESS_TOKEN_PARAM_NAME, returnedToken);
+        setOauthBearerTokenAuthorization(request, returnedToken);
         handlerAdapter.handle(request, response, controller);
         logger.info("testTokenGrantByCodeScopeComplexity()   => " + response.getContentAsString());
 
@@ -919,7 +919,7 @@ public class Backplane2ControllerTest {
         // Make the call
         request.setRequestURI("/v2/message/" + message.getIdValue());
         request.setMethod("GET");
-        request.setParameter(OAUTH2_ACCESS_TOKEN_PARAM_NAME, token.getIdValue());
+        setOauthBearerTokenAuthorization(request, token.getIdValue());
         handlerAdapter.handle(request, response, controller);
         logger.info("testMessageEndPointPAL()   => " + response.getContentAsString());
        // assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
@@ -978,7 +978,7 @@ public class Backplane2ControllerTest {
          // Make the call
         request.setRequestURI("/v2/messages");
         request.setMethod("GET");
-        request.setParameter(OAUTH2_ACCESS_TOKEN_PARAM_NAME, token.getIdValue());
+        setOauthBearerTokenAuthorization(request, token.getIdValue());
         handlerAdapter.handle(request, response, controller);
         logger.info("testMessagesEndPointPAL()   => " + response.getContentAsString());
 
@@ -1066,7 +1066,7 @@ public class Backplane2ControllerTest {
         // Make the call
         request.setRequestURI("/v2/messages");
         request.setMethod("POST");
-        request.setParameter(OAUTH2_ACCESS_TOKEN_PARAM_NAME, token2.getIdValue());
+        setOauthBearerTokenAuthorization(request, token2.getIdValue());
         request.addHeader("Content-type", "application/json");
         //request.setContentType("application/json");
         //request.setParameter("messages", TEST_MSG);
@@ -1312,7 +1312,7 @@ public class Backplane2ControllerTest {
          // Make the call
         request.setRequestURI("/v2/messages");
         request.setMethod("GET");
-        request.setParameter(OAUTH2_ACCESS_TOKEN_PARAM_NAME, token.getIdValue());
+        setOauthBearerTokenAuthorization(request, token.getIdValue());
         handlerAdapter.handle(request, response, controller);
         logger.info("testMessageOrder()  => " + response.getContentAsString());
 
@@ -1334,5 +1334,9 @@ public class Backplane2ControllerTest {
     private void setOAuthBasicAuthentication(MockHttpServletRequest request, String client_id, String client_password) throws UnsupportedEncodingException {
         String userPass = client_id + ":" + client_password;
         request.addHeader("Authorization", "Basic " + new String(Base64.encode(userPass.getBytes("utf-8")), "utf-8"));
+    }
+
+    private void setOauthBearerTokenAuthorization(MockHttpServletRequest request, String accessToken) throws Exception {
+        request.addHeader("Authorization", "Bearer " + accessToken);
     }
 }
