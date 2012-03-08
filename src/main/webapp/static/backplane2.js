@@ -70,6 +70,7 @@ window.Backplane = window.Backplane || (function() {
  * @param {Object} config - Hash with configuration parameters.
  *   Possible hash keys:
  *     serverBaseURL (required) - Base URL of Backplane Server
+ *     busName (required) - Customer's backplane bus name
  *     channelExpires (optional) - set backplane2-channel cookie life span
  *     initFrameFilter (optional) - function to filter the first message frame
  *     cacheMax (optional) - how many messages to cache for late arriving widgets
@@ -77,7 +78,19 @@ window.Backplane = window.Backplane || (function() {
 Backplane.init = function(config) {
     this.log("initializing");
     config = config || {};
-    if (this.initialized || !config.serverBaseURL) return false;
+    if (this.initialized) {
+        this.log("library already initialized");
+        return false;
+    }
+    if (!config.serverBaseURL) {
+        this.error("must supply serverBaseURL");
+        return false;
+    }
+    if (!config.busName) {
+        this.error("must supply busName");
+        return false;
+    }
+
     this.initialized = true;
     this.timers = {};
     this.config = config;
@@ -86,10 +99,6 @@ Backplane.init = function(config) {
     if (this.config.serverBaseURL.indexOf("/v2") < 0) {
         this.error("serverBaseURL must include '/v2'");
         return false;
-    }
-
-    if (config.busName != "undefined") {
-        this.warn("busName is not required for v2");
     }
 
     this.loadChannelFromCookie();
@@ -142,13 +151,13 @@ Backplane.unsubscribe = function(subscriptionID) {
 };
 
 /**
- * Returns channel ID (like http://backplane.customer.com/v1/bus/customer.com/channel/8ec92f459fa70b0da1a40e8fe70a0bc8)
+ * Returns channel ID (like http://backplane.customer.com/v2/bus/customer.com/channel/8ec92f459fa70b0da1a40e8fe70a0bc8)
  *
  * @returns Backplane channel ID
  */
 Backplane.getChannelID = function() {
     if (!this.initialized) return false;
-    return this.config.channelID;
+    return this.channelID;
 };
 
 /**
@@ -212,6 +221,8 @@ Backplane.finishInit = function (initPayload) {
     }
 
     this.setCookieChannel();
+    this.channelID = this.generateChannelID();
+    this.log("channelID = " + this.channelID);
     this.onInit();
     this.request();
 };
@@ -228,6 +239,10 @@ Backplane.generateNextFrameURL = function() {
     }
 
     return localSince + "callback=Backplane.response&access_token=" + this.token + "&rnd=" + Math.random();
+};
+
+Backplane.generateChannelID = function() {
+    return this.config.serverBaseURL + "/bus/" + this.config.busName + "/channel/" + this.channelName;
 };
 
 Backplane.getChannelName = function() {
@@ -250,6 +265,8 @@ Backplane.loadChannelFromCookie = function() {
         this.error("backplane2-channel value: '" + match[1] + "' is corrupt");
     } else {
         this.log("retrieved token and channel from cookie");
+        this.channelID = this.generateChannelID();
+        this.log("channelID = " + this.channelID);
     }
 };
 
