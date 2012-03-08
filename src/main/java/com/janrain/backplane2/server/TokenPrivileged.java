@@ -33,6 +33,8 @@ import java.util.List;
  */
 public class TokenPrivileged extends Token {
 
+    public static final long EXPIRES_SECONDS = 31536000;  // 1 year
+
     /**
      * Empty default constructor for AWS to use.
      */
@@ -56,12 +58,14 @@ public class TokenPrivileged extends Token {
     }
 
     public TokenPrivileged(String clientId, String clientSourceUrl, Grant grant, String scope) throws TokenException {
-        this(ChannelUtil.randomString(TOKEN_LENGTH), clientId, clientSourceUrl, grant.getBusesAsString(), scope, null);
+        this(ChannelUtil.randomString(TOKEN_LENGTH), clientId, clientSourceUrl, grant.getBusesAsString(), scope,
+                new Date(new Date().getTime() + TokenPrivileged.EXPIRES_SECONDS * 1000));
         this.addGrant(grant);
     }
 
     public TokenPrivileged(String clientId, String clientSourceUrl, List<Grant> grants, String scope) throws TokenException {
-        this(ChannelUtil.randomString(TOKEN_LENGTH), clientId, clientSourceUrl, Grant.getBusesAsString(grants), scope, null);
+        this(ChannelUtil.randomString(TOKEN_LENGTH), clientId, clientSourceUrl, Grant.getBusesAsString(grants), scope,
+                new Date(new Date().getTime() + TokenPrivileged.EXPIRES_SECONDS * 1000));
         this.setGrants(grants);
     }
 

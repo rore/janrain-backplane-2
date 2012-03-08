@@ -806,7 +806,7 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
 
         // Create appropriate token
-        TokenAnonymous token = new TokenAnonymous("mybus.com", null, new Date(new Date().getTime() + Token.EXPIRES_SECONDS * 1000));
+        TokenAnonymous token = new TokenAnonymous("mybus.com", null, new Date(new Date().getTime() + TokenAnonymous.EXPIRES_SECONDS * 1000));
         this.saveToken(token);
 
         // Seed message
@@ -855,7 +855,7 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
 
         // Create appropriate token
-        TokenAnonymous token = new TokenAnonymous("mybus.com", null, new Date(new Date().getTime() + Token.EXPIRES_SECONDS * 1000));
+        TokenAnonymous token = new TokenAnonymous("mybus.com", null, new Date(new Date().getTime() + TokenAnonymous.EXPIRES_SECONDS * 1000));
         this.saveToken(token);
 
         // Seed message
@@ -995,7 +995,7 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
 
         // Create appropriate token
-        TokenAnonymous token = new TokenAnonymous(null, null, new Date(new Date().getTime() + Token.EXPIRES_SECONDS * 1000));
+        TokenAnonymous token = new TokenAnonymous(null, null, new Date(new Date().getTime() + TokenAnonymous.EXPIRES_SECONDS * 1000));
         this.saveToken(token);
 
         // Seed 2 messages

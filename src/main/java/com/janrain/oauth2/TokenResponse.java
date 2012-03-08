@@ -45,11 +45,12 @@ public class TokenResponse {
         if (request.grant_type.equals("client_credentials") && request.client.getClientId().equals(Token.ANONYMOUS)) {
             logger.info("Responding to anonymous token request...");
             // issue new channel id
-            final TokenAnonymous token = new TokenAnonymous(null, request.scope, new Date(new Date().getTime() + Token.EXPIRES_SECONDS * 1000L));
+            final TokenAnonymous token = new TokenAnonymous(null, request.scope, new Date(new Date().getTime() +
+                    TokenAnonymous.EXPIRES_SECONDS * 1000L));
             daoFactory.getTokenDao().persist(token);
             return new LinkedHashMap<String, Object>() {{
                 put(OAUTH2_ACCESS_TOKEN_PARAM_NAME, token.getIdValue());
-                put("expires_in", Token.EXPIRES_SECONDS);
+                put("expires_in", TokenAnonymous.EXPIRES_SECONDS);
                 put(OAUTH2_TOKEN_TYPE_PARAM_NAME, Token.getTokenType());
                 //put("backplane_channel", token.getChannelName());
                 if (token.mustReturnScopeInResponse()) {

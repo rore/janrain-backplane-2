@@ -30,7 +30,6 @@ import java.util.*;
 public abstract class Token extends Base {
 
     public static final int TOKEN_LENGTH = 20;
-    public static final int EXPIRES_SECONDS = 3600;
     public static final String ANONYMOUS = "anonymous";
 
     public boolean isAllowedSources(Collection<Source> tokenFoundIn) {
