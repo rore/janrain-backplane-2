@@ -16,8 +16,12 @@ public class TokenException extends OAuth2Exception {
 
     public TokenException(String message) {
         this(OAuth2.OAUTH2_TOKEN_INVALID_REQUEST, message, HttpServletResponse.SC_BAD_REQUEST, null);
-    } 
-    
+    }
+
+    public TokenException(String message, int httpResponseCode) {
+        this(OAuth2.OAUTH2_TOKEN_INVALID_REQUEST, message, httpResponseCode, null);
+    }
+
     public TokenException(String oauthErrorCode, String message) {
         this(oauthErrorCode, message, HttpServletResponse.SC_BAD_REQUEST, null);
     }

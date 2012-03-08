@@ -16,32 +16,22 @@
 
 package com.janrain.backplane2.server;
 
-import com.janrain.backplane2.server.dao.DaoFactory;
-import com.janrain.commons.supersimpledb.SimpleDBException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-
-import javax.servlet.http.HttpServletResponse;
-import java.util.EnumSet;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * @author Tom Raney
  */
 public class MessageRequest {
 
-    public MessageRequest(DaoFactory daoFactory, String callback, String tokenString, EnumSet<Token.Source> tokenFoundIn) {
+    public MessageRequest(String callback, @NotNull Token token) {
         this.callback = callback;
-        this.tokenFoundIn = tokenFoundIn;
-        try {
-            this.token = daoFactory.getTokenDao().retrieveToken(tokenString);
-        } catch (SimpleDBException e) {
-            // do nothing for now
-            logger.debug("failed to load token '" + tokenString + "'", e);
-        }
+        this.token = token;
         validate();
     }
 
-    public Token getToken() {
+    public @NotNull Token getToken() {
         return this.token;
     }
 
@@ -50,8 +40,7 @@ public class MessageRequest {
     private static final Logger logger = Logger.getLogger(MessageRequest.class);
 
     private final String callback;
-    private Token token;
-    private final EnumSet<Token.Source> tokenFoundIn;
+    private final Token token;
 
     private void validate() throws InvalidRequestException {
 
@@ -59,14 +48,6 @@ public class MessageRequest {
             if (!callback.matches("[\\._a-zA-Z0-9]*")) {
                 throw new InvalidRequestException("invalid_request", "Callback parameter value is malformed");
             }
-        }
-
-        if (token == null || token.isExpired()) {
-            throw new InvalidRequestException("Not authorized", HttpServletResponse.SC_FORBIDDEN);
-        }
-        
-        if (! token.isAllowedSources(tokenFoundIn)) {
-            throw new InvalidRequestException("invalid_request", "token source(s) not allowed: " + tokenFoundIn);
         }
 
         // is the token properly scoped for this message id?

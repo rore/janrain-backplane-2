@@ -16,12 +16,21 @@
 
 package com.janrain.backplane2.server;
 
+import com.janrain.backplane2.server.dao.DaoFactory;
+import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.MessageField;
+import com.janrain.commons.util.Pair;
+import com.janrain.oauth2.OAuth2;
 import com.janrain.oauth2.TokenException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
 
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import java.util.*;
+
+import static com.janrain.oauth2.OAuth2.OAUTH2_ACCESS_TOKEN_PARAM_NAME;
 
 /**
  * @author Tom Raney
@@ -31,14 +40,6 @@ public abstract class Token extends Base {
 
     public static final int TOKEN_LENGTH = 20;
     public static final String ANONYMOUS = "anonymous";
-
-    public boolean isAllowedSources(Collection<Source> tokenFoundIn) {
-        if (tokenFoundIn == null || tokenFoundIn.size() > 1) return false;
-        for(Source tokenSource : tokenFoundIn) {
-            if (! getAccessType().getAllowedSources().contains(tokenSource)) return false;
-        }
-        return true;
-    }
 
     public static enum Source {QUERYPARAM, POSTBODY, AUTHHEADER }
     
@@ -121,6 +122,30 @@ public abstract class Token extends Base {
         setScopeString(scopeString);
 
         validate();
+    }
+
+    public static @NotNull Token fromRequest(DaoFactory daoFactory, HttpServletRequest request, String accessTokenParam, String authorizationHeader)  throws TokenException {
+        
+        Pair<String, EnumSet<Source>> tokenAndSource = extractAccessToken(request.getQueryString(), accessTokenParam, authorizationHeader);
+
+        if ( StringUtils.isBlank(tokenAndSource.getLeft()) ) {
+            throw new TokenException("invalid token", HttpServletResponse.SC_FORBIDDEN);
+        }
+
+        Token token;
+        try {
+            token = daoFactory.getTokenDao().retrieveToken(tokenAndSource.getLeft());
+        } catch (SimpleDBException e) {
+            throw new TokenException(OAuth2.OAUTH2_TOKEN_SERVER_ERROR, "error loading token", HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        }
+
+        if (token == null || token.isExpired()) {
+            throw new TokenException("invalid token", HttpServletResponse.SC_FORBIDDEN);
+        }
+
+        token.checkAllowedSources(tokenAndSource.getRight());
+
+        return token;
     }
 
     /** Support only one OAuth token type */
@@ -211,4 +236,47 @@ public abstract class Token extends Base {
 
     private static final Logger logger = Logger.getLogger(Token.class);
     private boolean mustReturnScopeInResponse = false;
+
+    private static Pair<String,EnumSet<Source>> extractAccessToken(String queryString, String requestParam, String authHeader) {
+        String token = null;
+        EnumSet<Token.Source> foundIn = EnumSet.noneOf(Token.Source.class);
+
+        if (StringUtils.isNotEmpty(queryString)) {
+            Map<String,String> queryParamsMap = new HashMap<String, String>();
+            for(String queryParamPair : Arrays.asList(queryString.split("&"))) {
+                String[] nameVal = queryParamPair.split("=", 2);
+                queryParamsMap.put(nameVal[0], nameVal.length >0 ? nameVal[1] : null);
+            }
+            if(queryParamsMap.containsKey(OAUTH2_ACCESS_TOKEN_PARAM_NAME)) {
+                token = queryParamsMap.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME);
+                foundIn.add(Token.Source.QUERYPARAM);
+            }
+        }
+
+        if ( ! foundIn.contains(Token.Source.QUERYPARAM) && requestParam != null ) {
+            // query parameter will mask body requestParam extracted by spring with @RequestParameter
+            token = requestParam;
+            foundIn.add(Token.Source.POSTBODY);
+        }
+
+        int tokenTypeLength = Token.getTokenType().length();
+        if (authHeader != null && authHeader.startsWith(Token.getTokenType()) && authHeader.length() > tokenTypeLength) {
+            token = authHeader.substring(tokenTypeLength + 1);
+            foundIn.add(Token.Source.AUTHHEADER);
+        }
+
+        return new Pair<String, EnumSet<Token.Source>>(token, foundIn);
+    }
+
+    private void checkAllowedSources(Collection<Source> tokenFoundIn) throws TokenException {
+        if (tokenFoundIn == null || tokenFoundIn.size() > 1) {
+            throw new TokenException("exactly one token source allowed, found in: " + tokenFoundIn, HttpServletResponse.SC_FORBIDDEN);
+        }
+
+        for(Source tokenSource : tokenFoundIn) {
+            if (! getAccessType().getAllowedSources().contains(tokenSource)) {
+                throw new TokenException("token source not allowed: " + tokenSource, HttpServletResponse.SC_FORBIDDEN);
+            }
+        }
+    }
 }

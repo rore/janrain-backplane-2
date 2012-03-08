@@ -20,7 +20,6 @@ import com.janrain.backplane2.server.config.*;
 import com.janrain.backplane2.server.dao.BackplaneMessageDAO;
 import com.janrain.backplane2.server.dao.DaoFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.commons.util.Pair;
 import com.janrain.crypto.ChannelUtil;
 import com.janrain.crypto.HmacHashUtils;
 import com.janrain.metrics.MetricsAccumulator;
@@ -280,10 +279,11 @@ public class Backplane2Controller {
 
         MessageRequest messageRequest;
         try {
-            Pair<String, EnumSet<Token.Source>> tokenAndSource = extractAccessToken(request.getQueryString(), access_token, authorizationHeader);
-            messageRequest = new MessageRequest(daoFactory, callback, tokenAndSource.getLeft(), tokenAndSource.getRight());
+            messageRequest = new MessageRequest(callback, Token.fromRequest(daoFactory, request, access_token, authorizationHeader));
         } catch (InvalidRequestException e) {
             return handleInvalidRequest(e, response);
+        } catch (TokenException te) {
+            return handleTokenException(te, response);
         }
         List<BackplaneMessage> messages = daoFactory.getBackplaneMessageDAO().retrieveAllMesssagesPerScope(messageRequest.getToken().getScope(), since);
 
@@ -372,10 +372,11 @@ public class Backplane2Controller {
 
         MessageRequest messageRequest;
         try {
-            Pair<String, EnumSet<Token.Source>> tokenAndSource = extractAccessToken(request.getQueryString(), access_token, authorizationHeader);
-            messageRequest = new MessageRequest(daoFactory, callback, tokenAndSource.getLeft(), tokenAndSource.getRight());
+            messageRequest = new MessageRequest(callback, Token.fromRequest(daoFactory, request, access_token, authorizationHeader));
         } catch (InvalidRequestException e) {
             return handleInvalidRequest(e, response);
+        } catch (TokenException te) {
+            return handleTokenException(te, response);
         }
 
         BackplaneMessage message = null;
@@ -427,7 +428,6 @@ public class Backplane2Controller {
                 throw new BackplaneServerException(errMsg, e);
             }
         }
-
     }
 
     /**
@@ -438,39 +438,31 @@ public class Backplane2Controller {
      */
 
     @RequestMapping(value = "/messages", method = { RequestMethod.POST})
-    public @ResponseBody HashMap<String,Object>  postMessages(HttpServletRequest request, HttpServletResponse response,
-                                                              @RequestBody Map<String,List<Map<String,Object>>> messages,
-                                                              @RequestParam(value = OAUTH2_ACCESS_TOKEN_PARAM_NAME, required = false) String access_token,
-                                                              @RequestParam(required = false) String callback,
-                                                              @RequestParam(required = false) String since) throws BackplaneServerException, SimpleDBException {
+    public @ResponseBody Map<String,Object>  postMessages(
+                  HttpServletRequest request, HttpServletResponse response,
+                  @RequestBody Map<String,List<Map<String,Object>>> messages,
+                  @RequestParam(value = OAUTH2_ACCESS_TOKEN_PARAM_NAME, required = false) String access_token,
+                  @RequestParam(required = false) String callback,
+                  @RequestParam(required = false) String since,
+                  @RequestHeader(value = "Authorization", required = false) String authorizationHeader) 
+            throws BackplaneServerException, SimpleDBException {
 
         //assert(request.isSecure());
 
-        Token token;
-
-        if (StringUtils.isEmpty(access_token)) {
-            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            return new HashMap<String,Object>() {{
-                put(ERR_MSG_FIELD, "Forbidden");
-            }};
-        }
-
+        final Token token;
         try {
-            token = daoFactory.getTokenDao().retrieveToken(access_token);
-        } catch (SimpleDBException e) {
-            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            return new HashMap<String,Object>() {{
-                put(ERR_MSG_FIELD, "Invalid token");
-            }};
+            token = Token.fromRequest(daoFactory, request, access_token, authorizationHeader);
+        } catch (TokenException e) {
+            return handleTokenException(e, response);
         }
 
-        if (!token.isPrivileged()) {
+        if ( ! token.isPrivileged() ) {
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
             return new HashMap<String,Object>() {{
                 put(ERR_MSG_FIELD, "Forbidden");
             }};
         }
-
+        
         String clientSourceUrl = token.get(TokenPrivileged.Field.CLIENT_SOURCE_URL);
 
         //TODO: add logic to verify the message cap per channel has not been exceeded
@@ -939,35 +931,5 @@ public class Backplane2Controller {
         if (StringUtils.isNotEmpty(client_id) || StringUtils.isNotEmpty(client_secret)) {
             throw new AuthException("Client credentials in request body are NOT RECOMMENDED (OAuth2 2.3.1)");
         }
-    }
-    
-    private Pair<String,EnumSet<Token.Source>> extractAccessToken(String queryString, String requestParam, String authHeader) {
-        String token = null;
-        EnumSet<Token.Source> foundIn = EnumSet.noneOf(Token.Source.class);
-
-        if (StringUtils.isNotEmpty(queryString)) {
-            Map<String,String> queryParamsMap = new HashMap<String, String>();
-            for(String queryParamPair : Arrays.asList(queryString.split("&"))) {
-                String[] nameVal = queryParamPair.split("=", 2);
-                queryParamsMap.put(nameVal[0], nameVal.length >0 ? nameVal[1] : null);
-            }
-            if(queryParamsMap.containsKey(OAUTH2_ACCESS_TOKEN_PARAM_NAME)) {
-                token = queryParamsMap.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME);
-                foundIn.add(Token.Source.QUERYPARAM);
-            }
-        }
-        
-        if (requestParam != null) {
-            token = requestParam;
-            foundIn.add(Token.Source.POSTBODY);
-        }
-
-        int tokenTypeLength = Token.getTokenType().length();
-        if (authHeader != null && authHeader.startsWith(Token.getTokenType()) && authHeader.length() > tokenTypeLength) {
-            token = authHeader.substring(tokenTypeLength + 1);
-            foundIn.add(Token.Source.AUTHHEADER);
-        }
-        
-        return new Pair<String, EnumSet<Token.Source>>(token, foundIn);
     }
 }
