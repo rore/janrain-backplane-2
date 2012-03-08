@@ -47,7 +47,7 @@ public abstract class Token extends Base {
 
         REGULAR_TOKEN("an", TokenAnonymous.class, EnumSet.allOf(Source.class)),
 
-        PRIVILEGED_TOKEN("pr", TokenPrivileged.class, EnumSet.of(Source.POSTBODY, Source.AUTHHEADER));
+        PRIVILEGED_TOKEN("pr", TokenPrivileged.class, EnumSet.of(Source.AUTHHEADER));
 
         public String getPrefix() {
             return prefix;
