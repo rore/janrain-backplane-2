@@ -23,7 +23,6 @@ import com.janrain.backplane2.server.config.BusConfig2;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.oauth2.TokenException;
-import com.sun.javaws.exceptions.InvalidArgumentException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
