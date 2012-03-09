@@ -17,7 +17,7 @@
 
 <!DOCTYPE log4j:configuration PUBLIC "-//LOGGER" "http://logging.apache.org/log4j/1.2/apidocs/org/apache/log4j/xml/doc-files/log4j.dtd">
 
-<log4j:configuration xmlns:log4j="http://jakarta.apache.org/log4j/">
+<log4j:configuration debug="true" xmlns:log4j="http://jakarta.apache.org/log4j/">
 
 	<!-- Appenders -->
 	<appender name="console" class="org.apache.log4j.ConsoleAppender">
@@ -27,17 +27,30 @@
 		</layout>
 	</appender>
 
-    <!-- The SMTPAppender is created in code in the InitSystemProps class
     <appender name="mail" class="org.apache.log4j.net.SMTPAppender">
         <param name="BufferSize" value="10"/>
-        <param name="From" value="${PARAM1}@${PARAM2}"/>
-        <param name="To" value="${PARAM3}"/>
-        <param name="Subject" value="Backplane Errors"/>
+        <param name="From" value="${SMTP_FROM}"/>
+        <param name="To" value="${SMTP_TO}"/>
+        <param name="SMTPHost" value="${SMTP_HOST}"/>
+        <param name="SMTPPort" value="${SMTP_PORT}"/>
+        <param name="SMTPProtocol" value="${SMTP_PROTOCOL}"/>
+        <param name="SMTPUsername" value="${SMTP_USERNAME}"/>
+        <param name="SMTPPassword" value="${SMTP_PASSWORD}"/>
+        <param name="Subject" value="${AWS_INSTANCE_ID}-${APPID}"/>
         <layout class="org.apache.log4j.EnhancedPatternLayout">
             <param name="ConversionPattern" value="%d %-5p [%t]: %c:%L - %m%n"/>
         </layout>
     </appender>
-    -->
+
+    <appender name="syslog" class="org.apache.log4j.net.SyslogAppender">
+        <param name="Facility" value="${SYSLOG_FACILITY}"/>
+        <param name="SyslogHost" value="${SYSLOG_HOST}"/>
+        <param name="Threshold" value="WARN"/>
+        <layout class="org.apache.log4j.PatternLayout">
+            <param name="ConversionPattern" value="%d{MMM dd HH:mm:ss} ${AWS_INSTANCE_ID}-${APPID}: %-5p %m%n"/>
+        </layout>
+    </appender>
+
 	
 	<!-- Janrain logger -->
 	<logger name="com.janrain">
@@ -81,7 +94,8 @@
 	<root>
 		<priority value="warn" />
 		<appender-ref ref="console" />
-        <!--<appender-ref ref="mail" /> -->
+        <appender-ref ref="mail" />
+        <appender-ref ref="syslog" />
 	</root>
 	
 </log4j:configuration>
