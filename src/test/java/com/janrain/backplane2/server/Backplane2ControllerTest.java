@@ -86,9 +86,35 @@ public class Backplane2ControllerTest {
     static final String OK_RESPONSE = "{\"stat\":\"ok\"}";
     static final String ERR_RESPONSE = "\"error\":";
 
-    static final String TEST_MSG =
+    static final String TEST_MSG_1 =
             "    {\n" +
             "        \"bus\": \"mybus.com\",\n" +
+            "        \"channel\": \"testchannel\",\n" +
+            "        \"type\": \"bla_type\",\n" +
+            "        \"sticky\": \"false\",\n" +
+            "        \"payload\":{\n" +
+            "            \"identities\":{\n" +
+            "               \"startIndex\":0,\n" +
+            "               \"itemsPerPage\":1,\n" +
+            "               \"totalResults\":1,\n" +
+            "               \"entry\":{\n" +
+            "                  \"displayName\":\"inewton\",\n" +
+            "                  \"accounts\":[\n" +
+            "                     {\n" +
+            "                        \"username\":\"inewton\",\n" +
+            "                        \"openid\":\"https://www.google.com/profiles/105119525695492353427\"\n" +
+            "                     }\n" +
+            "                  ],\n" +
+            "                  \"id\":\"1\"\n" +
+            "               }\n" +
+            "            },\n" +
+            "            \"context\":\"http://backplane1-2.janraindemo.com/token.html\"\n" +
+            "         }" +
+            "    }";
+
+        static final String TEST_MSG_2 =
+            "    {\n" +
+            "        \"bus\": \"yourbus.com\",\n" +
             "        \"channel\": \"testchannel\",\n" +
             "        \"type\": \"bla_type\",\n" +
             "        \"sticky\": \"false\",\n" +
@@ -585,7 +611,7 @@ public class Backplane2ControllerTest {
         Scope scope = new Scope((String)reply.get("scope"));
         assertTrue(scope.getBusesInScope().size() == numBuses);
 
-        Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
+        Map<String,Object> msg = mapper.readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {});
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), randomBuses.get(randomBuses.size()-1));
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), "randomchannel");
         BackplaneMessage message1 = new BackplaneMessage(testClient.getSourceUrl(), msg);
@@ -811,7 +837,7 @@ public class Backplane2ControllerTest {
 
         // Seed message
         ObjectMapper mapper = new ObjectMapper();
-        Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
+        Map<String,Object> msg = mapper.readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {});
 
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), "mybus.com");
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), token.getChannelName());
@@ -860,7 +886,7 @@ public class Backplane2ControllerTest {
 
         // Seed message
         ObjectMapper mapper = new ObjectMapper();
-        Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
+        Map<String,Object> msg = mapper.readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {});
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), "mybus.com");
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), token.getChannelName());
         BackplaneMessage message = new BackplaneMessage(testClient.getSourceUrl(), msg);
@@ -909,7 +935,7 @@ public class Backplane2ControllerTest {
 
         // Seed message
         ObjectMapper mapper = new ObjectMapper();
-        Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
+        Map<String,Object> msg = mapper.readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {});
 
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), "mybus.com");
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), "randomchannel");
@@ -963,7 +989,7 @@ public class Backplane2ControllerTest {
 
         // Seed 2 messages
         ObjectMapper mapper = new ObjectMapper();
-        Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
+        Map<String,Object> msg = mapper.readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {});
 
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), "this.com");
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), "qCDsQm3JTnhZ91RiPpri8R31ehJQ9lhp");
@@ -1000,7 +1026,7 @@ public class Backplane2ControllerTest {
 
         // Seed 2 messages
         ObjectMapper mapper = new ObjectMapper();
-        Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
+        Map<String,Object> msg = mapper.readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {});
 
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), "a.com");
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), token.getChannelName());
@@ -1069,11 +1095,11 @@ public class Backplane2ControllerTest {
         setOauthBearerTokenAuthorization(request, token2.getIdValue());
         request.addHeader("Content-type", "application/json");
         //request.setContentType("application/json");
-        //request.setParameter("messages", TEST_MSG);
+        //request.setParameter("messages", TEST_MSG_1);
         HashMap<String, Object> msgs = new HashMap<String, Object>();
         ArrayList msgsList = new ArrayList();
-        msgsList.add(new ObjectMapper().readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {}));
-        msgsList.add(new ObjectMapper().readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {}));
+        msgsList.add(new ObjectMapper().readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {}));
+        msgsList.add(new ObjectMapper().readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {}));
 
         msgs.put("messages", msgsList);
         String msgsString = new ObjectMapper().writeValueAsString(msgs);
@@ -1085,6 +1111,51 @@ public class Backplane2ControllerTest {
 
 
         assertTrue(response.getStatus() == HttpServletResponse.SC_CREATED);
+
+    }
+
+    /**
+     * Test to determine if two messages posted to the same channel but on different buses fail, as they should
+     * @throws Exception
+     */
+
+    @Test
+    public void testMessagePost() throws Exception {
+        refreshRequestAndResponse();
+
+        // Create source token for the channel
+        TokenAnonymous token1 = new TokenAnonymous("", "", null);
+        // override the random channel name for our test channel
+        token1.put(TokenAnonymous.Field.CHANNEL.getFieldName(), "testchannel");
+        this.saveToken(token1);
+
+        // Create appropriate token
+        TokenPrivileged token2 = new TokenPrivileged("clientFoo", testClient.getSourceUrl(), "mybus.com yourbus.com", "bus:yourbus.com bus:mybus.com", null);
+        this.saveToken(token2);
+
+        // Make the call
+        request.setRequestURI("/v2/messages");
+        request.setMethod("POST");
+        setOauthBearerTokenAuthorization(request, token2.getIdValue());
+        request.addHeader("Content-type", "application/json");
+        //request.setContentType("application/json");
+        //request.setParameter("messages", TEST_MSG_1);
+        HashMap<String, Object> msgs = new HashMap<String, Object>();
+        ArrayList msgsList = new ArrayList();
+        msgsList.add(new ObjectMapper().readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {}));
+        // second message on a different bus but with the same channel
+        msgsList.add(new ObjectMapper().readValue(TEST_MSG_2, new TypeReference<Map<String,Object>>() {}));
+
+        msgs.put("messages", msgsList);
+        String msgsString = new ObjectMapper().writeValueAsString(msgs);
+        logger.info(msgsString);
+        request.setContent(msgsString.getBytes());
+
+        handlerAdapter.handle(request, response, controller);
+        logger.info(response.getContentAsString());
+
+        // should fail
+        assertFalse(response.getStatus() == HttpServletResponse.SC_CREATED);
 
     }
 
@@ -1288,7 +1359,7 @@ public class Backplane2ControllerTest {
         this.saveToken(token);
 
         ObjectMapper mapper = new ObjectMapper();
-        Map<String,Object> msg = mapper.readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
+        Map<String,Object> msg = mapper.readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {});
 
         // seed messages
         int numMessages = 10;

@@ -22,6 +22,8 @@ import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.backplane2.server.config.BusConfig2;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
+import com.janrain.oauth2.TokenException;
+import com.sun.javaws.exceptions.InvalidArgumentException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
@@ -57,6 +59,25 @@ public class BackplaneMessageDAO extends DAO {
 
     public BackplaneMessage retrieveBackplaneMessage(String messageId) throws SimpleDBException {
         return superSimpleDB.retrieve(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class, messageId);
+    }
+
+    public boolean isValidBinding(String channel, String bus) throws SimpleDBException {
+
+        try {
+            List<BackplaneMessage> messages = retrieveAllMesssagesPerScope(new Scope("channel:" + channel), null);
+            if (messages.size() > 0) {
+                if (messages.get(0).getMessageBus().equals(bus)) {
+                    return true;
+                }
+            } else {
+                return true;
+            }
+        } catch (TokenException e) {
+            // false?
+        }
+
+        return false;
+
     }
 
     public List<BackplaneMessage> retrieveAllMesssagesPerScope(Scope scope, String sinceMessageId) throws SimpleDBException {

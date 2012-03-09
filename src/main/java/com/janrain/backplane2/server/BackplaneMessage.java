@@ -77,6 +77,14 @@ public class BackplaneMessage extends AbstractMessage {
         return EnumSet.allOf(Field.class);
     }
 
+    public String getMessageBus() {
+        return get(Field.BUS);
+    }
+
+    public String getMessageChannel() {
+        return get(Field.CHANNEL);
+    }
+
     public Map<String, Object> asFrame(String serverDomain, boolean includePayload) throws BackplaneServerException {
 
         HashMap<String, Object> frame = new LinkedHashMap<String, Object>();

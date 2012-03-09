@@ -494,7 +494,15 @@ public class Backplane2Controller {
         // do it all again and store the messages in the db
         BackplaneMessageDAO bmd = daoFactory.getBackplaneMessageDAO();
         for(Map<String,Object> messageData : msgs) {
-            bmd.persist(new BackplaneMessage(clientSourceUrl, messageData));
+            BackplaneMessage backplaneMessage = new BackplaneMessage(clientSourceUrl, messageData);
+            if (bmd.isValidBinding(backplaneMessage.getMessageChannel(), backplaneMessage.getMessageBus())) {
+                bmd.persist(new BackplaneMessage(clientSourceUrl, messageData));
+            } else {
+                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                return new HashMap<String,Object>() {{
+                    put(ERR_MSG_FIELD, "Invalid channel binding - already bound to a bus");
+                }};
+            }
         }
 
         response.setStatus(HttpServletResponse.SC_CREATED);
