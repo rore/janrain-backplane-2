@@ -276,6 +276,19 @@ public class Backplane2Controller {
 
         //assert(request.isSecure());
         //TODO: add support for block?
+        // behavior should be:
+        // 1. connect,
+        //      a. if message(s) exist, return with results
+        // 2. check database every n seconds for message(s) up to block seconds and return
+
+        if (block > MAX_BLOCK_SECONDS) {
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            return new HashMap<String,Object>() {{
+                put(ERR_MSG_FIELD, "You may not block the connection for more than " + MAX_BLOCK_SECONDS + " seconds");
+            }};
+        }
+
+        Date mustReturn = new Date(System.currentTimeMillis() + (long)block*1000l);
 
         MessageRequest messageRequest;
         try {
@@ -285,7 +298,21 @@ public class Backplane2Controller {
         } catch (TokenException te) {
             return handleTokenException(te, response);
         }
-        List<BackplaneMessage> messages = daoFactory.getBackplaneMessageDAO().retrieveAllMesssagesPerScope(messageRequest.getToken().getScope(), since);
+
+        List<BackplaneMessage> messages;
+        boolean exit = false;
+        do {
+            messages = daoFactory.getBackplaneMessageDAO().retrieveAllMesssagesPerScope(messageRequest.getToken().getScope(), since);
+            if (messages.isEmpty() && new Date().before(mustReturn)) {
+                try {
+                    Thread.sleep(3000);
+                } catch (InterruptedException e) {
+                    //ignore
+                }
+            } else {
+                exit = true;
+            }
+        } while (!exit);
 
         //String nextUrl = "https://" + request.getServerName() + "/v2/messages?since=" + messages.get(messages.size()-1).getIdValue();
         List<Map<String,Object>> frames = new ArrayList<Map<String, Object>>();
@@ -352,6 +379,7 @@ public class Backplane2Controller {
             }
         }
     }
+
 
     /**
      * Retrieve a single message from the server.
@@ -603,6 +631,7 @@ public class Backplane2Controller {
     private static final String ERR_MSG_FIELD = "error";
     private static final String ERR_MSG_DESCRIPTION = "error_description";
     private static final int MAX_MSGS_IN_FRAME = 25;
+    private static final int MAX_BLOCK_SECONDS = 25;
 
     private static final String BUS_OWNER_AUTH_FORM_JSP = "bus_owner_auth";
     private static final String CLIENT_AUTHORIZATION_FORM_JSP = "client_authorization";

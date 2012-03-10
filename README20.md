@@ -635,7 +635,7 @@ Authorization and Authentication
 
 #### Authentication
 
-Endpoint: `/authenticate`
+Endpoint: `/v2/authenticate`
 
 GET:
 
@@ -653,7 +653,7 @@ Web form where bus owners authenticate before granting authorization acess (via 
 
 #### Authorization
 
-Endpoint: `/authorize`
+Endpoint: `/v2/authorize`
 
 OAuth2 authorization endpoint handling `authorization_code` grant type. [2]
 
