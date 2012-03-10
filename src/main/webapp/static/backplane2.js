@@ -335,6 +335,27 @@ Backplane.calcTimeout = function() {
     return timeout * 1000;
 };
 
+
+Backplane.fetchMessages = function() {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.charset = "utf-8";
+    script.src = Backplane.generateNextFrameURL();
+
+    var container = document.getElementsByTagName("head")[0] || document.documentElement;
+    container.insertBefore(script, container.firstChild);
+    script.onload = script.onreadystatechange = function() {
+        var state = script.readyState;
+        if (!state || state === "loaded" || state === "complete") {
+            script.onload = script.onreadystatechange = null;
+            if (script.parentNode) {
+                script.parentNode.removeChild(script);
+            }
+        }
+    };
+}
+
+
 Backplane.request = function() {
     var self = this;
     if (!this.initialized) return false;
@@ -345,24 +366,10 @@ Backplane.request = function() {
         self.timers.watchdog = setTimeout(function() {
             self.request();
         }, 5000);
-        var script = document.createElement("script");
-        script.type = "text/javascript";
-        script.charset = "utf-8";
-        script.src = Backplane.generateNextFrameURL();
-
-        var container = document.getElementsByTagName("head")[0] || document.documentElement;
-        container.insertBefore(script, container.firstChild);
-        script.onload = script.onreadystatechange = function() {
-            var state = script.readyState;
-            if (!state || state === "loaded" || state === "complete") {
-                script.onload = script.onreadystatechange = null;
-                if (script.parentNode) {
-                    script.parentNode.removeChild(script);
-                }
-            }
-        };
+        Backplane.fetchMessages();
     }, this.calcTimeout());
 };
+
 
 /**
  * Callback function for message frame request
@@ -415,7 +422,15 @@ Backplane.response = function(messageFrame) {
         }
         this.awaiting.queue = queue;
     }
+
     this.firstFrameReceived = true;
+
+    // if the moreMessages flag is true, fetch another frame immediately
+    if (messageFrame.moreMessages === true) {
+        this.fetchMessages();
+        return;
+    }
+
     this.request();
 };
 
