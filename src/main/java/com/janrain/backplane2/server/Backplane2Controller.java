@@ -281,10 +281,10 @@ public class Backplane2Controller {
         //      a. if message(s) exist, return with results
         // 2. check database every n seconds for message(s) up to block seconds and return
 
-        if (block > MAX_BLOCK_SECONDS) {
+        if (block < 0 || block > MAX_BLOCK_SECONDS) {
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
             return new HashMap<String,Object>() {{
-                put(ERR_MSG_FIELD, "You may not block the connection for more than " + MAX_BLOCK_SECONDS + " seconds");
+                put(ERR_MSG_FIELD, "Block must be >= 0 and <= " + MAX_BLOCK_SECONDS);
             }};
         }
 
