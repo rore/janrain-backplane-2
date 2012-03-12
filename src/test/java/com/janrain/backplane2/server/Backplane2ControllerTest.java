@@ -1041,6 +1041,7 @@ public class Backplane2ControllerTest {
          // Make the call
         request.setRequestURI("/v2/messages");
         request.setMethod("GET");
+        request.setParameter("block", "15");
         request.setParameter(OAUTH2_ACCESS_TOKEN_PARAM_NAME, token.getIdValue());
         request.setParameter("since", message1.getIdValue());
         handlerAdapter.handle(request, response, controller);
