@@ -67,7 +67,9 @@ callback(
 [ An Authenticated Access Token MUST be presented in the header only, for example: `Authorization: Bearer vF9dft4qmT`
 while an Anonymous Access Token may be presented as the URL parameter `access_token`. ]
 
-* Response body: JSON with the fields `nextUrl` (continuation URL) and `messages` (array of backplane messages)
+* Response body: JSON with the fields `nextUrl` (continuation URL) and `messages` (array of backplane messages).
+ If the number of messages to return exceeds the pagination limit, the field 'moreMessages' we be set to true and the
+ 'nextUrl' URL may be used to fetch the remainder of the messages.
 
   Example:
 
@@ -86,7 +88,8 @@ while an Anonymous Access Token may be presented as the URL parameter `access_to
             "type": "identity/ack",
             "sticky": true
         }
-    ]
+    ],
+    moreMessages": false
 }
 ```
 
