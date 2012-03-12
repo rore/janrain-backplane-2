@@ -275,11 +275,6 @@ public class Backplane2Controller {
             throws SimpleDBException, BackplaneServerException {
 
         //assert(request.isSecure());
-        //TODO: add support for block?
-        // behavior should be:
-        // 1. connect,
-        //      a. if message(s) exist, return with results
-        // 2. check database every n seconds for message(s) up to block seconds and return
 
         if (block < 0 || block > MAX_BLOCK_SECONDS) {
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
