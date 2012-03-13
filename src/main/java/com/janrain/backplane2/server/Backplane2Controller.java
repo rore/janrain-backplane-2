@@ -385,7 +385,7 @@ public class Backplane2Controller {
 
     @RequestMapping(value = "/message/{msg_id}", method = { RequestMethod.GET})
     public @ResponseBody Map<String,Object> message(HttpServletRequest request, HttpServletResponse response,
-                                                        @PathVariable String msg_id,
+                                                        @PathVariable final String msg_id,
                                                         @RequestParam(value = OAUTH2_ACCESS_TOKEN_PARAM_NAME, required = false) String access_token,
                                                         @RequestParam(required = false) String callback,
                                                         @RequestHeader(value = "Authorization", required = false) String authorizationHeader)
@@ -406,13 +406,13 @@ public class Backplane2Controller {
         try {
             message = daoFactory.getBackplaneMessageDAO().retrieveBackplaneMessage(msg_id);
         } catch (SimpleDBException e) {
-            logger.info("Could not find message " + msg_id,e);
+            logger.error("Could not find message " + msg_id,e);
         }
 
         if (message == null) {
             response.setStatus(HttpServletResponse.SC_NOT_FOUND);
             return new HashMap<String,Object>() {{
-                put(ERR_MSG_FIELD, "Message not found");
+                put(ERR_MSG_FIELD, "Message id '" + msg_id + "' not found");
             }};
         } else {
             // verify the proper permissions

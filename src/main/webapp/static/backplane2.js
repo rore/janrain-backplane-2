@@ -74,6 +74,7 @@ window.Backplane = window.Backplane || (function() {
  *     channelExpires (optional) - set backplane2-channel cookie life span
  *     initFrameFilter (optional) - function to filter the first message frame
  *     cacheMax (optional) - how many messages to cache for late arriving widgets
+ *     block (optional) - how many seconds to hold connection open with server
  */
 Backplane.init = function(config) {
     this.log("initializing");
@@ -337,22 +338,24 @@ Backplane.calcTimeout = function() {
 
 
 Backplane.fetchMessages = function() {
+
+    var oldScript;
+    // cleanup old script if it exists to prevent memory leak
+    while (oldScript = document.getElementById('fetchMessagesId')) {
+        oldScript.parentNode.removeChild(oldScript);
+        for (var prop in oldScript) {
+            delete oldScript[prop];
+        }
+    }
+
     var script = document.createElement("script");
     script.type = "text/javascript";
+    script.id = 'fetchMessagesId';
     script.charset = "utf-8";
     script.src = Backplane.generateNextFrameURL();
+    var firstScript = document.getElementsByTagName("script")[0];
+    firstScript.parentNode.insertBefore(script, firstScript);
 
-    var container = document.getElementsByTagName("head")[0] || document.documentElement;
-    container.insertBefore(script, container.firstChild);
-    script.onload = script.onreadystatechange = function() {
-        var state = script.readyState;
-        if (!state || state === "loaded" || state === "complete") {
-            script.onload = script.onreadystatechange = null;
-            if (script.parentNode) {
-                script.parentNode.removeChild(script);
-            }
-        }
-    };
 }
 
 
@@ -380,7 +383,7 @@ Backplane.response = function(messageFrame) {
     var self = this;
     this.stopTimer("watchdog");
 
-    if (typeof this.since == "undefined") {
+    if (this.since.search("since=") < 0) {
         if (typeof this.config.initFrameFilter != "undefined") {
             messageFrame.messages = this.config.initFrameFilter(messageFrame.messages);
         } else {

@@ -69,7 +69,7 @@ while an Anonymous Access Token may be presented as the URL parameter `access_to
 
 * Response body: JSON with the fields `nextUrl` (continuation URL) and `messages` (array of backplane messages).
  If the number of messages to return exceeds the pagination limit, the field `moreMessages` we be set to true and the
- `nextUrl` URL may be used to fetch the remainder of the messages until the `moreMessages` returns false.
+ `nextUrl` URL may be used to fetch the remainder of the messages until `moreMessages` returns false.
 
 The `block` parameter sets the number of seconds the server should hold open the connection waiting for new messages to arrive.
 This allows the client to limit the number of polling requests for greater efficiency.
@@ -92,7 +92,7 @@ This allows the client to limit the number of polling requests for greater effic
             "sticky": true
         }
     ],
-    moreMessages": false
+    "moreMessages": false
 }
 ```
 

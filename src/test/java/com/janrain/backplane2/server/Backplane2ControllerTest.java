@@ -398,7 +398,7 @@ public class Backplane2ControllerTest {
 
         handlerAdapter.handle(request, response, controller);
         logger.info("testScope4() => " + response.getContentAsString());
-        assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
+
 
         String result = response.getContentAsString().substring(response.getContentAsString().indexOf("{"), response.getContentAsString().indexOf(")"));
 
@@ -1113,6 +1113,8 @@ public class Backplane2ControllerTest {
 
         assertTrue(response.getStatus() == HttpServletResponse.SC_CREATED);
 
+
+
     }
 
     /**
@@ -1157,6 +1159,45 @@ public class Backplane2ControllerTest {
 
         // should fail
         assertFalse(response.getStatus() == HttpServletResponse.SC_CREATED);
+
+    }
+
+    /**
+     * Test single message retrieval
+     * @throws Exception
+     */
+
+    @Test
+    public void testMessagePost2() throws Exception {
+        refreshRequestAndResponse();
+
+        // Create source token for the channel
+        TokenAnonymous token1 = new TokenAnonymous("", "", null);
+        // override the random channel name for our test channel
+        token1.put(TokenAnonymous.Field.CHANNEL.getFieldName(), "testchannel");
+        this.saveToken(token1);
+
+        // Create appropriate token
+        TokenPrivileged token2 = new TokenPrivileged("clientFoo", testClient.getSourceUrl(), "mybus.com yourbus.com", "bus:yourbus.com bus:mybus.com", null);
+        this.saveToken(token2);
+
+         // Seed 1 message
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String,Object> msg = mapper.readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {});
+
+        msg.put(BackplaneMessage.Field.BUS.getFieldName(), "mybus.com");
+        msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), token1.getChannelName());
+        BackplaneMessage message1 = new BackplaneMessage(testClient.getSourceUrl(), msg);
+        this.saveMessage(message1);
+
+        // Make the call
+        request.setRequestURI("/v2/message/" + message1.getIdValue());
+        request.setMethod("GET");
+        setOauthBearerTokenAuthorization(request, token2.getIdValue());
+
+        handlerAdapter.handle(request, response, controller);
+        logger.info(response.getContentAsString());
+        assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
 
     }
 
