@@ -27,9 +27,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 
-import static com.janrain.oauth2.OAuth2.OAUTH2_ACCESS_TOKEN_PARAM_NAME;
-import static com.janrain.oauth2.OAuth2.OAUTH2_TOKEN_TYPE_PARAM_NAME;
-import static com.janrain.oauth2.OAuth2.OAUTH2_SCOPE_PARAM_NAME;
+import static com.janrain.oauth2.OAuth2.*;
 
 /**
  * Response
@@ -43,7 +41,7 @@ public class TokenResponse {
     }
 
     public HashMap<String, Object> generateResponse() throws SimpleDBException, TokenException {
-        if (request.grant_type.equals("client_credentials") && request.client.getClientId().equals(Token.ANONYMOUS)) {
+        if (request.grant_type.equals(OAuth2.OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS) && request.client.getClientId().equals(Token.ANONYMOUS)) {
             logger.info("Responding to anonymous token request...");
             // issue new channel id
             final TokenAnonymous token = new TokenAnonymous(null, request.scope, new Date(new Date().getTime() +
@@ -60,7 +58,7 @@ public class TokenResponse {
             }};
         }
 
-        if (request.grant_type.equals("code")) {
+        if (request.grant_type.equals(OAUTH2_TOKEN_GRANT_TYPE_AUTH_CODE)) {
             logger.info("Responding to authorization_code token request...");
             // one grant per authorization_code grant type, enforced not null in TokenRequest validation, no extra checks needed here
             final TokenPrivileged token = new TokenPrivileged(request.client.getClientId(), request.client.getSourceUrl(), request.getGrant(), request.scope);
@@ -77,7 +75,7 @@ public class TokenResponse {
             }};
         }
 
-        if (request.grant_type.equals("client_credentials")) {
+        if (request.grant_type.equals(OAuth2.OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS)) {
             logger.info("Responding to client_credentials token request...");
             Scope scope = new Scope(request.scope);
             List<Grant> grants = daoFactory.getGrantDao().retrieveGrants(request.client.getClientId(), scope);

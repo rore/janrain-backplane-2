@@ -79,8 +79,8 @@ public class AuthorizationRequest extends AbstractMessage {
             @Override
             public void validate(String value) throws RuntimeException {
                 super.validate(value);
-                if (! "authorization_code".equals(value)) {
-                    throw new InvalidRequestException("Unsupported OAuth2 response_type: " + value);
+                if ( ! OAuth2.OAUTH2_TOKEN_RESPONSE_TYPE_CODE.equals(value)) {
+                    throw new IllegalArgumentException("Unsupported OAuth2 response_type: " + value);
                 }
             }
         },

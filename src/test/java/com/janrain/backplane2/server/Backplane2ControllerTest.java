@@ -26,6 +26,7 @@ import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.crypto.ChannelUtil;
 import com.janrain.crypto.HmacHashUtils;
+import com.janrain.oauth2.OAuth2;
 import com.janrain.oauth2.TokenException;
 import org.apache.catalina.util.Base64;
 
@@ -52,6 +53,8 @@ import java.util.*;
 
 import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_MESSAGES;
 import static com.janrain.oauth2.OAuth2.OAUTH2_ACCESS_TOKEN_PARAM_NAME;
+import static com.janrain.oauth2.OAuth2.OAUTH2_TOKEN_GRANT_TYPE_AUTH_CODE;
+import static com.janrain.oauth2.OAuth2.OAUTH2_TOKEN_RESPONSE_TYPE_CODE;
 import static org.junit.Assert.*;
 
 /**
@@ -243,7 +246,7 @@ public class Backplane2ControllerTest {
         request.setRequestURI("/v2/token");
         // this could go to either the POST or GET enabled endpoint
         request.setMethod("POST");
-        //request.setParameter("grant_type", "client_credentials");
+        //request.setParameter("grant_type", com.janrain.oauth2.OAuth2.OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS);
         //shouldn't contain the client_secret below
         setOAuthBasicAuthentication(request, "anonymous", "meh");
         handlerAdapter.handle(request, response, controller);
@@ -257,7 +260,7 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
         request.setRequestURI("/v2/token");
         request.setMethod("POST");
-        request.setParameter("grant_type", "client_credentials");
+        request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS);
         setOAuthBasicAuthentication(request, testClient.get(User.Field.USER), "wrong_secret");
         handlerAdapter.handle(request, response, controller);
         logger.info("testTokenEndPointAuthenticationFailure() => " + response.getContentAsString());
@@ -313,7 +316,7 @@ public class Backplane2ControllerTest {
 
         request.setRequestURI("/v2/token");
         request.setMethod("GET");
-        request.setParameter("grant_type", "client_credentials");
+        request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS);
         setOAuthBasicAuthentication(request, "anonymous", "");
         request.setParameter("scope","channel:notmychannel");
         request.setParameter("callback", callback);
@@ -326,7 +329,7 @@ public class Backplane2ControllerTest {
 
         request.setRequestURI("/v2/token");
         request.setMethod("GET");
-        request.setParameter("grant_type", "client_credentials");
+        request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS);
         setOAuthBasicAuthentication(request, "anonymous", "");
         request.setParameter("scope","bus:notmybus");
         request.setParameter("callback", callback);
@@ -421,7 +424,7 @@ public class Backplane2ControllerTest {
 
         request.setRequestURI("/v2/token");
         request.setMethod("POST");
-        request.setParameter("grant_type", "code");
+        request.setParameter("grant_type", OAUTH2_TOKEN_GRANT_TYPE_AUTH_CODE);
 
         //will fail because the code below is not valid
         request.setParameter("code", "meh");
@@ -446,7 +449,7 @@ public class Backplane2ControllerTest {
 
         request.setRequestURI("/v2/token");
         request.setMethod("POST");
-        request.setParameter("grant_type", "code");
+        request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_AUTH_CODE);
 
         //create grant for test
 
@@ -507,7 +510,7 @@ public class Backplane2ControllerTest {
 
         request.setRequestURI("/v2/token");
         request.setMethod("POST");
-        request.setParameter("grant_type", "code");
+        request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_AUTH_CODE);
 
         // because we didn't specify the "scope" parameter, the server will
         // return the scope it determined from grant1 but not grant2
@@ -539,7 +542,7 @@ public class Backplane2ControllerTest {
 
         request.setRequestURI("/v2/token");
         request.setMethod("POST");
-        request.setParameter("grant_type", "client_credentials");
+        request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS);
 
         // because we didn't use a "code", the server will
         // return the scope it determined from grant1 and grant2
@@ -591,7 +594,7 @@ public class Backplane2ControllerTest {
 
         request.setRequestURI("/v2/token");
         request.setMethod("POST");
-        request.setParameter("grant_type", "code");
+        request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_AUTH_CODE);
         request.setParameter("code", grant.getIdValue());
         request.setParameter("scope", "sticky:false sticky:true source:" + testClient.getSourceUrl());
         request.setParameter("redirect_uri", testClient.get(Client.ClientField.REDIRECT_URI));
@@ -649,7 +652,7 @@ public class Backplane2ControllerTest {
 
         request.setRequestURI("/v2/token");
         request.setMethod("POST");
-        request.setParameter("grant_type", "code");
+        request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_AUTH_CODE);
         request.setParameter("code", grant.getIdValue());
         request.setParameter("redirect_uri", testClient.get(Client.ClientField.REDIRECT_URI));
         setOAuthBasicAuthentication(request, testClient.get(User.Field.USER), "secret");
@@ -668,7 +671,7 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
         request.setRequestURI("/v2/token");
         request.setMethod("POST");
-        request.setParameter("grant_type", "code");
+        request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_AUTH_CODE);
         request.setParameter("code", grant.getIdValue());
         request.setParameter("redirect_uri", testClient.get(Client.ClientField.REDIRECT_URI));
         setOAuthBasicAuthentication(request, testClient.get(User.Field.USER), testClient.get(User.Field.PWDHASH));
@@ -688,7 +691,7 @@ public class Backplane2ControllerTest {
 
         request.setRequestURI("/v2/token");
         request.setMethod("POST");
-        request.setParameter("grant_type", "code");
+        request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_AUTH_CODE);
 
         //create grant for test
         Grant grant = new Grant("fakeOwnerId", testClient.getClientId(),"test");
@@ -720,7 +723,7 @@ public class Backplane2ControllerTest {
 
         request.setRequestURI("/v2/token");
         request.setMethod("POST");
-        request.setParameter("grant_type", "code");
+        request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_AUTH_CODE);
 
         //create grant for test
         Grant grant = new Grant("fakeOwnerId", testClient.getClientId(),"mybus.com");
@@ -742,7 +745,7 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
         request.setRequestURI("/v2/token");
         request.setMethod("POST");
-        request.setParameter("grant_type", "client_credentials");
+        request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS);
         request.setParameter("scope", "bus:someunauthorized.bus");
         setOAuthBasicAuthentication(request, testClient.get(User.Field.USER), "secret");
         handlerAdapter.handle(request, response, controller);
@@ -757,7 +760,7 @@ public class Backplane2ControllerTest {
         request.setRequestURI("/v2/token");
         request.setMethod("POST");
         request.setParameter("client_id", "meh");
-        request.setParameter("grant_type", "code");
+        request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_AUTH_CODE);
 
         //create grant for test
         Grant grant = new Grant("fakeOwnerId", testClient.getClientId(),"test");
@@ -778,7 +781,7 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
         request.setRequestURI("/v2/token");
         request.setMethod("POST");
-        request.setParameter("grant_type", "client_credentials");
+        request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS);
         //will fail because no client_secret is included
         setOAuthBasicAuthentication(request, "meh", "");
 
@@ -793,7 +796,7 @@ public class Backplane2ControllerTest {
         request.setRequestURI("/v2/token");
         request.setMethod("POST");
         request.setParameter("client_id", "meh");
-        request.setParameter("grant_type", "code");
+        request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_AUTH_CODE);
         //will fail because no code value is included
         request.setParameter("code","");
         request.setParameter("redirect_uri","meh");
@@ -1326,7 +1329,7 @@ public class Backplane2ControllerTest {
             request.setMethod("GET");
             request.setAuthType("BASIC");
             request.addParameter("redirect_uri", testClient.getRedirectUri());
-            request.addParameter("response_type", "authorization_code");
+            request.addParameter("response_type", OAUTH2_TOKEN_RESPONSE_TYPE_CODE);
             request.addParameter("client_id", testClient.getClientId());
             request.addHeader("Authorization", "Basic " + encodedCredentials);
             ModelAndView mv = handlerAdapter.handle(request, response, controller);
@@ -1362,7 +1365,7 @@ public class Backplane2ControllerTest {
             request.setMethod("POST");
             request.setAuthType("BASIC");
             request.addParameter("redirect_uri", testClient.getRedirectUri());
-            request.addParameter("response_type", "authorization_code");
+            request.addParameter("response_type", OAUTH2_TOKEN_RESPONSE_TYPE_CODE);
             request.addParameter("client_id", testClient.getClientId());
             request.setCookies(new Cookie[]{authNCookie, authZCookie});
 
@@ -1386,7 +1389,7 @@ public class Backplane2ControllerTest {
             request.setMethod("POST");
             request.setAuthType("BASIC");
             request.addParameter("redirect_uri", (String) model.get("redirect_uri"));
-            request.addParameter("response_type", "authorization_code");
+            request.addParameter("response_type", OAUTH2_TOKEN_RESPONSE_TYPE_CODE);
             request.addParameter("client_id", (String) model.get("client_id"));
             request.addParameter("auth_key", authKey);
             request.addParameter("scope", (String) model.get("scope"));
@@ -1408,7 +1411,7 @@ public class Backplane2ControllerTest {
 
             request.setRequestURI("/v2/token");
             request.setMethod("POST");
-            request.setParameter("grant_type", "code");
+            request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_AUTH_CODE);
             request.setParameter("code", code);
             request.setParameter("redirect_uri", testClient.get(Client.ClientField.REDIRECT_URI));
             setOAuthBasicAuthentication(request, testClient.getClientId(), "secret");

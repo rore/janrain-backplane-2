@@ -57,6 +57,10 @@ public class OAuth2 {
     public static final String OAUTH2_TOKEN_ERROR_FIELD_NAME = "error";
     public static final String OAUTH2_TOKEN_ERROR_DESC_FIELD_NAME = "error_description";
 
+    public static final String OAUTH2_TOKEN_RESPONSE_TYPE_CODE = "code";
+    public static final String OAUTH2_TOKEN_GRANT_TYPE_AUTH_CODE = "authorization_code";
+    public static final String OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS = "client_credentials";
+
     public static final String OAUTH2_TOKEN_INVALID_REQUEST = "invalid_request";
     public static final String OAUTH2_TOKEN_INVALID_CLIENT = "invalid_client";
     public static final String OAUTH2_TOKEN_UNSUPPORTED_GRANT = "unsupported_grant_type";

@@ -28,8 +28,7 @@ import org.apache.log4j.Logger;
 
 import javax.inject.Inject;
 
-import static com.janrain.oauth2.OAuth2.OAUTH2_TOKEN_INVALID_GRANT;
-import static com.janrain.oauth2.OAuth2.OAUTH2_TOKEN_UNSUPPORTED_GRANT;
+import static com.janrain.oauth2.OAuth2.*;
 
 /**
  * Token request
@@ -105,23 +104,23 @@ public class TokenRequest {
         String client_id = client.getClientId();
         String client_secret = client.getClientSecret();
 
-        if (!"client_credentials".equals(grant_type) && !"code".equals(grant_type)) {
+        if (! OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS.equals(grant_type) && ! OAUTH2_TOKEN_GRANT_TYPE_AUTH_CODE.equals(grant_type)) {
             throw new TokenException(OAUTH2_TOKEN_UNSUPPORTED_GRANT, "Invalid grant type");
         }
 
-        if ((grant_type.equals("code") && StringUtils.isEmpty(codeId)) || (grant_type.equals("client_credentials") && StringUtils.isNotEmpty(codeId)) ) {
+        if ((grant_type.equals(OAUTH2_TOKEN_GRANT_TYPE_AUTH_CODE) && StringUtils.isEmpty(codeId)) || (grant_type.equals(OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS) && StringUtils.isNotEmpty(codeId)) ) {
             throw new TokenException("Missing code value");
         }
 
-        if (grant_type.equals("client_credentials") && !client_id.equals(Token.ANONYMOUS) && StringUtils.isEmpty(client_secret)) {
+        if (grant_type.equals(OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS) && !client_id.equals(Token.ANONYMOUS) && StringUtils.isEmpty(client_secret)) {
             throw new TokenException("Missing client_secret value");
         }
 
-        if (grant_type.equals("code") && StringUtils.isEmpty(redirect_uri)) {
+        if (grant_type.equals(OAUTH2_TOKEN_GRANT_TYPE_AUTH_CODE) && StringUtils.isEmpty(redirect_uri)) {
             throw new TokenException("Missing redirect_uri value");
         }
 
-        if (grant_type.equals("client_credentials") && client_id.equals(Token.ANONYMOUS) && StringUtils.isNotEmpty(client_secret)) {
+        if (grant_type.equals(OAuth2.OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS) && client_id.equals(Token.ANONYMOUS) && StringUtils.isNotEmpty(client_secret)) {
             throw new TokenException("Must not include client_secret for anonymous requests");
         }
 
