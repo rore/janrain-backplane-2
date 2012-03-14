@@ -245,7 +245,7 @@ public abstract class Token extends Base {
             Map<String,String> queryParamsMap = new HashMap<String, String>();
             for(String queryParamPair : Arrays.asList(queryString.split("&"))) {
                 String[] nameVal = queryParamPair.split("=", 2);
-                queryParamsMap.put(nameVal[0], nameVal.length >0 ? nameVal[1] : null);
+                queryParamsMap.put(nameVal[0], nameVal.length >1 ? nameVal[1] : null);
             }
             if(queryParamsMap.containsKey(OAUTH2_ACCESS_TOKEN_PARAM_NAME)) {
                 token = queryParamsMap.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME);

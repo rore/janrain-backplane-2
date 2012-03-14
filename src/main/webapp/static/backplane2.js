@@ -428,7 +428,7 @@ Backplane.response = function(messageFrame) {
 
     this.firstFrameReceived = true;
 
-    // if the moreMessages flag is true, fetch another frame immediately
+    // if the moreMessages flag is set to 'true', fetch another frame immediately
     if (messageFrame.moreMessages === true) {
         this.fetchMessages();
         return;
