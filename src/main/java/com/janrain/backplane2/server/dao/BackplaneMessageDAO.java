@@ -79,6 +79,12 @@ public class BackplaneMessageDAO extends DAO {
 
     }
 
+    public boolean isChannelFull(String channel) throws SimpleDBException {
+         Long count = superSimpleDB.retrieveCount(bpConfig.getTableName(BP_MESSAGES),
+                "select count(*) from `" + bpConfig.getTableName(BP_MESSAGES) + "` where channel_name='" + channel + "'");
+        return count>bpConfig.getDefaultMaxMessageLimit();
+    }
+
     public List<BackplaneMessage> retrieveAllMesssagesPerScope(Scope scope, String sinceMessageId) throws SimpleDBException {
 
         ArrayList<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();

@@ -488,9 +488,6 @@ public class Backplane2Controller {
         
         String clientSourceUrl = token.get(TokenPrivileged.Field.CLIENT_SOURCE_URL);
 
-        //TODO: add logic to verify the message cap per channel has not been exceeded
-        // and confirm what to do if the Nth message went over the limit but the first N-1
-        // messages succeeded in one request...
         TokenPrivileged tokenPrivileged = (TokenPrivileged) token;
 
         // analyze each message for proper bus
@@ -517,15 +514,22 @@ public class Backplane2Controller {
         // do it all again and store the messages in the db
         BackplaneMessageDAO bmd = daoFactory.getBackplaneMessageDAO();
         for(Map<String,Object> messageData : msgs) {
-            BackplaneMessage backplaneMessage = new BackplaneMessage(clientSourceUrl, messageData);
-            if (bmd.isValidBinding(backplaneMessage.getMessageChannel(), backplaneMessage.getMessageBus())) {
-                bmd.persist(new BackplaneMessage(clientSourceUrl, messageData));
-            } else {
+            final BackplaneMessage backplaneMessage = new BackplaneMessage(clientSourceUrl, messageData);
+
+            if (!bmd.isValidBinding(backplaneMessage.getMessageChannel(), backplaneMessage.getMessageBus())) {
                 response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                 return new HashMap<String,Object>() {{
-                    put(ERR_MSG_FIELD, "Invalid channel binding - already bound to a bus");
+                    put(ERR_MSG_FIELD, "Invalid binding for channel " + backplaneMessage.getMessageChannel() + " - already bound to a bus");
                 }};
             }
+
+            if (bmd.isChannelFull(backplaneMessage.getMessageChannel())) {
+                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                return new HashMap<String,Object>() {{
+                    put(ERR_MSG_FIELD, "Message limit of " + bpConfig.getDefaultMaxMessageLimit() + " exceeded for channel '" + backplaneMessage.getMessageChannel() + "'");
+                }};
+            }
+            bmd.persist(new BackplaneMessage(clientSourceUrl, messageData));
         }
 
         response.setStatus(HttpServletResponse.SC_CREATED);
