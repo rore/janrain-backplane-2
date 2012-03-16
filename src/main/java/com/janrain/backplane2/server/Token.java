@@ -20,6 +20,7 @@ import com.janrain.backplane2.server.dao.DaoFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import com.janrain.commons.util.Pair;
+import com.janrain.oauth2.ExpiredTokenException;
 import com.janrain.oauth2.OAuth2;
 import com.janrain.oauth2.TokenException;
 import org.apache.commons.lang.StringUtils;
@@ -40,14 +41,16 @@ public abstract class Token extends Base {
 
     public static final int TOKEN_LENGTH = 20;
     public static final String ANONYMOUS = "anonymous";
+    public static final String AN = "an";
+    public static final String PR = "pr";
 
     public static enum Source {QUERYPARAM, POSTBODY, AUTHHEADER }
     
     public static enum TYPE {
 
-        REGULAR_TOKEN("an", TokenAnonymous.class, EnumSet.allOf(Source.class)),
+        REGULAR_TOKEN(AN, TokenAnonymous.class, EnumSet.allOf(Source.class)),
 
-        PRIVILEGED_TOKEN("pr", TokenPrivileged.class, EnumSet.of(Source.AUTHHEADER));
+        PRIVILEGED_TOKEN(PR, TokenPrivileged.class, EnumSet.of(Source.AUTHHEADER));
 
         public String getPrefix() {
             return prefix;
@@ -115,7 +118,7 @@ public abstract class Token extends Base {
         super(tokenString,buses,expires);
 
         logger.debug("creating token with id '" + tokenString + "'");
-        assert( tokenString.startsWith(accessType.getPrefix()) );
+        assert(isOurToken(tokenString));
 
         put(TokenField.TYPE.getFieldName(), accessType.name());
 
@@ -124,11 +127,22 @@ public abstract class Token extends Base {
         validate();
     }
 
-    public static @NotNull Token fromRequest(DaoFactory daoFactory, HttpServletRequest request, String accessTokenParam, String authorizationHeader)  throws TokenException {
+    public static boolean isOurToken(String tokenString) {
+        if (tokenString == null) {
+            return false;
+        }
+        if (tokenString.startsWith(AN) || tokenString.startsWith(PR)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    public static @NotNull Token fromRequest(DaoFactory daoFactory, HttpServletRequest request, String accessTokenParam, String authorizationHeader) throws TokenException, ExpiredTokenException {
         
         Pair<String, EnumSet<Source>> tokenAndSource = extractAccessToken(request.getQueryString(), accessTokenParam, authorizationHeader);
 
-        if ( StringUtils.isBlank(tokenAndSource.getLeft()) ) {
+        if (! Token.isOurToken(tokenAndSource.getLeft())) {
             throw new TokenException("invalid token", HttpServletResponse.SC_FORBIDDEN);
         }
 
@@ -140,7 +154,7 @@ public abstract class Token extends Base {
         }
 
         if (token == null || token.isExpired()) {
-            throw new TokenException("invalid token", HttpServletResponse.SC_FORBIDDEN);
+            throw new ExpiredTokenException("expired token", HttpServletResponse.SC_FORBIDDEN);
         }
 
         token.checkAllowedSources(tokenAndSource.getRight());

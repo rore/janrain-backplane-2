@@ -38,7 +38,7 @@ public class TokenAnonymous extends Token {
     public TokenAnonymous() {}
 
     public TokenAnonymous(String tokenString, String buses, String scopeString, Date expires) throws TokenException {
-        super("an" + tokenString, TYPE.REGULAR_TOKEN, buses, scopeString, expires);
+        super(Token.AN + tokenString, TYPE.REGULAR_TOKEN, buses, scopeString, expires);
 
         //TODO: the expiration of anonymous tokens is a problem - one hour is too short and having
         // them never expire will also cause excessive buildup.

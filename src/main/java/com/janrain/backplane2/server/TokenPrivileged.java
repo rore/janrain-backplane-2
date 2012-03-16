@@ -43,7 +43,7 @@ public class TokenPrivileged extends Token {
     public TokenPrivileged(String tokenString, String clientId, String clientSourceUrl,
                            String buses, String scopeString, Date expires) throws TokenException {
 
-        super("pr" + tokenString, TYPE.PRIVILEGED_TOKEN, buses, scopeString, expires);
+        super(Token.PR + tokenString, TYPE.PRIVILEGED_TOKEN, buses, scopeString, expires);
 
         put(Field.ISSUED_TO_CLIENT_ID.getFieldName(), clientId);
         put(Field.CLIENT_SOURCE_URL.getFieldName(), clientSourceUrl);

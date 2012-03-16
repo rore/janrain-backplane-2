@@ -47,8 +47,8 @@ public class TokenException extends OAuth2Exception {
         return httpResponseCode;
     }
 
-    // - PRIVATE
+    // - PROTECTED
     
-    private final int httpResponseCode;
+    protected final int httpResponseCode;
 
 }

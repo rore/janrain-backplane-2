@@ -545,14 +545,14 @@ public class Backplane2Controller {
     @ExceptionHandler
     @ResponseBody
     public Map<String,Object> handleTokenException(final TokenException e, HttpServletResponse response) {
-        logger.error("Error processing token request: " + e.getMessage(), bpConfig.getDebugException(e));
+        logger.debug("Error processing token request: " + e.getMessage(), bpConfig.getDebugException(e));
         response.setStatus(e.getHttpResponseCode());
         return new HashMap<String,Object>() {{
             put(ERR_MSG_FIELD, e.getOauthErrorCode());
             put(ERR_MSG_DESCRIPTION, e.getMessage());
         }};
     }
-    
+
     /**
      * Handle auth errors
      */

@@ -1202,6 +1202,47 @@ public class Backplane2ControllerTest {
     }
 
     @Test
+    public void testMessagePost3() throws Exception {
+        refreshRequestAndResponse();
+
+        // Create source token for the channel
+        TokenAnonymous token1 = new TokenAnonymous("", "", null);
+        // override the random channel name for our test channel
+        token1.put(TokenAnonymous.Field.CHANNEL.getFieldName(), "testchannel");
+        this.saveToken(token1);
+
+        // Create appropriate token
+        TokenPrivileged token2 = new TokenPrivileged("clientFoo", testClient.getSourceUrl(), "mybus.com yourbus.com", "bus:yourbus.com bus:mybus.com", null);
+        this.saveToken(token2);
+
+        // Make the call
+        request.setRequestURI("/v2/messages");
+        request.setMethod("POST");
+        setOauthBearerTokenAuthorization(request, token2.getIdValue());
+        request.addHeader("Content-type", "application/json");
+        //request.setContentType("application/json");
+        //request.setParameter("messages", TEST_MSG_1);
+        HashMap<String, Object> msgs = new HashMap<String, Object>();
+        ArrayList msgsList = new ArrayList();
+        for (int i=0; i < bpConfig.getDefaultMaxMessageLimit() + 1; i++) {
+            msgsList.add(new ObjectMapper().readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {}));
+        }
+
+        msgs.put("messages", msgsList);
+        String msgsString = new ObjectMapper().writeValueAsString(msgs);
+        logger.info(msgsString);
+        request.setContent(msgsString.getBytes());
+
+        handlerAdapter.handle(request, response, controller);
+        logger.info(response.getContentAsString());
+
+        // should fail
+        assertTrue(response.getContentAsString().contains("exceeded for channel"));
+        assertFalse(response.getStatus() == HttpServletResponse.SC_CREATED);
+    }
+
+
+    @Test
     public void testGrantAndRevoke() throws Exception {
 
         refreshRequestAndResponse();
