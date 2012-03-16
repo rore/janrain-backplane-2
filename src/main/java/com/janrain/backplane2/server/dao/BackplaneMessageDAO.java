@@ -41,6 +41,8 @@ import static com.janrain.backplane2.server.config.BusConfig2.Field.RETENTION_TI
  */
 public class BackplaneMessageDAO extends DAO {
 
+    public static final int MAX_MSGS_IN_FRAME = 25;
+
     BackplaneMessageDAO(SuperSimpleDB superSimpleDB, Backplane2Config bpConfig, DaoFactory daoFactory) {
         super(superSimpleDB, bpConfig);
         this.daoFactory = daoFactory;
@@ -63,7 +65,7 @@ public class BackplaneMessageDAO extends DAO {
     public boolean isValidBinding(String channel, String bus) throws SimpleDBException {
 
         try {
-            List<BackplaneMessage> messages = retrieveAllMesssagesPerScope(new Scope("channel:" + channel), null);
+            List<BackplaneMessage> messages = retrieveAllMesssagesPerScope(new Scope("channel:" + channel), null, 1);
             if (messages.size() > 0) {
                 if (messages.get(0).getMessageBus().equals(bus)) {
                     return true;
@@ -82,10 +84,19 @@ public class BackplaneMessageDAO extends DAO {
     public boolean isChannelFull(String channel) throws SimpleDBException {
         String query = "select count(*) from `" + bpConfig.getTableName(BP_MESSAGES) + "` where channel='" + channel + "'";
         long count = superSimpleDB.retrieveCount(bpConfig.getTableName(BP_MESSAGES), query);
-        return count>bpConfig.getDefaultMaxMessageLimit();
+        return count >= bpConfig.getDefaultMaxMessageLimit();
     }
 
-    public List<BackplaneMessage> retrieveAllMesssagesPerScope(Scope scope, String sinceMessageId) throws SimpleDBException {
+    /**
+     * Retrieve all messages by chunking query from scope
+     * @param scope
+     * @param sinceMessageId
+     * @param limit  -1 will set limit = MAX_MSGS_IN_FRAME +1
+     * @return returns a maximum of MAX_MSGS_IN_FRAME
+     * @throws SimpleDBException
+     */
+
+    public List<BackplaneMessage> retrieveAllMesssagesPerScope(Scope scope, String sinceMessageId, int limit) throws SimpleDBException {
 
         ArrayList<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
 
@@ -94,6 +105,10 @@ public class BackplaneMessageDAO extends DAO {
         // up incrementally.
         // TODO: there is a risk that messages arrive and are lost with this approach
         // because we are building the query results up from pieces.
+
+        if (limit < 0 || limit > MAX_MSGS_IN_FRAME) {
+            limit = MAX_MSGS_IN_FRAME+1;
+        }
 
         List<String> queries = scope.buildQueriesFromScope();
 
@@ -107,10 +122,19 @@ public class BackplaneMessageDAO extends DAO {
 
             query += " AND id IS NOT NULL ORDER BY id";
 
+            if (limit > -1) {
+                query += " limit " + limit;
+            }
+
             logger.info("message query => " + query);
 
             messages.addAll(superSimpleDB.retrieveWhere(bpConfig.getTableName(BP_MESSAGES),
-                    BackplaneMessage.class, query, true));
+                    BackplaneMessage.class, query, false));
+
+            if (limit > -1 && messages.size() >= limit) {
+                break;
+            }
+
         }
 
         // we need to sort the results, because they are built up from individual queries and

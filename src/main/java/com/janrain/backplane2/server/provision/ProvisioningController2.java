@@ -142,12 +142,12 @@ public class ProvisioningController2 {
     }
 
     /**
-     * Handle auth errors
+     * Handle auth errors as part of normal application flow
      */
     @ExceptionHandler
     @ResponseBody
     public Map<String, String> handle(final AuthException e, HttpServletResponse response) {
-        logger.error("Provisioning authentication error: " + e.getMessage());
+        logger.info("Provisioning authentication error: " + e.getMessage());
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         return new HashMap<String,String>() {{
             put(ERR_MSG_FIELD, e.getMessage());

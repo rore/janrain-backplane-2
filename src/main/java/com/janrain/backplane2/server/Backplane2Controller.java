@@ -131,7 +131,7 @@ public class Backplane2Controller {
         } else {
             // authZ decision from bus owner, accept only on post
             if (! "POST".equals(httpMethod)) {
-                throw new IllegalArgumentException("Invalid HTTP method for authorization decision post: " + httpMethod);
+                throw new InvalidRequestException("Invalid HTTP method for authorization decision post: " + httpMethod);
             }
             return processAuthZdecision(authZdecisionKey, authSessionCookie, authenticatedBusOwner, authorizationRequestCookie, request);
         }
@@ -161,7 +161,7 @@ public class Backplane2Controller {
             persistAuthenticatedSession(response, busOwner);
             return new ModelAndView("redirect:/v2/authorize");
         } else {
-            throw new IllegalArgumentException("Unsupported method for /authenticate: " + httpMethod);
+            throw new InvalidRequestException("Unsupported method for /authenticate: " + httpMethod);
         }
     }
 
@@ -297,7 +297,7 @@ public class Backplane2Controller {
         List<BackplaneMessage> messages;
         boolean exit = false;
         do {
-            messages = daoFactory.getBackplaneMessageDAO().retrieveAllMesssagesPerScope(messageRequest.getToken().getScope(), since);
+            messages = daoFactory.getBackplaneMessageDAO().retrieveAllMesssagesPerScope(messageRequest.getToken().getScope(), since, -1);
             if (messages.isEmpty() && new Date().before(mustReturn)) {
                 try {
                     Thread.sleep(3000);
@@ -316,7 +316,7 @@ public class Backplane2Controller {
         BackplaneMessage lastMessage = null;
         int messageCount = 0;
         for (BackplaneMessage message : messages) {
-            if (++messageCount > MAX_MSGS_IN_FRAME) {
+            if (++messageCount > BackplaneMessageDAO.MAX_MSGS_IN_FRAME) {
                 moreMessages = true;
                 break;
             }
@@ -526,10 +526,11 @@ public class Backplane2Controller {
             if (bmd.isChannelFull(backplaneMessage.getMessageChannel())) {
                 response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                 return new HashMap<String,Object>() {{
-                    put(ERR_MSG_FIELD, "Message limit of " + bpConfig.getDefaultMaxMessageLimit() + " exceeded for channel '" + backplaneMessage.getMessageChannel() + "'");
+                    put(ERR_MSG_FIELD, "Message limit of " + bpConfig.getDefaultMaxMessageLimit() + " reached for channel '" + backplaneMessage.getMessageChannel() + "'");
                 }};
             }
             bmd.persist(new BackplaneMessage(clientSourceUrl, messageData));
+
         }
 
         response.setStatus(HttpServletResponse.SC_CREATED);
@@ -545,7 +546,7 @@ public class Backplane2Controller {
     @ExceptionHandler
     @ResponseBody
     public Map<String,Object> handleTokenException(final TokenException e, HttpServletResponse response) {
-        logger.debug("Error processing token request: " + e.getMessage(), bpConfig.getDebugException(e));
+        logger.info("Error processing token request: " + e.getMessage(), bpConfig.getDebugException(e));
         response.setStatus(e.getHttpResponseCode());
         return new HashMap<String,Object>() {{
             put(ERR_MSG_FIELD, e.getOauthErrorCode());
@@ -554,22 +555,29 @@ public class Backplane2Controller {
     }
 
     /**
-     * Handle auth errors
+     * Handle auth errors as part of normal application flow
      */
     @ExceptionHandler
     @ResponseBody
     public Map<String, String> handle(final AuthException e, HttpServletResponse response) {
-        logger.error("Backplane authentication error: " + bpConfig.getDebugException(e));
+        logger.info("Backplane authentication error: " + bpConfig.getDebugException(e));
         response.setStatus(SC_UNAUTHORIZED);
         return new HashMap<String,String>() {{
             put(ERR_MSG_FIELD, e.getMessage());
         }};
     }
 
+    /**
+     * Handle invalid requests as a normal part of application flow
+     * @param e
+     * @param response
+     * @return
+     */
+
     @ExceptionHandler
     @ResponseBody
     public Map<String, Object> handleInvalidRequest(final InvalidRequestException e, HttpServletResponse response) {
-        logger.error("Error handling backplane request", bpConfig.getDebugException(e));
+        logger.info("Error handling backplane request", bpConfig.getDebugException(e));
         response.setStatus(e.getHttpResponseCode());
         return new HashMap<String,Object>() {{
             put(ERR_MSG_FIELD, e.getMessage());
@@ -581,7 +589,7 @@ public class Backplane2Controller {
     }
 
     /**
-     * Handle all other errors
+     * Handle all other errors not normally a part of application flow.
      */
     @ExceptionHandler
     @ResponseBody
@@ -629,7 +637,7 @@ public class Backplane2Controller {
 
     private static final String ERR_MSG_FIELD = "error";
     private static final String ERR_MSG_DESCRIPTION = "error_description";
-    private static final int MAX_MSGS_IN_FRAME = 25;
+
     private static final int MAX_BLOCK_SECONDS = 25;
 
     private static final String BUS_OWNER_AUTH_FORM_JSP = "bus_owner_auth";
@@ -717,7 +725,7 @@ public class Backplane2Controller {
 
     private String paddedResponse(String callback, String s) {
         if (StringUtils.isBlank(callback)) {
-            throw new IllegalArgumentException("Callback cannot be blank.");
+            throw new InvalidRequestException("Callback cannot be blank.");
         }
         StringBuilder result = new StringBuilder(callback);
         result.append("(").append(s).append(")");

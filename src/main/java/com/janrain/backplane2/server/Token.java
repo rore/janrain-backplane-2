@@ -72,7 +72,6 @@ public abstract class Token extends Base {
                 // do nothing
             }
             if (type == null) {
-                logger.error("invalid token! => '" + token + "'");
                 throw new IllegalArgumentException();
             }
             return type;
@@ -217,7 +216,7 @@ public abstract class Token extends Base {
                 try {
                     new Scope(value);
                 } catch (TokenException e) {
-                    throw new IllegalArgumentException("Invalid scope: " + value);
+                    throw new InvalidRequestException("Invalid scope: " + value);
                 }
             }
         };

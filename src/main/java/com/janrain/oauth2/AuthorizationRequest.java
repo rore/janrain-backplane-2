@@ -16,6 +16,7 @@
 
 package com.janrain.oauth2;
 
+import com.janrain.backplane2.server.InvalidRequestException;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
@@ -79,7 +80,7 @@ public class AuthorizationRequest extends AbstractMessage {
             public void validate(String value) throws RuntimeException {
                 super.validate(value);
                 if (! "authorization_code".equals(value)) {
-                    throw new IllegalArgumentException("Unsupported OAuth2 response_type: " + value);
+                    throw new InvalidRequestException("Unsupported OAuth2 response_type: " + value);
                 }
             }
         },
@@ -90,7 +91,7 @@ public class AuthorizationRequest extends AbstractMessage {
                 try {
                     OAuth2.validateRedirectUri(value);
                 } catch (ValidationException e) {
-                    throw new IllegalArgumentException(e.getMessage());
+                    throw new InvalidRequestException(e.getMessage());
                 }
             }
         },

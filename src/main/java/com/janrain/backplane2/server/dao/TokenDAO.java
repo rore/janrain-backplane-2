@@ -52,6 +52,7 @@ public class TokenDAO extends DAO {
         try{
             return superSimpleDB.retrieve(bpConfig.getTableName(BP_ACCESS_TOKEN), Token.TYPE.fromTokenString(tokenId).getTokenClass(), tokenId);
         } catch (IllegalArgumentException e) {
+            logger.error("invalid token! => '" + tokenId + "'");
             return null; //invalid token id, don't even try
         }
     }

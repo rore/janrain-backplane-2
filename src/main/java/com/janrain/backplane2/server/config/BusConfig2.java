@@ -16,6 +16,7 @@
 
 package com.janrain.backplane2.server.config;
 
+import com.janrain.backplane2.server.InvalidRequestException;
 import com.janrain.backplane2.server.dao.DaoFactory;
 import com.janrain.backplane2.server.provision.ProvisioningConfig;
 import com.janrain.commons.supersimpledb.message.MessageField;
@@ -57,7 +58,7 @@ public class BusConfig2 extends ProvisioningConfig {
     public void validate(DaoFactory daoFactory) throws Exception {
         User user = daoFactory.getBusOwnerDAO().retrieveBusOwner(get(Field.OWNER.getFieldName()));
         if (user == null) {
-            throw new IllegalArgumentException("Invalid bus owner: " + get(Field.OWNER.getFieldName()));
+            throw new InvalidRequestException("Invalid bus owner: " + get(Field.OWNER.getFieldName()));
         }
     }
 
@@ -74,7 +75,7 @@ public class BusConfig2 extends ProvisioningConfig {
                     String fieldName = getFieldName();
                     int intValue = validateInt(fieldName, value);
                     if (intValue < RETENTION_MIN_VALUE || intValue > RETENTION_MAX_VALUE) {
-                        throw new IllegalArgumentException("Value of " + fieldName + " must be between " + RETENTION_MIN_VALUE + " and " + RETENTION_MAX_VALUE);
+                        throw new InvalidRequestException("Value of " + fieldName + " must be between " + RETENTION_MIN_VALUE + " and " + RETENTION_MAX_VALUE);
                     }
                 }
             }},
@@ -87,7 +88,7 @@ public class BusConfig2 extends ProvisioningConfig {
                     validateInt(fieldName, value);
                     int intValue = validateInt(fieldName, value);
                     if (intValue < RETENTION_STICKY_MIN_VALUE || intValue > RETENTION_STICKY_MAX_VALUE) {
-                        throw new IllegalArgumentException("Value of " + fieldName + " must be between " + RETENTION_STICKY_MIN_VALUE + " and " + RETENTION_STICKY_MAX_VALUE);
+                        throw new InvalidRequestException("Value of " + fieldName + " must be between " + RETENTION_STICKY_MIN_VALUE + " and " + RETENTION_STICKY_MAX_VALUE);
                     }
                 }
             }};

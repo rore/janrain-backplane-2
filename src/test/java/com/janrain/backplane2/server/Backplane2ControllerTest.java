@@ -1228,17 +1228,20 @@ public class Backplane2ControllerTest {
             msgsList.add(new ObjectMapper().readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {}));
         }
 
+        assertTrue(msgsList.size() > bpConfig.getDefaultMaxMessageLimit());
+
         msgs.put("messages", msgsList);
         String msgsString = new ObjectMapper().writeValueAsString(msgs);
         logger.info(msgsString);
         request.setContent(msgsString.getBytes());
 
         handlerAdapter.handle(request, response, controller);
-        logger.info(response.getContentAsString());
+        logger.info("testMessagePost3 => " + response.getContentAsString());
 
         // should fail
-        assertTrue(response.getContentAsString().contains("exceeded for channel"));
         assertFalse(response.getStatus() == HttpServletResponse.SC_CREATED);
+        assertTrue("This test should have failed as expected", response.getContentAsString().contains("error"));
+
     }
 
 

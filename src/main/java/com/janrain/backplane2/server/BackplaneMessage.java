@@ -39,7 +39,7 @@ public class BackplaneMessage extends AbstractMessage {
 
     public BackplaneMessage(String clientSourceUrl, Map<String, Object> data) throws BackplaneServerException {
         if (data.containsKey(Field.SOURCE.getFieldName())) {
-            throw new IllegalArgumentException("Upstream messages must not include the 'source' field.");
+            throw new InvalidRequestException("Upstream messages must not include the 'source' field.");
         }
         Map<String,String> d = new LinkedHashMap<String, String>(toStringMap(data));
         String id = generateMessageId();
@@ -54,7 +54,7 @@ public class BackplaneMessage extends AbstractMessage {
         }
 
         if (getFields().size() < d.size()) {
-            throw new IllegalArgumentException("Extra invalid parameter(s)");
+            throw new InvalidRequestException("Extra invalid parameter(s)");
         }
 
         super.init(id, d);
@@ -128,7 +128,7 @@ public class BackplaneMessage extends AbstractMessage {
             public void validate(String value) throws RuntimeException {
                 super.validate(value);
                 if (value != null && ! Boolean.TRUE.toString().equalsIgnoreCase(value) && ! Boolean.FALSE.toString().equalsIgnoreCase(value)) {
-                    throw new IllegalArgumentException("Invalid boolean value for " + getFieldName() + ": " + value);
+                    throw new InvalidRequestException("Invalid boolean value for " + getFieldName() + ": " + value);
                 }
             }},
         SOURCE("source") {
@@ -138,7 +138,7 @@ public class BackplaneMessage extends AbstractMessage {
                 try {
                     new URL(value);
                 } catch (MalformedURLException e) {
-                    throw new IllegalArgumentException("Invalid URL for " + getFieldName() + ": " + value, e);
+                    throw new InvalidRequestException("Invalid URL for " + getFieldName() + ": " + value);
                 }
             }},
 
