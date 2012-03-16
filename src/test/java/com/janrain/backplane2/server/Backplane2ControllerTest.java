@@ -1110,10 +1110,7 @@ public class Backplane2ControllerTest {
         handlerAdapter.handle(request, response, controller);
         logger.info(response.getContentAsString());
 
-
         assertTrue(response.getStatus() == HttpServletResponse.SC_CREATED);
-
-
 
     }
 
@@ -1240,7 +1237,7 @@ public class Backplane2ControllerTest {
 
         // should fail
         assertFalse(response.getStatus() == HttpServletResponse.SC_CREATED);
-        assertTrue("This test should have failed as expected", response.getContentAsString().contains("error"));
+        assertTrue("This test should have failed as expected", response.getContentAsString().contains("Message limit of"));
 
     }
 

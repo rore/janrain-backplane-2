@@ -492,6 +492,23 @@ public class Backplane2Controller {
 
         // analyze each message for proper bus
         List<Map<String,Object>> msgs = messages.get("messages");
+
+        if (msgs.size() < 1) {
+            // no message body?
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            return new HashMap<String,Object>() {{
+                put(ERR_MSG_FIELD, "Missing message payload");
+            }};
+        }
+
+        if (messages.keySet().size() != 1) {
+            // other garbage in the payload
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            return new HashMap<String,Object>() {{
+                put(ERR_MSG_FIELD, "Invalid data in payload");
+            }};
+        }
+
         for(Map<String,Object> messageData : msgs) {
 
             BackplaneMessage message = new BackplaneMessage(clientSourceUrl, messageData);
