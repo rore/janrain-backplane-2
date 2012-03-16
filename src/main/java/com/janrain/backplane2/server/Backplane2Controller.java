@@ -316,7 +316,7 @@ public class Backplane2Controller {
         BackplaneMessage lastMessage = null;
         int messageCount = 0;
         for (BackplaneMessage message : messages) {
-            if (messageCount++ > MAX_MSGS_IN_FRAME) {
+            if (++messageCount > MAX_MSGS_IN_FRAME) {
                 moreMessages = true;
                 break;
             }
