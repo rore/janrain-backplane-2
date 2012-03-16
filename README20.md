@@ -31,6 +31,8 @@ All endpoints are available at paths starting with the `/v2/`.
 }
 ```
 
+Per OAuth 2, the `scope` parameter will be returned if the granted scope differs from the requested scope.
+
 Note: If the granted scope differs than the requested scope, it will be provided in the response.
 
 ### Anonymous Access Token Request
