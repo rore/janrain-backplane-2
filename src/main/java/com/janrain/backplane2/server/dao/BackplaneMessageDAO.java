@@ -50,7 +50,24 @@ public class BackplaneMessageDAO extends DAO {
 
     @Override
     public void persist(Object message) throws SimpleDBException {
+        // We want to satisfy the requirement that this new message ID > existing message ID
+        // or the put should fail.  Because SDB only supports conditional PUT based on an expected value
+        // we will need to read the largest Message (by ID) and assign this to the expected ID condition.
+        BackplaneMessage latestSavedMessage = getLatestMessage();
+        BackplaneMessage newMessage = (BackplaneMessage) message;
+        assert(newMessage.getIdValue().compareTo(latestSavedMessage.getIdValue()) > 1);
+
         superSimpleDB.store(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class, (BackplaneMessage) message);
+    }
+
+    public BackplaneMessage getLatestMessage() throws SimpleDBException {
+        String query = "id IS NOT NULL ORDER BY id DESC LIMIT 1";
+        List<BackplaneMessage> messages= superSimpleDB.retrieveWhere(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class, query, false);
+        if (messages.size() > 0) {
+            return messages.get(0);
+        } else {
+            return null;
+        }
     }
 
     @Override
@@ -88,65 +105,67 @@ public class BackplaneMessageDAO extends DAO {
     }
 
     /**
-     * Retrieve all messages by chunking query from scope
+     * Retrieve all messages by per scope.  Guaranteed to delivery results in order of
+     * message ID.
      * @param scope
      * @param sinceMessageId
      * @param limit  -1 will set limit = MAX_MSGS_IN_FRAME +1
-     * @return returns a maximum of MAX_MSGS_IN_FRAME
+     * @return returns a maximum of MAX_MSGS_IN_FRAME + 1
      * @throws SimpleDBException
      */
 
     public List<BackplaneMessage> retrieveAllMesssagesPerScope(Scope scope, String sinceMessageId, int limit) throws SimpleDBException {
 
-        ArrayList<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
+        List<BackplaneMessage> filteredMessages = new ArrayList<BackplaneMessage>();
 
-        // If the scope is complex, the risk is that we over-run SDB's query size restrictions.
-        // So, here we break the query into chunks to run against SDB and build the result set
-        // up incrementally.
-        // TODO: there is a risk that messages arrive and are lost with this approach
-        // because we are building the query results up from pieces.
+        // In order to satisfy the ordering by message ID and not omit records, the query must be made against
+        // SDB purely on the message ID.  We will then do scope filtering before adding
+        // the message to the query results.
 
         if (limit < 0 || limit > MAX_MSGS_IN_FRAME) {
+            // add one to the results, to properly show that more results may remain, if they do
             limit = MAX_MSGS_IN_FRAME+1;
         }
 
-        List<String> queries = scope.buildQueriesFromScope();
+        List<BackplaneMessage> unfilteredMessages;
 
-        for (String query : queries) {
+        do {
 
-            assert(StringUtils.isNotEmpty(query));
+            String query = "";
+
+            // Optimization if only one channel is listed in scope
+            if (scope.getChannelsInScope().size() == 1) {
+                query += " channel='" + scope.getChannelsInScope().get(0) + "' AND";
+            }
 
             if (StringUtils.isNotEmpty(sinceMessageId)) {
-                query += " AND id > '" + sinceMessageId + "'";
+                query += " id > '" + sinceMessageId + "' AND";
             }
 
-            query += " AND id IS NOT NULL ORDER BY id";
+            // SDB's default is 100, but we want to be as efficient as possible and pull as many records
+            // as SDB will provide for processing to minimize network lag.  It will return a maximum of 1 meg
+            // per request regardless.
+            query += " id IS NOT NULL ORDER BY id LIMIT 2500";
 
-            if (limit > -1) {
-                query += " limit " + limit;
+            // We don't want to use SDB's tokenizing mechanism to continually loop as it does this
+            // without read consistency
+            unfilteredMessages = superSimpleDB.retrieveWhere(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class, query, false);
+
+            // Filter and add to results
+            for (BackplaneMessage unfilteredMessage : unfilteredMessages) {
+                if (scope.isMessageInScope(unfilteredMessage)) {
+                    filteredMessages.add(unfilteredMessage);
+                }
             }
 
-            logger.info("message query => " + query);
-
-            messages.addAll(superSimpleDB.retrieveWhere(bpConfig.getTableName(BP_MESSAGES),
-                    BackplaneMessage.class, query, false));
-
-            if (limit > -1 && messages.size() >= limit) {
-                break;
+            // update sinceMessageId to point to last message in this unfiltered result
+            if (unfilteredMessages.size() > 0) {
+                sinceMessageId = unfilteredMessages.get(unfilteredMessages.size()-1).getIdValue();
             }
 
-        }
+        } while (unfilteredMessages.size() > 0 && filteredMessages.size() < limit);
 
-        // we need to sort the results, because they are built up from individual queries and
-        // may not be in the correct order when merged.
-        Collections.sort(messages, new Comparator<BackplaneMessage>() {
-            @Override
-            public int compare(BackplaneMessage msg1, BackplaneMessage msg2) {
-                return msg1.getIdValue().compareTo(msg1.getIdValue());
-            }
-        });
-
-        return messages;
+        return filteredMessages;
     }
     
     public void deleteExpiredMessages() {

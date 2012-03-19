@@ -16,11 +16,16 @@
 
 package com.janrain.backplane2.server;
 
+import com.janrain.backplane.server.ApplicationException;
 import com.janrain.commons.supersimpledb.message.MessageField;
+import com.janrain.commons.util.EncryptUtil;
 import com.janrain.crypto.ChannelUtil;
 import com.janrain.oauth2.OAuth2;
 import com.janrain.oauth2.TokenException;
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
+import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jackson.type.TypeReference;
 
 import java.util.Date;
 
@@ -68,6 +73,58 @@ public class TokenAnonymous extends Token {
         this(ChannelUtil.randomString(TOKEN_LENGTH), buses, scopeString, expires);
     }
 
+    public void setEncryptionKey(String encryptionKey) {
+        this.encryptionKey = encryptionKey;
+    }
+
+    /**
+	 * Parse a String representation of a TokenAnonymous (the cookie value)
+	 * that was created via the toString() method.
+	 *
+	 * @param cookieValue		The String to parse
+	 * @return					A SessionCookieData object parsed from the String
+	 */
+	public static TokenAnonymous asTokenAnonymous(String cookieValue, String encryptionKey) {
+
+		logger.debug("Parsing encrypted session data:\n" + cookieValue);
+		String unencryptedValue = EncryptUtil.decrypt(cookieValue, encryptionKey);
+		ObjectMapper mapper = new ObjectMapper();
+		TokenAnonymous data;
+		try {
+			data = mapper.readValue(unencryptedValue, new TypeReference<TokenAnonymous>() { });
+            data.setEncryptionKey(encryptionKey);
+		}
+		catch (Exception e) {
+			logger.error("Error reading token data from JSON '" + unencryptedValue + "'", e);
+			throw new ApplicationException("Unable to parse token data from cookie value", e);
+		}
+		return data;
+	}
+
+    /**
+	 * Get the String representation of a TokenAnonymous (for use in
+	 * storing as a cookie value). This can be converted back via the
+	 * TokenAnonymous.asTokenAnonymous() method.
+	 *
+	 * @return A String representation of the TokenAnonymous
+	 */
+	public String toString() {
+
+		ObjectMapper mapper = new ObjectMapper();
+		String value;
+		try {
+			value = mapper.writeValueAsString(this);
+		}
+		catch (Exception e) {
+			logger.error("Unable to TokenAnonymous object to JSON", e);
+			value = "";
+		}
+
+		String encrypted = EncryptUtil.encrypt(value, encryptionKey);
+		logger.debug("Sending encrypted TokenAnonymous:\n" + encrypted);
+		return encrypted;
+	}
+
     @Override
     public String getChannelName() {
         return this.get(Field.CHANNEL);
@@ -103,5 +160,9 @@ public class TokenAnonymous extends Token {
             this.required = required;
         }
     }
+
+    private static final Logger logger = Logger.getLogger(TokenAnonymous.class);
+
+    private String encryptionKey;
 
 }

@@ -106,67 +106,20 @@ public class Scope {
         return scopes.get("channel");
     }
 
-    public List<String> buildQueriesFromScope() {
+    public boolean isMessageInScope(BackplaneMessage message) {
+        boolean isMessageInScope = false;
 
-        logger.info("build queries from scope: " + scopes.entrySet());
-
-        ArrayList<String> queries = new ArrayList<String>();
-
-        List<Map.Entry<String,ArrayList<String>>> scopeList = new ArrayList<Map.Entry<String, ArrayList<String>>>(scopes.entrySet());
-
-        buildQuery(queries, "", scopeList, 0);
-        return queries;
-    }
-
-    private void buildQuery(List<String> queryList, String query, List<Map.Entry<String,ArrayList<String>>> scopeList, int level) {
-
-        if (level > scopeList.size()-1) {
-            logger.info("add " + query);
-            queryList.add(query);
-            return;
+        if (this.getBusesInScope().contains(message.getMessageBus())) {
+            isMessageInScope = true;
         }
 
-        Map.Entry<String,ArrayList<String>> entry = scopeList.get(level);
-
-        if (entry.getValue().isEmpty()) {
-            buildQuery(queryList, query, scopeList, level+1);
+        if (this.getChannelsInScope().contains(message.getMessageChannel())) {
+            isMessageInScope = true;
         }
 
-        ArrayList<String> originalDisjunctionList = entry.getValue();
-        ArrayList<String> compressedDisjunctionList = new ArrayList<String>();
+        // TODO: other scopes?
 
-        int size = originalDisjunctionList.size();
-        int maxValuesInClause = 4, cnt=0;
-
-        String queryS = entry.getKey() + " IN (";
-        String body = "";
-
-        for (String val: originalDisjunctionList) {
-            if (cnt > 0) {
-                body += ",";
-            }
-            body += "'" + val + "'";
-
-            cnt++;
-            if (cnt >= maxValuesInClause || cnt >= size) {
-                logger.debug("added " + body);
-                compressedDisjunctionList.add(queryS + body + ")");
-                body = "";
-                size -= cnt;
-                cnt=0;
-            }
-        }
-
-        for (String val : compressedDisjunctionList) {
-            String conjunction = "";
-            if (StringUtils.isNotBlank(query)) {
-                conjunction = " AND ";
-            }
-
-            String newQuery = query + conjunction + val;
-            buildQuery(queryList, newQuery, scopeList, level+1);
-        }
-
+        return isMessageInScope;
     }
 
     //private

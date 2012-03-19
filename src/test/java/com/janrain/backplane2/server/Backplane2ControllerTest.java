@@ -28,6 +28,7 @@ import com.janrain.crypto.ChannelUtil;
 import com.janrain.crypto.HmacHashUtils;
 import com.janrain.oauth2.TokenException;
 import org.apache.catalina.util.Base64;
+
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
@@ -40,7 +41,6 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
-import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.HandlerAdapter;
 import org.springframework.web.servlet.ModelAndView;
 
@@ -580,7 +580,7 @@ public class Backplane2ControllerTest {
         // add a duplicate bus in the grant - it should be ignored in the issued token
         randomBuses.add(randomBuses.get(0));
 
-        String buses = StringUtils.collectionToDelimitedString(randomBuses, " ");
+        String buses = org.springframework.util.StringUtils.collectionToDelimitedString(randomBuses, " ");
 
         Grant grant = new Grant("fakeOwnerId", testClient.getClientId(),buses);
         grant.setCodeExpirationDefault();
@@ -1130,7 +1130,8 @@ public class Backplane2ControllerTest {
         this.saveToken(token1);
 
         // Create appropriate token
-        TokenPrivileged token2 = new TokenPrivileged("clientFoo", testClient.getSourceUrl(), "mybus.com yourbus.com", "bus:yourbus.com bus:mybus.com", null);
+        TokenPrivileged token2 = new TokenPrivileged("clientFoo", testClient.getSourceUrl(),
+                "mybus.com yourbus.com", "bus:yourbus.com bus:mybus.com", null);
         this.saveToken(token2);
 
         // Make the call
@@ -1152,9 +1153,10 @@ public class Backplane2ControllerTest {
         request.setContent(msgsString.getBytes());
 
         handlerAdapter.handle(request, response, controller);
-        logger.info(response.getContentAsString());
+        logger.info("testMessagePost() => " + response.getContentAsString());
 
         // should fail
+        assertTrue(response.getContentAsString().contains("Invalid binding"));
         assertFalse(response.getStatus() == HttpServletResponse.SC_CREATED);
 
     }
@@ -1445,7 +1447,7 @@ public class Backplane2ControllerTest {
         Map<String,Object> msg = mapper.readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {});
 
         // seed messages
-        int numMessages = 10;
+        long numMessages = bpConfig.getDefaultMaxMessageLimit();
         ArrayList<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
         String channel = ChannelUtil.randomString(TokenAnonymous.CHANNEL_NAME_LENGTH);
 
@@ -1463,20 +1465,38 @@ public class Backplane2ControllerTest {
             this.saveMessage(message);
         }
 
-         // Make the call
-        request.setRequestURI("/v2/messages");
-        request.setMethod("GET");
-        setOauthBearerTokenAuthorization(request, token.getIdValue());
-        handlerAdapter.handle(request, response, controller);
-        logger.info("testMessageOrder()  => " + response.getContentAsString());
+        // Make the call
+        List<Map<String,Object>> allMsgs = new ArrayList<Map<String, Object>>();
+        boolean moreMessages = false;
+        String since = "";
+        do {
+            refreshRequestAndResponse();
+            request.setRequestURI("/v2/messages");
+            request.setMethod("GET");
+            if (org.apache.commons.lang.StringUtils.isNotBlank(since)) {
+                request.setParameter("since", since);
+            }
+            setOauthBearerTokenAuthorization(request, token.getIdValue());
+            handlerAdapter.handle(request, response, controller);
+            logger.info("testMessageOrder()  => " + response.getContentAsString());
 
-        Map<String,Object> returnedBody = mapper.readValue(response.getContentAsString(), new TypeReference<Map<String,Object>>() {});
-        List<Map<String,Object>> returnedMsgs = (List<Map<String, Object>>) returnedBody.get("messages");
-        assertTrue(returnedMsgs.size() == numMessages);
+            Map<String,Object> returnedBody = mapper.readValue(response.getContentAsString(), new TypeReference<Map<String,Object>>() {});
+            List<Map<String,Object>> returnedMsgs = (List<Map<String, Object>>) returnedBody.get("messages");
+            allMsgs.addAll(returnedMsgs);
 
+            moreMessages = (Boolean)returnedBody.get("moreMessages");
+            String messageURL = (String) returnedMsgs.get(returnedMsgs.size()-1).get("messageURL");
+
+            //"messageURL": "https://bp.example.com/v2/message/097a5cc401001f95b45d37aca32a3bd2",
+            since = messageURL.substring(messageURL.indexOf("message/")+8);
+            Thread.sleep(1000);
+
+        } while ( moreMessages);
+
+        assertTrue(allMsgs.size() == numMessages);
         // they should be returned in lexicographic order by ID
         String prev = "";
-        for (Map<String,Object> m : returnedMsgs) {
+        for (Map<String,Object> m : allMsgs) {
             assertTrue(m.get("messageURL").toString().compareTo(prev) > 0);
             prev = (String)m.get("messageURL");
         }
