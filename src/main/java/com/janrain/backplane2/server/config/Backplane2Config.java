@@ -116,9 +116,9 @@ public class Backplane2Config {
     /**
 	 * @return the encryptionKey
 	 */
-	public String getEncryptionKey() throws SimpleDBException {
-		return cachedGet(BpServerProperty.ENCRYPTION_KEY);
-	}
+	//public String getEncryptionKey() throws SimpleDBException {
+	//	return cachedGet(BpServerProperty.ENCRYPTION_KEY);
+	//}
 
     /**
      * @return the server default max message value per channel
@@ -211,7 +211,7 @@ public class Backplane2Config {
 
         try {
             buildProperties.load(Backplane2Config.class.getResourceAsStream(BUILD_PROPERTIES));
-            assert(StringUtils.isNotBlank(getEncryptionKey()));
+            //assert(StringUtils.isNotBlank(getEncryptionKey()));
         } catch (Exception e) {
             String err = "Error loading build properties from " + BUILD_PROPERTIES;
             logger.error(err, e);
