@@ -101,6 +101,7 @@ public class BackplaneMessageDAO extends DAO {
     public boolean isChannelFull(String channel) throws SimpleDBException {
         String query = "select count(*) from `" + bpConfig.getTableName(BP_MESSAGES) + "` where channel='" + channel + "'";
         long count = superSimpleDB.retrieveCount(bpConfig.getTableName(BP_MESSAGES), query);
+        logger.debug(count + " >= " + bpConfig.getDefaultMaxMessageLimit());
         return count >= bpConfig.getDefaultMaxMessageLimit();
     }
 
@@ -132,28 +133,31 @@ public class BackplaneMessageDAO extends DAO {
         do {
 
             String query = "";
+            // SDB's default query limit is 100, but we want to be as efficient as possible and pull as many records
+            // as SDB will provide for processing to minimize network lag.  It will return a maximum of 1 meg
+            // per request regardless.
+            int queryLimit = 2500;
 
             // Optimization if only one channel is listed in scope
             if (scope.getChannelsInScope().size() == 1) {
                 query += " channel='" + scope.getChannelsInScope().get(0) + "' AND";
+                queryLimit = limit;
             }
 
             if (StringUtils.isNotEmpty(sinceMessageId)) {
                 query += " id > '" + sinceMessageId + "' AND";
             }
 
-            // SDB's default is 100, but we want to be as efficient as possible and pull as many records
-            // as SDB will provide for processing to minimize network lag.  It will return a maximum of 1 meg
-            // per request regardless.
-            query += " id IS NOT NULL ORDER BY id LIMIT 2500";
+            query += " id IS NOT NULL ORDER BY id LIMIT " + queryLimit;
 
             // We don't want to use SDB's tokenizing mechanism to continually loop as it does this
             // without read consistency
             unfilteredMessages = superSimpleDB.retrieveWhere(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class, query, false);
 
             // Filter and add to results
+
             for (BackplaneMessage unfilteredMessage : unfilteredMessages) {
-                if (scope.isMessageInScope(unfilteredMessage)) {
+                if (scope.isMessageInScope(unfilteredMessage) && filteredMessages.size() < limit) {
                     filteredMessages.add(unfilteredMessage);
                 }
             }
