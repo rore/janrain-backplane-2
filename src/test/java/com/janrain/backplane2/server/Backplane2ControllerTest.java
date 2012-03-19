@@ -1223,7 +1223,7 @@ public class Backplane2ControllerTest {
         //request.setParameter("messages", TEST_MSG_1);
         HashMap<String, Object> msgs = new HashMap<String, Object>();
         ArrayList msgsList = new ArrayList();
-        for (int i=0; i < bpConfig.getDefaultMaxMessageLimit() + 1; i++) {
+        for (int i=0; i < bpConfig.getDefaultMaxMessageLimit() + 10; i++) {
             msgsList.add(new ObjectMapper().readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {}));
         }
 
