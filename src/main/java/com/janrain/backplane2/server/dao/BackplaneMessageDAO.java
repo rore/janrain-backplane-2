@@ -55,7 +55,7 @@ public class BackplaneMessageDAO extends DAO {
         // we will need to read the largest Message (by ID) and assign this to the expected ID condition.
         BackplaneMessage latestSavedMessage = getLatestMessage();
         BackplaneMessage newMessage = (BackplaneMessage) message;
-        assert(newMessage.getIdValue().compareTo(latestSavedMessage.getIdValue()) > 1);
+        assert(newMessage.getIdValue().compareTo(latestSavedMessage.getIdValue()) > 0);
 
         superSimpleDB.store(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class, (BackplaneMessage) message);
     }
