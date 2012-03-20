@@ -35,7 +35,7 @@ import java.util.Date;
 public class TokenAnonymous extends Token {
 
     public static final int CHANNEL_NAME_LENGTH = 32;
-    public static final int EXPIRES_SECONDS = 3600;
+    public static final int EXPIRES_SECONDS = 604800;    //604800 is one week...
 
     /**
      * Empty default constructor for AWS to use.
@@ -44,9 +44,6 @@ public class TokenAnonymous extends Token {
 
     public TokenAnonymous(String tokenString, String buses, String scopeString, Date expires) throws TokenException {
         super(Token.AN + tokenString, TYPE.REGULAR_TOKEN, buses, scopeString, expires);
-
-        //TODO: the expiration of anonymous tokens is a problem - one hour is too short and having
-        // them never expire will also cause excessive buildup.
 
         // verify that no channel or bus was submitted in the scopeString request
         Scope testScope = new Scope(scopeString);
