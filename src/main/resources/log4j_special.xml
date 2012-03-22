@@ -37,6 +37,7 @@
         <param name="SMTPUsername" value="${SMTP_USERNAME}"/>
         <param name="SMTPPassword" value="${SMTP_PASSWORD}"/>
         <param name="Subject" value="${AWS_INSTANCE_ID}-${APPID}"/>
+        <param name="Threshold" value="WARN"/>
         <layout class="org.apache.log4j.EnhancedPatternLayout">
             <param name="ConversionPattern" value="%d %-5p [%t]: %c:%L - %m%n"/>
         </layout>
@@ -45,7 +46,7 @@
     <appender name="syslog" class="org.apache.log4j.net.SyslogAppender">
         <param name="Facility" value="${SYSLOG_FACILITY}"/>
         <param name="SyslogHost" value="${SYSLOG_HOST}"/>
-        <param name="Threshold" value="WARN"/>
+        <param name="Threshold" value="INFO"/>
         <layout class="org.apache.log4j.PatternLayout">
             <param name="ConversionPattern" value="%d{MMM dd HH:mm:ss} ${AWS_INSTANCE_ID}-${APPID}: %-5p %m%n"/>
         </layout>
@@ -54,7 +55,7 @@
 	
 	<!-- Janrain logger -->
 	<logger name="com.janrain">
-		<level value="debug" />
+		<level value="info" />
 	</logger>
 
 	<!-- 3rdparty Loggers -->
