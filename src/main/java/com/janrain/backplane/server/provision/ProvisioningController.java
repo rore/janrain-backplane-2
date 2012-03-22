@@ -154,7 +154,8 @@ public class ProvisioningController {
     private <T extends AbstractMessage> Map<String, Map<String, String>> doListAll(String tableName, Class<T> entityType) {
         Map<String,Map<String,String>> result = new LinkedHashMap<String, Map<String, String>>();
         try {
-            for(T config :  superSimpleDb.retrieve(tableName, entityType)) {
+            // TODO fix broken code below - may only return partial results
+            for(T config :  superSimpleDb.retrieveSome(tableName, entityType).getLeft()) {
                 result.put(config.getIdValue(), config);
             }
         } catch (final Exception e) {

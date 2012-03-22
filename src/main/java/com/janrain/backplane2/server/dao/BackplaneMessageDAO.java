@@ -22,6 +22,7 @@ import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.backplane2.server.config.BusConfig2;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
+import com.janrain.commons.util.Pair;
 import com.janrain.oauth2.TokenException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -50,21 +51,16 @@ public class BackplaneMessageDAO extends DAO {
 
     @Override
     public void persist(Object message) throws SimpleDBException {
-        // We want to satisfy the requirement that this new message ID > existing message ID
-        // or the put should fail.  Because SDB only supports conditional PUT based on an expected value
-        // we will need to read the largest Message (by ID) and assign this to the expected ID condition.
-        //BackplaneMessage latestSavedMessage = getLatestMessage();
         BackplaneMessage newMessage = (BackplaneMessage) message;
-        //assert(newMessage.getIdValue().compareTo(latestSavedMessage.getIdValue()) > 0);
-
-        superSimpleDB.store(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class, (BackplaneMessage) message);
+        superSimpleDB.store(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class, newMessage);
     }
 
     public BackplaneMessage getLatestMessage() throws SimpleDBException {
         String query = "id IS NOT NULL ORDER BY id DESC LIMIT 1";
-        List<BackplaneMessage> messages= superSimpleDB.retrieveWhere(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class, query, false);
-        if (messages.size() > 0) {
-            return messages.get(0);
+        Pair<List<BackplaneMessage>, Boolean> messages=
+                superSimpleDB.retrieveSomeWhere(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class, query);
+        if (messages.getLeft().size() > 0) {
+            return messages.getLeft().get(0);
         } else {
             return null;
         }
@@ -128,7 +124,7 @@ public class BackplaneMessageDAO extends DAO {
             limit = MAX_MSGS_IN_FRAME+1;
         }
 
-        List<BackplaneMessage> unfilteredMessages;
+        Pair<List<BackplaneMessage>, Boolean> unfilteredMessages;
 
         do {
 
@@ -152,22 +148,21 @@ public class BackplaneMessageDAO extends DAO {
 
             // We don't want to use SDB's tokenizing mechanism to continually loop as it does this
             // without read consistency
-            unfilteredMessages = superSimpleDB.retrieveWhere(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class, query, false);
+            unfilteredMessages = superSimpleDB.retrieveSomeWhere(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class, query);
 
             // Filter and add to results
-
-            for (BackplaneMessage unfilteredMessage : unfilteredMessages) {
+            for (BackplaneMessage unfilteredMessage : unfilteredMessages.getLeft()) {
                 if (scope.isMessageInScope(unfilteredMessage) && filteredMessages.size() < limit) {
                     filteredMessages.add(unfilteredMessage);
                 }
             }
 
             // update sinceMessageId to point to last message in this unfiltered result
-            if (unfilteredMessages.size() > 0) {
-                sinceMessageId = unfilteredMessages.get(unfilteredMessages.size()-1).getIdValue();
+            if (unfilteredMessages.getLeft().size() > 0) {
+                sinceMessageId = unfilteredMessages.getLeft().get(unfilteredMessages.getLeft().size()-1).getIdValue();
             }
 
-        } while (unfilteredMessages.size() > 0 && filteredMessages.size() < limit);
+        } while (unfilteredMessages.getLeft().size() > 0 && filteredMessages.size() < limit);
 
         return filteredMessages;
     }

@@ -165,7 +165,8 @@ public class Backplane2ControllerTest {
 
             try {
                 List<BackplaneMessage> testMsgs = superSimpleDB.
-                        retrieveWhere(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class, "channel='testchannel'", true);
+                        retrieveAllWhere(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class,
+                                BackplaneMessage.Field.ID,"channel='testchannel'");
                 for (BackplaneMessage msg : testMsgs) {
                     logger.info("deleting Message " + msg.getIdValue());
                     superSimpleDB.delete(bpConfig.getTableName(BP_MESSAGES), msg.getIdValue());
@@ -202,6 +203,8 @@ public class Backplane2ControllerTest {
 
     private void refreshRequestAndResponse() {
 		request = new MockHttpServletRequest();
+        // simulate https for tests to pass
+        request.addHeader("x-forwarded-proto", "https");
 		response = new MockHttpServletResponse();
 	}
 
@@ -272,7 +275,7 @@ public class Backplane2ControllerTest {
         //  should return the form:
         //  callback({
         //      "access_token": "l5feG0KjdXTpgDAfOvN6pU6YWxNb7qyn",
-        //      "expires_in":3600,
+        //      "expires_in":604800,
         //      "token_type": "Bearer",
         //      "scope": "channel:Tm5FUzstWmUOdp0xU5UW83r2q9OXrrxt"
         // })
@@ -288,7 +291,7 @@ public class Backplane2ControllerTest {
 
         assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
                 matches(callback + "[(][{]\\s*\"access_token\":\\s*\".{22}+\",\\s*" +
-                        "\"expires_in\":\\s*3600,\\s*" +
+                        "\"expires_in\":\\s*604800,\\s*" +
                         "\"token_type\":\\s*\"Bearer\",\\s*" +
                         "\"scope\":\\s*\"channel:.{32}+\"\\s*[}][)]"));
 
@@ -1223,7 +1226,7 @@ public class Backplane2ControllerTest {
         //request.setParameter("messages", TEST_MSG_1);
         HashMap<String, Object> msgs = new HashMap<String, Object>();
         ArrayList msgsList = new ArrayList();
-        for (int i=0; i < bpConfig.getDefaultMaxMessageLimit() + 10; i++) {
+        for (int i=0; i < bpConfig.getDefaultMaxMessageLimit() + 1; i++) {
             msgsList.add(new ObjectMapper().readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {}));
         }
 
@@ -1367,6 +1370,7 @@ public class Backplane2ControllerTest {
             mv = handlerAdapter.handle(request, response, controller);
             Map<String, Object> model = mv.getModel();
             String authKey = (String) model.get("auth_key");
+            model.put("scope", bus1.getIdValue());
 
             assertNotNull(authKey);
             logger.info("auth_key=" + authKey);

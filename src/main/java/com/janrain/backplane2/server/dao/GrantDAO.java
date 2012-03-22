@@ -16,6 +16,7 @@
 
 package com.janrain.backplane2.server.dao;
 
+import com.janrain.backplane2.server.Access;
 import com.janrain.backplane2.server.BackplaneServerException;
 import com.janrain.backplane2.server.Grant;
 import com.janrain.backplane2.server.Scope;
@@ -95,8 +96,9 @@ public class GrantDAO extends DAO {
      */
 
     public List<Grant> retrieveGrants(String clientId, @Nullable Scope scope) throws SimpleDBException {
-        List<Grant> allGrants = superSimpleDB.retrieveWhere(bpConfig.getTableName(BP_GRANT), Grant.class,
-                "issued_to_client='"+ clientId + "' AND date_code_used is not null", true);
+        List<Grant> allGrants = superSimpleDB.retrieveAllWhere(bpConfig.getTableName(BP_GRANT), Grant.class,
+                Grant.Field.ID,
+                "issued_to_client='" + clientId + "' AND date_code_used is not null");
 
         // if no buses exist in requested scope, return entire list
         if (scope == null || scope.getBusesInScope().isEmpty()) {

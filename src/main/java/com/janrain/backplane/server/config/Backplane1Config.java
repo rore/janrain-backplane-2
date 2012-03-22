@@ -21,6 +21,7 @@ import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.commons.supersimpledb.message.AbstractNamedMap;
 import com.janrain.commons.util.AwsUtility;
 import com.janrain.commons.util.InitSystemProps;
+import com.janrain.commons.util.Pair;
 import com.janrain.crypto.HmacHashUtils;
 import com.janrain.metrics.MetricMessage;
 import com.janrain.metrics.MetricsAccumulator;
@@ -35,10 +36,7 @@ import javax.annotation.PreDestroy;
 import javax.inject.Inject;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.Properties;
-import java.util.TimeZone;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -303,7 +301,11 @@ public class Backplane1Config {
         try {
             logger.info("Backplane message cleanup task started.");
             String messagesTable = getMessagesTableName();
-            for(BusConfig1 busConfig : superSimpleDb.retrieve(getTableName(BP1_BUS_CONFIG), BusConfig1.class)) {
+            //TODO call below will not return all results - needs other method
+            com.janrain.commons.util.Pair<List<BusConfig1>, Boolean> result =
+                    superSimpleDb.retrieveSome(getTableName(BP1_BUS_CONFIG), BusConfig1.class);
+
+            for(BusConfig1 busConfig : result.getLeft()) {
                 try {
                     // non-sticky
                     superSimpleDb.deleteWhere(messagesTable, getExpiredMessagesClause(busConfig.get(BUS_NAME), false, busConfig.get(RETENTION_TIME_SECONDS)));

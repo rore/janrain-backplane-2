@@ -68,13 +68,12 @@ public class Grant extends Base {
     }
 
     Grant(String code, String busOwnerId, String clientId, String buses, Date expires) {
-
-
         super(code, buses, expires);
 
-        assert(StringUtils.isNotEmpty(clientId));
-        assert(StringUtils.isNotEmpty(busOwnerId));
-        assert(StringUtils.isNotEmpty(buses));
+        if (StringUtils.isBlank(clientId) || StringUtils.isBlank(busOwnerId) ||
+            StringUtils.isBlank(buses)) {
+            throw new IllegalArgumentException("Invalid grant");
+        }
 
         put(GrantField.ISSUED_TO_CLIENT_ID.getFieldName(), clientId);
         put(GrantField.ISSUED_BY_USER_ID.getFieldName(), busOwnerId);

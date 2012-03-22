@@ -22,6 +22,7 @@ import com.janrain.backplane2.server.dao.DaoFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
+import com.janrain.commons.supersimpledb.message.MessageField;
 import com.janrain.crypto.HmacHashUtils;
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Controller;
@@ -49,21 +50,21 @@ public class ProvisioningController2 {
     @ResponseBody
     public Map<String, Map<String, String>> busList(@RequestBody ListRequest listRequest) throws AuthException {
         bpConfig.checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
-        return doList(bpConfig.getTableName(BP_BUS_CONFIG), BusConfig2.class, listRequest.getEntities());
+        return doList(bpConfig.getTableName(BP_BUS_CONFIG), BusConfig2.class, listRequest.getEntities(), BusConfig2.Field.BUS_NAME);
     }
 
     @RequestMapping(value = "/user/list", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, Map<String, String>> userList(@RequestBody ListRequest listRequest) throws AuthException {
         bpConfig.checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
-        return doList(bpConfig.getTableName(BP_BUS_OWNERS), User.class, listRequest.getEntities());
+        return doList(bpConfig.getTableName(BP_BUS_OWNERS), User.class, listRequest.getEntities(), User.Field.USER);
     }
 
     @RequestMapping(value = "/client/list", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, Map<String, String>> clientList(@RequestBody ListRequest listRequest) throws AuthException {
         bpConfig.checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
-        return doList(bpConfig.getTableName(BP_CLIENTS), Client.class, listRequest.getEntities());
+        return doList(bpConfig.getTableName(BP_CLIENTS), Client.class, listRequest.getEntities(), Client.Field.USER);
     }
 
     @RequestMapping(value = "/bus/delete", method = RequestMethod.POST)
@@ -188,9 +189,9 @@ public class ProvisioningController2 {
     private DaoFactory daoFactory;
             
 
-    private <T extends AbstractMessage> Map<String, Map<String, String>> doList(String tableName, Class<T> entityType, List<String> entityNames) {
+    private <T extends AbstractMessage> Map<String, Map<String, String>> doList(String tableName, Class<T> entityType, List<String> entityNames, MessageField orderField) {
 
-        if (entityNames.size() == 0) return doListAll(tableName, entityType);
+        if (entityNames.size() == 0) return doListAll(tableName, entityType, orderField);
 
         final Map<String,Map<String,String>> result = new LinkedHashMap<String, Map<String, String>>();
         for(String entityName : entityNames) {
@@ -210,10 +211,10 @@ public class ProvisioningController2 {
         return result;
     }
 
-    private <T extends AbstractMessage> Map<String, Map<String, String>> doListAll(String tableName, Class<T> entityType) {
+    private <T extends AbstractMessage> Map<String, Map<String, String>> doListAll(String tableName, Class<T> entityType, MessageField orderField) {
         Map<String,Map<String,String>> result = new LinkedHashMap<String, Map<String, String>>();
         try {
-            for(T config :  superSimpleDb.retrieve(tableName, entityType)) {
+            for(T config :  superSimpleDb.retrieveAll(tableName, entityType, orderField)) {
                 result.put(config.getIdValue(), config);
             }
         } catch (final Exception e) {

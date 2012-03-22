@@ -97,7 +97,9 @@ public class Backplane1Controller {
             whereClause.append(" and ").append(BackplaneMessage.Field.STICKY.getFieldName()).append("='").append(sticky).append("'");
         }
 
-        List<BackplaneMessage> messages = superSimpleDb.retrieveWhere(bpConfig.getMessagesTableName(), BackplaneMessage.class, whereClause.toString(), true);
+        List<BackplaneMessage> messages =
+                superSimpleDb.retrieveAllWhere(bpConfig.getMessagesTableName(), BackplaneMessage.class,
+                        BackplaneMessage.Field.ID, whereClause.toString());
 
         List<HashMap<String,Object>> frames = new ArrayList<HashMap<String, Object>>();
         for (BackplaneMessage message : messages) {
@@ -353,7 +355,8 @@ public class Backplane1Controller {
                         whereClause.append(" and ").append(BackplaneMessage.Field.STICKY.getFieldName()).append("='").append(sticky).append("'");
                     }
 
-                    List<BackplaneMessage> messages = superSimpleDb.retrieveWhere(bpConfig.getMessagesTableName(), BackplaneMessage.class, whereClause.toString(), true);
+                    List<BackplaneMessage> messages = superSimpleDb.retrieveAllWhere(bpConfig.getMessagesTableName(), BackplaneMessage.class,
+                            BackplaneMessage.Field.ID, whereClause.toString());
 
                     List<Map<String,Object>> frames = new ArrayList<Map<String, Object>>();
 

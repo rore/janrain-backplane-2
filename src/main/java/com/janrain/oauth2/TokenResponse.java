@@ -20,6 +20,7 @@ import com.janrain.backplane2.server.*;
 import com.janrain.backplane2.server.dao.DaoFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import org.apache.log4j.Logger;
+import org.springframework.util.StringUtils;
 
 import java.util.Date;
 import java.util.HashMap;
@@ -67,6 +68,9 @@ public class TokenResponse {
             return new LinkedHashMap<String, Object>() {{
                 put(OAUTH2_ACCESS_TOKEN_PARAM_NAME, token.getIdValue());
                 put(OAUTH2_TOKEN_TYPE_PARAM_NAME, Token.getTokenType());
+                if (token.mustReturnScopeInResponse() && token.getScopeString() == null) {
+                    throw new TokenException("A server error has occurred");
+                }
                 if (token.mustReturnScopeInResponse()) {
                     put(OAUTH2_SCOPE_PARAM_NAME, token.getScopeString());
                 }
@@ -82,11 +86,15 @@ public class TokenResponse {
             if (! Grant.getBusesAsList(grants).containsAll(scope.getBusesInScope())) {
                 throw new TokenException(OAuth2.OAUTH2_TOKEN_INVALID_SCOPE, "requested scope exceeds grants");
             }
-            final TokenPrivileged token = new TokenPrivileged(request.client.getClientId(), request.client.getSourceUrl(), grants, request.scope);
+            final TokenPrivileged token = new TokenPrivileged(request.client.getClientId(),
+                    request.client.getSourceUrl(), grants, request.scope);
             daoFactory.getTokenDao().persist(token);
             return new LinkedHashMap<String, Object>() {{
                 put(OAUTH2_ACCESS_TOKEN_PARAM_NAME, token.getIdValue());
                 put(OAUTH2_TOKEN_TYPE_PARAM_NAME, Token.getTokenType());
+                if (token.mustReturnScopeInResponse() && token.getScopeString() == null) {
+                    throw new TokenException("A server error has occurred");
+                }
                 if (token.mustReturnScopeInResponse()) {
                     put(OAUTH2_SCOPE_PARAM_NAME, token.getScopeString());
                 }

@@ -52,6 +52,7 @@ public class SuperSimpleDBTest {
         testData.put("10", "\"");
         superSimpleDB.store(TEST_TABLE, TestNamedMap.class, testData);
         TestNamedMap retrievedData = superSimpleDB.retrieve(TEST_TABLE, TestNamedMap.class, testData.getName());
+        retrievedData.remove("ssdb_update_version");
         assertEquals(testData, retrievedData);
     }
 
@@ -63,6 +64,7 @@ public class SuperSimpleDBTest {
         }
         superSimpleDB.store(TEST_TABLE, TestNamedMap.class, testData, true);
         TestNamedMap retrievedData = superSimpleDB.retrieve(TEST_TABLE, TestNamedMap.class, testData.getName());
+        retrievedData.remove("ssdb_update_version");
         assertEquals(testData, retrievedData);
     }
 

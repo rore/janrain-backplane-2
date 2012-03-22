@@ -243,7 +243,7 @@ public class ProvisioningController2Test {
         handlerAdapter.handle(request, response, controller);
         logger.info("testBusUpdate -> " + response.getContentAsString());
         assertTrue(response.getStatus() == HttpServletResponse.SC_OK);
-        assertTrue(response.getContentAsString().contains("{\"customer1\":\"BACKPLANE_UPDATE_SUCCESS\"}"));
+        assertTrue("Failed: " + response.getContentAsString(), response.getContentAsString().contains("{\"customer1\":\"BACKPLANE_UPDATE_SUCCESS\"}"));
 
         refreshRequestAndResponse();
         String listJson = "{ \"admin\": \"" + user.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\", \"entities\": [] }";

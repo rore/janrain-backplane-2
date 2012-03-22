@@ -24,6 +24,7 @@ import com.janrain.crypto.ChannelUtil;
 import com.janrain.crypto.HmacHashUtils;
 import com.janrain.metrics.MetricsAccumulator;
 import com.janrain.oauth2.*;
+import com.janrain.servlet.ServletUtil;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.HistogramMetric;
 import com.yammer.metrics.core.MeterMetric;
@@ -83,7 +84,6 @@ public class Backplane2Controller {
                             @CookieValue( value = AUTHORIZATION_REQUEST_COOKIE, required = false) String authorizationRequestCookie,
                             @RequestHeader(value = "Authorization", required = false) String basicAuth) throws AuthorizationException {
 
-        //assert(request.isSecure());
 
         AuthorizationRequest authzRequest = null;
         String httpMethod = request.getMethod();
@@ -183,7 +183,12 @@ public class Backplane2Controller {
                                            @RequestParam(value = OAUTH2_SCOPE_PARAM_NAME, required = false) String scope,
                                            @RequestParam(required = false) String callback) {
 
-        //assert(request.isSecure());
+        if (!ServletUtil.isSecure(request)) {
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            return new HashMap<String,Object>() {{
+                put(ERR_MSG_FIELD, "Connection must be made over https");
+            }};
+        }
 
         if (StringUtils.isBlank(callback)) {
             return handleTokenException(new TokenException(OAUTH2_TOKEN_INVALID_REQUEST, "Callback cannot be blank"), response);
@@ -231,7 +236,12 @@ public class Backplane2Controller {
                                         @RequestParam(value = "scope", required = false) String scope,
                                         @RequestHeader(value = "Authorization", required = false) String basicAuth) {
 
-        // assert(request.isSecure());
+        if (!ServletUtil.isSecure(request)) {
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            return new HashMap<String,Object>() {{
+                put(ERR_MSG_FIELD, "Connection must be made over https");
+            }};
+        }
 
         Client authenticatedClient;
         try {
@@ -274,7 +284,12 @@ public class Backplane2Controller {
                                 @RequestHeader(value = "Authorization", required = false) String authorizationHeader)
             throws SimpleDBException, BackplaneServerException {
 
-        //assert(request.isSecure());
+        if (!ServletUtil.isSecure(request)) {
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            return new HashMap<String,Object>() {{
+                put(ERR_MSG_FIELD, "Connection must be made over https");
+            }};
+        }
 
         if (block < 0 || block > MAX_BLOCK_SECONDS) {
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
@@ -391,7 +406,12 @@ public class Backplane2Controller {
                                                         @RequestHeader(value = "Authorization", required = false) String authorizationHeader)
             throws BackplaneServerException {
 
-        //assert(request.isSecure());
+        if (!ServletUtil.isSecure(request)) {
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            return new HashMap<String,Object>() {{
+                put(ERR_MSG_FIELD, "Connection must be made over https");
+            }};
+        }
 
         MessageRequest messageRequest;
         try {
@@ -470,7 +490,12 @@ public class Backplane2Controller {
                   @RequestHeader(value = "Authorization", required = false) String authorizationHeader) 
             throws BackplaneServerException, SimpleDBException {
 
-        //assert(request.isSecure());
+        if (!ServletUtil.isSecure(request)) {
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            return new HashMap<String,Object>() {{
+                put(ERR_MSG_FIELD, "Connection must be made over https");
+            }};
+        }
 
         final Token token;
         try {
