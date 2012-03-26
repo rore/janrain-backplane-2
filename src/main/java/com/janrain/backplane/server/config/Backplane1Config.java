@@ -21,9 +21,7 @@ import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.commons.supersimpledb.message.AbstractNamedMap;
 import com.janrain.commons.util.AwsUtility;
 import com.janrain.commons.util.InitSystemProps;
-import com.janrain.commons.util.Pair;
 import com.janrain.crypto.HmacHashUtils;
-import com.janrain.metrics.MetricMessage;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.TimerMetric;
 import org.apache.commons.lang.StringUtils;
@@ -251,6 +249,10 @@ public class Backplane1Config {
     @PostConstruct
     private void init() {
         this.cleanup = createCleanupTask();
+
+        for(SimpleDBTables table : EnumSet.allOf(SimpleDBTables.class)) {
+            superSimpleDb.checkDomain(getTableName(table));
+        }
     }
 
     @PreDestroy
