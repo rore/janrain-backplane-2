@@ -81,9 +81,8 @@ public class Backplane2Controller {
                             HttpServletRequest request,
                             HttpServletResponse response,
                             @CookieValue( value = AUTH_SESSION_COOKIE, required = false) String authSessionCookie,
-                            @CookieValue( value = AUTHORIZATION_REQUEST_COOKIE, required = false) String authorizationRequestCookie,
-                            @RequestHeader(value = "Authorization", required = false) String basicAuth) throws AuthorizationException {
-
+                            @CookieValue( value = AUTHORIZATION_REQUEST_COOKIE, required = false) String authorizationRequestCookie)
+            throws AuthorizationException {
 
         AuthorizationRequest authzRequest = null;
         String httpMethod = request.getMethod();
@@ -95,7 +94,7 @@ public class Backplane2Controller {
         // not return from /authenticate && not authz decision post
         if ( request.getParameterMap().size() > 0  &&  StringUtils.isEmpty(authZdecisionKey) ) { 
             // incoming authz request
-            authzRequest = parseAuthZrequest(request, basicAuth);
+            authzRequest = parseAuthZrequest(request);
         }
 
         String authenticatedBusOwner = getAuthenticatedBusOwner(request, authSessionCookie);
@@ -426,7 +425,7 @@ public class Backplane2Controller {
         try {
             message = daoFactory.getBackplaneMessageDAO().retrieveBackplaneMessage(msg_id);
         } catch (SimpleDBException e) {
-            logger.error("Could not find message " + msg_id,e);
+            logger.error("Could not find message " + msg_id, e);
         }
 
         if (message == null) {
@@ -774,25 +773,15 @@ public class Backplane2Controller {
         return result.toString();
     }
 
-    /** Parse, extract & validate an OAuth2 authorization request from the HTTP request and basic auth header */
-    private AuthorizationRequest parseAuthZrequest(HttpServletRequest request, String basicAuth) throws AuthorizationException {
+    /** Parse, extract & validate an OAuth2 authorization request from the HTTP request */
+    private AuthorizationRequest parseAuthZrequest(HttpServletRequest request) throws AuthorizationException {
         try {
-            // authenticate client
-            Client authenticatedClient = getAuthenticatedClient(basicAuth);
             // parse authz request
             AuthorizationRequest authorizationRequest = new AuthorizationRequest(
                     ChannelUtil.randomString(AUTHORIZATION_REQUEST_COOKIE_LENGTH),
-                    authenticatedClient.get(Client.ClientField.REDIRECT_URI),
                     request.getParameterMap());
-            // check auth client_id == request param client_id
-            String requestClient = authorizationRequest.get(AuthorizationRequest.Field.CLIENT_ID);
-            if ( ! requestClient.equals(authenticatedClient.get(Client.Field.USER))) {
-                throw new AuthorizationException(OAuth2.OAUTH2_AUTHZ_INVALID_REQUEST, "Mismatched client_id in request and basicauth header.", request);
-            }
             logger.info("Parsed authorization request: " + authorizationRequest);
             return authorizationRequest;
-        } catch (AuthException e) {
-            throw new AuthorizationException(OAuth2.OAUTH2_AUTHZ_ACCESS_DENIED, "Client authentication failed.", request);
         } catch (Exception e) {
             throw new AuthorizationException(OAuth2.OAUTH2_AUTHZ_INVALID_REQUEST, e.getMessage(), request, e);
         }
@@ -848,7 +837,7 @@ public class Backplane2Controller {
 
             model.put("auth_key", authorizationDecisionKey.get(AuthorizationDecisionKey.Field.KEY));
             model.put(AuthorizationRequest.Field.CLIENT_ID.getFieldName().toLowerCase(), authzRequest.get(AuthorizationRequest.Field.CLIENT_ID));
-            model.put(AuthorizationRequest.Field.REDIRECT_URI.getFieldName().toLowerCase(), authzRequest.get(AuthorizationRequest.Field.REDIRECT_URI));
+            model.put(AuthorizationRequest.Field.REDIRECT_URI.getFieldName().toLowerCase(), authzRequest.getRedirectUri(daoFactory.getClientDAO()));
 
             String scope = authzRequest.get(AuthorizationRequest.Field.SCOPE);
             List<BusConfig2> ownedBuses = daoFactory.getBusDao().retrieveBuses(authenticatedBusOwner);
@@ -946,7 +935,7 @@ public class Backplane2Controller {
 
                 try {
                     return new ModelAndView("redirect:" + UrlResponseFormat.QUERY.encode(
-                            authorizationRequest.get(AuthorizationRequest.Field.REDIRECT_URI),
+                            authorizationRequest.getRedirectUri(daoFactory.getClientDAO()),
                             new HashMap<String, String>() {{
                                 put(OAuth2.OAUTH2_AUTHZ_RESPONSE_CODE, code);
                                 if (StringUtils.isNotEmpty(state)) {
@@ -957,7 +946,7 @@ public class Backplane2Controller {
                     String errMsg = "Error building (positive) authorization response: " + ve.getMessage();
                     logger.error(errMsg, ve);
                     return authzRequestError(OAuth2.OAUTH2_AUTHZ_DIRECT_ERROR, errMsg,
-                            authorizationRequest.get(AuthorizationRequest.Field.REDIRECT_URI),
+                            authorizationRequest.getRedirectUri(daoFactory.getClientDAO()),
                             authorizationRequest.get(AuthorizationRequest.Field.STATE));
                 }
             }

@@ -16,8 +16,11 @@
 
 package com.janrain.backplane2.server.config;
 
+import com.janrain.backplane2.server.InvalidRequestException;
 import com.janrain.backplane2.server.Token;
 import com.janrain.commons.supersimpledb.message.MessageField;
+import com.janrain.oauth2.OAuth2;
+import com.janrain.oauth2.ValidationException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -67,7 +70,17 @@ public class Client extends User {
 
         SOURCE_URL,
         
-        REDIRECT_URI;
+        REDIRECT_URI {
+            @Override
+            public void validate(String value) throws RuntimeException {
+                super.validate(value);
+                try {
+                    OAuth2.validateRedirectUri(value);
+                } catch (ValidationException e) {
+                    throw new InvalidRequestException(e.getMessage());
+                }
+            }
+        };
 
         @Override
         public String getFieldName() {

@@ -18,6 +18,9 @@ package com.janrain.oauth2;
 
 import com.janrain.backplane2.server.InvalidRequestException;
 import com.janrain.backplane2.server.config.Backplane2Config;
+import com.janrain.backplane2.server.config.Client;
+import com.janrain.backplane2.server.dao.ClientDAO;
+import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import org.apache.commons.lang.StringUtils;
@@ -36,25 +39,16 @@ public class AuthorizationRequest extends AbstractMessage {
      */
     public AuthorizationRequest() { }
 
-    public AuthorizationRequest(String cookie, String configuredRedirectUri, Map parameterMap) throws ValidationException {
+    public AuthorizationRequest(String cookie, Map parameterMap) throws ValidationException {
         Map<String,String> data = new LinkedHashMap<String, String>();
-
         for(Field f: EnumSet.allOf(Field.class)) {
             Object value = parameterMap.get(f.getFieldName().toLowerCase());
             if ( value != null && ((String[]) value).length > 0 && StringUtils.isNotEmpty(((String[])value)[0])) {
                 data.put(f.getFieldName(), ((String[])value)[0]);
             }
         }
-
         data.put(Field.COOKIE.getFieldName(), cookie);
         data.put(Field.EXPIRES.getFieldName(), Backplane2Config.ISO8601.format(new Date(System.currentTimeMillis() + AUTH_REQUEST_TIMEOUT_SECONDS * 1000)));
-
-        if(StringUtils.isEmpty(get(Field.REDIRECT_URI))) {
-            data.put(Field.REDIRECT_URI.getFieldName(), configuredRedirectUri);
-        } else {
-            OAuth2.validateRedirectUri(get(Field.REDIRECT_URI), configuredRedirectUri);
-        }
-
         super.init(cookie, data);
     }
 
@@ -66,6 +60,26 @@ public class AuthorizationRequest extends AbstractMessage {
     @Override
     public Set<? extends MessageField> getFields() {
         return EnumSet.allOf(Field.class);
+    }
+    
+    public String getRedirectUri(ClientDAO clientDAO) throws AuthorizationException, SimpleDBException {
+        String client_id = get(Field.CLIENT_ID);
+        Client client = clientDAO.retrieveClient(client_id);
+        if(client == null) {
+            throw new AuthorizationException(OAuth2.OAUTH2_AUTHZ_DIRECT_ERROR, "invalid client_id: " + client_id , this);
+        }
+        String requestRedirectUri = get(Field.REDIRECT_URI);
+
+        if (StringUtils.isNotEmpty(requestRedirectUri)) {
+            try {
+                OAuth2.validateRedirectUri(requestRedirectUri, client.get(Client.ClientField.REDIRECT_URI));
+            } catch (ValidationException ve) {
+                throw new AuthorizationException(OAuth2.OAUTH2_AUTHZ_DIRECT_ERROR, "invalid redirect_uri: " + ve.getMessage() , this);
+            }
+            return requestRedirectUri;
+        } else {
+            return client.get(Client.ClientField.REDIRECT_URI);
+        }
     }
 
     public static enum Field implements MessageField {
@@ -84,7 +98,7 @@ public class AuthorizationRequest extends AbstractMessage {
                 }
             }
         },
-        REDIRECT_URI {
+        REDIRECT_URI(false) {
             @Override
             public void validate(String value) throws RuntimeException {
                 super.validate(value);
