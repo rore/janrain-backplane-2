@@ -194,7 +194,7 @@ public class Backplane2Controller {
         }
 
         try {
-            TokenRequest tokenRequest = new TokenRequest(Client.ANONYMOUS_CLIENT, OAuth2.OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS, scope, callback);
+            TokenRequest tokenRequest = new TokenRequest(OAuth2.OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS, scope, callback);
             tokenRequest.validate();
             HashMap<String, Object> hash= new TokenResponse(tokenRequest, daoFactory).generateResponse();
             String responseBody = callback + "(" + new ObjectMapper().writeValueAsString(hash) + ")";

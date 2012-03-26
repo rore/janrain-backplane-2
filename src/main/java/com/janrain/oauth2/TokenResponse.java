@@ -20,7 +20,6 @@ import com.janrain.backplane2.server.*;
 import com.janrain.backplane2.server.dao.DaoFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import org.apache.log4j.Logger;
-import org.springframework.util.StringUtils;
 
 import java.util.Date;
 import java.util.HashMap;
@@ -41,7 +40,7 @@ public class TokenResponse {
     }
 
     public HashMap<String, Object> generateResponse() throws SimpleDBException, TokenException {
-        if (request.grant_type.equals(OAuth2.OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS) && request.client.getClientId().equals(Token.ANONYMOUS)) {
+        if (request.grant_type.equals(OAuth2.OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS) && request.isAnonymousClient()) {
             logger.info("Responding to anonymous token request...");
             // issue new channel id
             final TokenAnonymous token = new TokenAnonymous(null, request.scope, new Date(new Date().getTime() +

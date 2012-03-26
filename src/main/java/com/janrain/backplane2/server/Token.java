@@ -40,7 +40,6 @@ import static com.janrain.oauth2.OAuth2.OAUTH2_ACCESS_TOKEN_PARAM_NAME;
 public abstract class Token extends Base {
 
     public static final int TOKEN_LENGTH = 20;
-    public static final String ANONYMOUS = "anonymous";
     public static final String AN = "an";
     public static final String PR = "pr";
 

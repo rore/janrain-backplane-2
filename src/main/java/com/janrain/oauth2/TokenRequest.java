@@ -18,7 +18,6 @@ package com.janrain.oauth2;
 
 import com.janrain.backplane2.server.Grant;
 import com.janrain.backplane2.server.Scope;
-import com.janrain.backplane2.server.Token;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.backplane2.server.config.Client;
 import com.janrain.backplane2.server.dao.DaoFactory;
@@ -68,8 +67,7 @@ public class TokenRequest {
         }
     }
 
-    public TokenRequest(Client anonymousClient, String grant_type, String scope, String callback) {
-        this.client = anonymousClient;
+    public TokenRequest(String grant_type, String scope, String callback) {
         this.grant_type = grant_type;
         this.scope = scope;
         this.callback = callback;
@@ -81,6 +79,10 @@ public class TokenRequest {
 
     public void setGrant(Grant grant) {
         this.grant = grant;
+    }
+
+    public boolean isAnonymousClient() {
+        return client == null || StringUtils.isEmpty(client.getClientId());
     }
 
     /**
@@ -97,12 +99,8 @@ public class TokenRequest {
             }
         }
 
-        if (client == null || StringUtils.isEmpty(client.getClientId())) {
-            throw new TokenException("Missing value for client_id");
-        }
-
-        String client_id = client.getClientId();
-        String client_secret = client.getClientSecret();
+        String client_id = client == null ? null : client.getClientId();
+        String client_secret = client == null ? null : client.getClientSecret();
 
         if (! OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS.equals(grant_type) && ! OAUTH2_TOKEN_GRANT_TYPE_AUTH_CODE.equals(grant_type)) {
             throw new TokenException(OAUTH2_TOKEN_UNSUPPORTED_GRANT, "Invalid grant type");
@@ -112,7 +110,7 @@ public class TokenRequest {
             throw new TokenException("Missing code value");
         }
 
-        if (grant_type.equals(OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS) && !client_id.equals(Token.ANONYMOUS) && StringUtils.isEmpty(client_secret)) {
+        if (grant_type.equals(OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS) && StringUtils.isNotEmpty(client_id) && StringUtils.isEmpty(client_secret)) {
             throw new TokenException("Missing client_secret value");
         }
 
@@ -120,7 +118,7 @@ public class TokenRequest {
             throw new TokenException("Missing redirect_uri value");
         }
 
-        if (grant_type.equals(OAuth2.OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS) && client_id.equals(Token.ANONYMOUS) && StringUtils.isNotEmpty(client_secret)) {
+        if (grant_type.equals(OAuth2.OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS) && StringUtils.isEmpty(client_id) && StringUtils.isNotEmpty(client_secret)) {
             throw new TokenException("Must not include client_secret for anonymous requests");
         }
 

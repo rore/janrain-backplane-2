@@ -707,7 +707,6 @@ public class Backplane2ControllerTest {
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
 
         // try again with anonymous access with privileged use of payload
-        setOAuthBasicAuthentication(request, Token.ANONYMOUS, "");
 
         request.setParameter("scope", "payload.blah.blah");
         handlerAdapter.handle(request, response, controller);
