@@ -24,7 +24,6 @@ import com.janrain.commons.util.InitSystemProps;
 import com.janrain.commons.util.Pair;
 import com.janrain.crypto.HmacHashUtils;
 import com.janrain.metrics.MetricMessage;
-import com.janrain.metrics.MetricsAccumulator;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.TimerMetric;
 import org.apache.commons.lang.StringUtils;
@@ -230,8 +229,6 @@ public class Backplane1Config {
             @Override
             public void run() {
 
-                compileMetrics();
-
                 try {
                     getMessagesTime.time(new Callable<Object>() {
                         @Override
@@ -268,33 +265,12 @@ public class Backplane1Config {
                     logger.error("Background thread did not terminate");
                 }
             }
-            Metrics.defaultRegistry().threadPools().shutdownThreadPools();
         } catch (InterruptedException e) {
             logger.error("cleanup() threw an exception", e);
             this.cleanup.shutdownNow();
             Thread.currentThread().interrupt();
 
         }
-    }
-
-    private void compileMetrics() {
-
-        try {
-            MetricMessage metric = metricAccumulator.prepareSummary();
-
-            logger.debug("Storing metrics for instance " + MetricsAccumulator.getInstanceUuid());
-
-            // Create the _metrics table if it doesn't already exist.  This is a light-weight call.
-            superSimpleDb.checkDomain(getMetricsTableName());
-
-            MetricMessage oldMetric = superSimpleDb.retrieveAndDelete(getMetricsTableName(), MetricMessage.class, metric.getIdValue());
-
-            superSimpleDb.store(getMetricsTableName(), MetricMessage.class, metric, true);
-
-        } catch (Exception e) {
-            logger.error("Error compiling metrics " + e.getMessage(), e);
-        }
-
     }
 
     private void deleteExpiredMessages() {
@@ -317,32 +293,12 @@ public class Backplane1Config {
                 }
             }
 
-            try {
-                // remove old metrics
-                superSimpleDb.deleteWhere(getMetricsTableName(), getExpiredMetricClause());
-            } catch (SimpleDBException sdbe) {
-                logger.error("Error while removing expired metrics, " + sdbe.getMessage(), sdbe);
-            }
-
         } catch (Exception e) {
             // catch-all, else cleanup thread stops
             logger.error("Backplane messages cleanup task error: " + e.getMessage(), e);
         } finally {
             logger.info("Backplane messages cleanup task finished.");
         }
-    }
-
-    private String getExpiredMetricClause() {
-        int interval = 0;
-        try {
-            interval = Integer.valueOf(cachedGet(BpServerProperty.CLEANUP_INTERVAL_MINUTES));
-        } catch (SimpleDBException e) {
-            throw new RuntimeException("Error getting server property " + BpServerProperty.CLEANUP_INTERVAL_MINUTES, e);
-        }
-        Calendar now = Calendar.getInstance();
-        // Cleanup metrics that may be lingering due to a shutdown server instance
-        now.roll(Calendar.MINUTE, -(interval+2));
-        return "time < '" + ISO8601.format(now.getTime()) + "'";
     }
 
 
@@ -359,9 +315,6 @@ public class Backplane1Config {
     @Inject
     @SuppressWarnings({"UnusedDeclaration"})
     private SuperSimpleDB superSimpleDb;
-
-    @Inject
-    private MetricsAccumulator metricAccumulator;
 
     private Pair<BpServerConfigMap,Long> bpServerConfigCache;
 

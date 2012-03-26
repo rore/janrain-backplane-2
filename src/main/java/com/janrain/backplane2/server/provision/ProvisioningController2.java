@@ -49,6 +49,7 @@ public class ProvisioningController2 {
     @RequestMapping(value = "/bus/list", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, Map<String, String>> busList(@RequestBody ListRequest listRequest) throws AuthException {
+        // TODO: secure all of these endpoints
         bpConfig.checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
         return doList(bpConfig.getTableName(BP_BUS_CONFIG), BusConfig2.class, listRequest.getEntities(), BusConfig2.Field.BUS_NAME);
     }
