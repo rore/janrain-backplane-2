@@ -61,7 +61,8 @@ public class Backplane2Controller {
 
     // - PUBLIC
 
-    public static final String DIRECT_RESPONSE = "direct_response"; // both view name and jsp variable
+    /** both view name and jsp variable */
+    public static final String DIRECT_RESPONSE = "direct_response";
 
     /**
      * Handle dynamic discovery of this server's registration endpoint
@@ -959,8 +960,9 @@ public class Backplane2Controller {
                                                    final String redirectUri, final String state) {
         // direct or in/redirect
         if (OAuth2.OAUTH2_AUTHZ_DIRECT_ERROR.equals(oauthErrCode)) {
+            logger.error("Authorization error: " + errMsg);
             return new ModelAndView(DIRECT_RESPONSE, new HashMap<String, Object>() {{
-                put("DIRECT_RESPONSE", errMsg);
+                put(DIRECT_RESPONSE, errMsg);
             }});
         } else {
             try {
@@ -977,7 +979,7 @@ public class Backplane2Controller {
             } catch (ValidationException e) {
                 logger.error("Error building redirect_uri: " + e.getMessage());
                 return new ModelAndView(DIRECT_RESPONSE, new HashMap<String, Object>() {{
-                    put("DIRECT_RESPONSE", errMsg);
+                    put(DIRECT_RESPONSE, errMsg);
                 }});
             }
         }
