@@ -1244,7 +1244,7 @@ public class Backplane2ControllerTest {
 
         // should fail
         assertFalse(response.getStatus() == HttpServletResponse.SC_CREATED);
-        assertTrue("This test should have failed as expected", response.getContentAsString().contains("Message limit of"));
+        assertTrue("This test should have failed due to message limit", response.getContentAsString().contains("Message limit of"));
 
     }
 
