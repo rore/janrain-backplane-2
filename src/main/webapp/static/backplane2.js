@@ -238,9 +238,15 @@ Backplane.generateNextFrameURL = function() {
     } else {
         localSince += "?";
     }
+    var localBlock = this.block;
+    // do not block if no 'since' record is included
+    if (localSince.indexOf('?since') < 0) {
+        localBlock = 0;
+    }
 
-    return localSince + "callback=Backplane.response&access_token=" + this.token + "&rnd=" + Math.random();
+    return localSince + "callback=Backplane.response&access_token=" + this.token + "&block=" + localBlock + "&rnd=" + Math.random();
 };
+
 
 Backplane.generateChannelID = function() {
     return this.config.serverBaseURL + "/bus/" + this.config.busName + "/channel/" + this.channelName;
