@@ -41,6 +41,7 @@ window.Backplane = window.Backplane || (function() {
     BP.version = "2.0.0";
     BP.token = null;
     BP.channelName = null;
+    BP.block = 0;
     BP.config = {};
     BP.initialized = false;
     BP.firstFrameReceived = false;
@@ -56,7 +57,7 @@ window.Backplane = window.Backplane || (function() {
     BP.intervals = {
         "min": 1,
         "frequent": 5,
-        "regular": 60,
+        "regular": 20,
         "slowdown": 120
     };
     BP.onInit = function() {};
@@ -103,9 +104,9 @@ Backplane.init = function(config) {
     }
 
     this.loadChannelFromCookie();
-
+    
     this.cacheMax = config.cacheMax || this.cacheMax;
-
+    this.block = config.block || 0;
     if (typeof this.config.channelExpires == "undefined") {
         var d = new Date();
         d.setFullYear(d.getFullYear() + 5);
@@ -114,7 +115,8 @@ Backplane.init = function(config) {
 
     if (this.getChannelName()) {
         this.onInit();
-        this.request();
+        //this.request();
+        this.fetchMessages();
     } else {
         this.fetchNewChannel();
     }
@@ -224,8 +226,10 @@ Backplane.finishInit = function (initPayload) {
     this.setCookieChannel();
     this.channelID = this.generateChannelID();
     this.log("channelID = " + this.channelID);
+    this.subscribers={};
     this.onInit();
-    this.request();
+    //this.request();
+    this.fetchMessages();
 };
 
 Backplane.generateNextFrameURL = function() {
@@ -246,7 +250,6 @@ Backplane.generateNextFrameURL = function() {
 
     return localSince + "callback=Backplane.response&access_token=" + this.token + "&block=" + localBlock + "&rnd=" + Math.random();
 };
-
 
 Backplane.generateChannelID = function() {
     return this.config.serverBaseURL + "/bus/" + this.config.busName + "/channel/" + this.channelName;
@@ -301,7 +304,7 @@ Backplane.fetchNewChannel = function() {
     }
 
     var script = document.createElement("script");
-    script.src =  this.config.serverBaseURL + "/token?callback=Backplane.finishInit";
+    script.src =  this.config.serverBaseURL + "/token?callback=Backplane.finishInit&rnd=" + Math.random();;
     script.type = "text/javascript";
     script.id = 'fetchChannelId';
     var firstScript = document.getElementsByTagName("script")[0];
@@ -318,6 +321,9 @@ Backplane.normalizeURL = function(rawURL) {
 
 Backplane.calcTimeout = function() {
     var timeout, ts = this.getTS();
+    if (this.block > 0) {
+        return 2000;
+    }
     if (ts < this.awaiting.until) {
         // stop frequent polling as soon as all the necessary messages received
         if (!this.awaiting.nonstop && !this.awaiting.queue.length) {
@@ -339,7 +345,7 @@ Backplane.calcTimeout = function() {
         timeout = typeof this.since == "undefined" ? 0 : this.intervals.regular;
         this.awaiting.nonstop = false;
     }
-    return timeout * 1000;
+    return (timeout * 1000);
 };
 
 
@@ -353,7 +359,8 @@ Backplane.fetchMessages = function() {
             delete oldScript[prop];
         }
     }
-
+    this.initID = Math.random(); 
+    
     var script = document.createElement("script");
     script.type = "text/javascript";
     script.id = 'fetchMessagesId';
@@ -364,7 +371,6 @@ Backplane.fetchMessages = function() {
 
 }
 
-
 Backplane.request = function() {
     var self = this;
     if (!this.initialized) return false;
@@ -374,7 +380,7 @@ Backplane.request = function() {
         // if no response in the reasonable time just restart request
         self.timers.watchdog = setTimeout(function() {
             self.request();
-        }, 5000);
+        }, (Backplane.block * 1000) + 5000);
         Backplane.fetchMessages();
     }, this.calcTimeout());
 };
@@ -389,7 +395,7 @@ Backplane.response = function(messageFrame) {
     var self = this;
     this.stopTimer("watchdog");
 
-    if (this.since.search("since=") < 0) {
+    if (this.firstFrameReceived === false) {
         if (typeof this.config.initFrameFilter != "undefined") {
             messageFrame.messages = this.config.initFrameFilter(messageFrame.messages);
         } else {
@@ -432,15 +438,15 @@ Backplane.response = function(messageFrame) {
         this.awaiting.queue = queue;
     }
 
-    this.firstFrameReceived = true;
-
-    // if the moreMessages flag is set to 'true', fetch another frame immediately
+    // if the moreMessages flag is true, fetch another frame immediately
     if (messageFrame.moreMessages === true) {
         this.fetchMessages();
         return;
     }
 
+    this.firstFrameReceived = true;
     this.request();
+    //this.fetchMessages();
 };
 
 Backplane.stopTimer = function(name) {
