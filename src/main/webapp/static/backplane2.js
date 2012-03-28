@@ -243,8 +243,8 @@ Backplane.generateNextFrameURL = function() {
         localSince += "?";
     }
     var localBlock = this.block;
-    // do not block if no 'since' record is included
-    if (localSince.indexOf('?since') < 0) {
+    // do not block if this is the first request for Backplane server
+    if (!this.firstFrameReceived) {
         localBlock = 0;
     }
 
