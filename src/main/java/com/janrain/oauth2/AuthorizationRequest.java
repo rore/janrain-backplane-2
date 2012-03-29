@@ -124,7 +124,7 @@ public class AuthorizationRequest extends AbstractMessage {
 
         @Override
         public void validate(String value) throws RuntimeException {
-            if (isRequired()) validateNotNull(name(), value);
+            if (isRequired()) validateNotNull(getFieldName().toLowerCase(), value);
         }
 
         // - PRIVATE

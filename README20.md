@@ -665,13 +665,13 @@ Endpoint: `/v2/authorize`
 
 OAuth2 authorization endpoint handling `authorization_code` grant type. [2]
 
- * Request1: OAuth2 authorizatoin request.
+ * Request1: OAuth2 authorization request.
 
  * Response1: Web form HTML where an authorization prompt is presented to authenticated bus owners.
 
  * Request2: Form submit with bus owner's authorization decision.
 
- * Response2: OAuth2 authorizatinon response, sent via redirect to the Backplane client's redirect_uri
+ * Response2: OAuth2 authorization response, sent via redirect to the Backplane client's redirect_uri
 
 If the bus owner is not yet authenticated, the authorization request is persisted and bound to the user making
 the request with a cookie, then the user is redirected to /authenticate where they can prove they are a bus owner.
