@@ -24,7 +24,7 @@ window.Backplane = window.Backplane || (function() {
         }
     };
     BP.version = "1.2.1";
-    BP.channelByToken = {};
+    BP.channelByBus = {};
     BP.config = {};
     BP.initialized = false;
     BP.firstFrameReceived = false;
@@ -32,6 +32,7 @@ window.Backplane = window.Backplane || (function() {
     BP.cachedMessagesIndex = [];
     BP.cacheMax = 0;
     BP.subscribers = {};
+    BP.serverChannel = true;
     BP.awaiting = {
         "since": 0,
         "until": 0,
@@ -54,6 +55,7 @@ window.Backplane = window.Backplane || (function() {
  *   Possible hash keys:
  *     serverBaseURL (required) - Base URL of Backplane Server
  *     busName (required) - Customer's backplane bus name
+ *     serverChannel (optional) - default to true for best security
  *     channelExpires (optional) - set backplane-channel cookie life span
  *     initFrameFilter (optional) - function to filter the first message frame
  *     cacheMax (optional) - how many messages to cache for late arriving widgets
@@ -66,8 +68,11 @@ Backplane.init = function(config) {
     this.config = config;
     this.config.serverBaseURL = this.normalizeURL(config.serverBaseURL);
 
-    this.channelByToken = this.getCookieChannels();
+    this.channelByBus = this.getCookieChannels();
     this.cacheMax = config.cacheMax || this.cacheMax;
+    if (typeof config.serverChannel !== "undefined") {
+       this.serverChannel = config.serverChannel;
+    }
 
     if (typeof this.config.channelExpires == "undefined") {
         var d = new Date();
@@ -161,7 +166,7 @@ Backplane.expectMessagesWithin = function(interval, types) {
  */
 Backplane.finishInit = function (channelName) {
     if (channelName) {
-        this.channelByToken[this.config.busName] = channelName;
+        this.channelByBus[this.config.busName] = channelName;
     }
 
     this.setCookieChannels();
@@ -177,8 +182,15 @@ Backplane.generateChannelID = function() {
 
 Backplane.getChannelName = function() {
     if (!this.initialized) return false;
-    if (!this.channelByToken[this.config.busName]) return false;
-    return this.channelByToken[this.config.busName];
+    if (!this.channelByBus[this.config.busName]) {
+        if (this.serverChannel) {
+            return false;
+        } else {
+            this.channelByBus[this.config.busName] = (new Date()).valueOf().toString() + Math.random().toString().substr(2, 5);
+            this.setCookieChannels();
+        }
+    }
+    return this.channelByBus[this.config.busName];
 };
 
 Backplane.getTS = function() {
@@ -199,9 +211,9 @@ Backplane.getCookieChannels = function() {
 
 Backplane.setCookieChannels = function() {
     var parts = [];
-    for (var i in this.channelByToken) {
-        if (this.channelByToken.hasOwnProperty(i)) {
-            parts.push(encodeURIComponent(i) + ":" + encodeURIComponent(this.channelByToken[i]));
+    for (var i in this.channelByBus) {
+        if (this.channelByBus.hasOwnProperty(i)) {
+            parts.push(encodeURIComponent(i) + ":" + encodeURIComponent(this.channelByBus[i]));
         }
     }
 
@@ -209,10 +221,14 @@ Backplane.setCookieChannels = function() {
 };
 
 Backplane.resetCookieChannel = function() {
-    delete this.channelByToken[this.config.busName];
+    delete this.channelByBus[this.config.busName];
     this.setCookieChannels();
-    // make the async call to retrieve a server generated channel
-    this.fetchNewChannel();
+    if (this.serverChannel) {
+        this.fetchNewChannel();
+    } else {
+        this.config.channelName = this.getChannelName();
+        this.config.channelID = this.generateChannelID();
+    }
 };
 
 Backplane.fetchNewChannel = function() {
