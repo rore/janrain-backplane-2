@@ -62,10 +62,13 @@ public class BackplaneMessage extends AbstractMessage {
         frame.put(Field.ID.getFieldName(), get(BackplaneMessage.Field.ID.getFieldName()));
         frame.put(Field.CHANNEL_NAME.getFieldName(), get(BackplaneMessage.Field.CHANNEL_NAME.getFieldName()));
 
-        Map <String,Object> msg = new LinkedHashMap<String, Object>(this);
-        msg.remove(Field.ID.getFieldName());
-        msg.remove(Field.BUS.getFieldName());
-        msg.remove(Field.CHANNEL_NAME.getFieldName());
+        // don't copy to frame ID, BUS, CHANNEL_NAME verbatim from Message data structure
+        // (and any other, non-Message fields, like ssdb_update_version)
+        Map <String,Object> msg = new LinkedHashMap<String, Object>();
+
+        // only add SOURCE, TYPE, STICKY, PAYLOAD to 'message: {...}'
+        msg.put(Field.SOURCE.getFieldName(), get(Field.SOURCE));
+        msg.put(Field.TYPE.getFieldName(), get(Field.TYPE));
         String sticky = get(Field.STICKY.getFieldName());
         if (sticky != null) {
             // print sticky as a (json) boolean
