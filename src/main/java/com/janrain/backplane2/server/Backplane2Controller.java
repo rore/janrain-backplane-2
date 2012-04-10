@@ -278,7 +278,7 @@ public class Backplane2Controller {
     @RequestMapping(value = "/messages", method = { RequestMethod.GET})
     public @ResponseBody Map<String,Object> messages(HttpServletRequest request, HttpServletResponse response,
                                 @RequestParam(value = OAUTH2_ACCESS_TOKEN_PARAM_NAME, required = false) String access_token,
-                                @RequestParam(value = "block", defaultValue = "0", required = false) Integer block,
+                                @RequestParam(value = "block", defaultValue = "0", required = false) String block,
                                 @RequestParam(required = false) String callback,
                                 @RequestParam(value = "since", required = false) String since,
                                 @RequestHeader(value = "Authorization", required = false) String authorizationHeader)
@@ -290,15 +290,6 @@ public class Backplane2Controller {
                 put(ERR_MSG_FIELD, "Connection must be made over https");
             }};
         }
-
-        if (block < 0 || block > MAX_BLOCK_SECONDS) {
-            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            return new HashMap<String,Object>() {{
-                put(ERR_MSG_FIELD, "Block must be >= 0 and <= " + MAX_BLOCK_SECONDS);
-            }};
-        }
-
-        Date mustReturn = new Date(System.currentTimeMillis() + (long)block*1000l);
 
         MessageRequest messageRequest;
         try {
@@ -313,7 +304,7 @@ public class Backplane2Controller {
         boolean exit = false;
         do {
             messages = daoFactory.getBackplaneMessageDAO().retrieveAllMesssagesPerScope(messageRequest.getToken().getScope(), since, -1);
-            if (messages.isEmpty() && new Date().before(mustReturn)) {
+            if (messages.isEmpty() && new Date().before(getReturnBefore(block))) {
                 try {
                     Thread.sleep(3000);
                 } catch (InterruptedException e) {
@@ -389,7 +380,6 @@ public class Backplane2Controller {
             }
         }
     }
-
 
     /**
      * Retrieve a single message from the server.
@@ -1007,6 +997,18 @@ public class Backplane2Controller {
         }
         if (StringUtils.isNotEmpty(client_id) || StringUtils.isNotEmpty(client_secret)) {
             throw new AuthException("Client credentials in request body are NOT RECOMMENDED (OAuth2 2.3.1)");
+        }
+    }
+
+    private Date getReturnBefore(String block) {
+        try {
+            int blockSeconds = Integer.valueOf(block);
+            if (blockSeconds < 0 || blockSeconds > MAX_BLOCK_SECONDS) {
+                throw new InvalidRequestException("Invalid value for block parameter (" + block + "), must be between 0 and " + MAX_BLOCK_SECONDS );
+            }
+            return new Date(System.currentTimeMillis() + (long)blockSeconds*1000l);
+        } catch (NumberFormatException e) {
+            throw new InvalidRequestException("Invalid value for block parameter (" + block + "): " + e.getMessage() );
         }
     }
 }
