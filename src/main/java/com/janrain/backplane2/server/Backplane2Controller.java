@@ -473,7 +473,7 @@ public class Backplane2Controller {
     @RequestMapping(value = "/messages", method = { RequestMethod.POST})
     public @ResponseBody Map<String,Object>  postMessages(
                   HttpServletRequest request, HttpServletResponse response,
-                  @RequestBody Map<String,List<Map<String,Object>>> messages,
+                  @RequestBody Map<String,List<Map<String,Object>>> messagesPostBody,
                   @RequestParam(value = OAUTH2_ACCESS_TOKEN_PARAM_NAME, required = false) String access_token,
                   @RequestParam(required = false) String callback,
                   @RequestParam(required = false) String since,
@@ -481,13 +481,10 @@ public class Backplane2Controller {
             throws BackplaneServerException, SimpleDBException {
 
         if (!ServletUtil.isSecure(request)) {
-            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            return new HashMap<String,Object>() {{
-                put(ERR_MSG_FIELD, "Connection must be made over https");
-            }};
+            throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
         }
 
-        final Token token;
+        Token token;
         try {
             token = Token.fromRequest(daoFactory, request, access_token, authorizationHeader);
         } catch (TokenException e) {
@@ -495,79 +492,15 @@ public class Backplane2Controller {
         }
 
         if ( ! token.isPrivileged() ) {
-            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            return new HashMap<String,Object>() {{
-                put(ERR_MSG_FIELD, "Forbidden");
-            }};
+            throw new InvalidRequestException("Forbidden", HttpServletResponse.SC_FORBIDDEN);
         }
         
-        String clientSourceUrl = token.get(TokenPrivileged.Field.CLIENT_SOURCE_URL);
-
-        TokenPrivileged tokenPrivileged = (TokenPrivileged) token;
-
-        // analyze each message for proper bus
-        List<Map<String,Object>> msgs = messages.get("messages");
-
-        if (msgs.size() < 1) {
-            // no message body?
-            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            return new HashMap<String,Object>() {{
-                put(ERR_MSG_FIELD, "Missing message payload");
-            }};
-        }
-
-        if (messages.keySet().size() != 1) {
-            // other garbage in the payload
-            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            return new HashMap<String,Object>() {{
-                put(ERR_MSG_FIELD, "Invalid data in payload");
-            }};
-        }
-
-        for(Map<String,Object> messageData : msgs) {
-
-            BackplaneMessage message = new BackplaneMessage(clientSourceUrl, messageData);
-            if (!token.isAllowedBus(message.get(BackplaneMessage.Field.BUS))) {
-                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                return new HashMap<String,Object>() {{
-                    put(ERR_MSG_FIELD, "Invalid bus in message");
-                }};
-            }
-
-            // return an error if the channel used in the message is not associated with a token
-            if (daoFactory.getTokenDao().retrieveTokenByChannel(message.get(BackplaneMessage.Field.CHANNEL)) == null) {
-                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                return new HashMap<String,Object>() {{
-                    put(ERR_MSG_FIELD, "Invalid channel in message");
-                }};
-            }
-        }
-
-        // do it all again and store the messages in the db
-        BackplaneMessageDAO bmd = daoFactory.getBackplaneMessageDAO();
-        for(Map<String,Object> messageData : msgs) {
-            final BackplaneMessage backplaneMessage = new BackplaneMessage(clientSourceUrl, messageData);
-
-            if (!bmd.isValidBinding(backplaneMessage.getMessageChannel(), backplaneMessage.getMessageBus())) {
-                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                return new HashMap<String,Object>() {{
-                    put(ERR_MSG_FIELD, "Invalid binding for channel " + backplaneMessage.getMessageChannel() + " - already bound to a bus");
-                }};
-            }
-
-            if (bmd.isChannelFull(backplaneMessage.getMessageChannel())) {
-                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                return new HashMap<String,Object>() {{
-                    put(ERR_MSG_FIELD, "Message limit of " + bpConfig.getDefaultMaxMessageLimit() + " reached for channel '" + backplaneMessage.getMessageChannel() + "'");
-                }};
-            }
-            bmd.persist(new BackplaneMessage(clientSourceUrl, messageData));
-
+        for(BackplaneMessage message : parsePostedMessages(messagesPostBody, token)) {
+            daoFactory.getBackplaneMessageDAO().persist(message);
         }
 
         response.setStatus(HttpServletResponse.SC_CREATED);
         return null;
-
     }
 
     @ExceptionHandler
@@ -1010,5 +943,61 @@ public class Backplane2Controller {
         } catch (NumberFormatException e) {
             throw new InvalidRequestException("Invalid value for block parameter (" + block + "): " + e.getMessage() );
         }
+    }
+
+    private List<BackplaneMessage> parsePostedMessages(Map<String, List<Map<String, Object>>> messagesPostBody, Token token) throws SimpleDBException, BackplaneServerException {
+        List<BackplaneMessage> result = new ArrayList<BackplaneMessage>();
+        List<Map<String,Object>> msgs = messagesPostBody.get("messages");
+        if (msgs.size() < 1) { // no message body?
+            throw new InvalidRequestException("Missing message payload", HttpServletResponse.SC_FORBIDDEN);
+        }
+
+        if (messagesPostBody.keySet().size() != 1) { // other garbage in the payload
+            throw new InvalidRequestException("Invalid data in payload", HttpServletResponse.SC_FORBIDDEN);
+        }
+
+        String clientSourceUrl = token.get(TokenPrivileged.Field.CLIENT_SOURCE_URL);
+        Map<String,Integer> channelCounts = new HashMap<String, Integer>();
+        Map<String,String> channelBindings = new HashMap<String, String>();
+        for(Map<String,Object> messageData : msgs) {
+            BackplaneMessage message;
+            try {
+                message = new BackplaneMessage(clientSourceUrl, messageData);
+            } catch (Exception e) {
+                throw new InvalidRequestException("Invalid message data: " + e.getMessage(), HttpServletResponse.SC_FORBIDDEN);
+            }
+
+            // analyze each message for proper bus
+            if (!token.isAllowedBus(message.get(BackplaneMessage.Field.BUS))) {
+                throw new InvalidRequestException("Invalid bus in message", HttpServletResponse.SC_FORBIDDEN);
+            }
+
+            // return an error if the channel used in the message is not associated with a token
+            if (daoFactory.getTokenDao().retrieveTokenByChannel(message.get(BackplaneMessage.Field.CHANNEL)) == null) {
+                throw new InvalidRequestException("Invalid channel in message", HttpServletResponse.SC_FORBIDDEN);
+            }
+
+            // todo: atomically check and persist channel-bus bindings
+            String channel = message.getMessageChannel();
+            if ( ! daoFactory.getBackplaneMessageDAO().isValidBinding(channel, message.getMessageBus()) ||
+                 ( channelBindings.containsKey(channel) && ! message.getMessageBus().equals(channelBindings.get(channel))) ) {
+                throw new InvalidRequestException("Invalid binding for channel " + channel + " - already bound to a bus",
+                        HttpServletResponse.SC_FORBIDDEN);
+            }
+
+            channelCounts.put(channel, channelCounts.containsKey(channel) ? channelCounts.get(channel) + 1 : 1);
+            channelBindings.put(channel, message.getMessageBus());
+            result.add(message);
+        }
+
+        for(String channel : channelCounts.keySet() ) {
+            Integer channelMsgCount = channelCounts.get(channel);
+            if ( ! daoFactory.getBackplaneMessageDAO().canTake(channel, channelMsgCount)) {
+                throw new InvalidRequestException("Message limit of " + bpConfig.getDefaultMaxMessageLimit() + " would be exceeded by posting" + channelMsgCount + " messages to '" + channel + "'",
+                        HttpServletResponse.SC_FORBIDDEN);
+            }
+        }
+
+        return result;
     }
 }

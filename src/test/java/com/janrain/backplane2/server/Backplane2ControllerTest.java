@@ -1157,13 +1157,14 @@ public class Backplane2ControllerTest {
         logger.info(msgsString);
         request.setContent(msgsString.getBytes());
 
-        handlerAdapter.handle(request, response, controller);
-        logger.info("testMessagePost() => " + response.getContentAsString());
-
-        // should fail
-        assertTrue(response.getContentAsString().contains("Invalid binding"));
-        assertFalse(response.getStatus() == HttpServletResponse.SC_CREATED);
-
+        try {
+            handlerAdapter.handle(request, response, controller);
+            logger.info("testMessagePost() => " + response.getContentAsString());
+            assertTrue("This test should have failed due to attempt to bind a channel to two buses", false);
+        } catch (InvalidRequestException expected) {
+            // should fail
+            assertTrue(expected.getMessage().contains("Invalid binding"));
+        }
     }
 
     /**
@@ -1239,13 +1240,14 @@ public class Backplane2ControllerTest {
         logger.info(msgsString);
         request.setContent(msgsString.getBytes());
 
-        handlerAdapter.handle(request, response, controller);
-        logger.info("testMessagePost3 => " + response.getContentAsString());
-
-        // should fail
-        assertFalse(response.getStatus() == HttpServletResponse.SC_CREATED);
-        assertTrue("This test should have failed due to message limit", response.getContentAsString().contains("Message limit of"));
-
+        try {
+            handlerAdapter.handle(request, response, controller);
+            logger.info("testMessagePost3 => " + response.getContentAsString());
+            assertTrue("This test should have failed due to message limit", false);
+        } catch (InvalidRequestException expected) {
+            // should fail
+            assertTrue(expected.getMessage().contains("Message limit of"));
+        }
     }
 
 

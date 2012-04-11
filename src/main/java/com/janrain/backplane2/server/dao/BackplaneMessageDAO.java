@@ -101,6 +101,13 @@ public class BackplaneMessageDAO extends DAO {
         return count >= bpConfig.getDefaultMaxMessageLimit();
     }
 
+    public boolean canTake(String channel, int msgPostCount) throws SimpleDBException {
+        String query = "select count(*) from `" + bpConfig.getTableName(BP_MESSAGES) + "` where channel='" + channel + "'";
+        long count = superSimpleDB.retrieveCount(bpConfig.getTableName(BP_MESSAGES), query);
+        logger.debug(count + " >= " + bpConfig.getDefaultMaxMessageLimit());
+        return count + msgPostCount < bpConfig.getDefaultMaxMessageLimit();
+    }
+
     /**
      * Retrieve all messages by per scope.  Guaranteed to delivery results in order of
      * message ID.
@@ -207,5 +214,4 @@ public class BackplaneMessageDAO extends DAO {
                 Backplane2Config.ISO8601.format(new Date(System.currentTimeMillis() - Long.valueOf(retentionTimeSeconds) * 1000))
                 + "'";
     }
-
 }
