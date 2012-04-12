@@ -28,15 +28,15 @@ import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTabl
 /**
  * @author Johnny Bufu
  */
-public class AuthSessionDAO extends DAO {
+public class AuthSessionDAO extends DAO<AuthSession> {
 
     AuthSessionDAO(SuperSimpleDB superSimpleDB, Backplane2Config bpConfig) {
         super(superSimpleDB, bpConfig);
     }
 
     @Override
-    public void persist(Object authSession) throws SimpleDBException {
-        superSimpleDB.store(bpConfig.getTableName(BP_AUTH_SESSION), AuthSession.class, (AuthSession) authSession);
+    public void persist(AuthSession authSession) throws SimpleDBException {
+        superSimpleDB.store(bpConfig.getTableName(BP_AUTH_SESSION), AuthSession.class, authSession);
     }
 
     @Override

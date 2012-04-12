@@ -20,7 +20,6 @@ import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.backplane2.server.config.BusConfig2;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
-import com.janrain.commons.supersimpledb.message.MessageField;
 
 import java.util.List;
 
@@ -29,15 +28,15 @@ import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTabl
 /**
  * @author Johnny Bufu
  */
-public class BusDAO extends DAO {
+public class BusDAO extends DAO<BusConfig2> {
 
     BusDAO(SuperSimpleDB superSimpleDB, Backplane2Config bpConfig) {
         super(superSimpleDB, bpConfig);
     }
 
     @Override
-    public void persist(Object bus) throws SimpleDBException {
-        superSimpleDB.store(bpConfig.getTableName(BP_BUS_CONFIG), BusConfig2.class, (BusConfig2) bus);
+    public void persist(BusConfig2 bus) throws SimpleDBException {
+        superSimpleDB.store(bpConfig.getTableName(BP_BUS_CONFIG), BusConfig2.class, bus);
     }
 
     @Override

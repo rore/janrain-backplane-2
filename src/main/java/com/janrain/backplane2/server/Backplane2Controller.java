@@ -496,6 +496,7 @@ public class Backplane2Controller {
         }
         
         for(BackplaneMessage message : parsePostedMessages(messagesPostBody, token)) {
+            // todo: post operation not "all or nothing" if simpledb fails on any of these store operations
             daoFactory.getBackplaneMessageDAO().persist(message);
         }
 

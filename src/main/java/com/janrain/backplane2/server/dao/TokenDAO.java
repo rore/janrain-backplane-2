@@ -32,15 +32,15 @@ import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTabl
  * @author Tom Raney
  */
 
-public class TokenDAO extends DAO {
+public class TokenDAO extends DAO<Token> {
 
     TokenDAO(SuperSimpleDB superSimpleDB, Backplane2Config bpConfig) {
         super(superSimpleDB, bpConfig);
     }
 
     @Override
-    public void persist(Object token) throws SimpleDBException {
-        superSimpleDB.store(bpConfig.getTableName(BP_ACCESS_TOKEN), Token.class, (Token) token, true);
+    public void persist(Token token) throws SimpleDBException {
+        superSimpleDB.store(bpConfig.getTableName(BP_ACCESS_TOKEN), Token.class, token, true);
     }
 
     @Override

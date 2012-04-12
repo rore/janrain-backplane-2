@@ -16,7 +16,6 @@
 
 package com.janrain.backplane2.server.dao;
 
-import com.janrain.backplane2.server.Access;
 import com.janrain.backplane2.server.BackplaneServerException;
 import com.janrain.backplane2.server.Grant;
 import com.janrain.backplane2.server.Scope;
@@ -37,15 +36,15 @@ import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTabl
  * @author Tom Raney
  */
 
-public class GrantDAO extends DAO {
+public class GrantDAO extends DAO<Grant> {
 
     GrantDAO(SuperSimpleDB superSimpleDB, Backplane2Config bpConfig) {
         super(superSimpleDB, bpConfig);
     }
 
     @Override
-    public void persist(Object grant) throws SimpleDBException {
-        superSimpleDB.store(bpConfig.getTableName(BP_GRANT), Grant.class, (Grant) grant, true);
+    public void persist(Grant grant) throws SimpleDBException {
+        superSimpleDB.store(bpConfig.getTableName(BP_GRANT), Grant.class, grant, true);
     }
 
     @Override

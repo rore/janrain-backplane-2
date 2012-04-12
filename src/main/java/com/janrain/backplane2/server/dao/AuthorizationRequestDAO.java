@@ -29,15 +29,15 @@ import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTabl
 /**
  * @author Johnny Bufu
  */
-public class AuthorizationRequestDAO extends DAO {
+public class AuthorizationRequestDAO extends DAO<AuthorizationRequest> {
 
     AuthorizationRequestDAO(SuperSimpleDB superSimpleDB, Backplane2Config bpConfig) {
         super(superSimpleDB, bpConfig);
     }
 
     @Override
-    public void persist(Object authorizationRequest) throws SimpleDBException {
-        superSimpleDB.store(bpConfig.getTableName(BP_AUTHORIZATION_REQUEST), AuthorizationRequest.class, (AuthorizationRequest) authorizationRequest);
+    public void persist(AuthorizationRequest authorizationRequest) throws SimpleDBException {
+        superSimpleDB.store(bpConfig.getTableName(BP_AUTHORIZATION_REQUEST), AuthorizationRequest.class, authorizationRequest);
     }
 
     @Override

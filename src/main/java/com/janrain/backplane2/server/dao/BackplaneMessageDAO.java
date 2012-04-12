@@ -40,7 +40,7 @@ import static com.janrain.backplane2.server.config.BusConfig2.Field.RETENTION_TI
 /**
  * @author Tom Raney
  */
-public class BackplaneMessageDAO extends DAO {
+public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
 
     public static final int MAX_MSGS_IN_FRAME = 25;
 
@@ -50,9 +50,8 @@ public class BackplaneMessageDAO extends DAO {
     }
 
     @Override
-    public void persist(Object message) throws SimpleDBException {
-        BackplaneMessage newMessage = (BackplaneMessage) message;
-        superSimpleDB.store(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class, newMessage);
+    public void persist(BackplaneMessage message) throws SimpleDBException {
+        superSimpleDB.store(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class, message);
     }
 
     public BackplaneMessage getLatestMessage() throws SimpleDBException {

@@ -19,12 +19,13 @@ package com.janrain.backplane2.server.dao;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
+import com.janrain.commons.supersimpledb.message.NamedMap;
 
 /**
  * @author Tom Raney
  */
 
-public abstract class DAO {
+public abstract class DAO<T extends NamedMap> {
 
     protected SuperSimpleDB superSimpleDB;
     protected Backplane2Config bpConfig;
@@ -32,9 +33,9 @@ public abstract class DAO {
     DAO(SuperSimpleDB superSimpleDB, Backplane2Config bpConfig) {
         this.superSimpleDB = superSimpleDB;
         this.bpConfig = bpConfig;
-    };
+    }
 
-    abstract public void persist(Object obj) throws SimpleDBException;
+    abstract public void persist(T obj) throws SimpleDBException;
     abstract public void delete(String id) throws SimpleDBException;
 
 }

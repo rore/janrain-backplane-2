@@ -29,15 +29,15 @@ import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTabl
 /**
  * @author Johnny Bufu
  */
-public class AuthorizationDecisionKeyDAO extends DAO {
+public class AuthorizationDecisionKeyDAO extends DAO<AuthorizationDecisionKey> {
 
     AuthorizationDecisionKeyDAO(SuperSimpleDB superSimpleDB, Backplane2Config bpConfig) {
         super(superSimpleDB, bpConfig);
     }
 
     @Override
-    public void persist(Object authorizationDecisionKey) throws SimpleDBException {
-        superSimpleDB.store(bpConfig.getTableName(BP_AUTHORIZATION_DECISION_KEY), AuthorizationDecisionKey.class, (AuthorizationDecisionKey) authorizationDecisionKey);
+    public void persist(AuthorizationDecisionKey authorizationDecisionKey) throws SimpleDBException {
+        superSimpleDB.store(bpConfig.getTableName(BP_AUTHORIZATION_DECISION_KEY), AuthorizationDecisionKey.class, authorizationDecisionKey);
     }
 
     @Override

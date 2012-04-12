@@ -30,15 +30,15 @@ import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTabl
 /**
  * @author Tom Raney
  */
-public class ClientDAO extends DAO {
+public class ClientDAO extends DAO<Client> {
 
     ClientDAO(SuperSimpleDB superSimpleDB, Backplane2Config bpConfig) {
         super(superSimpleDB, bpConfig);
     }
 
     @Override
-    public void persist(Object client) throws SimpleDBException {
-        superSimpleDB.store(bpConfig.getTableName(BP_CLIENTS), Client.class, (Client) client);
+    public void persist(Client client) throws SimpleDBException {
+        superSimpleDB.store(bpConfig.getTableName(BP_CLIENTS), Client.class, client);
     }
 
     @Override
