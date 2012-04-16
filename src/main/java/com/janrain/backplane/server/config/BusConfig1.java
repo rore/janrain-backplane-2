@@ -65,8 +65,8 @@ public class BusConfig1 extends AbstractMessage {
                 if (isRequired() || value != null) {
                     String fieldName = getFieldName();
                     int intValue = validateInt(fieldName, value);
-                    if (intValue < RETENTION_MIN_VALUE || intValue > RETENTION_MAX_VALUE) {
-                        throw new IllegalArgumentException("Value of " + fieldName + " must be between " + RETENTION_MIN_VALUE + " and " + RETENTION_MAX_VALUE);
+                    if (intValue < RETENTION_MIN_SECONDS || intValue > RETENTION_MAX_SECONDS) {
+                        throw new IllegalArgumentException("Value of " + fieldName + " must be between " + RETENTION_MIN_SECONDS + " and " + RETENTION_MAX_SECONDS);
                     }
                 }
             }},
@@ -78,8 +78,8 @@ public class BusConfig1 extends AbstractMessage {
                     String fieldName = getFieldName();
                     validateInt(fieldName, value);
                     int intValue = validateInt(fieldName, value);
-                    if (intValue < RETENTION_STICKY_MIN_VALUE || intValue > RETENTION_STICKY_MAX_VALUE) {
-                        throw new IllegalArgumentException("Value of " + fieldName + " must be between " + RETENTION_STICKY_MIN_VALUE + " and " + RETENTION_STICKY_MAX_VALUE);
+                    if (intValue < RETENTION_STICKY_MIN_SECONDS || intValue > RETENTION_STICKY_MAX_SECONDS) {
+                        throw new IllegalArgumentException("Value of " + fieldName + " must be between " + RETENTION_STICKY_MIN_SECONDS + " and " + RETENTION_STICKY_MAX_SECONDS);
                     }
                 }
             }};
@@ -104,10 +104,10 @@ public class BusConfig1 extends AbstractMessage {
 
         // - PRIVATE
 
-        private static final int RETENTION_MIN_VALUE = 60;
-        private static final int RETENTION_MAX_VALUE = 604800; // one week
-        private static final int RETENTION_STICKY_MIN_VALUE = 21600; // six hours todo: update to what ends up in the spec
-        private static final int RETENTION_STICKY_MAX_VALUE = 604800; // one week
+        private static final int RETENTION_MIN_SECONDS = 60;
+        private static final int RETENTION_MAX_SECONDS = 604800; // one week
+        private static final int RETENTION_STICKY_MIN_SECONDS = 28800; // eight hours
+        private static final int RETENTION_STICKY_MAX_SECONDS = 604800; // one week
 
     }
 
