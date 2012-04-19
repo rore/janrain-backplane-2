@@ -515,6 +515,8 @@ public class ProvisioningController2Test {
 
     private void refreshRequestAndResponse() {
 		request = new MockHttpServletRequest();
+        // simulate https for tests to pass
+        request.addHeader("x-forwarded-proto", "https");
 		response = new MockHttpServletResponse();
 	}
 

@@ -150,7 +150,9 @@ public class Backplane2Controller {
                           @RequestParam(required = false) String busOwner,
                           @RequestParam(required = false) String password) throws AuthException, SimpleDBException {
 
-        //assert(request.isSecure());
+        if (!ServletUtil.isSecure(request)) {
+            throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
+        }
 
         String httpMethod = request.getMethod();
         if ("GET".equals(httpMethod)) {
@@ -184,10 +186,7 @@ public class Backplane2Controller {
                                            @RequestParam(required = false) String callback) {
 
         if (!ServletUtil.isSecure(request)) {
-            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            return new HashMap<String,Object>() {{
-                put(ERR_MSG_FIELD, "Connection must be made over https");
-            }};
+            throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
         }
 
         if (StringUtils.isBlank(callback)) {
@@ -237,10 +236,7 @@ public class Backplane2Controller {
                                         @RequestHeader(value = "Authorization", required = false) String basicAuth) {
 
         if (!ServletUtil.isSecure(request)) {
-            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            return new HashMap<String,Object>() {{
-                put(ERR_MSG_FIELD, "Connection must be made over https");
-            }};
+            throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
         }
 
         Client authenticatedClient;
@@ -285,10 +281,7 @@ public class Backplane2Controller {
             throws SimpleDBException, BackplaneServerException {
 
         if (!ServletUtil.isSecure(request)) {
-            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            return new HashMap<String,Object>() {{
-                put(ERR_MSG_FIELD, "Connection must be made over https");
-            }};
+            throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
         }
 
         MessageRequest messageRequest;
@@ -397,10 +390,7 @@ public class Backplane2Controller {
             throws BackplaneServerException {
 
         if (!ServletUtil.isSecure(request)) {
-            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            return new HashMap<String,Object>() {{
-                put(ERR_MSG_FIELD, "Connection must be made over https");
-            }};
+            throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
         }
 
         MessageRequest messageRequest;
