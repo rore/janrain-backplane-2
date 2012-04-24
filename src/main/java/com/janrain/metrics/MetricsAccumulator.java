@@ -20,12 +20,16 @@ import com.janrain.backplane2.server.BackplaneServerException;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.*;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryUsage;
 import java.util.*;
@@ -57,10 +61,30 @@ public class MetricsAccumulator {
      */
     public MetricMessage prepareSummary() throws BackplaneServerException {
         try {
-            return new MetricMessage(instanceUuid, Backplane2Config.ISO8601.format(new Date()), toJson(true));
+            return new MetricMessage(instanceUuid, Backplane2Config.ISO8601.format(new Date()), new String(toEncodedBytes()));
         } catch (Exception e) {
             throw new BackplaneServerException(e.getMessage());
         }
+    }
+
+    public static byte[] toEncodedBytes() throws Exception {
+
+        Map<String,StandardMetric> parent = new LinkedHashMap<String, StandardMetric>();
+
+        for (Map.Entry<MetricName, Metric> entry: Metrics.allMetrics().entrySet()) {
+            String name = entry.getKey().getName();
+            Metric metric = entry.getValue();
+            parent.put(name, new StandardMetric(name, metric));
+        }
+
+        // Serialize to a byte array
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        ObjectOutput out = new ObjectOutputStream(bos);
+        out.writeObject(parent);
+        byte[] buf = Base64.encodeBase64(bos.toByteArray());
+
+        return buf;
+
     }
 
      public String toJson(boolean includeJvmStats) throws Exception {

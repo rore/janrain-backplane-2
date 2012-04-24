@@ -193,6 +193,8 @@ public class Backplane2Controller {
             return handleTokenException(new TokenException(OAUTH2_TOKEN_INVALID_REQUEST, "Callback cannot be blank"), response);
         }
 
+        v2GetRegTokens.mark();
+
         try {
             TokenRequest tokenRequest = new TokenRequest(OAuth2.OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS, scope, callback);
             tokenRequest.validate();
@@ -292,6 +294,9 @@ public class Backplane2Controller {
         } catch (TokenException te) {
             return handleTokenException(te, response);
         }
+
+        // log metric
+        v2Gets.mark();
 
         List<BackplaneMessage> messages;
         boolean exit = false;
@@ -484,6 +489,9 @@ public class Backplane2Controller {
         if ( ! token.isPrivileged() ) {
             throw new InvalidRequestException("Forbidden", HttpServletResponse.SC_FORBIDDEN);
         }
+
+        // log metric
+        v2Posts.mark();
         
         for(BackplaneMessage message : parsePostedMessages(messagesPostBody, token)) {
             // todo: post operation not "all or nothing" if simpledb fails on any of these store operations
@@ -991,4 +999,8 @@ public class Backplane2Controller {
 
         return result;
     }
+
+    private final MeterMetric v2Gets = Metrics.newMeter(Backplane2Controller.class, "v2_get", "v2_gets", TimeUnit.MINUTES);
+    private final MeterMetric v2Posts =  Metrics.newMeter(Backplane2Controller.class, "v2_post", "v2_posts", TimeUnit.MINUTES);
+    private final MeterMetric v2GetRegTokens =  Metrics.newMeter(Backplane2Controller.class, "v2_get_reg_token", "v2_get_reg_tokens", TimeUnit.MINUTES);
 }
