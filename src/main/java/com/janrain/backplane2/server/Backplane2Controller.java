@@ -111,7 +111,7 @@ public class Backplane2Controller {
                 }
             }
             logger.info("Bus owner not authenticated, redirecting to /authenticate");
-            return new ModelAndView("redirect: https://" + request.getServerName() + "/v2/authenticate");
+            return new ModelAndView("redirect:https://" + request.getServerName() + "/v2/authenticate");
         }
 
         if (StringUtils.isEmpty(authZdecisionKey)) {
@@ -161,7 +161,7 @@ public class Backplane2Controller {
         } else if ("POST".equals(httpMethod)) {
             checkBusOwnerAuth(busOwner, password);
             persistAuthenticatedSession(response, busOwner);
-            return new ModelAndView("redirect: https://" + request.getServerName() + "/v2/authorize");
+            return new ModelAndView("redirect:https://" + request.getServerName() + "/v2/authorize");
         } else {
             throw new InvalidRequestException("Unsupported method for /authenticate: " + httpMethod);
         }
