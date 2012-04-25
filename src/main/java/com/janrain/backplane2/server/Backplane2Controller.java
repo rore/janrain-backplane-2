@@ -300,9 +300,10 @@ public class Backplane2Controller {
 
         List<BackplaneMessage> messages;
         boolean exit = false;
+        Date blockUntil = getReturnBefore(block);
         do {
             messages = daoFactory.getBackplaneMessageDAO().retrieveAllMesssagesPerScope(messageRequest.getToken().getScope(), since, -1);
-            if (messages.isEmpty() && new Date().before(getReturnBefore(block))) {
+            if (messages.isEmpty() && new Date().before(blockUntil)) {
                 try {
                     Thread.sleep(3000);
                 } catch (InterruptedException e) {
