@@ -239,6 +239,10 @@ Bus Owner Provisioning API
 
 #### Create or Update Bus Owner Entry
 
+* Endpoint: `/v2/provision/user/update`
+
+* Security: HTTPS POST
+
 Example HTTP API request:
 
 POST `/v2/provision/user/update`
@@ -269,10 +273,12 @@ Example curl command for the above HTTP API request:
 
 #### List All Bus Owners
 
+* Endpoint: `/v2/provision/user/list`
+
+* Security: HTTPS POST
+
 Example HTTP API request:
 
-POST `/v2/provision/user/list`
-Host: backplanesample.com
 Content-Type: application/json
 
 ```json
@@ -289,10 +295,12 @@ Example curl command for the above HTTP API request:
 
 #### Delete Bus Owners
 
+* Endpoint: `/v2/provision/user/delete`
+
+* Security: HTTPS POST
+
 Example HTTP API request:
 
-POST `/v2/provision/user/delete`
-Host: backplanesample.com
 `Content-Type: application/json`
 
 ```json
@@ -315,10 +323,12 @@ this API is provided for manual backplane clients registration.
 
 #### Create or Update Backplane Client Entry
 
+* Endpoint: `/v2/provision/client/update`
+
+* Security: HTTPS POST
+
 Example HTTP API request:
 
-POST `/v2/provision/client/update`
-Host: backplanesample.com
 Content-Type: application/json
 
 ```json
@@ -349,10 +359,12 @@ Example curl command for the above HTTP API request:
 
 #### List All Backplane Clients
 
+* Endpoint: `/v2/provision/client/list`
+
+* Security: HTTPS POST
+
 Example HTTP API request:
 
-POST `/v2/provision/client/list`
-Host: backplanesample.com
 Content-Type: application/json
 
 ```json
@@ -369,10 +381,10 @@ Example curl command for the above HTTP API request:
 
 #### Delete Backplane Clients
 
-Example HTTP API request:
+* Endpoint: `/v2/provision/client/delete`
 
-POST `/v2/provision/client/delete`
-Host: backplanesample.com
+* Security: HTTPS POST
+
 `Content-Type: application/json`
 
 ```json
@@ -397,9 +409,9 @@ Returns a list of Bus Configuration data sets.
 
 Request:
 
-* endpoint: `/v2/provision/bus/list`
+* Endpoint: `/v2/provision/bus/list`
 
-* HTTP method: POST
+* Security: HTTPS POST
 
 * all entries are required
 
@@ -446,9 +458,9 @@ Removes the specified bus configuration(s).
 
 Request:
 
-* endpoint: `/v2/provision/bus/delete`
+* Endpoint: `/v2/provision/bus/delete`
 
-* HTTP method: POST
+* Security: HTTPS POST
 
 * all entries are required
 
@@ -483,9 +495,9 @@ Updates Bus configuration data. If a bus in the provided list does not exist, it
 
 Request:
 
-* endpoint: `/v2/provision/bus/update`
+* Endpoint: `/v2/provision/bus/update`
 
-* HTTP method: POST
+* Security: HTTPS POST
 
 * all entries are required
 
@@ -533,9 +545,9 @@ this API is provided for manual client_credentials grant type authorization.
 Adds an non-expiring authorization grant for the provided Backplane client_id(s) for the specified buses.
 The grant's issuer is set to the admin username used for this provisioning operation.
 
-* endpoint: `/v2/provision/grant/add`
+* Endpoint: `/v2/provision/grant/add`
 
-* HTTP method: POST
+* Security: HTTPS POST
 
 * all entries are required
 
@@ -568,9 +580,9 @@ The grant's issuer is set to the admin username used for this provisioning opera
 
 Removes the specified buses from all of Backplane client's grants.
 
-* endpoint: `/v2/provision/grant/revoke`
+* Endpoint: `/v2/provision/grant/revoke`
 
-* HTTP method: POST
+* Security: HTTPS POST
 
 * all entries are required
 
@@ -603,9 +615,9 @@ Removes the specified buses from all of Backplane client's grants.
 
 Lists existing authorization grants for the Backplane client identified by the provided client_id.
 
-* endpoint: `/v2/provision/grant/list`
+* Endpoint: `/v2/provision/grant/list`
 
-* HTTP method: POST
+* Security: HTTPS POST
 
 * all entries are required
 
@@ -643,7 +655,9 @@ Authorization and Authentication
 
 #### Authentication
 
-Endpoint: `/v2/authenticate`
+* Endpoint: `/v2/authenticate`
+
+* Security: HTTPS
 
 GET:
 
@@ -661,7 +675,9 @@ Web form where bus owners authenticate before granting authorization acess (via 
 
 #### Authorization
 
-Endpoint: `/v2/authorize`
+* Endpoint: `/v2/authorize`
+
+* Security: HTTPS
 
 OAuth2 authorization endpoint handling `authorization_code` grant type. [2]
 
@@ -689,8 +705,8 @@ If a server is restarted, it will create a new instance ID and begin reporting a
 
 Request:
 
-* endpoint: `/v2/metrics/dump`
-* HTTP method: POST
+* Endpoint: `/v2/metrics/dump` and `/v2/metrics/dump/agg`
+* Security: HTTPS POST
 * all entries are required
 * body format:
 

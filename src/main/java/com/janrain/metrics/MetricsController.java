@@ -17,10 +17,12 @@
 package com.janrain.metrics;
 
 import com.janrain.backplane2.server.BackplaneServerException;
+import com.janrain.backplane2.server.InvalidRequestException;
 import com.janrain.backplane2.server.config.AuthException;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
+import com.janrain.servlet.ServletUtil;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -31,6 +33,8 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 import javax.inject.Inject;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -59,8 +63,12 @@ public class MetricsController {
     // - PUBLIC
 
     @RequestMapping(value = "/dump", method = RequestMethod.POST)
-    public ResponseEntity<String> dump (@RequestBody MetricRequest metricRequest)
+    public ResponseEntity<String> dump (HttpServletRequest request, @RequestBody MetricRequest metricRequest)
             throws SimpleDBException, BackplaneServerException, AuthException {
+
+        if (!ServletUtil.isSecure(request)) {
+            throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
+        }
 
         bpConfig.checkMetricAuth(metricRequest.getUser(), metricRequest.getSecret());
 
@@ -78,8 +86,12 @@ public class MetricsController {
     }
 
     @RequestMapping(value = "/dump/agg", method = RequestMethod.POST)
-    public ResponseEntity<String> dumpAggregate(@RequestBody MetricRequest metricRequest)
+    public ResponseEntity<String> dumpAggregate(HttpServletRequest request, @RequestBody MetricRequest metricRequest)
             throws AuthException {
+
+        if (!ServletUtil.isSecure(request)) {
+            throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
+        }
 
         bpConfig.checkMetricAuth(metricRequest.getUser(), metricRequest.getSecret());
 
