@@ -1096,19 +1096,16 @@ public class Backplane2ControllerTest {
         this.saveToken(token2);
 
         // Make the call
-        request.setRequestURI("/v2/messages");
+        request.setRequestURI("/v2/message");
         request.setMethod("POST");
         setOauthBearerTokenAuthorization(request, token2.getIdValue());
         request.addHeader("Content-type", "application/json");
         //request.setContentType("application/json");
         //request.setParameter("messages", TEST_MSG_1);
-        HashMap<String, Object> msgs = new HashMap<String, Object>();
-        ArrayList msgsList = new ArrayList();
-        msgsList.add(new ObjectMapper().readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {}));
-        msgsList.add(new ObjectMapper().readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {}));
+        HashMap<String, Object> msg = new HashMap<String, Object>();
 
-        msgs.put("messages", msgsList);
-        String msgsString = new ObjectMapper().writeValueAsString(msgs);
+        msg.put("message", new ObjectMapper().readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {}));
+        String msgsString = new ObjectMapper().writeValueAsString(msg);
         logger.info(msgsString);
         request.setContent(msgsString.getBytes());
 
@@ -1140,22 +1137,40 @@ public class Backplane2ControllerTest {
         this.saveToken(token2);
 
         // Make the call
-        request.setRequestURI("/v2/messages");
+        request.setRequestURI("/v2/message");
         request.setMethod("POST");
         setOauthBearerTokenAuthorization(request, token2.getIdValue());
         request.addHeader("Content-type", "application/json");
         //request.setContentType("application/json");
         //request.setParameter("messages", TEST_MSG_1);
-        HashMap<String, Object> msgs = new HashMap<String, Object>();
-        ArrayList msgsList = new ArrayList();
-        msgsList.add(new ObjectMapper().readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {}));
-        // second message on a different bus but with the same channel
-        msgsList.add(new ObjectMapper().readValue(TEST_MSG_2, new TypeReference<Map<String,Object>>() {}));
+        HashMap<String, Object> msg = new HashMap<String, Object>();
+        msg.put("message", new ObjectMapper().readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {}));
+        String msgString = new ObjectMapper().writeValueAsString(msg);
+        logger.info(msgString);
+        request.setContent(msgString.getBytes());
 
-        msgs.put("messages", msgsList);
-        String msgsString = new ObjectMapper().writeValueAsString(msgs);
-        logger.info(msgsString);
-        request.setContent(msgsString.getBytes());
+        try {
+            handlerAdapter.handle(request, response, controller);
+            logger.info("testMessagePost() => " + response.getContentAsString());
+        } catch (InvalidRequestException notExpected) {
+            // should not fail
+            fail("should not fail " + notExpected.getMessage());
+        }
+
+
+        refreshRequestAndResponse();
+        // Make the call
+        request.setRequestURI("/v2/message");
+        request.setMethod("POST");
+        setOauthBearerTokenAuthorization(request, token2.getIdValue());
+        request.addHeader("Content-type", "application/json");
+        //request.setContentType("application/json");
+        //request.setParameter("messages", TEST_MSG_1);
+        msg = new HashMap<String, Object>();
+        msg.put("message", new ObjectMapper().readValue(TEST_MSG_2, new TypeReference<Map<String,Object>>() {}));
+        msgString = new ObjectMapper().writeValueAsString(msg);
+        logger.info(msgString);
+        request.setContent(msgString.getBytes());
 
         try {
             handlerAdapter.handle(request, response, controller);
@@ -1165,6 +1180,7 @@ public class Backplane2ControllerTest {
             // should fail
             assertTrue(expected.getMessage().contains("Invalid binding"));
         }
+
     }
 
     /**
@@ -1220,34 +1236,35 @@ public class Backplane2ControllerTest {
         TokenPrivileged token2 = new TokenPrivileged("clientFoo", testClient.getSourceUrl(), "mybus.com yourbus.com", "bus:yourbus.com bus:mybus.com", null);
         this.saveToken(token2);
 
-        // Make the call
-        request.setRequestURI("/v2/messages");
-        request.setMethod("POST");
-        setOauthBearerTokenAuthorization(request, token2.getIdValue());
-        request.addHeader("Content-type", "application/json");
-        //request.setContentType("application/json");
-        //request.setParameter("messages", TEST_MSG_1);
-        HashMap<String, Object> msgs = new HashMap<String, Object>();
-        ArrayList msgsList = new ArrayList();
         for (int i=0; i < bpConfig.getDefaultMaxMessageLimit() + 1; i++) {
-            msgsList.add(new ObjectMapper().readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {}));
+            // Make the call
+            request.setRequestURI("/v2/message");
+            request.setMethod("POST");
+            setOauthBearerTokenAuthorization(request, token2.getIdValue());
+            request.addHeader("Content-type", "application/json");
+            //request.setContentType("application/json");
+            //request.setParameter("messages", TEST_MSG_1);
+            HashMap<String, Object> msg = new HashMap<String, Object>();
+            msg.put("message", new ObjectMapper().readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {}));
+            String msgsString = new ObjectMapper().writeValueAsString(msg);
+            logger.info(msgsString);
+            request.setContent(msgsString.getBytes());
+
+            try {
+                handlerAdapter.handle(request, response, controller);
+                logger.info("testMessagePost3 => " + response.getContentAsString());
+            } catch (InvalidRequestException expected) {
+                // should fail if we're over quota
+                if (i > bpConfig.getDefaultMaxMessageLimit()) {
+                    assertTrue(expected.getMessage().contains("Message limit of"));
+                } else {
+                    fail("Received an error, but not the one expected " + expected.getMessage());
+                }
+            }
+
+            refreshRequestAndResponse();
         }
 
-        assertTrue(msgsList.size() > bpConfig.getDefaultMaxMessageLimit());
-
-        msgs.put("messages", msgsList);
-        String msgsString = new ObjectMapper().writeValueAsString(msgs);
-        logger.info(msgsString);
-        request.setContent(msgsString.getBytes());
-
-        try {
-            handlerAdapter.handle(request, response, controller);
-            logger.info("testMessagePost3 => " + response.getContentAsString());
-            assertTrue("This test should have failed due to message limit", false);
-        } catch (InvalidRequestException expected) {
-            // should fail
-            assertTrue(expected.getMessage().contains("Message limit of"));
-        }
     }
 
 

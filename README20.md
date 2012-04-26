@@ -127,42 +127,31 @@ while an Anonymous Access Token may be presented as the URL parameter `access_to
 }
 ```
 
-### Post Messages
+### Post Message
 
-* Endpoint:  `/v2/messages`
+* Endpoint:  `/v2/message`
 
 * Security: HTTPS POST, OAuth2 access token
 
 [ The access token MUST be presented in the header only, for example: `Authorization: Bearer vF9dft4qmT` ]
 
-* Request parameters: JSON data with a `messages` array field of backplane messages to be posted
+* Request parameters: JSON data with a `message` object field of a single backplane message to be posted
 
 * Response body: HTTP status code 201 Created or 403 Forbidden, empty body
 
   Example request:
 
 ```json
- {
-    "messages": [
-        {
-            "type": "identity/ack",
-            "sticky": true,
-            "bus": "customer.com",
-            "channel": "67dc880cc265b0dbc755ea959b257118",
-            "payload": {
-                "role": "administrator"
-            },
-        },
-        {
-            "type": "identity/ack",
-            "sticky": true,
-            "bus": "organization.org",
-            "channel": "d7a592b31fbbc2baf5f9476884b9acd5",
-            "payload": {
-                "role": "moderator"
-            },
+{
+    "message": {
+        "type": "identity/ack",
+        "sticky": true,
+        "bus": "customer.com",
+        "channel": "67dc880cc265b0dbc755ea959b257118",
+        "payload": {
+            "role": "administrator"
         }
-    ]
+    }
 }
 ```
 
@@ -175,9 +164,6 @@ this value may be overridden by placing an entry in the `<backplane-instance>_bp
 ```json
 {"ERR_MSG":"Message limit exceeded for this channel"}
 ```
-
-This value may be overridden by placing an entry in the `<backplane-instance>_bpserverconfig` table called
-`DEFAULT_MESSAGES_MAX` with an appropriate value.
 
 
 Configuration
