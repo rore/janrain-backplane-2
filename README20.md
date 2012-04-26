@@ -268,7 +268,7 @@ Content-Type: application/json
 
 Example curl command for the above HTTP API request:
 
-        curl -i --data @json_data_file.txt -H "Content-type: application/json" http://backplanesample.com/v2/provision/user/update
+        curl -i --data @json_data_file.txt -H "Content-type: application/json" https://backplanesample.com/v2/provision/user/update
 
 
 #### List All Bus Owners
@@ -291,7 +291,7 @@ Content-Type: application/json
 
 Example curl command for the above HTTP API request:
 
-        curl -i --data @json_data_file.txt -H "Content-type: application/json" http://backplanesample.com/v2/provision/user/list
+        curl -i --data @json_data_file.txt -H "Content-type: application/json" https://backplanesample.com/v2/provision/user/list
 
 #### Delete Bus Owners
 
@@ -313,7 +313,7 @@ Example HTTP API request:
 
 Example curl command for the above HTTP API request:
 
-        curl -i --data @json_data_file.txt -H "Content-type: application/json" http://backplanesample.com/v1.1/provision/user/delete
+        curl -i --data @json_data_file.txt -H "Content-type: application/json" https://backplanesample.com/v1.1/provision/user/delete
 
 Backplane Clients Provisioning API
 ----------------------------------
@@ -354,7 +354,7 @@ Content-Type: application/json
 
 Example curl command for the above HTTP API request:
 
-        curl -i --data @json_data_file.txt -H "Content-type: application/json" http://backplanesample.com/v2/provision/client/update
+        curl -i --data @json_data_file.txt -H "Content-type: application/json" https://backplanesample.com/v2/provision/client/update
 
 
 #### List All Backplane Clients
@@ -377,7 +377,7 @@ Content-Type: application/json
 
 Example curl command for the above HTTP API request:
 
-        curl -i --data @json_data_file.txt -H "Content-type: application/json" http://backplanesample.com/v2/provision/client/list
+        curl -i --data @json_data_file.txt -H "Content-type: application/json" https://backplanesample.com/v2/provision/client/list
 
 #### Delete Backplane Clients
 
@@ -397,7 +397,7 @@ Example curl command for the above HTTP API request:
 
 Example curl command for the above HTTP API request:
 
-        curl -i --data @json_data_file.txt -H "Content-type: application/json" http://backplanesample.com/v2/provision/client/delete
+        curl -i --data @json_data_file.txt -H "Content-type: application/json" https://backplanesample.com/v2/provision/client/delete
 
 
 Bus Provisioning API
@@ -450,7 +450,7 @@ Response:
 }
 ```
 
-        curl -i --data @json_data_file.txt -H "Content-type: application/json" http://backplanesample.com/v2/provision/bus/list
+        curl -i --data @json_data_file.txt -H "Content-type: application/json" https://backplanesample.com/v2/provision/bus/list
 
 #### Delete Bus
 
@@ -487,7 +487,7 @@ Response:
 }
 ```
 
-        curl -i --data @json_data_file.txt -H "Content-type: application/json" http://backplanesample.com/v2/provision/bus/delete
+        curl -i --data @json_data_file.txt -H "Content-type: application/json" https://backplanesample.com/v2/provision/bus/delete
 
 #### Update Buses
 
