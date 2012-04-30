@@ -1236,6 +1236,9 @@ public class Backplane2ControllerTest {
         TokenPrivileged token2 = new TokenPrivileged("clientFoo", testClient.getSourceUrl(), "mybus.com yourbus.com", "bus:yourbus.com bus:mybus.com", null);
         this.saveToken(token2);
 
+        boolean success = false;
+        int numberOfPostedMessages = 0;
+
         for (int i=0; i < bpConfig.getDefaultMaxMessageLimit() + 1; i++) {
             // Make the call
             request.setRequestURI("/v2/message");
@@ -1253,17 +1256,24 @@ public class Backplane2ControllerTest {
             try {
                 handlerAdapter.handle(request, response, controller);
                 logger.info("testMessagePost3 => " + response.getContentAsString());
+                assertFalse("Unexpected error: " + response.getContentAsString(), response.getContentAsString().contains("invalid_request"));
+                assertTrue(response.getStatus() == HttpServletResponse.SC_CREATED);
+                logger.info("Messages posted: " + ++numberOfPostedMessages);
             } catch (InvalidRequestException expected) {
                 // should fail if we're over quota
-                if (i > bpConfig.getDefaultMaxMessageLimit()) {
-                    assertTrue(expected.getMessage().contains("Message limit of"));
+                if (i >= bpConfig.getDefaultMaxMessageLimit() && expected.getMessage().contains("Message limit of")) {
+                    success=true;
                 } else {
-                    fail("Received an error, but not the one expected " + expected.getMessage());
+                    fail("Unexpected error: " + expected.getMessage());
                 }
+            } catch (Exception e) {
+                fail("Error: " + e.getMessage());
             }
-
+            Thread.sleep(500);
             refreshRequestAndResponse();
         }
+
+        assertTrue("Limit should have been reached, but " + numberOfPostedMessages + "<=" + bpConfig.getDefaultMaxMessageLimit(), success);
 
     }
 

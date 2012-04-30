@@ -123,7 +123,7 @@ while an Anonymous Access Token may be presented as the URL parameter `access_to
     "channel": "67dc880cc265b0dbc755ea959b257118",
     "payload": {
         "role": "administrator"
-    },
+    }
 }
 ```
 
