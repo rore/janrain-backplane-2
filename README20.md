@@ -136,7 +136,7 @@ while an Anonymous Access Token may be presented as the URL parameter `access_to
 [ The access token MUST be presented in the header only, for example: `Authorization: Bearer vF9dft4qmT` ]
 
 * Request parameters: JSON data with a `message` object field of a single backplane message to be posted
-
+* The channel used in the message MUST have been issued in the scope of an active (non-expired) regular access token.
 * Response body: HTTP status code 201 Created or 403 Forbidden, empty body
 
   Example request:
