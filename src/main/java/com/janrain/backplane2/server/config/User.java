@@ -18,6 +18,7 @@ package com.janrain.backplane2.server.config;
 
 import com.janrain.backplane2.server.dao.DaoFactory;
 import com.janrain.backplane2.server.provision.ProvisioningConfig;
+import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.MessageField;
 
 import java.util.EnumSet;
@@ -63,7 +64,7 @@ public class User extends ProvisioningConfig {
         }
 
         @Override
-        public void validate(String value) throws RuntimeException {
+        public void validate(String value) throws SimpleDBException {
             if (isRequired()) validateNotNull(name(), value);
         }
     }

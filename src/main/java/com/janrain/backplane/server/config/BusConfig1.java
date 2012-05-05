@@ -16,6 +16,7 @@
 
 package com.janrain.backplane.server.config;
 
+import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import org.apache.commons.lang.StringUtils;
@@ -61,7 +62,7 @@ public class BusConfig1 extends AbstractMessage {
 
         RETENTION_TIME_SECONDS {
             @Override
-            public void validate(String value) throws RuntimeException {
+            public void validate(String value) throws SimpleDBException {
                 if (isRequired() || value != null) {
                     String fieldName = getFieldName();
                     int intValue = validateInt(fieldName, value);
@@ -73,7 +74,7 @@ public class BusConfig1 extends AbstractMessage {
 
         RETENTION_STICKY_TIME_SECONDS {
             @Override
-            public void validate(String value) throws RuntimeException {
+            public void validate(String value) throws SimpleDBException {
                 if (isRequired() || value != null) {
                     String fieldName = getFieldName();
                     validateInt(fieldName, value);
@@ -98,7 +99,7 @@ public class BusConfig1 extends AbstractMessage {
         }
 
         @Override
-        public void validate(String value) throws RuntimeException {
+        public void validate(String value) throws SimpleDBException {
             if (isRequired()) validateNotNull(name(), value);
         }
 

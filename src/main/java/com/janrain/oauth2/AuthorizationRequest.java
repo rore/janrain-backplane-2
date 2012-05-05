@@ -39,7 +39,7 @@ public class AuthorizationRequest extends AbstractMessage {
      */
     public AuthorizationRequest() { }
 
-    public AuthorizationRequest(String cookie, Map parameterMap) throws ValidationException {
+    public AuthorizationRequest(String cookie, Map parameterMap) throws SimpleDBException {
         Map<String,String> data = new LinkedHashMap<String, String>();
         for(Field f: EnumSet.allOf(Field.class)) {
             Object value = parameterMap.get(f.getFieldName().toLowerCase());
@@ -91,7 +91,7 @@ public class AuthorizationRequest extends AbstractMessage {
         CLIENT_ID,
         RESPONSE_TYPE {
             @Override
-            public void validate(String value) throws RuntimeException {
+            public void validate(String value) throws SimpleDBException {
                 super.validate(value);
                 if ( ! OAuth2.OAUTH2_TOKEN_RESPONSE_TYPE_CODE.equals(value)) {
                     throw new IllegalArgumentException("Unsupported OAuth2 response_type: " + value);
@@ -100,7 +100,7 @@ public class AuthorizationRequest extends AbstractMessage {
         },
         REDIRECT_URI(false) {
             @Override
-            public void validate(String value) throws RuntimeException {
+            public void validate(String value) throws SimpleDBException {
                 super.validate(value);
                 try {
                     OAuth2.validateRedirectUri(value);
@@ -123,7 +123,7 @@ public class AuthorizationRequest extends AbstractMessage {
         }
 
         @Override
-        public void validate(String value) throws RuntimeException {
+        public void validate(String value) throws SimpleDBException {
             if (isRequired()) validateNotNull(getFieldName().toLowerCase(), value);
         }
 

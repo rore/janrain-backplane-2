@@ -58,9 +58,8 @@ public class TokenDAO extends DAO<Token> {
     }
 
     public TokenAnonymous retrieveTokenByChannel(String channel) throws SimpleDBException {
-        List<TokenAnonymous> tokens = superSimpleDB.retrieveAllWhere(bpConfig.getTableName(BP_ACCESS_TOKEN),
-                TokenAnonymous.class, Token.Field.ID,
-                "channel='" + channel + "'");
+        List<TokenAnonymous> tokens = superSimpleDB.retrieveWhere(bpConfig.getTableName(BP_ACCESS_TOKEN),
+                TokenAnonymous.class, "channel='" + channel + "'", true);
         if (tokens.isEmpty()) {
             return null;
         }

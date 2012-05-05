@@ -17,6 +17,7 @@
 package com.janrain.backplane2.server;
 
 import com.janrain.backplane2.server.config.Backplane2Config;
+import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
 
@@ -34,7 +35,7 @@ public class AuthSession extends AbstractMessage {
      */
     public AuthSession() { }
     
-    public AuthSession(String authUser, String cookie) {
+    public AuthSession(String authUser, String cookie) throws SimpleDBException {
         Map<String,String> data = new LinkedHashMap<String, String>();
         data.put(Field.AUTH_USER.getFieldName(), authUser);
         data.put(Field.COOKIE.getFieldName(), cookie);
@@ -71,7 +72,7 @@ public class AuthSession extends AbstractMessage {
         }
 
         @Override
-        public void validate(String value) throws RuntimeException {
+        public void validate(String value) throws SimpleDBException {
             if (isRequired()) validateNotNull(name(), value);
         }
     }

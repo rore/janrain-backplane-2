@@ -45,7 +45,7 @@ public class BusDAO extends DAO<BusConfig2> {
     }
 
     public List<BusConfig2> retrieveBuses() throws SimpleDBException {
-        return superSimpleDB.retrieveAll(bpConfig.getTableName(BP_BUS_CONFIG), BusConfig2.class, BusConfig2.Field.BUS_NAME);
+        return superSimpleDB.retrieveAll(bpConfig.getTableName(BP_BUS_CONFIG), BusConfig2.class);
     }
 
     public BusConfig2 retrieveBus(String busId) throws SimpleDBException {
@@ -53,9 +53,9 @@ public class BusDAO extends DAO<BusConfig2> {
     }
 
     public List<BusConfig2> retrieveBuses(String busOwner) throws SimpleDBException {
-        return superSimpleDB.retrieveAllWhere(
-                bpConfig.getTableName(BP_BUS_CONFIG), BusConfig2.class, BusConfig2.Field.BUS_NAME,
-                BusConfig2.Field.OWNER.getFieldName() + "='" + busOwner +"'");
+        return superSimpleDB.retrieveWhere(
+                bpConfig.getTableName(BP_BUS_CONFIG), BusConfig2.class,
+                BusConfig2.Field.OWNER.getFieldName() + "='" + busOwner +"'", true);
     }
 
 }

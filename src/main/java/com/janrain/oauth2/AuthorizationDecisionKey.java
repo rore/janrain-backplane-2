@@ -17,6 +17,7 @@
 package com.janrain.oauth2;
 
 import com.janrain.backplane2.server.config.Backplane2Config;
+import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import com.janrain.crypto.ChannelUtil;
@@ -35,7 +36,7 @@ public class AuthorizationDecisionKey extends AbstractMessage {
      */
     public AuthorizationDecisionKey() { }
 
-    public AuthorizationDecisionKey(String authCookie) {
+    public AuthorizationDecisionKey(String authCookie) throws SimpleDBException {
         Map<String,String> data = new LinkedHashMap<String, String>();
         String key = ChannelUtil.randomString(AUTHORIZATION_DECISION_KEY_LENGTH);
         data.put(Field.KEY.getFieldName(), key);
@@ -71,7 +72,7 @@ public class AuthorizationDecisionKey extends AbstractMessage {
         }
 
         @Override
-        public void validate(String value) throws RuntimeException {
+        public void validate(String value) throws SimpleDBException {
             if (isRequired()) validateNotNull(name(), value);
         }
     }

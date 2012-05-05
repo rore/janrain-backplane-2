@@ -16,6 +16,7 @@
 
 package com.janrain.backplane2.server;
 
+import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import com.janrain.crypto.ChannelUtil;
 import com.janrain.oauth2.OAuth2;
@@ -41,7 +42,7 @@ public class TokenPrivileged extends Token {
     public TokenPrivileged() {}
 
     public TokenPrivileged(String tokenString, String clientId, String clientSourceUrl,
-                           String buses, String scopeString, Date expires) throws TokenException {
+                           String buses, String scopeString, Date expires) throws TokenException, SimpleDBException {
 
         super(Token.PR + tokenString, TYPE.PRIVILEGED_TOKEN, buses, scopeString, expires);
 
@@ -53,17 +54,17 @@ public class TokenPrivileged extends Token {
         validate();
     }
 
-    public TokenPrivileged(String clientId, String clientSourceUrl, String buses, String scopeString, Date expires) throws TokenException  {
+    public TokenPrivileged(String clientId, String clientSourceUrl, String buses, String scopeString, Date expires) throws TokenException, SimpleDBException {
         this(ChannelUtil.randomString(TOKEN_LENGTH), clientId, clientSourceUrl, buses, scopeString, expires);
     }
 
-    public TokenPrivileged(String clientId, String clientSourceUrl, Grant grant, String scope) throws TokenException {
+    public TokenPrivileged(String clientId, String clientSourceUrl, Grant grant, String scope) throws TokenException, SimpleDBException {
         this(ChannelUtil.randomString(TOKEN_LENGTH), clientId, clientSourceUrl, grant.getBusesAsString(), scope,
                 new Date(new Date().getTime() + TokenPrivileged.EXPIRES_SECONDS * 1000));
         this.addGrant(grant);
     }
 
-    public TokenPrivileged(String clientId, String clientSourceUrl, List<Grant> grants, String scope) throws TokenException {
+    public TokenPrivileged(String clientId, String clientSourceUrl, List<Grant> grants, String scope) throws TokenException, SimpleDBException {
         this(ChannelUtil.randomString(TOKEN_LENGTH), clientId, clientSourceUrl, Grant.getBusesAsString(grants), scope,
                 new Date(new Date().getTime() + TokenPrivileged.EXPIRES_SECONDS * 1000));
         this.setGrants(grants);
@@ -105,7 +106,7 @@ public class TokenPrivileged extends Token {
         }
 
         @Override
-        public void validate(String value) throws RuntimeException {
+        public void validate(String value) throws SimpleDBException {
             if (isRequired()) validateNotNull(getFieldName(), value);
         }
 

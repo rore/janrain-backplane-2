@@ -94,15 +94,15 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
     }
 
     public boolean isChannelFull(String channel) throws SimpleDBException {
-        String query = "select count(*) from `" + bpConfig.getTableName(BP_MESSAGES) + "` where channel='" + channel + "'";
-        long count = superSimpleDB.retrieveCount(bpConfig.getTableName(BP_MESSAGES), query);
+        String whereClause = " channel='" + channel + "'";
+        long count = superSimpleDB.retrieveCount(bpConfig.getTableName(BP_MESSAGES), whereClause);
         logger.debug(count + " >= " + bpConfig.getDefaultMaxMessageLimit());
         return count >= bpConfig.getDefaultMaxMessageLimit();
     }
 
     public boolean canTake(String channel, int msgPostCount) throws SimpleDBException {
-        String query = "select count(*) from `" + bpConfig.getTableName(BP_MESSAGES) + "` where channel='" + channel + "'";
-        long count = superSimpleDB.retrieveCount(bpConfig.getTableName(BP_MESSAGES), query);
+        String whereClause = " channel='" + channel + "'";
+        long count = superSimpleDB.retrieveCount(bpConfig.getTableName(BP_MESSAGES), whereClause);
         logger.debug(count + " >= " + bpConfig.getDefaultMaxMessageLimit());
         return count + msgPostCount < bpConfig.getDefaultMaxMessageLimit();
     }

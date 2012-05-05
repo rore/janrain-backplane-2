@@ -17,6 +17,7 @@
 package com.janrain.backplane2.server;
 
 import com.janrain.backplane2.server.config.Backplane2Config;
+import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import com.janrain.crypto.ChannelUtil;
 import org.apache.commons.lang.StringUtils;
@@ -61,13 +62,13 @@ public class Grant extends Base {
     public Grant() {}
     
     /** Copy constructor */
-    public Grant(Grant other) {
+    public Grant(Grant other) throws SimpleDBException {
         Map<String,String> data = new HashMap<String, String>();
         data.putAll(other);
         super.init(other.getIdValue(), data);
     }
 
-    Grant(String code, String busOwnerId, String clientId, String buses, Date expires) {
+    Grant(String code, String busOwnerId, String clientId, String buses, Date expires) throws SimpleDBException {
         super(code, buses, expires);
 
         if (StringUtils.isBlank(clientId) || StringUtils.isBlank(busOwnerId) ||
@@ -81,11 +82,11 @@ public class Grant extends Base {
         logger.info("Grant declared by bus owner " + busOwnerId + " for client " + clientId + " with buses: " + buses);
     }
 
-    public Grant(String busOwnerId, String clientId, String buses) {
+    public Grant(String busOwnerId, String clientId, String buses) throws SimpleDBException {
         this(ChannelUtil.randomString(CODE_LENGTH), busOwnerId, clientId, buses, null);
     }
 
-    public Grant(String busOwnerId, String clientId, String buses, Date expires) {
+    public Grant(String busOwnerId, String clientId, String buses, Date expires) throws SimpleDBException {
         this(ChannelUtil.randomString(CODE_LENGTH), busOwnerId, clientId, buses, expires);
     }
 
@@ -264,7 +265,7 @@ public class Grant extends Base {
         }
 
         @Override
-        public void validate(String value) throws RuntimeException {
+        public void validate(String value) throws SimpleDBException {
             if (isRequired()) validateNotNull(getFieldName(), value);
         }
 

@@ -104,7 +104,7 @@ public class MetricsController {
     }
 
     private List<MetricMessage> getMetrics() throws SimpleDBException {
-        return simpleDb.retrieveAll(bpConfig.getTableName(Backplane2Config.SimpleDBTables.BP_METRICS), MetricMessage.class, MetricMessage.Field.ID);
+        return simpleDb.retrieveAll(bpConfig.getTableName(Backplane2Config.SimpleDBTables.BP_METRICS), MetricMessage.class);
     }
 
     private String retrieveAllMetrics() {

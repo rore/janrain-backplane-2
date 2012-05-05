@@ -17,6 +17,7 @@
 package com.janrain.backplane2.server.config;
 
 import com.janrain.backplane2.server.InvalidRequestException;
+import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import com.janrain.oauth2.OAuth2;
 import com.janrain.oauth2.ValidationException;
@@ -34,7 +35,7 @@ public class Client extends User {
      */
     public Client() {}
 
-    public Client(String client_id, String client_secret, String source_url, String redirect_uri) {
+    public Client(String client_id, String client_secret, String source_url, String redirect_uri) throws SimpleDBException {
         Map<String,String> d = new LinkedHashMap<String, String>();
         d.put(Field.USER.getFieldName(), client_id);
         d.put(Field.PWDHASH.getFieldName(), client_secret);
@@ -67,7 +68,7 @@ public class Client extends User {
         
         REDIRECT_URI {
             @Override
-            public void validate(String value) throws RuntimeException {
+            public void validate(String value) throws SimpleDBException {
                 super.validate(value);
                 try {
                     OAuth2.validateRedirectUri(value);
@@ -88,7 +89,7 @@ public class Client extends User {
         }
 
         @Override
-        public void validate(String value) throws RuntimeException {
+        public void validate(String value) throws SimpleDBException {
             if (isRequired()) validateNotNull(name(), value);
         }
     }

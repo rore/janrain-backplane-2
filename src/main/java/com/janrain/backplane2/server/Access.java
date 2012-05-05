@@ -17,10 +17,10 @@
 package com.janrain.backplane2.server;
 
 import com.janrain.backplane2.server.config.Backplane2Config;
+import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import org.apache.commons.lang.StringUtils;
-import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -36,14 +36,14 @@ public abstract class Access extends AbstractMessage {
     /**
      * Empty default constructor for child classes to use
      */
-    public Access() {};
+    public Access() {}
 
     /**
      * Create a Access object for storage in SimpleDB
      * @param id
      * @param expires is null if the id does not expire
      */
-    public Access(@NotNull String id, @Nullable Date expires) {
+    public Access(@NotNull String id, @Nullable Date expires) throws SimpleDBException {
         Map<String,String> d = new LinkedHashMap<String, String>();
 
         assert(StringUtils.isNotEmpty(id));
@@ -110,7 +110,7 @@ public abstract class Access extends AbstractMessage {
         }
 
         @Override
-        public void validate(String value) throws RuntimeException {
+        public void validate(String value) throws SimpleDBException {
             if (isRequired()) validateNotNull(getFieldName(), value);
         }
 

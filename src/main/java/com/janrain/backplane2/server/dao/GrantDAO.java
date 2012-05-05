@@ -95,9 +95,8 @@ public class GrantDAO extends DAO<Grant> {
      */
 
     public List<Grant> retrieveGrants(String clientId, @Nullable Scope scope) throws SimpleDBException {
-        List<Grant> allGrants = superSimpleDB.retrieveAllWhere(bpConfig.getTableName(BP_GRANT), Grant.class,
-                Grant.Field.ID,
-                "issued_to_client='" + clientId + "' AND date_code_used is not null");
+        List<Grant> allGrants = superSimpleDB.retrieveWhere(bpConfig.getTableName(BP_GRANT), Grant.class,
+                "issued_to_client='" + clientId + "' AND date_code_used is not null", true);
 
         // if no buses exist in requested scope, return entire list
         if (scope == null || scope.getBusesInScope().isEmpty()) {

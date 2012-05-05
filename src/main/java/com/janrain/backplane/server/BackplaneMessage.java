@@ -16,6 +16,7 @@
 
 package com.janrain.backplane.server;
 
+import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import org.apache.log4j.Logger;
@@ -33,7 +34,7 @@ public class BackplaneMessage extends AbstractMessage {
 
     // - PUBLIC
 
-    public BackplaneMessage(String id, String bus, String channel, Map<String, Object> data) throws BackplaneServerException {
+    public BackplaneMessage(String id, String bus, String channel, Map<String, Object> data) throws BackplaneServerException, SimpleDBException {
         Map<String,String> d = new LinkedHashMap<String, String>(toStringMap(data));
         d.put(Field.ID.getFieldName(), id);
         d.put(Field.BUS.getFieldName(), bus);
@@ -94,7 +95,7 @@ public class BackplaneMessage extends AbstractMessage {
         BUS("bus"),
         STICKY("sticky", false) {
             @Override
-            public void validate(String value) throws RuntimeException {
+            public void validate(String value) throws SimpleDBException {
                 super.validate(value);
                 if (value != null && ! Boolean.TRUE.toString().equalsIgnoreCase(value) && ! Boolean.FALSE.toString().equalsIgnoreCase(value)) {
                     throw new IllegalArgumentException("Invalid boolean value for " + getFieldName() + ": " + value);
@@ -102,7 +103,7 @@ public class BackplaneMessage extends AbstractMessage {
             }},
         SOURCE("source") {
             @Override
-            public void validate(String value) throws RuntimeException {
+            public void validate(String value) throws SimpleDBException {
                 super.validate(value);
                 try {
                     new URL(value);
@@ -125,7 +126,7 @@ public class BackplaneMessage extends AbstractMessage {
         }
 
         @Override
-        public void validate(String value) throws RuntimeException {
+        public void validate(String value) throws SimpleDBException {
             if (isRequired()) validateNotNull(getFieldName(), value);
         }
 

@@ -17,6 +17,7 @@
 package com.janrain.backplane2.server;
 
 import com.janrain.backplane2.server.config.Backplane2Config;
+import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import com.janrain.crypto.ChannelUtil;
@@ -37,7 +38,7 @@ public class BackplaneMessage extends AbstractMessage {
     @SuppressWarnings("UnusedDeclaration")
     public BackplaneMessage() {}
 
-    public BackplaneMessage(String clientSourceUrl, Map<String, Object> data) throws BackplaneServerException {
+    public BackplaneMessage(String clientSourceUrl, Map<String, Object> data) throws BackplaneServerException, SimpleDBException {
         if (data.containsKey(Field.SOURCE.getFieldName())) {
             throw new InvalidRequestException("Upstream messages must not include the 'source' field.");
         }
@@ -125,7 +126,7 @@ public class BackplaneMessage extends AbstractMessage {
         BUS("bus"),
         STICKY("sticky", false) {
             @Override
-            public void validate(String value) throws RuntimeException {
+            public void validate(String value) throws SimpleDBException {
                 super.validate(value);
                 if (value != null && ! Boolean.TRUE.toString().equalsIgnoreCase(value) && ! Boolean.FALSE.toString().equalsIgnoreCase(value)) {
                     throw new InvalidRequestException("Invalid boolean value for " + getFieldName() + ": " + value);
@@ -133,7 +134,7 @@ public class BackplaneMessage extends AbstractMessage {
             }},
         SOURCE("source") {
             @Override
-            public void validate(String value) throws RuntimeException {
+            public void validate(String value) throws SimpleDBException {
                 super.validate(value);
                 try {
                     new URL(value);
@@ -156,7 +157,7 @@ public class BackplaneMessage extends AbstractMessage {
         }
 
         @Override
-        public void validate(String value) throws RuntimeException {
+        public void validate(String value) throws SimpleDBException {
             if (isRequired()) validateNotNull(getFieldName(), value);
         }
 

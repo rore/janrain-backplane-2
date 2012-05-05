@@ -16,6 +16,7 @@
 
 package com.janrain.backplane2.server;
 
+import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import org.apache.commons.lang.StringUtils;
 import org.jetbrains.annotations.NotNull;
@@ -37,7 +38,7 @@ public abstract class Base extends Access {
      */
     public Base() {}
 
-    public Base(String id, String buses, Date expires) {
+    public Base(String id, String buses, Date expires) throws SimpleDBException {
         super(id, expires);
 
         if (StringUtils.isNotEmpty(buses)) {
@@ -105,7 +106,7 @@ public abstract class Base extends Access {
         }
 
         @Override
-        public void validate(String value) throws RuntimeException {
+        public void validate(String value) throws SimpleDBException {
             if (isRequired()) validateNotNull(getFieldName(), value);
         }
 

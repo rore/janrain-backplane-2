@@ -112,7 +112,7 @@ public abstract class Token extends Base {
      * @param expires     if null, token does not expire
      * @throws BackplaneServerException
      */
-    Token(String tokenString, TYPE accessType, String buses, String scopeString, Date expires) throws TokenException {
+    Token(String tokenString, TYPE accessType, String buses, String scopeString, Date expires) throws TokenException, SimpleDBException {
         super(tokenString,buses,expires);
 
         logger.debug("creating token with id '" + tokenString + "'");
@@ -136,7 +136,7 @@ public abstract class Token extends Base {
         return false;
     }
 
-    public static @NotNull Token fromRequest(DaoFactory daoFactory, HttpServletRequest request, String accessTokenParam, String authorizationHeader) throws TokenException, ExpiredTokenException {
+    public static @NotNull Token fromRequest(DaoFactory daoFactory, HttpServletRequest request, String accessTokenParam, String authorizationHeader) throws TokenException {
         
         Pair<String, EnumSet<Source>> tokenAndSource = extractAccessToken(request.getQueryString(), accessTokenParam, authorizationHeader);
 
@@ -210,7 +210,7 @@ public abstract class Token extends Base {
 
         SCOPE("scope", false) {
             @Override
-            public void validate(String value) throws RuntimeException {
+            public void validate(String value) throws SimpleDBException {
                 super.validate(value);
                 try {
                     new Scope(value);
@@ -231,7 +231,7 @@ public abstract class Token extends Base {
         }
 
         @Override
-        public void validate(String value) throws RuntimeException {
+        public void validate(String value) throws SimpleDBException {
             if (isRequired()) validateNotNull(getFieldName(), value);
         }
 

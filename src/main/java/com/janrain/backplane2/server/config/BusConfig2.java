@@ -19,6 +19,7 @@ package com.janrain.backplane2.server.config;
 import com.janrain.backplane2.server.InvalidRequestException;
 import com.janrain.backplane2.server.dao.DaoFactory;
 import com.janrain.backplane2.server.provision.ProvisioningConfig;
+import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.MessageField;
 
 import java.util.EnumSet;
@@ -35,7 +36,7 @@ public class BusConfig2 extends ProvisioningConfig {
 
     public BusConfig2() {}
 
-    public BusConfig2(String busName, String busOwner, String retentionTimeSeconds, String retentionTimeStickySeconds) {
+    public BusConfig2(String busName, String busOwner, String retentionTimeSeconds, String retentionTimeStickySeconds) throws SimpleDBException {
         Map<String,String> d = new LinkedHashMap<String, String>();
         d.put(Field.BUS_NAME.getFieldName(), busName);
         d.put(Field.OWNER.getFieldName(), busOwner);
@@ -70,7 +71,7 @@ public class BusConfig2 extends ProvisioningConfig {
 
         RETENTION_TIME_SECONDS {
             @Override
-            public void validate(String value) throws RuntimeException {
+            public void validate(String value) throws SimpleDBException {
                 if (isRequired() || value != null) {
                     String fieldName = getFieldName();
                     int intValue = validateInt(fieldName, value);
@@ -82,7 +83,7 @@ public class BusConfig2 extends ProvisioningConfig {
 
         RETENTION_STICKY_TIME_SECONDS {
             @Override
-            public void validate(String value) throws RuntimeException {
+            public void validate(String value) throws SimpleDBException {
                 if (isRequired() || value != null) {
                     String fieldName = getFieldName();
                     validateInt(fieldName, value);
@@ -107,7 +108,7 @@ public class BusConfig2 extends ProvisioningConfig {
         }
 
         @Override
-        public void validate(String value) throws RuntimeException {
+        public void validate(String value) throws SimpleDBException {
             if (isRequired()) validateNotNull(name(), value);
         }
 

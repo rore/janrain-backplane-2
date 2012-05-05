@@ -279,11 +279,10 @@ public class Backplane1Config {
         try {
             logger.info("Backplane message cleanup task started.");
             String messagesTable = getMessagesTableName();
-            //TODO call below will not return all results - needs other method
-            com.janrain.commons.util.Pair<List<BusConfig1>, Boolean> result =
-                    superSimpleDb.retrieveSome(getTableName(BP1_BUS_CONFIG), BusConfig1.class);
+            List<BusConfig1> results =
+                    superSimpleDb.retrieveAll(getTableName(BP1_BUS_CONFIG), BusConfig1.class);
 
-            for(BusConfig1 busConfig : result.getLeft()) {
+            for(BusConfig1 busConfig : results) {
                 try {
                     // non-sticky
                     superSimpleDb.deleteWhere(messagesTable, getExpiredMessagesClause(busConfig.get(BUS_NAME), false, busConfig.get(RETENTION_TIME_SECONDS)));

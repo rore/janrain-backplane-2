@@ -17,8 +17,10 @@
 package com.janrain.backplane2.server;
 
 import com.janrain.backplane.server.ApplicationException;
+import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import com.janrain.commons.util.EncryptUtil;
+import com.janrain.commons.util.UtilsException;
 import com.janrain.crypto.ChannelUtil;
 import com.janrain.oauth2.OAuth2;
 import com.janrain.oauth2.TokenException;
@@ -42,7 +44,7 @@ public class TokenAnonymous extends Token {
      */
     public TokenAnonymous() {}
 
-    public TokenAnonymous(String tokenString, String buses, String scopeString, Date expires) throws TokenException {
+    public TokenAnonymous(String tokenString, String buses, String scopeString, Date expires) throws TokenException, SimpleDBException {
         super(Token.AN + tokenString, TYPE.REGULAR_TOKEN, buses, scopeString, expires);
 
         // verify that no channel or bus was submitted in the scopeString request
@@ -66,7 +68,7 @@ public class TokenAnonymous extends Token {
         validate();
     }
 
-    public TokenAnonymous(String buses, String scopeString, Date expires) throws TokenException {
+    public TokenAnonymous(String buses, String scopeString, Date expires) throws TokenException, SimpleDBException {
         this(ChannelUtil.randomString(TOKEN_LENGTH), buses, scopeString, expires);
     }
 
@@ -81,7 +83,7 @@ public class TokenAnonymous extends Token {
 	 * @param cookieValue		The String to parse
 	 * @return					A SessionCookieData object parsed from the String
 	 */
-	public static TokenAnonymous asTokenAnonymous(String cookieValue, String encryptionKey) {
+	public static TokenAnonymous asTokenAnonymous(String cookieValue, String encryptionKey) throws UtilsException {
 
 		logger.debug("Parsing encrypted session data:\n" + cookieValue);
 		String unencryptedValue = EncryptUtil.decrypt(cookieValue, encryptionKey);
@@ -90,8 +92,7 @@ public class TokenAnonymous extends Token {
 		try {
 			data = mapper.readValue(unencryptedValue, new TypeReference<TokenAnonymous>() { });
             data.setEncryptionKey(encryptionKey);
-		}
-		catch (Exception e) {
+		} catch (Exception e) {
 			logger.error("Error reading token data from JSON '" + unencryptedValue + "'", e);
 			throw new ApplicationException("Unable to parse token data from cookie value", e);
 		}
@@ -105,7 +106,8 @@ public class TokenAnonymous extends Token {
 	 *
 	 * @return A String representation of the TokenAnonymous
 	 */
-	public String toString() {
+	@Override
+    public String toString() {
 
 		ObjectMapper mapper = new ObjectMapper();
 		String value;
@@ -117,8 +119,14 @@ public class TokenAnonymous extends Token {
 			value = "";
 		}
 
-		String encrypted = EncryptUtil.encrypt(value, encryptionKey);
-		logger.debug("Sending encrypted TokenAnonymous:\n" + encrypted);
+        String encrypted = null;
+        try {
+            encrypted = EncryptUtil.encrypt(value, encryptionKey);
+        } catch (UtilsException e) {
+            logger.error("Error encrypting anonymous token: " + e.getMessage(), e);
+            return "";
+        }
+        logger.debug("Sending encrypted TokenAnonymous:\n" + encrypted);
 		return encrypted;
 	}
 
@@ -143,7 +151,7 @@ public class TokenAnonymous extends Token {
         }
 
         @Override
-        public void validate(String value) throws RuntimeException {
+        public void validate(String value) throws SimpleDBException {
             if (isRequired()) validateNotNull(getFieldName(), value);
         }
 

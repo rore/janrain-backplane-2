@@ -20,6 +20,7 @@ import com.janrain.backplane.server.config.AuthException;
 import com.janrain.backplane.server.config.Backplane1Config;
 import com.janrain.backplane.server.config.BusConfig1;
 import com.janrain.backplane.server.config.User;
+import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.crypto.HmacHashUtils;
@@ -78,13 +79,13 @@ public class ProvisioningController {
 
     @RequestMapping(value = "/bus/update", method = RequestMethod.POST)
     @ResponseBody
-    public Map<String, String> busUpdate(@RequestBody BusUpdateRequest updateRequest) throws AuthException {
+    public Map<String, String> busUpdate(@RequestBody BusUpdateRequest updateRequest) throws AuthException, SimpleDBException {
         return doUpdate(bpConfig.getTableName(BP1_BUS_CONFIG), BusConfig1.class, updateRequest);
     }
 
     @RequestMapping(value = "/user/update", method = RequestMethod.POST)
     @ResponseBody
-    public Map<String, String> userUpdate(@RequestBody UserUpdateRequest updateRequest) throws AuthException {
+    public Map<String, String> userUpdate(@RequestBody UserUpdateRequest updateRequest) throws AuthException, SimpleDBException {
         return doUpdate(bpConfig.getTableName(BP1_USERS), User.class, updateRequest);
     }
 
@@ -96,6 +97,19 @@ public class ProvisioningController {
     public Map<String, String> handle(final AuthException e, HttpServletResponse response) {
         logger.error("Provisioning authentication error: " + e.getMessage());
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        return new HashMap<String,String>() {{
+            put(ERR_MSG_FIELD, e.getMessage());
+        }};
+    }
+
+    /**
+     * Handle auth SimpleDB errors
+     */
+    @ExceptionHandler
+    @ResponseBody
+    public Map<String, String> handle(final SimpleDBException e, HttpServletResponse response) {
+        logger.error("Provisioning authentication error: " + e.getMessage());
+        response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         return new HashMap<String,String>() {{
             put(ERR_MSG_FIELD, e.getMessage());
         }};
@@ -154,8 +168,7 @@ public class ProvisioningController {
     private <T extends AbstractMessage> Map<String, Map<String, String>> doListAll(String tableName, Class<T> entityType) {
         Map<String,Map<String,String>> result = new LinkedHashMap<String, Map<String, String>>();
         try {
-            // TODO fix broken code below - may only return partial results
-            for(T config :  superSimpleDb.retrieveSome(tableName, entityType).getLeft()) {
+            for(T config :  superSimpleDb.retrieveAll(tableName, entityType)) {
                 result.put(config.getIdValue(), config);
             }
         } catch (final Exception e) {
@@ -178,13 +191,13 @@ public class ProvisioningController {
         return result;
     }
 
-    private <T extends AbstractMessage> Map<String, String> doUpdate(String tableName, Class<T> entityType, UpdateRequest<T> updateRequest) throws AuthException {
+    private <T extends AbstractMessage> Map<String, String> doUpdate(String tableName, Class<T> entityType, UpdateRequest<T> updateRequest) throws AuthException, SimpleDBException {
         bpConfig.checkAdminAuth(updateRequest.getAdmin(), updateRequest.getSecret());
         validateConfigs(entityType, updateRequest);
         return updateConfigs(tableName, entityType, updateRequest.getConfigs());
     }
 
-    private <T extends AbstractMessage> void validateConfigs(Class<T> entityType, UpdateRequest<T> updateRequest) {
+    private <T extends AbstractMessage> void validateConfigs(Class<T> entityType, UpdateRequest<T> updateRequest) throws SimpleDBException {
         for(T config : updateRequest.getConfigs()) {
             config.validate();
         }

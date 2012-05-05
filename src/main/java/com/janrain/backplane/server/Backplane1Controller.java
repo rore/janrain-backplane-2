@@ -94,8 +94,7 @@ public class Backplane1Controller {
         }
 
         List<BackplaneMessage> messages =
-                superSimpleDb.retrieveAllWhere(bpConfig.getMessagesTableName(), BackplaneMessage.class,
-                        BackplaneMessage.Field.ID, whereClause.toString());
+                superSimpleDb.retrieveWhere(bpConfig.getMessagesTableName(), BackplaneMessage.class, whereClause.toString(), true);
 
         List<HashMap<String,Object>> frames = new ArrayList<HashMap<String, Object>>();
         for (BackplaneMessage message : messages) {
@@ -145,7 +144,7 @@ public class Backplane1Controller {
 
         //Block post if the caller has exceeded the message post limit
         Long count = superSimpleDb.retrieveCount(bpConfig.getMessagesTableName(),
-                "select count(*) from `" + bpConfig.getMessagesTableName() + "` where bus='" + bus + "' and channel_name='" + channel + "'");
+                " bus='" + bus + "' and channel_name='" + channel + "'");
 
         if (count >= bpConfig.getDefaultMaxMessageLimit()) {
             logger.error("Message limit of " + bpConfig.getDefaultMaxMessageLimit() + " exceeded for channel: " + channel + " on bus: " + bus);
@@ -344,8 +343,7 @@ public class Backplane1Controller {
                         whereClause.append(" and ").append(BackplaneMessage.Field.STICKY.getFieldName()).append("='").append(sticky).append("'");
                     }
 
-                    List<BackplaneMessage> messages = superSimpleDb.retrieveAllWhere(bpConfig.getMessagesTableName(), BackplaneMessage.class,
-                            BackplaneMessage.Field.ID, whereClause.toString());
+                    List<BackplaneMessage> messages = superSimpleDb.retrieveWhere(bpConfig.getMessagesTableName(), BackplaneMessage.class, whereClause.toString(), true);
 
                     List<Map<String,Object>> frames = new ArrayList<Map<String, Object>>();
 

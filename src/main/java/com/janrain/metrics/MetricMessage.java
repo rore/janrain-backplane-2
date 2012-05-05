@@ -17,6 +17,7 @@
 package com.janrain.metrics;
 
 import com.janrain.backplane2.server.BackplaneServerException;
+import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -33,7 +34,7 @@ public class MetricMessage extends AbstractMessage {
     public MetricMessage() {
     }
 
-    public MetricMessage(String id, String time, String payload) throws BackplaneServerException {
+    public MetricMessage(String id, String time, String payload) throws BackplaneServerException, SimpleDBException {
         Map<String,String> d = new LinkedHashMap<String, String>();
         d.put(Field.ID.getFieldName(), id);
         d.put(Field.TIME.getFieldName(), time);
@@ -68,7 +69,7 @@ public class MetricMessage extends AbstractMessage {
         }
 
         @Override
-        public void validate(String value) throws RuntimeException {
+        public void validate(String value) throws SimpleDBException {
             if (isRequired()) validateNotNull(name(), value);
         }
 

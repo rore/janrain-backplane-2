@@ -230,7 +230,7 @@ public class ProvisioningController2 {
 
     private <T extends AbstractMessage> Map<String, Map<String, String>> doList(String tableName, Class<T> entityType, List<String> entityNames, MessageField orderField) {
 
-        if (entityNames.size() == 0) return doListAll(tableName, entityType, orderField);
+        if (entityNames.size() == 0) return doListAll(tableName, entityType);
 
         final Map<String,Map<String,String>> result = new LinkedHashMap<String, Map<String, String>>();
         for(String entityName : entityNames) {
@@ -250,10 +250,10 @@ public class ProvisioningController2 {
         return result;
     }
 
-    private <T extends AbstractMessage> Map<String, Map<String, String>> doListAll(String tableName, Class<T> entityType, MessageField orderField) {
+    private <T extends AbstractMessage> Map<String, Map<String, String>> doListAll(String tableName, Class<T> entityType) {
         Map<String,Map<String,String>> result = new LinkedHashMap<String, Map<String, String>>();
         try {
-            for(T config :  superSimpleDb.retrieveAll(tableName, entityType, orderField)) {
+            for(T config :  superSimpleDb.retrieveAll(tableName, entityType)) {
                 result.put(config.getIdValue(), config);
             }
         } catch (final Exception e) {

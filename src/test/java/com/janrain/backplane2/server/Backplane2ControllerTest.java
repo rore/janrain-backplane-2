@@ -168,8 +168,7 @@ public class Backplane2ControllerTest {
 
             try {
                 List<BackplaneMessage> testMsgs = superSimpleDB.
-                        retrieveAllWhere(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class,
-                                BackplaneMessage.Field.ID,"channel='testchannel'");
+                        retrieveWhere(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class, "channel='testchannel'", true);
                 for (BackplaneMessage msg : testMsgs) {
                     logger.info("deleting Message " + msg.getIdValue());
                     superSimpleDB.delete(bpConfig.getTableName(BP_MESSAGES), msg.getIdValue());
