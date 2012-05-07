@@ -116,7 +116,9 @@ public abstract class Token extends Base {
         super(tokenString,buses,expires);
 
         logger.debug("creating token with id '" + tokenString + "'");
-        assert(isOurToken(tokenString));
+        if (! Token.isOurToken(tokenString)) {
+            throw new TokenException("invalid token", HttpServletResponse.SC_FORBIDDEN);
+        }
 
         put(TokenField.TYPE.getFieldName(), accessType.name());
 

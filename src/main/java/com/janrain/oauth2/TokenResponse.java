@@ -43,7 +43,7 @@ public class TokenResponse {
         if (request.grant_type.equals(OAuth2.OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS) && request.isAnonymousClient()) {
             logger.info("Responding to anonymous token request...");
             // issue new channel id
-            final TokenAnonymous token = new TokenAnonymous(null, request.scope, new Date(new Date().getTime() +
+            final TokenAnonymous token = new TokenAnonymous(null, request.scope, new Date(System.currentTimeMillis() +
                     TokenAnonymous.EXPIRES_SECONDS * 1000L));
             daoFactory.getTokenDao().persist(token);
             return new LinkedHashMap<String, Object>() {{

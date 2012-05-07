@@ -159,6 +159,8 @@ public class Backplane2ControllerTest {
 
     @After
     public void cleanup() {
+
+
         logger.info("Tearing down test writes to db");
         try {
             for (String key:this.createdMessageKeys) {
@@ -838,7 +840,8 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
 
         // Create appropriate token
-        TokenAnonymous token = new TokenAnonymous("mybus.com", null, new Date(new Date().getTime() + TokenAnonymous.EXPIRES_SECONDS * 1000));
+        TokenAnonymous token = new TokenAnonymous("mybus.com", null,
+                new Date(System.currentTimeMillis() + TokenAnonymous.TEST_EXPIRES_SECONDS * 1000));
         this.saveToken(token);
 
         // Seed message
@@ -887,7 +890,8 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
 
         // Create appropriate token
-        TokenAnonymous token = new TokenAnonymous("mybus.com", null, new Date(new Date().getTime() + TokenAnonymous.EXPIRES_SECONDS * 1000));
+        TokenAnonymous token = new TokenAnonymous("mybus.com", null,
+                new Date(System.currentTimeMillis() + TokenAnonymous.TEST_EXPIRES_SECONDS * 1000));
         this.saveToken(token);
 
         // Seed message
@@ -936,7 +940,8 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
 
         // Create appropriate token
-        TokenPrivileged token = new TokenPrivileged("fooClient", testClient.getSourceUrl(), "mybus.com", null, null);
+        TokenPrivileged token = new TokenPrivileged("fooClient", testClient.getSourceUrl(), "mybus.com", null,
+                new Date(System.currentTimeMillis() + 300l * 1000l));
         this.saveToken(token);
 
         // Seed message
@@ -990,7 +995,8 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
 
         // Create appropriate token
-        TokenPrivileged token = new TokenPrivileged("fooClient", testClient.getSourceUrl(), "this.com that.com", "bus:this.com bus:that.com", null);
+        TokenPrivileged token = new TokenPrivileged("fooClient", testClient.getSourceUrl(), "this.com that.com",
+                "bus:this.com bus:that.com", new Date(System.currentTimeMillis() + 300l * 1000l));
         this.saveToken(token);
 
         // Seed 2 messages
@@ -1027,7 +1033,8 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
 
         // Create appropriate token
-        TokenAnonymous token = new TokenAnonymous(null, null, new Date(new Date().getTime() + TokenAnonymous.EXPIRES_SECONDS * 1000));
+        TokenAnonymous token = new TokenAnonymous(null, null,
+                new Date(System.currentTimeMillis() + TokenAnonymous.TEST_EXPIRES_SECONDS * 1000));
         this.saveToken(token);
 
         // Seed 2 messages
@@ -1071,7 +1078,8 @@ public class Backplane2ControllerTest {
 
         // Create inappropriate token
         try {
-            TokenPrivileged token = new TokenPrivileged("fooClient", testClient.getSourceUrl(), "mybus.com yourbus.com", "bus:invalidbus.com", null);
+            TokenPrivileged token = new TokenPrivileged("fooClient", testClient.getSourceUrl(),
+                    "mybus.com yourbus.com", "bus:invalidbus.com", new Date(System.currentTimeMillis() + 300l * 1000l));
         } catch (TokenException bpe) {
             //expected
             return;
@@ -1087,13 +1095,15 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
 
         // Create source token for the channel
-        TokenAnonymous token1 = new TokenAnonymous("", "", null);
+        TokenAnonymous token1 = new TokenAnonymous("", "",
+                new Date(System.currentTimeMillis() + TokenAnonymous.TEST_EXPIRES_SECONDS * 1000l));
         // override the random channel name for our test channel
         token1.put(TokenAnonymous.Field.CHANNEL.getFieldName(), "testchannel");
         this.saveToken(token1);
 
         // Create appropriate token
-        TokenPrivileged token2 = new TokenPrivileged("clientFoo", testClient.getSourceUrl(), "mybus.com yourbus.com", "bus:yourbus.com", null);
+        TokenPrivileged token2 = new TokenPrivileged("clientFoo", testClient.getSourceUrl(),
+                "mybus.com yourbus.com", "bus:yourbus.com", new Date(System.currentTimeMillis() + 300l * 1000l));
         this.saveToken(token2);
 
         // Make the call
@@ -1127,14 +1137,15 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
 
         // Create source token for the channel
-        TokenAnonymous token1 = new TokenAnonymous("", "", null);
+        TokenAnonymous token1 = new TokenAnonymous("", "",
+                new Date(System.currentTimeMillis() + TokenAnonymous.TEST_EXPIRES_SECONDS * 1000l));
         // override the random channel name for our test channel
         token1.put(TokenAnonymous.Field.CHANNEL.getFieldName(), "testchannel");
         this.saveToken(token1);
 
         // Create appropriate token
         TokenPrivileged token2 = new TokenPrivileged("clientFoo", testClient.getSourceUrl(),
-                "mybus.com yourbus.com", "bus:yourbus.com bus:mybus.com", null);
+                "mybus.com yourbus.com", "bus:yourbus.com bus:mybus.com", new Date(System.currentTimeMillis() + 300l * 1000l));
         this.saveToken(token2);
 
         // Make the call
@@ -1194,13 +1205,15 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
 
         // Create source token for the channel
-        TokenAnonymous token1 = new TokenAnonymous("", "", null);
+        TokenAnonymous token1 = new TokenAnonymous("", "",
+                new Date(System.currentTimeMillis() + TokenAnonymous.TEST_EXPIRES_SECONDS * 1000l));
         // override the random channel name for our test channel
         token1.put(TokenAnonymous.Field.CHANNEL.getFieldName(), "testchannel");
         this.saveToken(token1);
 
         // Create appropriate token
-        TokenPrivileged token2 = new TokenPrivileged("clientFoo", testClient.getSourceUrl(), "mybus.com yourbus.com", "bus:yourbus.com bus:mybus.com", null);
+        TokenPrivileged token2 = new TokenPrivileged("clientFoo", testClient.getSourceUrl(),
+                "mybus.com yourbus.com", "bus:yourbus.com bus:mybus.com", new Date(System.currentTimeMillis() + 300l * 1000l));
         this.saveToken(token2);
 
          // Seed 1 message
@@ -1228,13 +1241,16 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
 
         // Create source token for the channel
-        TokenAnonymous token1 = new TokenAnonymous("", "", null);
+        TokenAnonymous token1 = new TokenAnonymous("", "",
+                new Date(System.currentTimeMillis() + TokenAnonymous.TEST_EXPIRES_SECONDS * 1000l));
         // override the random channel name for our test channel
         token1.put(TokenAnonymous.Field.CHANNEL.getFieldName(), "testchannel");
         this.saveToken(token1);
 
-        // Create appropriate token
-        TokenPrivileged token2 = new TokenPrivileged("clientFoo", testClient.getSourceUrl(), "mybus.com yourbus.com", "bus:yourbus.com bus:mybus.com", null);
+        // Create appropriate token with 5 minute ttl
+        TokenPrivileged token2 = new TokenPrivileged("clientFoo", testClient.getSourceUrl(),
+                "mybus.com yourbus.com", "bus:yourbus.com bus:mybus.com",
+                new Date(System.currentTimeMillis() + TokenPrivileged.TEST_EXPIRES_SECONDS * 1000l));
         this.saveToken(token2);
 
         boolean success = false;
@@ -1476,7 +1492,8 @@ public class Backplane2ControllerTest {
         // Create appropriate token
         String bus = ChannelUtil.randomString(10) + ".com";
 
-        TokenPrivileged token = new TokenPrivileged("fooClient", testClient.getSourceUrl(), bus + " yourbus.com", "bus:" + bus, null);
+        TokenPrivileged token = new TokenPrivileged("fooClient", testClient.getSourceUrl(),
+                bus + " yourbus.com", "bus:" + bus, new Date(System.currentTimeMillis() + 300l * 1000l));
         this.saveToken(token);
 
         ObjectMapper mapper = new ObjectMapper();

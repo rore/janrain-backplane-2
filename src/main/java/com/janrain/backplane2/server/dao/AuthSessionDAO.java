@@ -52,7 +52,7 @@ public class AuthSessionDAO extends DAO<AuthSession> {
         try {
             logger.info("Backplane auth sessions cleanup task started.");
             String expiredClause = AuthSession.Field.EXPIRES.getFieldName() + " < '" + Backplane2Config.ISO8601.format(new Date(System.currentTimeMillis())) + "'";
-            superSimpleDB.deleteWhere(bpConfig.getTableName(BP_ACCESS_TOKEN), expiredClause);
+            superSimpleDB.deleteWhere(bpConfig.getTableName(BP_AUTH_SESSION), expiredClause);
         } catch (Exception e) {
             // catch-all, else cleanup thread stops
             logger.error("Backplane auth sessions cleanup task error: " + e.getMessage(), e);

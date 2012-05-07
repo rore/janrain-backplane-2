@@ -37,7 +37,8 @@ import java.util.Date;
 public class TokenAnonymous extends Token {
 
     public static final int CHANNEL_NAME_LENGTH = 32;
-    public static final int EXPIRES_SECONDS = 604800;    //604800 is one week...
+    public static final long EXPIRES_SECONDS = 604800;    //604800 is one week...
+    public static final long TEST_EXPIRES_SECONDS = 600; // ten minutes
 
     /**
      * Empty default constructor for AWS to use.

@@ -83,7 +83,7 @@ public class Grant extends Base {
     }
 
     public Grant(String busOwnerId, String clientId, String buses) throws SimpleDBException {
-        this(ChannelUtil.randomString(CODE_LENGTH), busOwnerId, clientId, buses, null);
+        this(ChannelUtil.randomString(CODE_LENGTH), busOwnerId, clientId, buses, new Date(System.currentTimeMillis() + CODE_EXPIRATION * 1000l));
     }
 
     public Grant(String busOwnerId, String clientId, String buses, Date expires) throws SimpleDBException {
@@ -192,7 +192,7 @@ public class Grant extends Base {
     }
 
     public void setCodeExpirationDefault() {
-        this.setCodeExpirationDate(new Date(new Date().getTime() + CODE_EXPIRATION * 1000L));
+        this.setCodeExpirationDate(new Date(System.currentTimeMillis() + CODE_EXPIRATION * 1000L));
     }
 
     private String getIssuedTokenIdsAsString() {

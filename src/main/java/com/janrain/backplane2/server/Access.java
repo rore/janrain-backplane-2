@@ -40,20 +40,14 @@ public abstract class Access extends AbstractMessage {
 
     /**
      * Create a Access object for storage in SimpleDB
-     * @param id
-     * @param expires is null if the id does not expire
+     * @param id MUST not be null
+     * @param expires MUST not be null
      */
-    public Access(@NotNull String id, @Nullable Date expires) throws SimpleDBException {
+    public Access(@NotNull String id, @NotNull Date expires) throws SimpleDBException {
         Map<String,String> d = new LinkedHashMap<String, String>();
 
-        assert(StringUtils.isNotEmpty(id));
         d.put(Field.ID.getFieldName(), id);
-
-        if (expires != null) {
-            d.put(Field.EXPIRES.getFieldName(), Backplane2Config.ISO8601.format(expires));
-        } else {
-            d.put(Field.EXPIRES.getFieldName(), "");
-        }
+        d.put(Field.EXPIRES.getFieldName(), Backplane2Config.ISO8601.format(expires));
 
         super.init(id, d);
 

@@ -52,6 +52,7 @@ public class ClientDAO extends DAO<Client> {
             for (Grant grant : grants) {
                 grantDao.delete(grant.getIdValue());
                 tokenDao.revokeTokenByGrant(grant);
+                logger.info("Deleted grant " + grant.getIdValue() + " associated with client " + grant.getGrantClientId());
             }
             logger.info("Client " + id + " deleted successfully");
             logger.info("=== END CLIENT DELETE ===");
