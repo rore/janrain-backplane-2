@@ -67,7 +67,7 @@ public class BusConfig1 extends AbstractMessage {
                     String fieldName = getFieldName();
                     int intValue = validateInt(fieldName, value);
                     if (intValue < RETENTION_MIN_SECONDS || intValue > RETENTION_MAX_SECONDS) {
-                        throw new IllegalArgumentException("Value of " + fieldName + " must be between " + RETENTION_MIN_SECONDS + " and " + RETENTION_MAX_SECONDS);
+                        throw new IllegalArgumentException("Value of " + fieldName + " = " + intValue + " but must be between " + RETENTION_MIN_SECONDS + " and " + RETENTION_MAX_SECONDS);
                     }
                 }
             }},
@@ -80,7 +80,7 @@ public class BusConfig1 extends AbstractMessage {
                     validateInt(fieldName, value);
                     int intValue = validateInt(fieldName, value);
                     if (intValue < RETENTION_STICKY_MIN_SECONDS || intValue > RETENTION_STICKY_MAX_SECONDS) {
-                        throw new IllegalArgumentException("Value of " + fieldName + " must be between " + RETENTION_STICKY_MIN_SECONDS + " and " + RETENTION_STICKY_MAX_SECONDS);
+                        throw new IllegalArgumentException("Value of " + fieldName + " = " + intValue + " but must be between " + RETENTION_STICKY_MIN_SECONDS + " and " + RETENTION_STICKY_MAX_SECONDS);
                     }
                 }
             }};

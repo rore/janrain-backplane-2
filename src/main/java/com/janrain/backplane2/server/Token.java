@@ -152,6 +152,9 @@ public abstract class Token extends Base {
         }
 
         if (token == null || token.isExpired()) {
+            if (token == null) {
+                logger.info("could not locate token " + tokenAndSource.getLeft());
+            }
             throw new ExpiredTokenException("expired token", HttpServletResponse.SC_FORBIDDEN);
         }
 

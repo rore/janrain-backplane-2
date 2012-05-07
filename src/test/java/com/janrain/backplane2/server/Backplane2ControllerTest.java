@@ -176,6 +176,8 @@ public class Backplane2ControllerTest {
             } catch (SimpleDBException sdbe) {
                 // ignore - the domain may not exist
             }
+
+            logger.info("checking for tokens to delete...");
             for (String key:this.createdTokenKeys) {
                 logger.info("deleting Token " + key);
                 daoFactory.getTokenDao().deleteTokenById(key);

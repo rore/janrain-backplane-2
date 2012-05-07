@@ -76,7 +76,7 @@ public class BusConfig2 extends ProvisioningConfig {
                     String fieldName = getFieldName();
                     int intValue = validateInt(fieldName, value);
                     if (intValue < RETENTION_MIN_SECONDS || intValue > RETENTION_MAX_VALUE) {
-                        throw new InvalidRequestException("Value of " + fieldName + " must be between " + RETENTION_MIN_SECONDS + " and " + RETENTION_MAX_VALUE);
+                        throw new InvalidRequestException("Value of " + fieldName + " = " + intValue + " but must be between " + RETENTION_MIN_SECONDS + " and " + RETENTION_MAX_VALUE);
                     }
                 }
             }},
@@ -89,7 +89,7 @@ public class BusConfig2 extends ProvisioningConfig {
                     validateInt(fieldName, value);
                     int intValue = validateInt(fieldName, value);
                     if (intValue < RETENTION_STICKY_MIN_SECONDS || intValue > RETENTION_STICKY_MAX_VALUE) {
-                        throw new InvalidRequestException("Value of " + fieldName + " must be between " + RETENTION_STICKY_MIN_SECONDS + " and " + RETENTION_STICKY_MAX_VALUE);
+                        throw new InvalidRequestException("Value of " + fieldName + " = " + intValue + " but must be between " + RETENTION_STICKY_MIN_SECONDS + " and " + RETENTION_STICKY_MAX_VALUE);
                     }
                 }
             }};

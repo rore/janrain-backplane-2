@@ -56,6 +56,7 @@
     -->
 
     <bean id="bpIdFilter" class="com.janrain.servlet.InstanceIdFilter" />
+    <bean id="jsonpFilter" class="com.janrain.servlet.JsonpCallbackFilter" />
 
     <bean id="bpConfig2" class="com.janrain.backplane2.server.config.Backplane2Config"/>
     <bean id="bpConfig" class="com.janrain.backplane.server.config.Backplane1Config"/>
