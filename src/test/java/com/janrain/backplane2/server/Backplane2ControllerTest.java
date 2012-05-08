@@ -295,14 +295,15 @@ public class Backplane2ControllerTest {
         handlerAdapter.handle(request, response, controller);
         logger.info("testTokenEndPointAnonymousTokenRequest() => " + response.getContentAsString());
 
+        // our tests won't include the callback string in this test so don't expect it
         assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
-                matches(callback + "[(][{]\\s*\"access_token\":\\s*\".{22}+\",\\s*" +
+                matches("[{]\\s*\"access_token\":\\s*\".{22}+\",\\s*" +
                         "\"expires_in\":\\s*604800,\\s*" +
                         "\"token_type\":\\s*\"Bearer\",\\s*" +
-                        "\"scope\":\\s*\"channel:.{32}+\"\\s*[}][)]"));
+                        "\"scope\":\\s*\"channel:.{32}+\"\\s*[}]"));
 
         // cleanup test token
-        String result = response.getContentAsString().substring(response.getContentAsString().indexOf("{"), response.getContentAsString().indexOf(")"));
+        String result = response.getContentAsString();
         Map<String,Object> returnedBody = new ObjectMapper().readValue(result, new TypeReference<Map<String,Object>>() {});
         daoFactory.getTokenDao().delete((String)returnedBody.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME));
 
@@ -409,8 +410,7 @@ public class Backplane2ControllerTest {
         logger.info("testScope4() => " + response.getContentAsString());
 
 
-        String result = response.getContentAsString().substring(response.getContentAsString().indexOf("{"), response.getContentAsString().indexOf(")"));
-
+        String result = response.getContentAsString();
         Map<String,Object> msg = new ObjectMapper().readValue(result, new TypeReference<Map<String,Object>>() {});
         String scope = msg.get("scope").toString();
 
@@ -879,60 +879,8 @@ public class Backplane2ControllerTest {
                         "[}]"));
 
         assertTrue("Expected " + HttpServletResponse.SC_OK + " but received: " + response.getStatus(), response.getStatus() == HttpServletResponse.SC_OK);
-        assertTrue(response.getContentType().equals("application/json"));
     }
 
-    @Test
-    public void testMessageEndPointWithCallBack() throws Exception {
-
-        String callbackName = "meh";
-
-        refreshRequestAndResponse();
-
-        // Create appropriate token
-        TokenAnonymous token = new TokenAnonymous("mybus.com", null,
-                new Date(System.currentTimeMillis() + TokenAnonymous.TEST_EXPIRES_SECONDS * 1000));
-        this.saveToken(token);
-
-        // Seed message
-        ObjectMapper mapper = new ObjectMapper();
-        Map<String,Object> msg = mapper.readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {});
-        msg.put(BackplaneMessage.Field.BUS.getFieldName(), "mybus.com");
-        msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), token.getChannelName());
-        BackplaneMessage message = new BackplaneMessage(testClient.getSourceUrl(), msg);
-        this.saveMessage(message);
-
-        // now, try it via callback
-        refreshRequestAndResponse();
-        request.setRequestURI("/v2/message/" + message.getIdValue());
-        request.setMethod("GET");
-        request.setParameter(OAUTH2_ACCESS_TOKEN_PARAM_NAME, token.getIdValue());
-        request.setParameter("callback", callbackName);
-        handlerAdapter.handle(request, response, controller);
-        logger.info("testMessageEndPointWithCallBack()  => " + response.getContentAsString());
-
-        // callback({
-        //  "messageURL": "https://bp.example.com/v2/message/097a5cc401001f95b45d37aca32a3bd2",
-        //  "source": "http://aboutecho.com",
-        //  "type": "identity/ack"
-        //  "bus": "customer.com",
-        //  "channel": "67dc880cc265b0dbc755ea959b257118"
-        // })
-
-        assertTrue("Invalid response: '" + response.getContentAsString() + "'", response.getContentAsString().
-                matches(callbackName + "[(][{]\\s*" +
-                        "\"messageURL\":\\s*\".*\",\\s*" +
-                        "\"source\":\\s*\".*\",\\s*" +
-                        "\"type\":\\s*\".*\",\\s*" +
-                        "\"bus\":\\s*\".*\",\\s*" +
-                        "\"channel\":\\s*\".*\"\\s*" +
-                        "[}][)]"));
-
-        assertTrue("Expected " + HttpServletResponse.SC_OK + " but received: " + response.getStatus(), response.getStatus() == HttpServletResponse.SC_OK);
-        assertTrue(response.getContentType().equals("application/x-javascript"));
-
-
-    }
 
     @Test
     public void testMessageEndPointPAL() throws Exception {
@@ -984,8 +932,6 @@ public class Backplane2ControllerTest {
                         "[}]"));
 
         assertTrue("Expected " + HttpServletResponse.SC_OK + " but received: " + response.getStatus(), response.getStatus() == HttpServletResponse.SC_OK);
-        assertTrue(response.getContentType().equals("application/json"));
-
 
     }
 
