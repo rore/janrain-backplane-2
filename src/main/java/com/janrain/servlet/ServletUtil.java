@@ -38,6 +38,9 @@ public class ServletUtil {
             String entryProtocol = request.getHeader("x-forwarded-proto");
             if (entryProtocol != null && entryProtocol.equals("https")) {
                 isSecure = true;
+            } else if (entryProtocol == null && request.getServerName().contains("localhost")) {
+                // allow testing on localhost to be considered secure
+                isSecure = true;
             }
         }
 

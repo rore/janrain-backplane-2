@@ -42,7 +42,11 @@ public class JsonpCallbackFilter implements Filter {
         HttpServletResponse httpResponse = (HttpServletResponse) response;
 
         Map<String, String[]> parameters = httpRequest.getParameterMap();
-        String callbackName = parameters.get("callback")[0];
+        String callbackName = "";
+        String[] values = parameters.get("callback");
+        if (values != null) {
+            callbackName = values[0];
+        }
 
         if (StringUtils.isNotBlank(callbackName)) {
             // wrap the json in the callback
@@ -51,10 +55,13 @@ public class JsonpCallbackFilter implements Filter {
 
             chain.doFilter(request, wrapper);
 
-            stream.write(new String(callbackName + "(" + wrapper.getData() + ");").getBytes());
+            stream.write(new String(callbackName + "(").getBytes());
+            stream.write(wrapper.getData());
+            stream.write(new String(");").getBytes());
 
             wrapper.setContentType("text/javascript;charset=UTF-8");
             stream.close();
+
 
         } else {
             // pass the request/response on

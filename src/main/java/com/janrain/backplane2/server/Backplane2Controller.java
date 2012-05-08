@@ -198,11 +198,7 @@ public class Backplane2Controller {
         try {
             TokenRequest tokenRequest = new TokenRequest(OAuth2.OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS, scope, callback);
             tokenRequest.validate();
-            HashMap<String, Object> hash= new TokenResponse(tokenRequest, daoFactory).generateResponse();
-            String responseBody = callback + "(" + new ObjectMapper().writeValueAsString(hash) + ")";
-            response.setContentType("application/x-javascript");
-            response.getWriter().print(responseBody);
-            return null;
+            return  new TokenResponse(tokenRequest, daoFactory).generateResponse();
         } catch (TokenException e) {
             return handleTokenException(e, response);
         } catch (Exception e) {
@@ -361,23 +357,8 @@ public class Backplane2Controller {
         hash.put("moreMessages", moreMessages);
         hash.put("messages", frames);
 
-        if (StringUtils.isBlank(callback)) {
-            response.setContentType("application/json");
-            return hash;
-        } else {
-            response.setContentType("application/x-javascript");
-            try {
-                String responseBody = callback + "(" + new ObjectMapper().writeValueAsString(hash) + ")";
+        return hash;
 
-                response.getWriter().print(responseBody);
-
-                return null;
-            } catch (IOException e) {
-                String errMsg = "Error converting frames to JSON: " + e.getMessage();
-                logger.error(errMsg, bpConfig.getDebugException(e));
-                throw new BackplaneServerException(errMsg, e);
-            }
-        }
     }
 
     /**
@@ -440,24 +421,8 @@ public class Backplane2Controller {
             }
         }
 
-        if (StringUtils.isBlank(callback)) {
-            response.setContentType("application/json");
-            return message.asFrame(request.getServerName(), messageRequest.getToken().isPrivileged());
-        } else {
-            response.setContentType("application/x-javascript");
-            try {
-                String responseBody = callback + "(" +
-                        new ObjectMapper().writeValueAsString(message.asFrame(request.getServerName(), messageRequest.getToken().isPrivileged())) + ")";
+        return message.asFrame(request.getServerName(), messageRequest.getToken().isPrivileged());
 
-                response.getWriter().print(responseBody);
-
-                return null;
-            } catch (IOException e) {
-                String errMsg = "Error converting frames to JSON: " + e.getMessage();
-                logger.error(errMsg, bpConfig.getDebugException(e));
-                throw new BackplaneServerException(errMsg, e);
-            }
-        }
     }
 
     /**
