@@ -397,7 +397,6 @@ public class Backplane2Controller {
         }
 
         if (message == null) {
-            //TODO if callback is not blank, return http status 200
             response.setStatus(HttpServletResponse.SC_NOT_FOUND);
             return new HashMap<String,Object>() {{
                 put(ERR_MSG_FIELD, "Message id '" + msg_id + "' not found");
