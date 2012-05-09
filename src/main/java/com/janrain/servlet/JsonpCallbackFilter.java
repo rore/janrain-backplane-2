@@ -60,6 +60,9 @@ public class JsonpCallbackFilter implements Filter {
             stream.write(new String(");").getBytes());
 
             wrapper.setContentType("text/javascript;charset=UTF-8");
+            // always return 200 when using the callback to allow the message to
+            // reach the browser based function
+            wrapper.setStatus(HttpServletResponse.SC_OK);
             stream.close();
 
 
