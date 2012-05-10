@@ -61,6 +61,7 @@ public class BusConfig2 extends ProvisioningConfig {
         if (user == null) {
             throw new InvalidRequestException("Invalid bus owner: " + get(Field.OWNER.getFieldName()));
         }
+        validate();
     }
 
     public static enum Field implements MessageField {
