@@ -116,22 +116,13 @@ public class Backplane1Controller {
         // log metric
         channelGets.mark();
 
-        if (StringUtils.isBlank(callback)) {
-            return new ResponseEntity<String>(
+        return new ResponseEntity<String>(
                     NEW_CHANNEL_LAST_PATH.equals(channel) ? newChannel() : getChannelMessages(bus, channel, since, sticky),
                     new HttpHeaders() {{
                         add("Content-Type", "application/json");
                     }},
                     HttpStatus.OK);
 
-        } else {
-            return new ResponseEntity<String>(
-                    paddedResponse(callback, NEW_CHANNEL_LAST_PATH.equals(channel) ? newChannel() : getChannelMessages(bus, channel, since, sticky)),
-                    new HttpHeaders() {{
-                        add("Content-Type", "application/x-javascript");
-                    }},
-                    HttpStatus.OK);
-        }
     }
 
     @RequestMapping(value = "/bus/{bus}/channel/{channel}", method = RequestMethod.POST)
@@ -312,15 +303,6 @@ public class Backplane1Controller {
         } catch (Exception e) {
             throw new AuthException("Access denied.");
         }
-    }
-
-    private String paddedResponse(String callback, String s) {
-        if (StringUtils.isBlank(callback)) {
-            throw new IllegalArgumentException("Callback cannot be blank.");
-        }
-        StringBuilder result = new StringBuilder(callback);
-        result.append("(").append(s).append(")");
-        return result.toString();
     }
 
     private String newChannel() {
