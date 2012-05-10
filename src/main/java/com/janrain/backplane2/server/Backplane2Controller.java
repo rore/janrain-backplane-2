@@ -32,7 +32,6 @@ import com.yammer.metrics.core.TimerMetric;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import org.codehaus.jackson.map.ObjectMapper;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.ModelAndView;
@@ -41,7 +40,6 @@ import javax.inject.Inject;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -421,7 +419,6 @@ public class Backplane2Controller {
         }
 
         return message.asFrame(request.getServerName(), messageRequest.getToken().isPrivileged());
-
     }
 
     /**
@@ -430,7 +427,6 @@ public class Backplane2Controller {
      * @param response
      * @return
      */
-
     @RequestMapping(value = "/message", method = { RequestMethod.POST})
     public @ResponseBody Map<String,Object>  postMessages(
                   HttpServletRequest request, HttpServletResponse response,
@@ -500,7 +496,6 @@ public class Backplane2Controller {
      * @param response
      * @return
      */
-
     @ExceptionHandler
     @ResponseBody
     public Map<String, Object> handleInvalidRequest(final InvalidRequestException e, HttpServletResponse response) {

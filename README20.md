@@ -14,13 +14,15 @@ All endpoints are available at paths starting with the `/v2/`.
 
 * Endpoint:  `/v2/token`
 
-* Security: HTTPS POST, OAuth2 client credentials
+* Security: HTTPS POST, OAuth2 client credentials (accepted in request header only)
+
+* Request header: Basic authorization `client_id` : `client_secret`
 
 * Request parameters ([OAuth2 code or client_credential authorization request] [1]):
   Authorization: Basic header: `client_id`, `client_secret`
   POST body, www-form-urlencoded: `grant_type`, `code` (required for `authorization_code` grant type), `redirect_uri` (required for `authorization_code` grant type), `scope` (optional)
 
-* Response body (OAuth 2 Access Token Response):
+* Response body (OAuth2 Access Token Response):
 
   Example:
 
@@ -31,9 +33,7 @@ All endpoints are available at paths starting with the `/v2/`.
 }
 ```
 
-Per OAuth 2, the `scope` parameter will be returned if the granted scope differs from the requested scope.
-
-Note: If the granted scope differs than the requested scope, it will be provided in the response.
+Per OAuth2, the `scope` parameter will be returned if the granted scope differs from the requested scope.
 
 ### Anonymous Access Token Request
 
@@ -43,7 +43,7 @@ Note: If the granted scope differs than the requested scope, it will be provided
 
 * Request parameters: `callback`, `scope` (optional)
 
-* Response body (similar to an OAuth 2 Access Token Response):
+* Response body (similar to an OAuth2 Access Token Response):
 
   Example:
 
@@ -66,8 +66,9 @@ callback(
 
 * Request parameters: `block` (optional, default 0), `callback` (optional), `since` (optional)
 
-[ An Authenticated Access Token MUST be presented in the header only, for example: `Authorization: Bearer vF9dft4qmT`
-while an Anonymous Access Token may be presented as the URL parameter `access_token`. ]
+An Authenticated Access Token MUST be presented in the header only, for example: `Authorization: Bearer vF9dft4qmT`
+
+An Anonymous Access Token may be presented as the URL parameter `access_token`.
 
 * Response body: JSON with the fields `nextUrl` (continuation URL) and `messages` (array of backplane messages).
  If the number of messages to return exceeds the pagination limit, the field `moreMessages` we be set to true and the
@@ -97,6 +98,19 @@ This allows the client to limit the number of polling requests for greater effic
     "moreMessages": false
 }
 ```
+
+* Error responses:
+
+    If an Authenticated Access Token was presented with the request, the server returns a HTTP status code
+    appropriate for the error cause (4xx or 5xx), and an error message.
+
+    If an Anonymous Access Token was presented with the request, the server returns HTTP status code 200
+    and a JSONP-padded response with the `callback` parameter value presented with the request.
+    The JSON payload will contain and `error` field and optionally additional fields such as `error_description`.
+
+    Note that there may be internal server errors that prevent the JSONP-padding of error responses to be applied;
+    in such cases a 5xx HTTP status code is returned.
+
 
 ### Get Single Message
 
@@ -131,10 +145,8 @@ while an Anonymous Access Token may be presented as the URL parameter `access_to
 
 * Endpoint:  `/v2/message`
 
-* Security: HTTPS POST, OAuth2 access token
-
-[ The access token MUST be presented in the header only, for example: `Authorization: Bearer vF9dft4qmT` ]
-
+* Security: HTTPS POST, OAuth2 access token, MUST be presented in the request header
+* Request header: Authorization: Bearer <access_token>
 * Request parameters: JSON data with a `message` object field of a single backplane message to be posted
 * The channel used in the message MUST have been issued in the scope of an active (non-expired) regular access token.
 * Response body: HTTP status code 201 Created or 403 Forbidden, empty body
@@ -740,7 +752,7 @@ Each error response body will contain an error message in the following format:
 ```
 
 
-[1]: http://tools.ietf.org/html/draft-ietf-oauth-v2-23#section-4.1.3 "OAuth 2 Section 4.1.3"
+[1]: http://tools.ietf.org/html/draft-ietf-oauth-v2-23#section-4.1.3 "OAuth2 Section 4.1.3"
 [2]: http://tools.ietf.org/html/draft-ietf-oauth-v2-23#section-4.1
 [3]: https://sites.google.com/site/backplanespec/documentation/backplane2-0-draft08#client.registration "Backplane v2.0 Section 6.2"
 [4]: https://sites.google.com/site/backplanespec/documentation/backplane2-0-draft08#authorization "Backplane v2.0 Section 6.3"
