@@ -26,6 +26,7 @@ import com.janrain.oauth2.TokenException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -112,7 +113,7 @@ public abstract class Token extends Base {
      * @param expires     if null, token does not expire
      * @throws BackplaneServerException
      */
-    Token(String tokenString, TYPE accessType, String buses, String scopeString, Date expires) throws TokenException, SimpleDBException {
+    Token(String tokenString, TYPE accessType, @Nullable String buses, String scopeString, Date expires) throws TokenException, SimpleDBException {
         super(tokenString,buses,expires);
 
         logger.debug("creating token with id '" + tokenString + "'");

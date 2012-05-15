@@ -153,16 +153,17 @@ public class Backplane2ControllerTest {
 	public void init() throws SimpleDBException {
         assertNotNull(applicationContext);
         handlerAdapter = applicationContext.getBean("handlerAdapter", HandlerAdapter.class);
-        this.testClient = this.createTestClient();
+        this.testClient = this.createTestBusAndClient();
 		refreshRequestAndResponse();
 	}
 
     @After
     public void cleanup() {
 
-
         logger.info("Tearing down test writes to db");
+
         try {
+
             for (String key:this.createdMessageKeys) {
                 logger.info("deleting Message " + key);
                 superSimpleDB.delete(bpConfig.getTableName(BP_MESSAGES), key);
@@ -192,7 +193,7 @@ public class Backplane2ControllerTest {
                 daoFactory.getGrantDao().delete(key);
             }
 
-            daoFactory.getClientDAO().delete(testClient.getIdValue());
+            deleteTestBusAndClient();
         } catch (SimpleDBException e) {
             logger.error(e);
         }
@@ -201,10 +202,21 @@ public class Backplane2ControllerTest {
 
 
 
-    private Client createTestClient() throws SimpleDBException {
+    private Client createTestBusAndClient() throws SimpleDBException {
+        daoFactory.getBusOwnerDAO().persist(new User() {{
+            put(Field.USER.getFieldName(), "testBusOwner");
+            put(Field.PWDHASH.getFieldName(), HmacHashUtils.hmacHash("busOwnerSecret"));
+        }});
+        daoFactory.getBusDao().persist(new BusConfig2("testbus", "testBusOwner", "600", "28800"));
         Client client = new Client(ChannelUtil.randomString(15), HmacHashUtils.hmacHash("secret"), "http://source_url.com", "http://redirect.com");
         daoFactory.getClientDAO().persist(client);
         return client;
+    }
+
+    private void deleteTestBusAndClient() throws SimpleDBException {
+        daoFactory.getBusOwnerDAO().delete("testBusOwner");
+        daoFactory.getBusDao().delete("testbus");
+        daoFactory.getClientDAO().delete(this.testClient.getClientId());
     }
 
     private void refreshRequestAndResponse() {
@@ -291,6 +303,7 @@ public class Backplane2ControllerTest {
         request.setRequestURI("/v2/token");
         request.setMethod("GET");
         request.setParameter("callback", callback);
+        request.setParameter("bus", "testbus");
 
         handlerAdapter.handle(request, response, controller);
         logger.info("testTokenEndPointAnonymousTokenRequest() => " + response.getContentAsString());
@@ -405,6 +418,7 @@ public class Backplane2ControllerTest {
         request.setMethod("GET");
         request.setParameter("scope","sticky:false source:http://test.com");
         request.setParameter("callback", callback);
+        request.setParameter("bus", "testbus");
 
         handlerAdapter.handle(request, response, controller);
         logger.info("testScope4() => " + response.getContentAsString());
@@ -681,7 +695,7 @@ public class Backplane2ControllerTest {
         handlerAdapter.handle(request, response, controller);
         logger.info("testTokenEndPointClientUsedCode() ====> " + response.getContentAsString());
 
-        assertTrue(daoFactory.getGrantDao().retrieveGrant(grant.getIdValue()).isCodeUsed() == true);
+        assertTrue(daoFactory.getGrantDao().retrieveGrant(grant.getIdValue()).isCodeUsed());
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
 
 
@@ -848,7 +862,7 @@ public class Backplane2ControllerTest {
         ObjectMapper mapper = new ObjectMapper();
         Map<String,Object> msg = mapper.readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {});
 
-        msg.put(BackplaneMessage.Field.BUS.getFieldName(), "mybus.com");
+        msg.put(BackplaneMessage.Field.BUS.getFieldName(), token.getBus());
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), token.getChannelName());
         BackplaneMessage message = new BackplaneMessage(testClient.getSourceUrl(), msg);
         this.saveMessage(message);
@@ -979,7 +993,7 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
 
         // Create appropriate token
-        TokenAnonymous token = new TokenAnonymous(null, null,
+        TokenAnonymous token = new TokenAnonymous("b.com", null,
                 new Date(System.currentTimeMillis() + TokenAnonymous.TEST_EXPIRES_SECONDS * 1000));
         this.saveToken(token);
 
@@ -993,6 +1007,7 @@ public class Backplane2ControllerTest {
         this.saveMessage(message1);
 
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), "b.com");
+        // same channel / different bus should never happen in production with true random, server-generated channel name
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), token.getChannelName());
         BackplaneMessage message2 = new BackplaneMessage(testClient.getSourceUrl(), msg);
         this.saveMessage(message2);
@@ -1002,7 +1017,7 @@ public class Backplane2ControllerTest {
         request.setMethod("GET");
         request.setParameter("block", "15");
         request.setParameter(OAUTH2_ACCESS_TOKEN_PARAM_NAME, token.getIdValue());
-        request.setParameter("since", message1.getIdValue());
+        //request.setParameter("since", message1.getIdValue());
         handlerAdapter.handle(request, response, controller);
         logger.info("testMessagesEndPointRegular() => " + response.getContentAsString());
 
@@ -1041,7 +1056,7 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
 
         // Create source token for the channel
-        TokenAnonymous token1 = new TokenAnonymous("", "",
+        TokenAnonymous token1 = new TokenAnonymous("mybus.com", "",
                 new Date(System.currentTimeMillis() + TokenAnonymous.TEST_EXPIRES_SECONDS * 1000l));
         // override the random channel name for our test channel
         token1.put(TokenAnonymous.Field.CHANNEL.getFieldName(), "testchannel");
@@ -1083,7 +1098,7 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
 
         // Create source token for the channel
-        TokenAnonymous token1 = new TokenAnonymous("", "",
+        TokenAnonymous token1 = new TokenAnonymous("mybus.com", "",
                 new Date(System.currentTimeMillis() + TokenAnonymous.TEST_EXPIRES_SECONDS * 1000l));
         // override the random channel name for our test channel
         token1.put(TokenAnonymous.Field.CHANNEL.getFieldName(), "testchannel");
@@ -1151,7 +1166,7 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
 
         // Create source token for the channel
-        TokenAnonymous token1 = new TokenAnonymous("", "",
+        TokenAnonymous token1 = new TokenAnonymous("mybus.com", "",
                 new Date(System.currentTimeMillis() + TokenAnonymous.TEST_EXPIRES_SECONDS * 1000l));
         // override the random channel name for our test channel
         token1.put(TokenAnonymous.Field.CHANNEL.getFieldName(), "testchannel");
@@ -1166,7 +1181,7 @@ public class Backplane2ControllerTest {
         ObjectMapper mapper = new ObjectMapper();
         Map<String,Object> msg = mapper.readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {});
 
-        msg.put(BackplaneMessage.Field.BUS.getFieldName(), "mybus.com");
+        msg.put(BackplaneMessage.Field.BUS.getFieldName(), token1.getBus());
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), token1.getChannelName());
         BackplaneMessage message1 = new BackplaneMessage(testClient.getSourceUrl(), msg);
         this.saveMessage(message1);
@@ -1187,7 +1202,7 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
 
         // Create source token for the channel
-        TokenAnonymous token1 = new TokenAnonymous("", "",
+        TokenAnonymous token1 = new TokenAnonymous("mybus.com", "",
                 new Date(System.currentTimeMillis() + TokenAnonymous.TEST_EXPIRES_SECONDS * 1000l));
         // override the random channel name for our test channel
         token1.put(TokenAnonymous.Field.CHANNEL.getFieldName(), "testchannel");

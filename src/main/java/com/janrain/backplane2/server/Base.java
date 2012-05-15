@@ -38,7 +38,7 @@ public abstract class Base extends Access {
      */
     public Base() {}
 
-    public Base(String id, String buses, Date expires) throws SimpleDBException {
+    public Base(String id, @Nullable String buses, Date expires) throws SimpleDBException {
         super(id, expires);
 
         if (StringUtils.isNotEmpty(buses)) {

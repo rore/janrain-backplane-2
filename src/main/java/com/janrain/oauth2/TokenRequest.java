@@ -44,7 +44,8 @@ public class TokenRequest {
     Grant grant;
     Client client;
     Scope scopes;
-    DaoFactory daoFactory;
+    String bus;
+    final DaoFactory daoFactory;
 
     @Inject
     private Backplane2Config bpConfig;
@@ -52,12 +53,12 @@ public class TokenRequest {
     private static final Logger logger = Logger.getLogger(TokenRequest.class);
 
     public TokenRequest(DaoFactory daoFactory, Client client, String grant_type, String redirect_uri, String codeId, String scope, String callback) {
+        this.daoFactory = daoFactory;
         this.client = client;
         this.grant_type = grant_type;
         this.redirect_uri = redirect_uri;
         this.codeId = codeId;
         this.scope = scope;
-        this.daoFactory = daoFactory;
         this.callback = callback;
 
         try {
@@ -67,8 +68,10 @@ public class TokenRequest {
         }
     }
 
-    public TokenRequest(String grant_type, String scope, String callback) {
+    public TokenRequest(DaoFactory daoFactory, String grant_type, String bus, String scope, String callback) {
+        this.daoFactory = daoFactory;
         this.grant_type = grant_type;
+        this.bus = bus;
         this.scope = scope;
         this.callback = callback;
     }
@@ -110,6 +113,10 @@ public class TokenRequest {
             throw new TokenException("Missing code value");
         }
 
+        if (grant_type.equals(OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS) && StringUtils.isNotEmpty(codeId)) {
+            throw new TokenException("Code must not be supplied for a client_credentials grant type token request.");
+        }
+
         if (grant_type.equals(OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS) && StringUtils.isNotEmpty(client_id) && StringUtils.isEmpty(client_secret)) {
             throw new TokenException("Missing client_secret value");
         }
@@ -119,7 +126,11 @@ public class TokenRequest {
         }
 
         if (grant_type.equals(OAuth2.OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS) && StringUtils.isEmpty(client_id) && StringUtils.isNotEmpty(client_secret)) {
-            throw new TokenException("Must not include client_secret for anonymous requests");
+            throw new TokenException("Must not include client_secret for anonymous token requests");
+        }
+
+        if (grant_type.equals(OAuth2.OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS) && StringUtils.isEmpty(client_id) && daoFactory.getBusDao().retrieveBus(bus) == null) {
+            throw new TokenException("Invalid bus in anonymous token request: " + bus);
         }
 
         // check the codeId

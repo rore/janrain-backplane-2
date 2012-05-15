@@ -22,9 +22,9 @@ import com.janrain.commons.supersimpledb.SimpleDBException;
 import org.apache.log4j.Logger;
 
 import java.util.Date;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import static com.janrain.oauth2.OAuth2.*;
 
@@ -39,11 +39,11 @@ public class TokenResponse {
         this.daoFactory = daoFactory;
     }
 
-    public HashMap<String, Object> generateResponse() throws SimpleDBException, TokenException {
+    public Map<String, Object> generateResponse() throws SimpleDBException, TokenException {
         if (request.grant_type.equals(OAuth2.OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS) && request.isAnonymousClient()) {
             logger.info("Responding to anonymous token request...");
             // issue new channel id
-            final TokenAnonymous token = new TokenAnonymous(null, request.scope, new Date(System.currentTimeMillis() +
+            final TokenAnonymous token = new TokenAnonymous(request.bus, request.scope, new Date(System.currentTimeMillis() +
                     TokenAnonymous.EXPIRES_SECONDS * 1000L));
             daoFactory.getTokenDao().persist(token);
             return new LinkedHashMap<String, Object>() {{

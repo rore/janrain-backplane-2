@@ -23,19 +23,16 @@ import com.janrain.backplane2.server.config.BusConfig2;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.commons.util.Pair;
-import com.janrain.oauth2.TokenException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 
-import static com.janrain.backplane2.server.BackplaneMessage.Field.BUS;
-import static com.janrain.backplane2.server.BackplaneMessage.Field.ID;
-import static com.janrain.backplane2.server.BackplaneMessage.Field.STICKY;
+import static com.janrain.backplane2.server.BackplaneMessage.Field.*;
 import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_MESSAGES;
-import static com.janrain.backplane2.server.config.BusConfig2.Field.BUS_NAME;
-import static com.janrain.backplane2.server.config.BusConfig2.Field.RETENTION_STICKY_TIME_SECONDS;
-import static com.janrain.backplane2.server.config.BusConfig2.Field.RETENTION_TIME_SECONDS;
+import static com.janrain.backplane2.server.config.BusConfig2.Field.*;
 
 /**
  * @author Tom Raney
@@ -74,25 +71,6 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
         return superSimpleDB.retrieve(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class, messageId);
     }
 
-    public boolean isValidBinding(String channel, String bus) throws SimpleDBException {
-
-        try {
-            List<BackplaneMessage> messages = retrieveAllMesssagesPerScope(new Scope("channel:" + channel), null, 1);
-            if (messages.size() > 0) {
-                if (messages.get(0).getMessageBus().equals(bus)) {
-                    return true;
-                }
-            } else {
-                return true;
-            }
-        } catch (TokenException e) {
-            // false?
-        }
-
-        return false;
-
-    }
-
     public boolean isChannelFull(String channel) throws SimpleDBException {
         String whereClause = " channel='" + channel + "'";
         long count = superSimpleDB.retrieveCount(bpConfig.getTableName(BP_MESSAGES), whereClause);
@@ -117,7 +95,7 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
      * @throws SimpleDBException
      */
 
-    public List<BackplaneMessage> retrieveAllMesssagesPerScope(Scope scope, String sinceMessageId, int limit) throws SimpleDBException {
+    public List<BackplaneMessage> retrieveAllMesssagesPerScope(Scope scope, String sinceMessageId, int limit, String anonymousTokenBus) throws SimpleDBException {
 
         List<BackplaneMessage> filteredMessages = new ArrayList<BackplaneMessage>();
 
@@ -134,7 +112,7 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
 
         do {
 
-            String query = "";
+            StringBuilder query = new StringBuilder();
             // SDB's default query limit is 100, but we want to be as efficient as possible and pull as many records
             // as SDB will provide for processing to minimize network lag.  It will return a maximum of 1 meg
             // per request regardless.
@@ -142,19 +120,26 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
 
             // Optimization if only one channel is listed in scope
             if (scope.getChannelsInScope().size() == 1) {
-                query += " channel='" + scope.getChannelsInScope().get(0) + "' AND";
+                query.append(" channel='").append(scope.getChannelsInScope().get(0)).append("' AND");
                 queryLimit = limit;
+            }
+            
+            if (StringUtils.isNotEmpty(anonymousTokenBus)) {
+                // anonymous tokens generate a channel-only scope
+                // make sure we only return messages that belong to the bus that channel is bound to (through the anonymous token)
+                // in the (extremely) unlikely case the same channel name is generated for two buses
+                query.append(" bus='").append(anonymousTokenBus).append("' AND");
             }
 
             if (StringUtils.isNotEmpty(sinceMessageId)) {
-                query += " id > '" + sinceMessageId + "' AND";
+                query.append(" id > '" ).append(sinceMessageId).append("' AND");
             }
 
-            query += " id IS NOT NULL ORDER BY id LIMIT " + queryLimit;
+            query.append(" id IS NOT NULL ORDER BY id LIMIT ").append(queryLimit);
 
             // We don't want to use SDB's tokenizing mechanism to continually loop as it does this
             // without read consistency
-            unfilteredMessages = superSimpleDB.retrieveSomeWhere(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class, query);
+            unfilteredMessages = superSimpleDB.retrieveSomeWhere(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class, query.toString());
 
             // Filter and add to results
             for (BackplaneMessage unfilteredMessage : unfilteredMessages.getLeft()) {

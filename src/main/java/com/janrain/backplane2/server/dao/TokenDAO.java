@@ -16,7 +16,10 @@
 
 package com.janrain.backplane2.server.dao;
 
-import com.janrain.backplane2.server.*;
+import com.janrain.backplane2.server.Access;
+import com.janrain.backplane2.server.Grant;
+import com.janrain.backplane2.server.Token;
+import com.janrain.backplane2.server.TokenAnonymous;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
@@ -55,15 +58,6 @@ public class TokenDAO extends DAO<Token> {
             logger.error("invalid token! => '" + tokenId + "'");
             return null; //invalid token id, don't even try
         }
-    }
-
-    public TokenAnonymous retrieveTokenByChannel(String channel) throws SimpleDBException {
-        List<TokenAnonymous> tokens = superSimpleDB.retrieveWhere(bpConfig.getTableName(BP_ACCESS_TOKEN),
-                TokenAnonymous.class, "channel='" + channel + "'", true);
-        if (tokens.isEmpty()) {
-            return null;
-        }
-        return tokens.get(0);
     }
 
     public void deleteTokenById(String tokenId) throws SimpleDBException {
@@ -105,6 +99,25 @@ public class TokenDAO extends DAO<Token> {
             logger.info("revoked token " + token.getIdValue());
         }
         logger.info("all tokens for grant " + grant.getIdValue() + " have been revoked");
+    }
+
+    public boolean isValidBinding(String channel, String bus) throws SimpleDBException {
+
+        List<TokenAnonymous> tokens = superSimpleDB.retrieveWhere(bpConfig.getTableName(BP_ACCESS_TOKEN),
+                TokenAnonymous.class, "channel='" + channel + "'", true);
+
+        if (tokens == null || tokens.isEmpty()) {
+            logger.error("No (anonymous) tokens found to bind channel " + channel + " to bus " + bus);
+            return false;
+        }
+
+        for (TokenAnonymous token : tokens) {
+            if ( ! token.getBus().equals(bus) ) {
+                logger.error("Channel " + channel + " bound to bus " + token.getBus() + " (token: " +token.getIdValue() + "), not " + bus);
+                return false;
+            }
+        }
+        return true;
     }
 
     // - PRIVATE

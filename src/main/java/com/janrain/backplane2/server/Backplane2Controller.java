@@ -181,6 +181,7 @@ public class Backplane2Controller {
     @ResponseBody
     public Map<String,Object> getToken(HttpServletRequest request, HttpServletResponse response,
                                            @RequestParam(value = OAUTH2_SCOPE_PARAM_NAME, required = false) String scope,
+                                           @RequestParam(required = false) String bus,
                                            @RequestParam(required = false) String callback) {
 
         if (!ServletUtil.isSecure(request)) {
@@ -191,10 +192,14 @@ public class Backplane2Controller {
             return handleTokenException(new TokenException(OAUTH2_TOKEN_INVALID_REQUEST, "Callback cannot be blank"), response);
         }
 
+        if (StringUtils.isBlank(bus) ) {
+            return handleTokenException(new TokenException(OAUTH2_TOKEN_INVALID_REQUEST, "Bus parameter cannot be blank"), response);
+        }
+
         v2GetRegTokens.mark();
 
         try {
-            TokenRequest tokenRequest = new TokenRequest(OAuth2.OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS, scope, callback);
+            TokenRequest tokenRequest = new TokenRequest(daoFactory, OAuth2.OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS, bus, scope, callback);
             tokenRequest.validate();
             return  new TokenResponse(tokenRequest, daoFactory).generateResponse();
         } catch (TokenException e) {
@@ -292,11 +297,16 @@ public class Backplane2Controller {
         // log metric
         v2Gets.mark();
 
+        Token token = messageRequest.getToken();
+
+        // bus to which the channel in the anonymous token is bound
+        String anonymousTokenBus = token.isPrivileged() ? null : ((TokenAnonymous)token).getBus();
+        
         List<BackplaneMessage> messages;
         boolean exit = false;
         Date blockUntil = getReturnBefore(block);
         do {
-            messages = daoFactory.getBackplaneMessageDAO().retrieveAllMesssagesPerScope(messageRequest.getToken().getScope(), since, -1);
+            messages = daoFactory.getBackplaneMessageDAO().retrieveAllMesssagesPerScope(token.getScope(), since, -1, anonymousTokenBus);
             if (messages.isEmpty() && new Date().before(blockUntil)) {
                 try {
                     Thread.sleep(3000);
@@ -321,18 +331,18 @@ public class Backplane2Controller {
             }
 
             lastMessage = message;
-            frames.add(message.asFrame(request.getServerName(), messageRequest.getToken().isPrivileged()));
+            frames.add(message.asFrame(request.getServerName(), token.isPrivileged()));
 
             // verify the proper permissions
-            if (messageRequest.getToken().isPrivileged()) {
-                if (!messageRequest.getToken().isAllowedBus(message.get(BackplaneMessage.Field.BUS))) {
+            if (token.isPrivileged()) {
+                if (!token.isAllowedBus(message.get(BackplaneMessage.Field.BUS))) {
                     response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                     return new HashMap<String,Object>() {{
                         put(ERR_MSG_FIELD, "Forbidden");
                     }};
                 }
             } else {
-                if (!message.get(BackplaneMessage.Field.CHANNEL).equals(messageRequest.getToken().getChannelName())) {
+                if (!message.get(BackplaneMessage.Field.CHANNEL).equals(token.getChannelName())) {
                     response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                     return new HashMap<String,Object>() {{
                         put(ERR_MSG_FIELD, "Forbidden");
@@ -433,7 +443,7 @@ public class Backplane2Controller {
                   @RequestBody Map<String,Map<String,Object>> messagePostBody,
                   @RequestParam(value = OAUTH2_ACCESS_TOKEN_PARAM_NAME, required = false) String access_token,
                   @RequestHeader(value = "Authorization", required = false) String authorizationHeader)
-            throws BackplaneServerException, SimpleDBException {
+            throws SimpleDBException {
 
         if (!ServletUtil.isSecure(request)) {
             throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
@@ -902,7 +912,7 @@ public class Backplane2Controller {
         }
     }
 
-    private BackplaneMessage parsePostedMessage(Map<String, Map<String, Object>> messagePostBody, Token token) throws SimpleDBException, BackplaneServerException {
+    private BackplaneMessage parsePostedMessage(Map<String, Map<String, Object>> messagePostBody, Token token) throws SimpleDBException {
         List<BackplaneMessage> result = new ArrayList<BackplaneMessage>();
 
         Map<String,Object> msg = messagePostBody.get("message");
@@ -928,15 +938,9 @@ public class Backplane2Controller {
             throw new InvalidRequestException("Invalid bus in message", HttpServletResponse.SC_FORBIDDEN);
         }
 
-        // return an error if the channel used in the message is not associated with a token
-        if (daoFactory.getTokenDao().retrieveTokenByChannel(message.get(BackplaneMessage.Field.CHANNEL)) == null) {
-            throw new InvalidRequestException("Invalid channel in message", HttpServletResponse.SC_FORBIDDEN);
-        }
-
-        // todo: atomically check and persist channel-bus bindings
         String channel = message.getMessageChannel();
-        if ( ! daoFactory.getBackplaneMessageDAO().isValidBinding(channel, message.getMessageBus())) {
-            throw new InvalidRequestException("Invalid binding for channel " + channel + " - already bound to a bus",
+        if ( ! daoFactory.getTokenDao().isValidBinding(channel, message.getMessageBus())) {
+            throw new InvalidRequestException("Invalid binding for channel " + channel + " - already bound to a different bus",
                     HttpServletResponse.SC_FORBIDDEN);
         }
 

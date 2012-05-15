@@ -45,8 +45,8 @@ public class TokenAnonymous extends Token {
      */
     public TokenAnonymous() {}
 
-    public TokenAnonymous(String tokenString, String buses, String scopeString, Date expires) throws TokenException, SimpleDBException {
-        super(Token.AN + tokenString, TYPE.REGULAR_TOKEN, buses, scopeString, expires);
+    public TokenAnonymous(String tokenString, String bus, String scopeString, Date expires) throws TokenException, SimpleDBException {
+        super(Token.AN + tokenString, TYPE.REGULAR_TOKEN, null, scopeString, expires);
 
         // verify that no channel or bus was submitted in the scopeString request
         Scope testScope = new Scope(scopeString);
@@ -56,6 +56,7 @@ public class TokenAnonymous extends Token {
 
         String channel = ChannelUtil.randomString(CHANNEL_NAME_LENGTH);
         put(Field.CHANNEL.getFieldName(), channel);
+        put(Field.BUS.getFieldName(), bus);
         // set the scope string to include this new channel
         if (StringUtils.isEmpty(scopeString)) {
             scopeString = "channel:" + channel;
@@ -69,8 +70,8 @@ public class TokenAnonymous extends Token {
         validate();
     }
 
-    public TokenAnonymous(String buses, String scopeString, Date expires) throws TokenException, SimpleDBException {
-        this(ChannelUtil.randomString(TOKEN_LENGTH), buses, scopeString, expires);
+    public TokenAnonymous(String bus, String scopeString, Date expires) throws TokenException, SimpleDBException {
+        this(ChannelUtil.randomString(TOKEN_LENGTH), bus, scopeString, expires);
     }
 
     public void setEncryptionKey(String encryptionKey) {
@@ -136,9 +137,14 @@ public class TokenAnonymous extends Token {
         return this.get(Field.CHANNEL);
     }
 
+    public String getBus() {
+        return this.get(Field.BUS);
+    }
+
     public static enum Field implements MessageField {
 
-        CHANNEL("channel", true);
+        CHANNEL("channel", true),
+        BUS("bus", true);
 
 
         @Override
