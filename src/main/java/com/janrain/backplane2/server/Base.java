@@ -22,10 +22,7 @@ import org.apache.commons.lang.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 /**
  * @author Tom Raney
@@ -46,6 +43,14 @@ public abstract class Base extends Access {
         }
 
         validate();
+    }
+
+    @Override
+    public Set<? extends MessageField> getFields() {
+        Set<MessageField> fields = new HashSet<MessageField>();
+        fields.addAll(super.getFields());
+        fields.addAll(EnumSet.allOf(BaseField.class));
+        return fields;
     }
 
     public @Nullable

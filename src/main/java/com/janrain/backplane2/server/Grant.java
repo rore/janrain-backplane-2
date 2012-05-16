@@ -90,6 +90,14 @@ public class Grant extends Base {
         this(ChannelUtil.randomString(CODE_LENGTH), busOwnerId, clientId, buses, expires);
     }
 
+    @Override
+    public Set<? extends MessageField> getFields() {
+        Set<MessageField> fields = new HashSet<MessageField>();
+        fields.addAll(super.getFields());
+        fields.addAll(EnumSet.allOf(GrantField.class));
+        return fields;
+    }
+
     public String getGrantClientId() {
         return get(GrantField.ISSUED_TO_CLIENT_ID.getFieldName());
     }

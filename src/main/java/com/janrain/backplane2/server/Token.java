@@ -128,6 +128,14 @@ public abstract class Token extends Base {
         validate();
     }
 
+    @Override
+    public Set<? extends MessageField> getFields() {
+        Set<MessageField> fields = new HashSet<MessageField>();
+        fields.addAll(super.getFields());
+        fields.addAll(EnumSet.allOf(TokenField.class));
+        return fields;
+    }
+
     public static boolean isOurToken(String tokenString) {
         return tokenString != null && (tokenString.startsWith(AN) || tokenString.startsWith(PR));
     }

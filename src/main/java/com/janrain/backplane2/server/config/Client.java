@@ -22,8 +22,7 @@ import com.janrain.commons.supersimpledb.message.MessageField;
 import com.janrain.oauth2.OAuth2;
 import com.janrain.oauth2.ValidationException;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 
 /**
  * @author Tom Raney
@@ -42,6 +41,14 @@ public class Client extends User {
         d.put(ClientField.SOURCE_URL.getFieldName(), source_url);
         d.put(ClientField.REDIRECT_URI.getFieldName(), redirect_uri);
         super.init(client_id, d);
+    }
+
+    @Override
+    public Set<? extends MessageField> getFields() {
+        Set<MessageField> fields = new HashSet<MessageField>();
+        fields.addAll(super.getFields());
+        fields.addAll(EnumSet.allOf(ClientField.class));
+        return fields;
     }
 
     public String getClientId() {

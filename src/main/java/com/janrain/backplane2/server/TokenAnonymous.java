@@ -30,6 +30,9 @@ import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
 
 import java.util.Date;
+import java.util.EnumSet;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * @author Tom Raney
@@ -72,6 +75,14 @@ public class TokenAnonymous extends Token {
 
     public TokenAnonymous(String bus, String scopeString, Date expires) throws TokenException, SimpleDBException {
         this(ChannelUtil.randomString(TOKEN_LENGTH), bus, scopeString, expires);
+    }
+
+    @Override
+    public Set<? extends MessageField> getFields() {
+        Set<MessageField> fields = new HashSet<MessageField>();
+        fields.addAll(super.getFields());
+        fields.addAll(EnumSet.allOf(TokenAnonymous.Field.class));
+        return fields;
     }
 
     public void setEncryptionKey(String encryptionKey) {

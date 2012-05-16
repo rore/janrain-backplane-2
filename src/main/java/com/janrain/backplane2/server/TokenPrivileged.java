@@ -24,10 +24,7 @@ import com.janrain.oauth2.TokenException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 /**
  * @author Tom Raney
@@ -69,6 +66,14 @@ public class TokenPrivileged extends Token {
         this(ChannelUtil.randomString(TOKEN_LENGTH), clientId, clientSourceUrl, Grant.getBusesAsString(grants), scope,
                 new Date(System.currentTimeMillis() + TokenPrivileged.EXPIRES_SECONDS * 1000));
         this.setGrants(grants);
+    }
+
+    @Override
+    public Set<? extends MessageField> getFields() {
+        Set<MessageField> fields = new HashSet<MessageField>();
+        fields.addAll(super.getFields());
+        fields.addAll(EnumSet.allOf(TokenPrivileged.Field.class));
+        return fields;
     }
 
     @Override
