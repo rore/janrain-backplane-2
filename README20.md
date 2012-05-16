@@ -41,7 +41,7 @@ Per OAuth2, the `scope` parameter will be returned if the granted scope differs 
 
 * Security: HTTPS GET
 
-* Request parameters: `callback`, `scope` (optional)
+* Request parameters: `callback`, `bus`, `scope` (optional)
 
 * Response body (similar to an OAuth2 Access Token Response):
 
@@ -53,10 +53,14 @@ callback(
         "access_token": "465203f03680f59b7ddd5e1e5d851461",
         "token_type": "Bearer",
         "expires_in": 604800,
-        "scope": "channel:0a92d76f54f7877a68abe19c5b3ffcf8"
+        "scope": "channel:0a92d76f54f7877a68abe19c5b3ffcf8",
+        "bus":"customer.example.com"
     }
 )
 ```
+
+`bus` parameter and response field: the bus to which the (anonymous/browser/javascript) client requests the newly generated channel to be bound (and the server echoes-back the bound bus).
+Authenticated clients wishing to post to this channel must have obtained authorization for this bus before posting.
 
 ### Get Messages
 

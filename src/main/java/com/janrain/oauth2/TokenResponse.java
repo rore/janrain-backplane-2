@@ -50,6 +50,7 @@ public class TokenResponse {
                 put(OAUTH2_ACCESS_TOKEN_PARAM_NAME, token.getIdValue());
                 put("expires_in", TokenAnonymous.EXPIRES_SECONDS);
                 put(OAUTH2_TOKEN_TYPE_PARAM_NAME, Token.getTokenType());
+                put(TokenAnonymous.Field.BUS.getFieldName(), token.getBus());
                 //put("backplane_channel", token.getChannelName());
                 if (token.mustReturnScopeInResponse()) {
                     put(OAUTH2_SCOPE_PARAM_NAME, token.getScopeString());

@@ -129,14 +129,7 @@ public abstract class Token extends Base {
     }
 
     public static boolean isOurToken(String tokenString) {
-        if (tokenString == null) {
-            return false;
-        }
-        if (tokenString.startsWith(AN) || tokenString.startsWith(PR)) {
-            return true;
-        }
-
-        return false;
+        return tokenString != null && (tokenString.startsWith(AN) || tokenString.startsWith(PR));
     }
 
     public static @NotNull Token fromRequest(DaoFactory daoFactory, HttpServletRequest request, String accessTokenParam, String authorizationHeader) throws TokenException {

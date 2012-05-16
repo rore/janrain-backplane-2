@@ -313,6 +313,7 @@ public class Backplane2ControllerTest {
                 matches("[{]\\s*\"access_token\":\\s*\".{22}+\",\\s*" +
                         "\"expires_in\":\\s*604800,\\s*" +
                         "\"token_type\":\\s*\"Bearer\",\\s*" +
+                        "\"bus\":\\s*\"testbus\",\\s*" +
                         "\"scope\":\\s*\"channel:.{32}+\"\\s*[}]"));
 
         // cleanup test token
