@@ -242,16 +242,21 @@ public class Grant extends Base {
         return true;
     }
 
+    @Override
+    public Set<? extends MessageField> getFields() {
+        return EnumSet.allOf(GrantField.class);
+    }
+
 
     public static enum GrantField implements MessageField {
 
         // - PUBLIC
 
-        ISSUED_BY_USER_ID("issued_by_user"),
-        ISSUED_TO_CLIENT_ID("issued_to_client"),
-        DATE_CODE_ISSUED("date_code_issued"),
-        DATE_CODE_EXPIRES("date_code_expires"),
-        DATE_CODE_USED("date_code_used"),
+        ISSUED_BY_USER_ID("issued_by_user", false),
+        ISSUED_TO_CLIENT_ID("issued_to_client", false),
+        DATE_CODE_ISSUED("date_code_issued", false),
+        DATE_CODE_EXPIRES("date_code_expires", false),
+        DATE_CODE_USED("date_code_used", false),
         ISSUED_TOKEN_IDS("issued_token_ids", false);
 
         @Override

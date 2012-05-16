@@ -37,7 +37,7 @@
         <param name="SMTPUsername" value="${SMTP_USERNAME}"/>
         <param name="SMTPPassword" value="${SMTP_PASSWORD}"/>
         <param name="Subject" value="${AWS_INSTANCE_ID}-${APPID}"/>
-        <param name="Threshold" value="WARN"/>
+        <param name="Threshold" value="ERROR"/>
         <layout class="org.apache.log4j.EnhancedPatternLayout">
             <param name="ConversionPattern" value="%d %-5p [%t]: %c:%L - %m%n"/>
         </layout>
