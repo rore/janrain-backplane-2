@@ -79,6 +79,9 @@ public class Backplane1Controller {
                                 @RequestParam(value = "sticky", required = false) String sticky )
         throws AuthException, SimpleDBException, BackplaneServerException {
 
+                // log metric
+        busGets.mark();
+
         checkAuth(basicAuth, bus, Backplane1Config.BUS_PERMISSION.GETALL);
 
         // log metric

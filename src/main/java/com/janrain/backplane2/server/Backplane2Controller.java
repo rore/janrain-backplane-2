@@ -582,25 +582,6 @@ public class Backplane2Controller {
 
     public static final String AUTHZ_DECISION_KEY = "auth_key";
 
-    private final MeterMetric posts =
-            Metrics.newMeter(Backplane2Controller.class, "post", "posts", TimeUnit.MINUTES);
-
-    private final MeterMetric channelGets =
-            Metrics.newMeter(Backplane2Controller.class, "channel_get", "channel_gets", TimeUnit.MINUTES);
-    private final MeterMetric channelGetsSticky = Metrics.newMeter(Backplane2Controller.class, "channel_gets_sticky", "channel_gets_sticky", TimeUnit.MINUTES);
-
-
-    private final MeterMetric busGets =
-            Metrics.newMeter(Backplane2Controller.class, "bus_get", "bus_gets", TimeUnit.MINUTES);
-    private final MeterMetric busGetsSticky = Metrics.newMeter(Backplane2Controller.class, "bus_gets_sticky", "bus_gets_sticky", TimeUnit.MINUTES);
-
-    private final TimerMetric getMessagesTime =
-            Metrics.newTimer(Backplane2Controller.class, "get_messages_time", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
-
-    private final HistogramMetric payLoadSizesOnGets = Metrics.newHistogram(Backplane2Controller.class, "payload_sizes_gets");
-
-    private final HistogramMetric messagesPerChannel = Metrics.newHistogram(Backplane2Controller.class, "messages_per_channel");
-
     @Inject
     private Backplane2Config bpConfig;
 
