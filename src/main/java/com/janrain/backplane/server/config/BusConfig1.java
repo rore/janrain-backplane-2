@@ -100,7 +100,7 @@ public class BusConfig1 extends AbstractMessage {
 
         @Override
         public void validate(String value) throws SimpleDBException {
-            if (isRequired()) validateNotNull(name(), value);
+            if (isRequired()) validateNotBlank(name(), value);
         }
 
         // - PRIVATE
@@ -122,5 +122,4 @@ public class BusConfig1 extends AbstractMessage {
             return false;
         }
     }
-
 }

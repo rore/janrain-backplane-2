@@ -16,87 +16,33 @@
 
 package com.janrain.backplane2.server;
 
+import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.backplane2.server.dao.DaoFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
+import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import com.janrain.commons.util.Pair;
-import com.janrain.oauth2.ExpiredTokenException;
+import com.janrain.crypto.ChannelUtil;
 import com.janrain.oauth2.OAuth2;
 import com.janrain.oauth2.TokenException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.text.ParseException;
 import java.util.*;
 
-import static com.janrain.oauth2.OAuth2.OAUTH2_ACCESS_TOKEN_PARAM_NAME;
+import static com.janrain.oauth2.OAuth2.*;
+import static com.janrain.oauth2.OAuth2.OAUTH2_REFRESH_TOKEN_PARAM_NAME;
+import static com.janrain.oauth2.OAuth2.OAUTH2_SCOPE_PARAM_NAME;
 
 /**
- * @author Tom Raney
+ * @author Tom Raney, Johnny Bufu
  */
 
-public abstract class Token extends Base {
-
-    public static final int TOKEN_LENGTH = 20;
-    public static final String AN = "an";
-    public static final String PR = "pr";
-
-    public static enum Source {QUERYPARAM, POSTBODY, AUTHHEADER }
-    
-    public static enum TYPE {
-
-        REGULAR_TOKEN(AN, TokenAnonymous.class, EnumSet.allOf(Source.class)),
-
-        PRIVILEGED_TOKEN(PR, TokenPrivileged.class, EnumSet.of(Source.AUTHHEADER));
-
-        public String getPrefix() {
-            return prefix;
-        }
-
-        public Class<? extends Token> getTokenClass() {
-            return tokenClass;
-        }
-
-        public Collection<Source> getAllowedSources() {
-            return allowedSources;
-        }
-
-        public static TYPE fromTokenString(String token) {
-            TYPE type = null;
-            try {
-                type = typesByPrefix.get(token.substring(0, PREFIX_LENGTH));
-            } catch (Exception e) {
-                // do nothing
-            }
-            if (type == null) {
-                throw new IllegalArgumentException();
-            }
-            return type;
-        }
-
-        // - PRIVATE
-
-        private final static int PREFIX_LENGTH = 2;
-        private final String prefix;
-        private final Class<? extends Token> tokenClass;
-        private final EnumSet<Source> allowedSources;
-        
-        private static final Map<String,TYPE> typesByPrefix = new HashMap<String, TYPE>();
-        static {
-            for (TYPE t : values()) {
-                typesByPrefix.put(t.getPrefix(), t);
-            }
-        }
-
-        private TYPE(String prefix, Class<? extends Token> tokenClass, EnumSet<Source> allowedSources) {
-            this.prefix = prefix;
-            this.tokenClass = tokenClass;
-            this.allowedSources = allowedSources;
-        }
-    }
+public class Token extends AbstractMessage {
 
     /**
      * Empty default constructor for AWS to use.
@@ -104,76 +50,39 @@ public abstract class Token extends Base {
      */
     public Token() {}
 
-    /**
-     * Token constructor
-     * @param tokenString required
-     * @param accessType  REGULAR_TOKEN or PRIVILEGED_TOKEN
-     * @param buses       optional
-     * @param scopeString optional
-     * @param expires     if null, token does not expire
-     * @throws BackplaneServerException
-     */
-    Token(String tokenString, TYPE accessType, @Nullable String buses, String scopeString, Date expires) throws TokenException, SimpleDBException {
-        super(tokenString,buses,expires);
-
-        logger.debug("creating token with id '" + tokenString + "'");
-        if (! Token.isOurToken(tokenString)) {
-            throw new TokenException("invalid token", HttpServletResponse.SC_FORBIDDEN);
-        }
-
-        put(TokenField.TYPE.getFieldName(), accessType.name());
-
-        setScopeString(scopeString);
-
-        validate();
+    @Override
+    public String getIdValue() {
+        return get(TokenField.ID);
     }
 
     @Override
     public Set<? extends MessageField> getFields() {
-        Set<MessageField> fields = new HashSet<MessageField>();
-        fields.addAll(super.getFields());
-        fields.addAll(EnumSet.allOf(TokenField.class));
-        return fields;
+        return EnumSet.allOf(TokenField.class);
     }
 
-    public static boolean isOurToken(String tokenString) {
-        return tokenString != null && (tokenString.startsWith(AN) || tokenString.startsWith(PR));
-    }
-
-    public static @NotNull Token fromRequest(DaoFactory daoFactory, HttpServletRequest request, String accessTokenParam, String authorizationHeader) throws TokenException {
-        
-        Pair<String, EnumSet<Source>> tokenAndSource = extractAccessToken(request.getQueryString(), accessTokenParam, authorizationHeader);
-
-        if (! Token.isOurToken(tokenAndSource.getLeft())) {
-            throw new TokenException("invalid token", HttpServletResponse.SC_FORBIDDEN);
-        }
-
-        Token token;
-        try {
-            token = daoFactory.getTokenDao().retrieveToken(tokenAndSource.getLeft());
-        } catch (SimpleDBException e) {
-            throw new TokenException(OAuth2.OAUTH2_TOKEN_SERVER_ERROR, "error loading token", HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-        }
-
-        if (token == null || token.isExpired()) {
-            if (token == null) {
-                logger.info("could not locate token " + tokenAndSource.getLeft());
+    @Override
+    public void validate() throws SimpleDBException {
+        super.validate();
+        if (getType().isPrivileged()) {
+            AbstractMessage.validateNotBlank(TokenField.ISSUED_TO_CLIENT_ID.getFieldName(), get(TokenField.ISSUED_TO_CLIENT_ID));
+            AbstractMessage.validateNotBlank(TokenField.CLIENT_SOURCE_URL.getFieldName(), get(TokenField.CLIENT_SOURCE_URL));
+            AbstractMessage.validateNotBlank(TokenField.BACKING_GRANTS.getFieldName(), get(Token.TokenField.BACKING_GRANTS));
+        } else {
+            Scope anonScope = getScope();
+            LinkedHashSet<String> buses = anonScope.getScopeMap().get(BackplaneMessage.Field.BUS);
+            LinkedHashSet<String> channels = anonScope.getScopeMap().get(BackplaneMessage.Field.CHANNEL);
+            if (buses == null || buses.size() > 1 || channels == null || channels.size() > 1) {
+                throw new SimpleDBException("invalid scope for anonymous token, must have exactly one bus and one channel specified: " + anonScope);
             }
-            throw new ExpiredTokenException("expired token", HttpServletResponse.SC_FORBIDDEN);
         }
-
-        token.checkAllowedSources(tokenAndSource.getRight());
-
-        return token;
     }
 
-    /** Support only one OAuth token type */
-    public static String getTokenType() {
-        return "Bearer";
-    }
-
-    public TYPE getAccessType() {
-        return TYPE.valueOf(this.get(TokenField.TYPE));
+    public GrantType getType() {
+        try {
+            return GrantType.valueOf(this.get(TokenField.TYPE));
+        } catch (IllegalArgumentException e) {
+            throw new IllegalStateException("Invalid GrantType on for TokenField.Type, should have been validated on token creation: " + this.get(TokenField.TYPE));
+        }
     }
 
     public Scope getScope()  {
@@ -184,38 +93,110 @@ public abstract class Token extends Base {
         }
     }
 
-    public boolean isPrivileged() {
-        return getAccessType() == TYPE.PRIVILEGED_TOKEN;
+    /**
+     * @return the token's expiration date, or null if the token never expires
+     */
+    public Date getExpirationDate() {
+        String value = this.get(TokenField.EXPIRES);
+        try {
+            return StringUtils.isNotEmpty(value) ? Backplane2Config.ISO8601.parse(value) : null;
+        } catch (ParseException e) {
+            throw new IllegalStateException("Invalid ISO8601 date for TokenField.EXPIRES, should have been validated on token creation: " + value);
+        }
     }
 
     public String getScopeString() {
         return get(TokenField.SCOPE);
     }
 
-    public void setScopeString(String scopeString) {
-        if (StringUtils.isBlank(scopeString)) {
-            return;
+    public boolean isExpired() {
+        Date expires = getExpirationDate();
+        return expires != null && new Date().getTime() > expires.getTime();
+    }
+
+    public static boolean looksLikeOurToken(String tokenString) {
+        GrantType grantType = GrantType.fromTokenString(tokenString);
+        if (grantType == null) return false;
+        String tokenNoPrefix = tokenString.substring(grantType.getTokenPrefix().length());
+        return tokenNoPrefix.length() == TOKEN_LENGTH;
+    }
+
+    public static @NotNull Token fromRequest(DaoFactory daoFactory, HttpServletRequest request, String tokenString, String authorizationHeader) throws TokenException {
+        
+        Pair<String, EnumSet<TokenSource>> tokenAndSource = extractToken(request.getQueryString(), tokenString, authorizationHeader);
+
+        if (! Token.looksLikeOurToken(tokenAndSource.getLeft())) {
+            throw new TokenException("invalid token", HttpServletResponse.SC_FORBIDDEN);
         }
-        put(TokenField.SCOPE.getFieldName(), scopeString.trim());
-        logger.debug("new scope string: '" + scopeString + "'");
+
+        Token token;
+        try {
+            token = daoFactory.getTokenDao().retrieveToken(tokenAndSource.getLeft());
+        } catch (SimpleDBException e) {
+            throw new TokenException(OAuth2.OAUTH2_TOKEN_SERVER_ERROR, "error loading token", HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        }
+
+        if (token == null) {
+            logger.info("could not locate token " + tokenAndSource.getLeft());
+            throw new TokenException("invalid token", HttpServletResponse.SC_FORBIDDEN);
+        }
+
+        if (token.isExpired()) {
+            throw new TokenException("expired token", HttpServletResponse.SC_FORBIDDEN);
+        }
+
+        token.checkAllowedSources(tokenAndSource.getRight());
+
+        return token;
     }
 
-    public void setMustReturnScopeInResponse(boolean flag) {
-        this.mustReturnScopeInResponse = flag;
+    public Map<String, Object> response(final String refreshToken) {
+        final Date expires = getExpirationDate();
+        return new LinkedHashMap<String, Object>() {{
+            put(OAUTH2_TOKEN_TYPE_PARAM_NAME, OAUTH2_TOKEN_TYPE_BEARER);
+            put(OAUTH2_ACCESS_TOKEN_PARAM_NAME, getIdValue());
+            if (expires != null) put(OAUTH2_TOKEN_RESPONSE_EXPIRES, (expires.getTime() - new Date().getTime()) / 1000);
+            put(OAUTH2_SCOPE_PARAM_NAME, getScopeString());
+            if (refreshToken != null) put(OAUTH2_REFRESH_TOKEN_PARAM_NAME, refreshToken);
+        }};
     }
 
-    public boolean mustReturnScopeInResponse() {
-        return this.mustReturnScopeInResponse;
+    public @NotNull List<String> getBackingGrants() {
+        String grants = get(TokenField.BACKING_GRANTS);
+        return StringUtils.isNotEmpty(grants) ? Arrays.asList(grants.split(GRANTS_SEPARATOR)) : new ArrayList<String>();
     }
-
-    public abstract String getChannelName();
-
 
     public static enum TokenField implements MessageField {
 
-        TYPE("type", true),
+        ID("id", true),
 
-        SCOPE("scope", false) {
+        TYPE("type", true) {
+            @Override
+            public void validate(String value) throws SimpleDBException {
+                super.validate(value);
+                try {
+                    GrantType.valueOf(value);
+                } catch (IllegalArgumentException e) {
+                    throw new SimpleDBException("Invalid token type: " + value);
+                }
+            }
+        },
+
+        EXPIRES("expires", false) {
+            @Override
+            public void validate(String value) throws SimpleDBException {
+                super.validate(value);
+                try {
+                    if (StringUtils.isNotEmpty(value)) {
+                        Backplane2Config.ISO8601.parse(value);
+                    }
+                } catch (ParseException e) {
+                    throw new SimpleDBException("Invalid token expiration date: " + value, e);
+                }
+            }
+        },
+
+        SCOPE("scope", true) {
             @Override
             public void validate(String value) throws SimpleDBException {
                 super.validate(value);
@@ -225,7 +206,21 @@ public abstract class Token extends Base {
                     throw new InvalidRequestException("Invalid scope: " + value);
                 }
             }
-        };
+        },
+
+        ISSUED_TO_CLIENT_ID("issued_to_client", false),
+        
+        CLIENT_SOURCE_URL("client_source_url", false) {
+            @Override
+            public void validate(String value) throws SimpleDBException {
+                super.validate(value);
+                if (StringUtils.isNotEmpty(value)) {
+                    AbstractMessage.validateUrl(getFieldName(), value);
+                }
+            }
+        },
+
+        BACKING_GRANTS("backing_grants", false);
 
         @Override
         public String getFieldName() {
@@ -239,7 +234,7 @@ public abstract class Token extends Base {
 
         @Override
         public void validate(String value) throws SimpleDBException {
-            if (isRequired()) validateNotNull(getFieldName(), value);
+            if (isRequired()) validateNotBlank(getFieldName(), value);
         }
 
         // - PRIVATE
@@ -253,12 +248,63 @@ public abstract class Token extends Base {
         }
     }
 
-    private static final Logger logger = Logger.getLogger(Token.class);
-    private boolean mustReturnScopeInResponse = false;
+    public static class Builder {
 
-    private static Pair<String,EnumSet<Source>> extractAccessToken(String queryString, String requestParam, String authHeader) {
+        public Builder(GrantType type, String scope) {
+            this.type = type;
+            data.put(TokenField.TYPE.getFieldName(), type.toString());
+            data.put(TokenField.SCOPE.getFieldName(), scope);
+        }
+
+        public Builder expires(Date expires) {
+            data.put(TokenField.EXPIRES.getFieldName(), Backplane2Config.ISO8601.format(expires));
+            return this;
+        }
+        
+        public Builder issuedToClient(String clientId) {
+            data.put(TokenField.ISSUED_TO_CLIENT_ID.getFieldName(), clientId);
+            return this;
+        }
+        
+        public Builder clientSourceUrl(String clientSourceUrl) {
+            data.put(TokenField.CLIENT_SOURCE_URL.getFieldName(), clientSourceUrl);
+            return this;
+        }
+
+        public Builder grants(List<String> grants) {
+            data.put(TokenField.BACKING_GRANTS.getFieldName(),
+                     org.springframework.util.StringUtils.collectionToDelimitedString(grants, GRANTS_SEPARATOR));
+            return this;
+        }
+        
+        public Token buildToken() throws SimpleDBException {
+            String id = type.getTokenPrefix() + ChannelUtil.randomString(TOKEN_LENGTH);
+            data.put(TokenField.ID.getFieldName(), id);
+            return new Token(id, data);
+        }
+        
+        // - PRIVATE
+        
+        private final Map<String,String> data = new HashMap<String, String>();
+        private final GrantType type;
+    }
+    
+    // - PRIVATE
+    
+    private static final Logger logger = Logger.getLogger(Token.class);
+
+    private static final int TOKEN_LENGTH = 20;
+
+    private static final String GRANTS_SEPARATOR = " ";
+
+    private Token(String id, Map<String,String> data) throws SimpleDBException {
+        super.init(id, data);
+        logger.debug("created token: " + this.toString());
+    }
+
+    private static Pair<String,EnumSet<TokenSource>> extractToken(String queryString, String requestParam, String authHeader) {
         String token = null;
-        EnumSet<Token.Source> foundIn = EnumSet.noneOf(Token.Source.class);
+        EnumSet<TokenSource> foundIn = EnumSet.noneOf(TokenSource.class);
 
         if (StringUtils.isNotEmpty(queryString)) {
             Map<String,String> queryParamsMap = new HashMap<String, String>();
@@ -268,32 +314,32 @@ public abstract class Token extends Base {
             }
             if(queryParamsMap.containsKey(OAUTH2_ACCESS_TOKEN_PARAM_NAME)) {
                 token = queryParamsMap.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME);
-                foundIn.add(Token.Source.QUERYPARAM);
+                foundIn.add(TokenSource.QUERYPARAM);
             }
         }
 
-        if ( ! foundIn.contains(Token.Source.QUERYPARAM) && requestParam != null ) {
+        if ( ! foundIn.contains(TokenSource.QUERYPARAM) && requestParam != null ) {
             // query parameter will mask body requestParam extracted by spring with @RequestParameter
             token = requestParam;
-            foundIn.add(Token.Source.POSTBODY);
+            foundIn.add(TokenSource.POSTBODY);
         }
 
-        int tokenTypeLength = Token.getTokenType().length();
-        if (authHeader != null && authHeader.startsWith(Token.getTokenType()) && authHeader.length() > tokenTypeLength) {
+        int tokenTypeLength = OAUTH2_TOKEN_TYPE_BEARER.length();
+        if (authHeader != null && authHeader.startsWith(OAUTH2_TOKEN_TYPE_BEARER) && authHeader.length() > tokenTypeLength + 1) {
             token = authHeader.substring(tokenTypeLength + 1);
-            foundIn.add(Token.Source.AUTHHEADER);
+            foundIn.add(TokenSource.AUTHHEADER);
         }
 
-        return new Pair<String, EnumSet<Token.Source>>(token, foundIn);
+        return new Pair<String, EnumSet<TokenSource>>(token, foundIn);
     }
 
-    private void checkAllowedSources(Collection<Source> tokenFoundIn) throws TokenException {
+    private void checkAllowedSources(Collection<TokenSource> tokenFoundIn) throws TokenException {
         if (tokenFoundIn == null || tokenFoundIn.size() > 1) {
             throw new TokenException("exactly one token source allowed, found in: " + tokenFoundIn, HttpServletResponse.SC_FORBIDDEN);
         }
 
-        for(Source tokenSource : tokenFoundIn) {
-            if (! getAccessType().getAllowedSources().contains(tokenSource)) {
+        for(TokenSource tokenSource : tokenFoundIn) {
+            if (! getType().getTokenAllowedSources().contains(tokenSource)) {
                 throw new TokenException("token source not allowed: " + tokenSource, HttpServletResponse.SC_FORBIDDEN);
             }
         }

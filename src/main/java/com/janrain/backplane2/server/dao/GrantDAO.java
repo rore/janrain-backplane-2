@@ -16,19 +16,17 @@
 
 package com.janrain.backplane2.server.dao;
 
-import com.janrain.backplane2.server.BackplaneServerException;
-import com.janrain.backplane2.server.Grant;
-import com.janrain.backplane2.server.Scope;
+import com.janrain.backplane2.server.*;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.oauth2.TokenException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_GRANT;
 
@@ -38,8 +36,9 @@ import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTabl
 
 public class GrantDAO extends DAO<Grant> {
 
-    GrantDAO(SuperSimpleDB superSimpleDB, Backplane2Config bpConfig) {
+    GrantDAO(SuperSimpleDB superSimpleDB, Backplane2Config bpConfig, DaoFactory daoFactory) {
         super(superSimpleDB, bpConfig);
+        this.daoFactory = daoFactory;
     }
 
     @Override
@@ -50,6 +49,7 @@ public class GrantDAO extends DAO<Grant> {
     @Override
     public void delete(String id) throws SimpleDBException {
         superSimpleDB.delete(bpConfig.getTableName(BP_GRANT), id);
+        daoFactory.getTokenDao().revokeTokenByGrant(id);
         logger.info("Deleted grant " + id);
     }
 
@@ -58,61 +58,102 @@ public class GrantDAO extends DAO<Grant> {
     }
 
     /**
-     * Retrieve grant from simpleDB, mark code used, return grant.
+     * Activate authorization_code grant, mark code used, return updated grant.
      *
-     * If code re-used: delete grant, log error, return null.
+     * @return the updated grant, never null
+     *
+     * @throws TokenException if:
+     *          1) no grant was found for the supplied code, or
+     *          2) the grant found was not an authorization_code grant, or
+     *          3) the grant was not issued  to the supplied authenticatedClientId, or
+     *          4) the grant/grant code has expired, or
+     *          5) the grant's code had already been used (in this case the grant is also invalidated/revoked), or
+     *
+     * @throws SimpleDBException on any error while interacting with SimpleDB
      */
-    public Grant getGrantSetCodeUsed(String codeId) throws SimpleDBException {
-        try {
-            Grant existing = superSimpleDB.retrieve(bpConfig.getTableName(BP_GRANT), Grant.class, codeId);
-            if (existing != null) {
-                Grant updated = new Grant(existing);
-                updated.setCodeUsedNow();
-                superSimpleDB.update(bpConfig.getTableName(BP_GRANT), Grant.class, existing, updated);
-                logger.info("marked authorization code: " + codeId + " as used");
-                return updated;
-            }
+    public Grant getAndActivateCodeGrant(String codeId, String authenticatedClientId) throws SimpleDBException, TokenException {
+
+        Grant existing = superSimpleDB.retrieve(bpConfig.getTableName(BP_GRANT), Grant.class, codeId);
+
+        GrantState updatedState = GrantState.ACTIVE;
+        if ( existing == null) {
             logger.warn("No grant found for code: " + codeId);
-        } catch (SimpleDBException e) {
-            // delete grant to invalidate all tokens backed by this grant if code was already used
-            // todo: actually delete all issued tokens?
-            Grant existing = superSimpleDB.retrieve(bpConfig.getTableName(BP_GRANT), Grant.class, codeId);
-            if (existing.isCodeUsed()) {
-                logger.error( "Authorization code: " + codeId + " already used at " + existing.getCodeUsedDate() +
-                              ", deleting grant to invalidate all related tokens");
-                delete(codeId);
-            }
+            throw new TokenException("Invalid code: " + codeId);
+        } else if ( GrantType.AUTHORIZATION_CODE != existing.getType() || existing.isExpired() ||
+                    StringUtils.isBlank(authenticatedClientId) ||
+                    ! authenticatedClientId.equals(existing.get(Grant.GrantField.ISSUED_TO_CLIENT_ID)) ||
+                    GrantState.INACTIVE != existing.getState()) {
+            logger.error("Invalid grant for code: " + codeId);
+            updatedState = GrantState.REVOKED;
         }
-        return null;
+
+        Grant updated = new Grant.Builder(existing, updatedState).buildGrant(); // no expiration
+        superSimpleDB.update(bpConfig.getTableName(BP_GRANT), Grant.class, existing, updated);
+
+        logger.info( "Grant status: " + updatedState.toString().toLowerCase() + " for code: " + codeId + ", client_id: " + authenticatedClientId);
+
+        if (updatedState.isActive()) {
+            return updated;
+        } else {
+            throw new TokenException("Invalid code: " + codeId);
+        }
     }
 
     /**
-     * Retrieve a list of grants that encompass the buses requested by a client
-     * @param clientId
-     * @param scope
-     * @return
+     * Retrieve all active grants issued to the supplied clientId
+     * that match any of the fields that require authorization in the supplied scope.
+     *
+     * If none of the fields in the supplied scope require authorization, or if the supplied scope is null,
+     * returns all grants issued to clientId, keyed on a single map entry representing the full scope
+     * that includes the filter-only, no-authorization-required supplied scope.
+     *
+     * @return  map of authorized scopes backed-by grants
      * @throws SimpleDBException
      */
+    public @NotNull Map<Scope,Set<Grant>> retrieveClientGrants(String clientId, @Nullable Scope scope) throws SimpleDBException, TokenException {
 
-    public List<Grant> retrieveGrants(String clientId, @Nullable Scope scope) throws SimpleDBException {
-        List<Grant> allGrants = superSimpleDB.retrieveWhere(bpConfig.getTableName(BP_GRANT), Grant.class,
-                "issued_to_client='" + clientId + "' AND date_code_used is not null", true);
+        List<Grant> clientActiveGrants = superSimpleDB.retrieveWhere(bpConfig.getTableName(BP_GRANT), Grant.class,
+                Grant.GrantField.ISSUED_TO_CLIENT_ID.getFieldName() + "='" + clientId + "' AND " +
+                Grant.GrantField.STATE.getFieldName() + "='" + GrantState.ACTIVE.toString() + "'", true);
 
-        // if no buses exist in requested scope, return entire list
-        if (scope == null || scope.getBusesInScope().isEmpty()) {
-            return allGrants;
-        }
+        Map<Scope,Set<Grant>> result = new LinkedHashMap<Scope, Set<Grant>>();
 
-        ArrayList<Grant> selectedGrants = new ArrayList<Grant>();
-        for ( String bus: scope.getBusesInScope()) {
-            for ( Grant grant : allGrants) {
-                if ( grant.getBusesAsList().contains(bus) && ! selectedGrants.contains(grant)) {
-                    selectedGrants.add(grant);
+        if (scope == null || ! scope.isAuthorizationRequired()) {
+            Set<Grant> selectedGrants = new LinkedHashSet<Grant>();
+            Map<BackplaneMessage.Field,LinkedHashSet<String>> authorizedScopesMap = new LinkedHashMap<BackplaneMessage.Field, LinkedHashSet<String>>();
+            for (Grant grant : clientActiveGrants) {
+                if (grant.isExpired()) continue;
+                selectedGrants.add(grant);
+                Scope.addScopes(authorizedScopesMap, grant.getAuthorizedScope().getScopeMap());
+            }
+            if (scope != null) {
+                Scope.addScopes(authorizedScopesMap, scope.getScopeMap()); // add request filter-only scopes
+            }
+            result.put(new Scope(authorizedScopesMap), selectedGrants);
+        } else {
+            for(Scope authReqScope : scope.getAuthReqScopes()) {
+                final Scope testScope;
+                if (authReqScope.getScopeMap().containsKey(BackplaneMessage.Field.CHANNEL)) {
+                    String channel = authReqScope.getScopeMap().get(BackplaneMessage.Field.CHANNEL).iterator().next();
+                    testScope = new Scope(BackplaneMessage.Field.BUS, daoFactory.getTokenDao().getBusForChannel(channel));
+                } else {
+                    testScope = authReqScope;
+                }
+                for(Grant grant : clientActiveGrants) {
+                    if (grant.isExpired()) continue;
+                    if (grant.getAuthorizedScope().containsScope(testScope)) {
+                        Set<Grant> backingGrants = result.get(authReqScope);
+                        if (backingGrants == null) {
+                            backingGrants = new LinkedHashSet<Grant>();
+                            result.put(authReqScope, backingGrants);
+                        }
+                        backingGrants.add(grant);
+                    }
                 }
             }
         }
 
-        return selectedGrants;
+        return result;
     }
 
     /**
@@ -121,25 +162,33 @@ public class GrantDAO extends DAO<Grant> {
      *  Stops on first error and reports error, even though some grants may have been updated.
      */
     public void revokeBuses(String clientId, String buses) throws SimpleDBException, BackplaneServerException, TokenException {
-        Scope busesToRevoke = new Scope(Scope.convertToBusScope(buses));
-        List<Grant> grants = retrieveGrants(clientId, busesToRevoke);
-        if (grants == null || grants.isEmpty()) {
-            throw new BackplaneServerException("No grants found to revoke for buses: " + buses);
-        }
-        for(Grant grant : grants) {
-            Grant updated = new Grant(grant);
-            String remainingBuses = updated.revokeBuses(busesToRevoke.getBusesInScope());
-            if(StringUtils.isEmpty(remainingBuses)) {
-                delete(grant.getIdValue());
-            } else {
-                superSimpleDB.update(bpConfig.getTableName(BP_GRANT), Grant.class, grant, updated);
-                logger.info("Buses updated updated for grant: " + updated.getIdValue() + " to '" + remainingBuses + "'");
+        Scope busesToRevoke = new Scope(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, buses));
+        boolean changes = false;
+        for(Set<Grant> grants : retrieveClientGrants(clientId, busesToRevoke).values()) {
+            for(Grant grant : grants) {
+                Scope grantScope = grant.getAuthorizedScope();
+                Scope updatedScope = Scope.revoke(grantScope, busesToRevoke);
+                if (updatedScope.equals(grantScope)) continue;
+                if ( ! updatedScope.isAuthorizationRequired() ) {
+                    logger.info("Revoked all buses from grant: " + grant.getIdValue());
+                    delete(grant.getIdValue());
+                } else {
+                    Grant updated = new Grant.Builder(grant, grant.getState()).scope(updatedScope).buildGrant();
+                    superSimpleDB.update(bpConfig.getTableName(BP_GRANT), Grant.class, grant, updated);
+                    logger.info("Buses updated updated for grant: " + updated.getIdValue() + " remaining scope: '" + updated.getAuthorizedScope() + "'");
+                }
+                changes = true;
             }
+        }
+        if ( ! changes ) {
+            throw new BackplaneServerException("No grants found to revoke for buses: " + buses);
         }
     }
 
     // - PRIVATE
 
     private static final Logger logger = Logger.getLogger(GrantDAO.class);
+
+    private final DaoFactory daoFactory;
 
 }

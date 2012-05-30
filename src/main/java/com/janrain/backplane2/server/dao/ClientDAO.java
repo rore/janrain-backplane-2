@@ -17,13 +17,16 @@
 package com.janrain.backplane2.server.dao;
 
 import com.janrain.backplane2.server.Grant;
+import com.janrain.backplane2.server.Scope;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.backplane2.server.config.Client;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
+import com.janrain.oauth2.TokenException;
 import org.apache.log4j.Logger;
 
-import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_CLIENTS;
 
@@ -32,8 +35,9 @@ import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTabl
  */
 public class ClientDAO extends DAO<Client> {
 
-    ClientDAO(SuperSimpleDB superSimpleDB, Backplane2Config bpConfig) {
+    ClientDAO(SuperSimpleDB superSimpleDB, Backplane2Config bpConfig, DaoFactory daoFactory) {
         super(superSimpleDB, bpConfig);
+        this.daoFactory = daoFactory;
     }
 
     @Override
@@ -46,19 +50,21 @@ public class ClientDAO extends DAO<Client> {
         try {
             logger.info("=== BEGIN CLIENT DELETE ===");
             superSimpleDB.delete(bpConfig.getTableName(BP_CLIENTS), id);
-            GrantDAO grantDao = new GrantDAO(superSimpleDB, bpConfig);
-            TokenDAO tokenDao = new TokenDAO(superSimpleDB, bpConfig);
-            List<Grant> grants = grantDao.retrieveGrants(id, null);
-            for (Grant grant : grants) {
-                grantDao.delete(grant.getIdValue());
-                tokenDao.revokeTokenByGrant(grant);
-                logger.info("Deleted grant " + grant.getIdValue() + " associated with client " + grant.getGrantClientId());
+            Map<Scope,Set<Grant>> clientGrants = daoFactory.getGrantDao().retrieveClientGrants(id, null);
+            for(Set<Grant> grants : clientGrants.values()) {
+                for (Grant grant : grants) {
+                    daoFactory.getGrantDao().delete(grant.getIdValue());
+                }
             }
             logger.info("Client " + id + " deleted successfully");
             logger.info("=== END CLIENT DELETE ===");
-        } catch (SimpleDBException sdbe) {
+        } catch (SimpleDBException e) {
             logger.error("An exception occurred during an atomic operation.  Corruption may have occurred while removing client: " + id);
-            throw sdbe;
+            throw e;
+        } catch (TokenException e) {
+            // should not happen
+            logger.error("An exception occurred during an atomic operation.  Corruption may have occurred while removing client: " + id);
+            throw new SimpleDBException(e);
         }
     }
 
@@ -70,6 +76,6 @@ public class ClientDAO extends DAO<Client> {
 
     private static final Logger logger = Logger.getLogger(ClientDAO.class);
 
+    private final DaoFactory daoFactory;
+
 }
-
-

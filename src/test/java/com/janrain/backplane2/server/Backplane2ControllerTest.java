@@ -24,12 +24,11 @@ import com.janrain.backplane2.server.config.User;
 import com.janrain.backplane2.server.dao.DaoFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
+import com.janrain.commons.util.Pair;
 import com.janrain.crypto.ChannelUtil;
 import com.janrain.crypto.HmacHashUtils;
-import com.janrain.oauth2.OAuth2;
-import com.janrain.oauth2.TokenException;
+import com.janrain.oauth2.*;
 import org.apache.catalina.util.Base64;
-
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
@@ -52,9 +51,7 @@ import java.io.UnsupportedEncodingException;
 import java.util.*;
 
 import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_MESSAGES;
-import static com.janrain.oauth2.OAuth2.OAUTH2_ACCESS_TOKEN_PARAM_NAME;
-import static com.janrain.oauth2.OAuth2.OAUTH2_TOKEN_GRANT_TYPE_AUTH_CODE;
-import static com.janrain.oauth2.OAuth2.OAUTH2_TOKEN_RESPONSE_TYPE_CODE;
+import static com.janrain.oauth2.OAuth2.*;
 import static org.junit.Assert.*;
 
 /**
@@ -81,6 +78,8 @@ public class Backplane2ControllerTest {
     private DaoFactory daoFactory;
 
     private static final Logger logger = Logger.getLogger(Backplane2ControllerTest.class);
+
+    private static final int TOKEN_EXPIRES_SECONDS = 600;
 
     ArrayList<String> createdMessageKeys = new ArrayList<String>();
     ArrayList<String> createdTokenKeys = new ArrayList<String>();
@@ -189,7 +188,7 @@ public class Backplane2ControllerTest {
             for (String key:this.createdGrantsKeys) {
                 logger.info("deleting Grant " + key);
                 Grant grant = daoFactory.getGrantDao().retrieveGrant(key);
-                daoFactory.getTokenDao().revokeTokenByGrant(grant);
+                daoFactory.getTokenDao().revokeTokenByGrant(grant.getIdValue());
                 daoFactory.getGrantDao().delete(key);
             }
 
@@ -310,11 +309,11 @@ public class Backplane2ControllerTest {
 
         // our tests won't include the callback string in this test so don't expect it
         assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
-                matches("[{]\\s*\"access_token\":\\s*\".{22}+\",\\s*" +
-                        "\"expires_in\":\\s*604800,\\s*" +
-                        "\"token_type\":\\s*\"Bearer\",\\s*" +
-                        "\"bus\":\\s*\"testbus\",\\s*" +
-                        "\"scope\":\\s*\"channel:.{32}+\"\\s*[}]"));
+                matches("[{]\"token_type\":\\s*\"Bearer\",\\s*" +
+                        "\\s*\"access_token\":\\s*\".{22}\",\\s*" +
+                        "\"expires_in\":\\s*604[0-9]{3},\\s*" +
+                        "\"scope\":\"bus:\\s*testbus\\s*channel:.{32}\",\\s*" +
+                        "\"refresh_token\":\".{22}\"\\s*[}]"));
 
         // cleanup test token
         String result = response.getContentAsString();
@@ -471,9 +470,7 @@ public class Backplane2ControllerTest {
 
         //create grant for test
 
-        Grant grant = new Grant("fakeOwnerId", testClient.getClientId(),"test");
-        // set code to expire?
-        grant.setCodeExpirationDefault();
+        Grant grant = new Grant.Builder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE, "fakeOwnerId", testClient.getClientId(),"bus:test").buildGrant();
         this.saveGrant(grant);
 
         // because we didn't specify a bus in the "scope" parameter, the server will
@@ -489,10 +486,12 @@ public class Backplane2ControllerTest {
         //assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
 
         assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
-                matches("[{]\\s*\"access_token\":\\s*\".{22}+\",\\s*" +
-                        "\"token_type\":\\s*\"Bearer\",\\s*" +
-                        "\"scope\":\\s*\".*\"\\s*" +
-                        "[}]"));
+                matches("[{]\"token_type\":\\s*\"Bearer\",\\s*" +
+                        "\\s*\"access_token\":\\s*\".{22}\",\\s*" +
+                        "\"expires_in\":\\s*3153[0-9]{4},\\s*" +
+                        "\"scope\":\"bus:test sticky:\\s*true\\s*\",\\s*" +
+                        "\"refresh_token\":\".{22}\"\\s*[}]"));
+
 
         Map<String,Object> msg = new ObjectMapper().readValue(response.getContentAsString(),
                 new TypeReference<Map<String,Object>>() {});
@@ -509,21 +508,14 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
 
         //create grant for test
-        Grant grant1 = new Grant("fakeOwnerId", testClient.getClientId(),"foo");
-        grant1.setCodeExpirationDefault();
+        Grant grant1 = new Grant.Builder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE, "fakeOwnerId", testClient.getClientId(),"bus:foo").buildGrant();
         this.saveGrant(grant1);
 
-        Grant grant2 = new Grant("fakeOwnerId", testClient.getClientId(), "bar");
-        grant2.setCodeExpirationDefault();
-        // next step required to make it eligible for "client credentials" access
-        grant2.setCodeUsedNow();
+        Grant grant2 = new Grant.Builder(GrantType.AUTHORIZATION_CODE, GrantState.ACTIVE, "fakeOwnerId", testClient.getClientId(), "bus:bar").buildGrant();
         this.saveGrant(grant2);
 
         // add grant with duplicate bus
-        Grant grant3 = new Grant("fakeOwernId", testClient.getClientId(), "foo");
-        grant3.setCodeExpirationDefault();
-        // make it eligible for "client credentials" access
-        grant3.setCodeUsedNow();
+        Grant grant3 = new Grant.Builder(GrantType.AUTHORIZATION_CODE, GrantState.ACTIVE, "fakeOwernId", testClient.getClientId(), "bus:foo").buildGrant();
         this.saveGrant(grant3);
 
         request.setRequestURI("/v2/token");
@@ -542,15 +534,16 @@ public class Backplane2ControllerTest {
         //assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
 
         assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
-                matches("[{]\\s*\"access_token\":\\s*\".{22}+\",\\s*" +
-                        "\"token_type\":\\s*\"Bearer\",\\s*" +
-                        "\"scope\":\\s*\".*\"\\s*" +
-                        "[}]"));
+                matches("[{]\"token_type\":\\s*\"Bearer\",\\s*" +
+                        "\\s*\"access_token\":\\s*\".{22}\",\\s*" +
+                        "\"expires_in\":\\s*3153[0-9]{4},\\s*" +
+                        "\"scope\":\"bus:foo\",\\s*" +
+                        "\"refresh_token\":\".{22}\"\\s*[}]"));
 
         ObjectMapper mapper = new ObjectMapper();
         Map<String,Object> msg = mapper.readValue(response.getContentAsString(), new TypeReference<Map<String,Object>>() {});
 
-        assertFalse("Invalid scope: " + (String)msg.get("scope"), msg.get("scope").toString().contains("bar"));
+        assertFalse("Invalid scope: " + msg.get("scope"), msg.get("scope").toString().contains("bar"));
 
         //
         // make the call again with "client_credentials" and verify that scope covers all grants
@@ -562,28 +555,25 @@ public class Backplane2ControllerTest {
         request.setMethod("POST");
         request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS);
 
+        setOAuthBasicAuthentication(request, testClient.get(User.Field.USER), "secret");
         // because we didn't use a "code", the server will
         // return the scope it determined from grant1 and grant2
-
-        request.setParameter("code", "");
-        request.setParameter("redirect_uri", testClient.get(Client.ClientField.REDIRECT_URI));
-        setOAuthBasicAuthentication(request, testClient.get(User.Field.USER), "secret");
-
         handlerAdapter.handle(request, response, controller);
         logger.info("testTokenGrantByCodeScopeIsolation() => " + response.getContentAsString());
         //assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
 
         assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
-                matches("[{]\\s*\"access_token\":\\s*\".{22}+\",\\s*" +
-                        "\"token_type\":\\s*\"Bearer\",\\s*" +
-                        "\"scope\":\\s*\".*\"\\s*" +
-                        "[}]"));
+                matches("[{]\"token_type\":\\s*\"Bearer\",\\s*" +
+                        "\\s*\"access_token\":\\s*\".{22}\",\\s*" +
+                        "\"expires_in\":\\s*3153[0-9]{4},\\s*" +
+                        "\"scope\":\"bus:foo bus:bar\",\\s*" +
+                        "\"refresh_token\":\".{22}\"\\s*[}]"));
 
         msg = mapper.readValue(response.getContentAsString(), new TypeReference<Map<String,Object>>() {});
         String scope = msg.get("scope").toString();
 
         assertTrue("Invalid scope: " + scope, scope.contains("bar") && scope.contains("foo") );
-        assertTrue(new Scope(scope).getBusesInScope().size() == 2);
+        assertTrue(new Scope(scope).getScopeFieldValues(BackplaneMessage.Field.BUS).size() == 2);
 
 
     }
@@ -606,8 +596,8 @@ public class Backplane2ControllerTest {
 
         String buses = org.springframework.util.StringUtils.collectionToDelimitedString(randomBuses, " ");
 
-        Grant grant = new Grant("fakeOwnerId", testClient.getClientId(),buses);
-        grant.setCodeExpirationDefault();
+        Grant grant = new Grant.Builder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE, "fakeOwnerId", testClient.getClientId(),
+                Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, buses)).buildGrant();
         this.saveGrant(grant);
 
         request.setRequestURI("/v2/token");
@@ -622,10 +612,12 @@ public class Backplane2ControllerTest {
         //assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
 
         assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
-                matches("[{]\\s*\"access_token\":\\s*\".{22}+\",\\s*" +
-                        "\"token_type\":\\s*\"Bearer\",\\s*" +
-                        "\"scope\":\\s*\".*\"\\s*" +
-                        "[}]"));
+                matches("[{]\"token_type\":\\s*\"Bearer\",\\s*" +
+                        "\\s*\"access_token\":\\s*\".{22}\",\\s*" +
+                        "\"expires_in\":\\s*3153[0-9]{4},\\s*" +
+                        "\"scope\":\\s*\".*\",\\s*" +
+                        "\"refresh_token\":\".{22}\"\\s*[}]"));
+
 
         // attempt to read a message on one of the buses
 
@@ -633,7 +625,7 @@ public class Backplane2ControllerTest {
         Map<String,Object> reply = mapper.readValue(response.getContentAsString(), new TypeReference<Map<String,Object>>() {});
         String returnedToken = (String)reply.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME);
         Scope scope = new Scope((String)reply.get("scope"));
-        assertTrue(scope.getBusesInScope().size() == numBuses);
+        assertTrue(scope.getScopeFieldValues(BackplaneMessage.Field.BUS).size() == numBuses);
 
         Map<String,Object> msg = mapper.readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {});
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), randomBuses.get(randomBuses.size()-1));
@@ -663,8 +655,7 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
 
         //create grant for test
-        Grant grant = new Grant("fakeOwnerId", testClient.getClientId(),"test");
-        grant.setCodeExpirationDefault();
+        Grant grant = new Grant.Builder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE, "fakeOwnerId", testClient.getClientId(),"bus:test").buildGrant();
         this.saveGrant(grant);
         logger.info("issued AuthCode " + grant.getIdValue());
 
@@ -680,10 +671,11 @@ public class Backplane2ControllerTest {
         //assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
 
         assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
-                matches("[{]\\s*\"access_token\":\\s*\".{22}+\",\\s*" +
-                        "\"token_type\":\\s*\"Bearer\",\\s*" +
-                        "\"scope\":\\s*\".*\"\\s*" +
-                        "[}]"));
+                matches("[{]\"token_type\":\\s*\"Bearer\",\\s*" +
+                        "\\s*\"access_token\":\\s*\".{22}\",\\s*" +
+                        "\"expires_in\":\\s*3153[0-9]{4},\\s*" +
+                        "\"scope\":\"bus:test\",\\s*" +
+                        "\"refresh_token\":\".{22}\"\\s*[}]"));
 
         // now, try to use the same code again
         refreshRequestAndResponse();
@@ -696,7 +688,7 @@ public class Backplane2ControllerTest {
         handlerAdapter.handle(request, response, controller);
         logger.info("testTokenEndPointClientUsedCode() ====> " + response.getContentAsString());
 
-        assertTrue(daoFactory.getGrantDao().retrieveGrant(grant.getIdValue()).isCodeUsed());
+        assertTrue(daoFactory.getGrantDao().retrieveGrant(grant.getIdValue()).getState() == GrantState.ACTIVE);
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
 
 
@@ -712,8 +704,7 @@ public class Backplane2ControllerTest {
         request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_AUTH_CODE);
 
         //create grant for test
-        Grant grant = new Grant("fakeOwnerId", testClient.getClientId(),"test");
-        grant.setCodeIssuedNow();
+        Grant grant = new Grant.Builder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE, "fakeOwnerId", testClient.getClientId(),"bus:test").buildGrant();
         this.saveGrant(grant);
 
         request.setParameter("code", grant.getIdValue());
@@ -743,8 +734,7 @@ public class Backplane2ControllerTest {
         request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_AUTH_CODE);
 
         //create grant for test
-        Grant grant = new Grant("fakeOwnerId", testClient.getClientId(),"mybus.com");
-        grant.setCodeIssuedNow();
+        Grant grant = new Grant.Builder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE, "fakeOwnerId", testClient.getClientId(),"bus:mybus.com").buildGrant();
         this.saveGrant(grant);
 
         request.setParameter("code", grant.getIdValue());
@@ -780,8 +770,7 @@ public class Backplane2ControllerTest {
         request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_AUTH_CODE);
 
         //create grant for test
-        Grant grant = new Grant("fakeOwnerId", testClient.getClientId(),"test");
-        grant.setCodeIssuedNow();
+        Grant grant = new Grant.Builder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE, "fakeOwnerId", testClient.getClientId(),"bus:test").buildGrant();
         this.saveGrant(grant);
 
         request.setParameter("code", grant.getIdValue());
@@ -852,26 +841,23 @@ public class Backplane2ControllerTest {
     @Test
     public void testMessageEndPoint() throws Exception {
 
-        refreshRequestAndResponse();
-
         // Create appropriate token
-        TokenAnonymous token = new TokenAnonymous("mybus.com", null,
-                new Date(System.currentTimeMillis() + TokenAnonymous.TEST_EXPIRES_SECONDS * 1000));
-        this.saveToken(token);
+        String tokenBus = "testbus";
+        Pair<String,String> tokenAndChannel = anonTokenRequest(tokenBus);
 
         // Seed message
         ObjectMapper mapper = new ObjectMapper();
         Map<String,Object> msg = mapper.readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {});
-
-        msg.put(BackplaneMessage.Field.BUS.getFieldName(), token.getBus());
-        msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), token.getChannelName());
+        msg.put(BackplaneMessage.Field.BUS.getFieldName(), tokenBus);
+        msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokenAndChannel.getRight());
         BackplaneMessage message = new BackplaneMessage(testClient.getSourceUrl(), msg);
         this.saveMessage(message);
 
         // Make the call
+        refreshRequestAndResponse();
         request.setRequestURI("/v2/message/" + message.getIdValue());
         request.setMethod("GET");
-        request.setParameter(OAUTH2_ACCESS_TOKEN_PARAM_NAME, token.getIdValue());
+        request.setParameter(OAUTH2_ACCESS_TOKEN_PARAM_NAME, tokenAndChannel.getLeft());
         handlerAdapter.handle(request, response, controller);
         logger.info("testMessageEndPoint()  => " + response.getContentAsString());
        // assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
@@ -896,30 +882,27 @@ public class Backplane2ControllerTest {
         assertTrue("Expected " + HttpServletResponse.SC_OK + " but received: " + response.getStatus(), response.getStatus() == HttpServletResponse.SC_OK);
     }
 
-
     @Test
     public void testMessageEndPointPAL() throws Exception {
 
-        refreshRequestAndResponse();
-
         // Create appropriate token
-        TokenPrivileged token = new TokenPrivileged("fooClient", testClient.getSourceUrl(), "mybus.com", null,
-                new Date(System.currentTimeMillis() + 300l * 1000l));
-        this.saveToken(token);
+        String testBus = "testbus";
+        saveGrant(new Grant.Builder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.getClientId(),"bus:" + testBus).buildGrant());
+        String token = privTokenRequest(testBus);
 
         // Seed message
         ObjectMapper mapper = new ObjectMapper();
         Map<String,Object> msg = mapper.readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {});
-
-        msg.put(BackplaneMessage.Field.BUS.getFieldName(), "mybus.com");
+        msg.put(BackplaneMessage.Field.BUS.getFieldName(), testBus);
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), "randomchannel");
         BackplaneMessage message = new BackplaneMessage(testClient.getSourceUrl(), msg);
         this.saveMessage(message);
 
         // Make the call
+        refreshRequestAndResponse();
         request.setRequestURI("/v2/message/" + message.getIdValue());
         request.setMethod("GET");
-        setOauthBearerTokenAuthorization(request, token.getIdValue());
+        setOauthBearerTokenAuthorization(request, token);
         handlerAdapter.handle(request, response, controller);
         logger.info("testMessageEndPointPAL()   => " + response.getContentAsString());
        // assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
@@ -947,18 +930,16 @@ public class Backplane2ControllerTest {
                         "[}]"));
 
         assertTrue("Expected " + HttpServletResponse.SC_OK + " but received: " + response.getStatus(), response.getStatus() == HttpServletResponse.SC_OK);
-
     }
 
     @Test
     public void testMessagesEndPointPAL() throws Exception {
 
-        refreshRequestAndResponse();
-
         // Create appropriate token
-        TokenPrivileged token = new TokenPrivileged("fooClient", testClient.getSourceUrl(), "this.com that.com",
-                "bus:this.com bus:that.com", new Date(System.currentTimeMillis() + 300l * 1000l));
-        this.saveToken(token);
+        String testBuses = "this.com that.com";
+        saveGrant(new Grant.Builder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.getClientId(),
+                Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, testBuses)).buildGrant());
+        String token = privTokenRequest(testBuses);
 
         // Seed 2 messages
         ObjectMapper mapper = new ObjectMapper();
@@ -975,9 +956,10 @@ public class Backplane2ControllerTest {
         this.saveMessage(message2);
 
          // Make the call
+        refreshRequestAndResponse();
         request.setRequestURI("/v2/messages");
         request.setMethod("GET");
-        setOauthBearerTokenAuthorization(request, token.getIdValue());
+        setOauthBearerTokenAuthorization(request, token);
         handlerAdapter.handle(request, response, controller);
         logger.info("testMessagesEndPointPAL()   => " + response.getContentAsString());
 
@@ -991,33 +973,31 @@ public class Backplane2ControllerTest {
 
         logger.info("TEST: testMessagesEndPointRegular() =================");
 
-        refreshRequestAndResponse();
-
         // Create appropriate token
-        TokenAnonymous token = new TokenAnonymous("b.com", null,
-                new Date(System.currentTimeMillis() + TokenAnonymous.TEST_EXPIRES_SECONDS * 1000));
-        this.saveToken(token);
+        String testBus = "testbus";
+        Pair<String,String> tokenAndchannel = anonTokenRequest(testBus);
 
         // Seed 2 messages
         ObjectMapper mapper = new ObjectMapper();
         Map<String,Object> msg = mapper.readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {});
 
-        msg.put(BackplaneMessage.Field.BUS.getFieldName(), "a.com");
-        msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), token.getChannelName());
+        msg.put(BackplaneMessage.Field.BUS.getFieldName(), "otherbus");
+        msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokenAndchannel.getRight());
         BackplaneMessage message1 = new BackplaneMessage(testClient.getSourceUrl(), msg);
         this.saveMessage(message1);
 
-        msg.put(BackplaneMessage.Field.BUS.getFieldName(), "b.com");
+        msg.put(BackplaneMessage.Field.BUS.getFieldName(), "testbus");
         // same channel / different bus should never happen in production with true random, server-generated channel name
-        msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), token.getChannelName());
+        msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokenAndchannel.getRight());
         BackplaneMessage message2 = new BackplaneMessage(testClient.getSourceUrl(), msg);
         this.saveMessage(message2);
 
          // Make the call
+        refreshRequestAndResponse();
         request.setRequestURI("/v2/messages");
         request.setMethod("GET");
         request.setParameter("block", "15");
-        request.setParameter(OAUTH2_ACCESS_TOKEN_PARAM_NAME, token.getIdValue());
+        request.setParameter(OAUTH2_ACCESS_TOKEN_PARAM_NAME, tokenAndchannel.getLeft());
         //request.setParameter("since", message1.getIdValue());
         handlerAdapter.handle(request, response, controller);
         logger.info("testMessagesEndPointRegular() => " + response.getContentAsString());
@@ -1040,44 +1020,37 @@ public class Backplane2ControllerTest {
 
         // Create inappropriate token
         try {
-            TokenPrivileged token = new TokenPrivileged("fooClient", testClient.getSourceUrl(),
-                    "mybus.com yourbus.com", "bus:invalidbus.com", new Date(System.currentTimeMillis() + 300l * 1000l));
+            privTokenRequest("mybus.com yourbus.com invalidbus.com");
         } catch (TokenException bpe) {
             //expected
             return;
         }
 
         fail("Token requested with invalid scope should have failed");
-
     }
 
     @Test
     public void testMessagesPostEndPointPAL() throws Exception {
 
-        refreshRequestAndResponse();
-
         // Create source token for the channel
-        TokenAnonymous token1 = new TokenAnonymous("mybus.com", "",
-                new Date(System.currentTimeMillis() + TokenAnonymous.TEST_EXPIRES_SECONDS * 1000l));
-        // override the random channel name for our test channel
-        token1.put(TokenAnonymous.Field.CHANNEL.getFieldName(), "testchannel");
-        this.saveToken(token1);
+        Pair<String,String> tokenAndChannel = anonTokenRequest("testbus");
 
         // Create appropriate token
-        TokenPrivileged token2 = new TokenPrivileged("clientFoo", testClient.getSourceUrl(),
-                "mybus.com yourbus.com", "bus:yourbus.com", new Date(System.currentTimeMillis() + 300l * 1000l));
-        this.saveToken(token2);
+        saveGrant(new Grant.Builder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.getClientId(),
+                Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, "testbus otherbus")).buildGrant());
+        String token2 = privTokenRequest("testbus otherbus");
 
         // Make the call
+        refreshRequestAndResponse();
         request.setRequestURI("/v2/message");
         request.setMethod("POST");
-        setOauthBearerTokenAuthorization(request, token2.getIdValue());
+        setOauthBearerTokenAuthorization(request, token2);
         request.addHeader("Content-type", "application/json");
-        //request.setContentType("application/json");
-        //request.setParameter("messages", TEST_MSG_1);
         HashMap<String, Object> msg = new HashMap<String, Object>();
-
-        msg.put("message", new ObjectMapper().readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {}));
+        Map<String,Object> postMessage = new ObjectMapper().readValue(TEST_MSG_1, new TypeReference<Map<String, Object>>(){});
+        postMessage.put(BackplaneMessage.Field.BUS.getFieldName(), "testbus");
+        postMessage.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokenAndChannel.getRight());
+        msg.put("message", postMessage);
         String msgsString = new ObjectMapper().writeValueAsString(msg);
         logger.info(msgsString);
         request.setContent(msgsString.getBytes());
@@ -1096,29 +1069,28 @@ public class Backplane2ControllerTest {
 
     @Test
     public void testMessagePost() throws Exception {
-        refreshRequestAndResponse();
 
         // Create source token for the channel
-        TokenAnonymous token1 = new TokenAnonymous("mybus.com", "",
-                new Date(System.currentTimeMillis() + TokenAnonymous.TEST_EXPIRES_SECONDS * 1000l));
-        // override the random channel name for our test channel
-        token1.put(TokenAnonymous.Field.CHANNEL.getFieldName(), "testchannel");
-        this.saveToken(token1);
+        Pair<String,String> tokenAndChannel = anonTokenRequest("testbus");
 
         // Create appropriate token
-        TokenPrivileged token2 = new TokenPrivileged("clientFoo", testClient.getSourceUrl(),
-                "mybus.com yourbus.com", "bus:yourbus.com bus:mybus.com", new Date(System.currentTimeMillis() + 300l * 1000l));
-        this.saveToken(token2);
+        saveGrant(new Grant.Builder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.getClientId(),
+                Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, "testbus otherbus")).buildGrant());
+        String token2 = privTokenRequest("testbus otherbus");
 
         // Make the call
+        refreshRequestAndResponse();
         request.setRequestURI("/v2/message");
         request.setMethod("POST");
-        setOauthBearerTokenAuthorization(request, token2.getIdValue());
+        setOauthBearerTokenAuthorization(request, token2);
         request.addHeader("Content-type", "application/json");
         //request.setContentType("application/json");
         //request.setParameter("messages", TEST_MSG_1);
         HashMap<String, Object> msg = new HashMap<String, Object>();
-        msg.put("message", new ObjectMapper().readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {}));
+        Map<String,Object> postMessage1 = new ObjectMapper().readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>(){});
+        postMessage1.put(BackplaneMessage.Field.BUS.getFieldName(), "testbus");
+        postMessage1.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokenAndChannel.getRight());
+        msg.put("message", postMessage1);
         String msgString = new ObjectMapper().writeValueAsString(msg);
         logger.info(msgString);
         request.setContent(msgString.getBytes());
@@ -1136,12 +1108,15 @@ public class Backplane2ControllerTest {
         // Make the call
         request.setRequestURI("/v2/message");
         request.setMethod("POST");
-        setOauthBearerTokenAuthorization(request, token2.getIdValue());
+        setOauthBearerTokenAuthorization(request, token2);
         request.addHeader("Content-type", "application/json");
         //request.setContentType("application/json");
         //request.setParameter("messages", TEST_MSG_1);
         msg = new HashMap<String, Object>();
-        msg.put("message", new ObjectMapper().readValue(TEST_MSG_2, new TypeReference<Map<String,Object>>() {}));
+        Map<String,Object> postMessage2 = new ObjectMapper().readValue(TEST_MSG_2, new TypeReference<Map<String,Object>>(){});
+        postMessage2.put(BackplaneMessage.Field.BUS.getFieldName(), "otherbus");
+        postMessage2.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokenAndChannel.getRight());
+        msg.put("message", postMessage2);
         msgString = new ObjectMapper().writeValueAsString(msg);
         logger.info(msgString);
         request.setContent(msgString.getBytes());
@@ -1152,9 +1127,8 @@ public class Backplane2ControllerTest {
             assertTrue("This test should have failed due to attempt to bind a channel to two buses", false);
         } catch (InvalidRequestException expected) {
             // should fail
-            assertTrue(expected.getMessage().contains("Invalid binding"));
+            assertTrue(expected.getMessage().contains("Invalid bus - channel binding"));
         }
-
     }
 
     /**
@@ -1164,33 +1138,29 @@ public class Backplane2ControllerTest {
 
     @Test
     public void testMessagePost2() throws Exception {
-        refreshRequestAndResponse();
 
         // Create source token for the channel
-        TokenAnonymous token1 = new TokenAnonymous("mybus.com", "",
-                new Date(System.currentTimeMillis() + TokenAnonymous.TEST_EXPIRES_SECONDS * 1000l));
-        // override the random channel name for our test channel
-        token1.put(TokenAnonymous.Field.CHANNEL.getFieldName(), "testchannel");
-        this.saveToken(token1);
+        String testBus = "testbus";
+        Pair<String,String> tokenAndChannel = anonTokenRequest(testBus);
 
         // Create appropriate token
-        TokenPrivileged token2 = new TokenPrivileged("clientFoo", testClient.getSourceUrl(),
-                "mybus.com yourbus.com", "bus:yourbus.com bus:mybus.com", new Date(System.currentTimeMillis() + 300l * 1000l));
-        this.saveToken(token2);
+        saveGrant(new Grant.Builder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.getClientId(),
+                Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, "testbus otherbus")).buildGrant());
+        String token2 = privTokenRequest("testbus otherbus");
 
          // Seed 1 message
         ObjectMapper mapper = new ObjectMapper();
         Map<String,Object> msg = mapper.readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {});
-
-        msg.put(BackplaneMessage.Field.BUS.getFieldName(), token1.getBus());
-        msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), token1.getChannelName());
+        msg.put(BackplaneMessage.Field.BUS.getFieldName(), testBus);
+        msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokenAndChannel.getRight());
         BackplaneMessage message1 = new BackplaneMessage(testClient.getSourceUrl(), msg);
         this.saveMessage(message1);
 
         // Make the call
+        refreshRequestAndResponse();
         request.setRequestURI("/v2/message/" + message1.getIdValue());
         request.setMethod("GET");
-        setOauthBearerTokenAuthorization(request, token2.getIdValue());
+        setOauthBearerTokenAuthorization(request, token2);
 
         handlerAdapter.handle(request, response, controller);
         logger.info(response.getContentAsString());
@@ -1200,34 +1170,33 @@ public class Backplane2ControllerTest {
 
     @Test
     public void testMessagePost3() throws Exception {
-        refreshRequestAndResponse();
 
         // Create source token for the channel
-        TokenAnonymous token1 = new TokenAnonymous("mybus.com", "",
-                new Date(System.currentTimeMillis() + TokenAnonymous.TEST_EXPIRES_SECONDS * 1000l));
-        // override the random channel name for our test channel
-        token1.put(TokenAnonymous.Field.CHANNEL.getFieldName(), "testchannel");
-        this.saveToken(token1);
+        String testBus = "testbus";
+        Pair<String,String> tokenAndChannel = anonTokenRequest(testBus);
 
-        // Create appropriate token with 5 minute ttl
-        TokenPrivileged token2 = new TokenPrivileged("clientFoo", testClient.getSourceUrl(),
-                "mybus.com yourbus.com", "bus:yourbus.com bus:mybus.com",
-                new Date(System.currentTimeMillis() + TokenPrivileged.TEST_EXPIRES_SECONDS * 1000l));
-        this.saveToken(token2);
+        // Create appropriate token
+        saveGrant(new Grant.Builder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.getClientId(),
+                Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, "testbus otherbus")).buildGrant());
+        String token2 = privTokenRequest("testbus otherbus");
 
         boolean success = false;
         int numberOfPostedMessages = 0;
 
+        refreshRequestAndResponse();
         for (int i=0; i < bpConfig.getDefaultMaxMessageLimit() + 1; i++) {
             // Make the call
             request.setRequestURI("/v2/message");
             request.setMethod("POST");
-            setOauthBearerTokenAuthorization(request, token2.getIdValue());
+            setOauthBearerTokenAuthorization(request, token2);
             request.addHeader("Content-type", "application/json");
             //request.setContentType("application/json");
             //request.setParameter("messages", TEST_MSG_1);
             HashMap<String, Object> msg = new HashMap<String, Object>();
-            msg.put("message", new ObjectMapper().readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {}));
+            Map<String,Object>postMesssage = new ObjectMapper().readValue(TEST_MSG_1, new TypeReference<Map<String, Object>>(){});
+            postMesssage.put(BackplaneMessage.Field.BUS.getFieldName(), testBus);
+            postMesssage.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokenAndChannel.getRight());
+            msg.put("message", postMesssage);
             String msgsString = new ObjectMapper().writeValueAsString(msg);
             logger.info(msgsString);
             request.setContent(msgsString.getBytes());
@@ -1266,46 +1235,33 @@ public class Backplane2ControllerTest {
 
         // Create auth
         ArrayList<Grant> grants = new ArrayList<Grant>();
-        Grant grant1 = new Grant("fakeOwnerId", testClient.getClientId(), "mybus.com");
-        Grant grant2 = new Grant("fakeOwnerId", testClient.getClientId(), "thisbus.com");
+        Grant grant1 = new Grant.Builder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.getClientId(), "bus:mybus.com").buildGrant();
+        Grant grant2 = new Grant.Builder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.getClientId(), "bus:thisbus.com").buildGrant();
         this.saveGrant(grant1);
         this.saveGrant(grant2);
         grants.add(grant1);
         grants.add(grant2);
 
         // Create appropriate token
-        TokenPrivileged token = new TokenPrivileged(testClient.getClientId(), testClient.getSourceUrl(), grants, "");
-        grant1.addIssuedTokenId(token.getIdValue());
-        daoFactory.getGrantDao().persist(grant1);
-        grant2.addIssuedTokenId(token.getIdValue());
-        daoFactory.getGrantDao().persist(grant2);
-        saveToken(token);
-
-        // quick validation
-        Grant temp = daoFactory.getGrantDao().retrieveGrant(grant1.getIdValue());
-        assertTrue(temp.isIssuedToken(token.getIdValue()));
-
-        temp = daoFactory.getGrantDao().retrieveGrant(grant2.getIdValue());
-        assertTrue(temp.isIssuedToken(token.getIdValue()));
+        String  token = privTokenRequest("");
 
         // Revoke token based on one code
-        daoFactory.getTokenDao().revokeTokenByGrant(daoFactory.getGrantDao().retrieveGrant(grant1.getIdValue()));
+        daoFactory.getTokenDao().revokeTokenByGrant(grant1.getIdValue());
 
         try {
             // Now the token should fail
             // Make the call
             request.setRequestURI("/v2/messages");
             request.setMethod("GET");
-            request.setParameter(OAUTH2_ACCESS_TOKEN_PARAM_NAME, token.getIdValue());
+            request.setParameter(OAUTH2_ACCESS_TOKEN_PARAM_NAME, token);
             handlerAdapter.handle(request, response, controller);
             logger.info("testGrantAndRevoke() => " + response.getContentAsString());
 
             assertTrue(HttpServletResponse.SC_FORBIDDEN == response.getStatus());
             assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
         } finally {
-            daoFactory.getTokenDao().delete(token.getIdValue());
+            daoFactory.getTokenDao().delete(token);
         }
-
     }
 
     @Test
@@ -1432,10 +1388,10 @@ public class Backplane2ControllerTest {
             assertNotNull(tokenId);
 
             Grant grant = daoFactory.getGrantDao().retrieveGrant(code);
-            TokenPrivileged token = (TokenPrivileged) daoFactory.getTokenDao().retrieveToken(tokenId);
+            Token token = daoFactory.getTokenDao().retrieveToken(tokenId);
 
-            assertTrue(grant.getGrantClientId().equals(token.getClientId()));
-            assertTrue(grant.getBusOwnerId().equals(user.getIdValue()));
+            assertTrue(grant.get(Grant.GrantField.ISSUED_TO_CLIENT_ID).equals(token.get(Token.TokenField.ISSUED_TO_CLIENT_ID)));
+            assertTrue(grant.get(Grant.GrantField.ISSUED_BY_USER_ID).equals(user.getIdValue()));
 
 
         } finally {
@@ -1449,29 +1405,31 @@ public class Backplane2ControllerTest {
     @Test
     public void testMessageOrder() throws Exception {
 
-        refreshRequestAndResponse();
+        // Create source token for the channel
+        String testBus = "testbus";
+        Pair<String,String> tokenAndChannel = anonTokenRequest(testBus);
 
         // Create appropriate token
-        String bus = ChannelUtil.randomString(10) + ".com";
+        saveGrant(new Grant.Builder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.getClientId(),
+                Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, "testbus otherbus")).buildGrant());
+        String token2 = privTokenRequest("testbus otherbus");
 
-        TokenPrivileged token = new TokenPrivileged("fooClient", testClient.getSourceUrl(),
-                bus + " yourbus.com", "bus:" + bus, new Date(System.currentTimeMillis() + 300l * 1000l));
-        this.saveToken(token);
 
         ObjectMapper mapper = new ObjectMapper();
         Map<String,Object> msg = mapper.readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {});
+        msg.put(BackplaneMessage.Field.BUS.getFieldName(), testBus);
+        msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokenAndChannel.getRight());
 
         // seed messages
         long numMessages = bpConfig.getDefaultMaxMessageLimit();
         ArrayList<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
-        String channel = ChannelUtil.randomString(TokenAnonymous.CHANNEL_NAME_LENGTH);
 
-        for (int i=0;i < numMessages; i++) {
-            msg.put(BackplaneMessage.Field.BUS.getFieldName(), bus);
-            msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), channel);
-            BackplaneMessage message = new BackplaneMessage(testClient.getSourceUrl(), msg);
-            messages.add(message);
+        for (int i=0;i <= numMessages; i++) {
+            messages.add(new BackplaneMessage(testClient.getSourceUrl(), msg));
         }
+
+        // use #0 to set the 'since' from server time, don't count #0
+        String since = messages.iterator().next().get(BackplaneMessage.Field.ID);
 
         // reverse the list
         Collections.reverse(messages);
@@ -1483,7 +1441,6 @@ public class Backplane2ControllerTest {
         // Make the call
         List<Map<String,Object>> allMsgs = new ArrayList<Map<String, Object>>();
         boolean moreMessages = false;
-        String since = "";
         do {
             refreshRequestAndResponse();
             request.setRequestURI("/v2/messages");
@@ -1491,7 +1448,7 @@ public class Backplane2ControllerTest {
             if (org.apache.commons.lang.StringUtils.isNotBlank(since)) {
                 request.setParameter("since", since);
             }
-            setOauthBearerTokenAuthorization(request, token.getIdValue());
+            setOauthBearerTokenAuthorization(request, token2);
             handlerAdapter.handle(request, response, controller);
             logger.info("testMessageOrder()  => " + response.getContentAsString());
 
@@ -1500,13 +1457,13 @@ public class Backplane2ControllerTest {
             allMsgs.addAll(returnedMsgs);
 
             moreMessages = (Boolean)returnedBody.get("moreMessages");
-            String messageURL = (String) returnedMsgs.get(returnedMsgs.size()-1).get("messageURL");
 
             //"messageURL": "https://bp.example.com/v2/message/097a5cc401001f95b45d37aca32a3bd2",
-            since = messageURL.substring(messageURL.indexOf("message/")+8);
+            String nextURL = returnedBody.get("nextURL").toString();
+            since = nextURL.substring(nextURL.indexOf("since=") + 6);
             Thread.sleep(1000);
 
-        } while ( moreMessages);
+        } while (moreMessages);
 
         assertTrue(allMsgs.size() == numMessages);
         // they should be returned in lexicographic order by ID
@@ -1528,4 +1485,22 @@ public class Backplane2ControllerTest {
     private void setOauthBearerTokenAuthorization(MockHttpServletRequest request, String accessToken) throws Exception {
         request.addHeader("Authorization", "Bearer " + accessToken);
     }
+
+    private Pair<String, String> anonTokenRequest(String tokenBus) throws TokenException {
+        refreshRequestAndResponse();
+        TokenRequest req = new AnonymousTokenRequest("bla", tokenBus, null, null, daoFactory, request, null);
+        Map<String, Object> tokenResponse = req.tokenResponse();
+        Scope scope = new Scope(tokenResponse.get(OAUTH2_SCOPE_PARAM_NAME).toString());
+        return new Pair<String, String>(tokenResponse.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME).toString(), scope.getScopeFieldValues(BackplaneMessage.Field.CHANNEL).iterator().next());
+    }
+
+    private String privTokenRequest(String buses) throws UnsupportedEncodingException, TokenException {
+        refreshRequestAndResponse();
+        Scope scope = new Scope(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, buses));
+        setOAuthBasicAuthentication(request, testClient.getClientId(), testClient.getClientSecret());
+        TokenRequest req = new AuthenticatedTokenRequest(OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS, testClient,
+                null, null, null, scope.toString(), daoFactory, request, request.getHeader("Authorization"));
+        return req.tokenResponse().get(OAUTH2_ACCESS_TOKEN_PARAM_NAME).toString();
+    }
+
 }

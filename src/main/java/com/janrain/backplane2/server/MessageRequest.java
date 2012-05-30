@@ -17,32 +17,16 @@
 package com.janrain.backplane2.server;
 
 import org.apache.commons.lang.StringUtils;
-import org.apache.log4j.Logger;
-import org.jetbrains.annotations.NotNull;
+
+import java.util.Date;
 
 /**
  * @author Tom Raney
  */
 public class MessageRequest {
 
-    public MessageRequest(String callback, @NotNull Token token) {
-        this.callback = callback;
-        this.token = token;
-        validate();
-    }
 
-    public @NotNull Token getToken() {
-        return this.token;
-    }
-
-    // - PRIVATE
-
-    private static final Logger logger = Logger.getLogger(MessageRequest.class);
-
-    private final String callback;
-    private final Token token;
-
-    private void validate() throws InvalidRequestException {
+    public MessageRequest(String callback, String since, String block)  {
 
         if (StringUtils.isNotEmpty(callback)) {
             if (!callback.matches("[\\._a-zA-Z0-9]*")) {
@@ -50,6 +34,33 @@ public class MessageRequest {
             }
         }
 
-        // is the token properly scoped for this message id?
+        this.since = StringUtils.isBlank(since) ? "" : since;
+
+        try {
+            Integer blockSeconds = Integer.valueOf(block);
+            if (blockSeconds < 0 || blockSeconds > MAX_BLOCK_SECONDS) {
+                throw new InvalidRequestException("Invalid value for block parameter (" + block + "), must be between 0 and " + MAX_BLOCK_SECONDS );
+            }
+            this.returnBefore = new Date(System.currentTimeMillis() + blockSeconds.longValue() * 1000);
+        } catch (NumberFormatException e) {
+            throw new InvalidRequestException("Invalid value for block parameter (" + block + "): " + e.getMessage() );
+        }
+
     }
+
+    public Date getReturnBefore() {
+        return returnBefore;
+    }
+
+    public String getSince() {
+        return since;
+    }
+
+    // - PRIVATE
+
+    private static final int MAX_BLOCK_SECONDS = 25;
+
+    private final Date returnBefore;
+    private final String since;
+
 }

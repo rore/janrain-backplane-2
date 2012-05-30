@@ -16,7 +16,9 @@
 
 package com.janrain.backplane2.server.provision;
 
+import com.janrain.backplane2.server.BackplaneMessage;
 import com.janrain.backplane.server.config.User;
+import com.janrain.backplane2.server.Scope;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.backplane2.server.config.Client;
 import com.janrain.backplane2.server.dao.DaoFactory;
@@ -143,7 +145,9 @@ public class ProvisioningController2Test {
         refreshRequestAndResponse();
         // create client
         String jsonUpdateClient = "{ \"admin\": \"" + user.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\"," +
-                " \"configs\": [ { \"USER\":\"" + client.getClientId() + "\", \"PWDHASH\":\"" + pw + "\"} ] }";
+                " \"configs\": [ { \"USER\":\"" + client.getClientId() + "\", \"PWDHASH\":\"" + pw + "\"," +
+                "\"SOURCE_URL\":\"" + client.getSourceUrl() + "\"," +
+                "\"REDIRECT_URI\":\"" + client.getRedirectUri() + "\"} ] }";
         logger.info("passing in json " + jsonUpdateClient);
         request.setContent(jsonUpdateClient.getBytes());
         request.addHeader("Content-type", "application/json");
@@ -152,6 +156,7 @@ public class ProvisioningController2Test {
         handlerAdapter.handle(request, response, controller);
         logger.info("testClientUpdate -> " + response.getContentAsString());
         assertTrue(response.getStatus() == HttpServletResponse.SC_OK);
+        assertTrue("client create failed: " + response.getContentAsString(), response.getContentAsString().matches("\\{\\s*\"" + client.getClientId() + "\"\\s*:\\s*\"BACKPLANE_UPDATE_SUCCESS\"\\s*\\}"));
 
         refreshRequestAndResponse();
         String listJson = "{ \"admin\": \"" + user.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\", \"entities\": [] }";
@@ -162,6 +167,7 @@ public class ProvisioningController2Test {
         request.setMethod("POST");
         handlerAdapter.handle(request, response, controller);
         logger.info("testClientList() => " + response.getContentAsString());
+        assertTrue(response.getStatus() == HttpServletResponse.SC_OK);
         assertTrue(response.getContentAsString().contains(client.getClientId()));
 
         refreshRequestAndResponse();
@@ -174,7 +180,8 @@ public class ProvisioningController2Test {
         request.setMethod("POST");
         handlerAdapter.handle(request, response, controller);
         logger.info("testClientList() => " + response.getContentAsString());
-        assertTrue(response.getContentAsString().contains(client.getClientId()));
+        assertTrue(response.getStatus() == HttpServletResponse.SC_OK);
+        assertTrue("delete failed: " + response.getContentAsString(), response.getContentAsString().matches("\\{\\s*\"" + client.getClientId() + "\"\\s*:\\s*\"BACKPLANE_DELETE_SUCCESS\"\\s*\\}"));
 
         refreshRequestAndResponse();
         logger.info("passing in json " + listJson);
@@ -184,6 +191,7 @@ public class ProvisioningController2Test {
         request.setMethod("POST");
         handlerAdapter.handle(request, response, controller);
         logger.info("testClientList() => " + response.getContentAsString());
+        assertTrue(response.getStatus() == HttpServletResponse.SC_OK);
         assertFalse(response.getContentAsString().contains(client.getClientId()));
     }
 
@@ -530,7 +538,8 @@ public class ProvisioningController2Test {
         Map<String, String> grantsForClient = listResult.get(clientToCheck);
         if (grantsForClient != null) {
             for(String grantId : grantsForClient.keySet()) {
-                busesGranted.addAll(Arrays.asList(grantsForClient.get(grantId).split(" ")));
+                Scope scope = new Scope(grantsForClient.get(grantId));
+                busesGranted.addAll(scope.getScopeFieldValues(BackplaneMessage.Field.BUS));
             }
         }
 

@@ -43,7 +43,7 @@ public class User extends ProvisioningConfig {
 
     @Override
     public void validate(DaoFactory daoFactory) throws Exception {
-        // do nothing
+        validate();
     }
 
     public static enum Field implements MessageField {
@@ -65,7 +65,7 @@ public class User extends ProvisioningConfig {
 
         @Override
         public void validate(String value) throws SimpleDBException {
-            if (isRequired()) validateNotNull(name(), value);
+            if (isRequired()) validateNotBlank(name(), value);
         }
     }
 }

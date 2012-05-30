@@ -41,7 +41,7 @@ public class DaoFactory {
     }
 
     public GrantDAO getGrantDao() {
-        return new GrantDAO(superSimpleDB, bpConfig);
+        return new GrantDAO(superSimpleDB, bpConfig, this);
     }
 
     public BusOwnerDAO getBusOwnerDAO() {
@@ -49,7 +49,7 @@ public class DaoFactory {
     }
 
     public ClientDAO getClientDAO() {
-        return new ClientDAO(superSimpleDB, bpConfig);
+        return new ClientDAO(superSimpleDB, bpConfig, this);
     }
 
     public BackplaneMessageDAO getBackplaneMessageDAO() {

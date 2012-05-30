@@ -127,7 +127,7 @@ public class BackplaneMessage extends AbstractMessage {
 
         @Override
         public void validate(String value) throws SimpleDBException {
-            if (isRequired()) validateNotNull(getFieldName(), value);
+            if (isRequired()) validateNotBlank(getFieldName(), value);
         }
 
         // - PRIVATE

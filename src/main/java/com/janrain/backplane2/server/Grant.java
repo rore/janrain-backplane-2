@@ -18,42 +18,22 @@ package com.janrain.backplane2.server;
 
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
+import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import com.janrain.crypto.ChannelUtil;
+import com.janrain.oauth2.TokenException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import org.jetbrains.annotations.NotNull;
 
 import java.text.ParseException;
 import java.util.*;
 
 /**
- * @author Tom Raney
+ * OAuth2 authorization grant
+ *
+ * @author Tom Raney, Johnny Bufu
  */
-public class Grant extends Base {
-
-    public static final int CODE_LENGTH = 20;
-    public static final int CODE_EXPIRATION = 3600;
-
-    public static String getBusesAsString(List<Grant> grants) {
-        Set<String> buses = new LinkedHashSet<String>();
-        for (Grant grant: grants) {
-            buses.addAll(grant.getBusesAsList());
-        }
-        StringBuilder result = new StringBuilder();
-        for(String bus : buses) {
-            result.append(bus).append(" ");
-        }
-        return result.toString().trim();
-    }
-
-    public static List<String> getBusesAsList(List<Grant> grants) {
-        Set<String> buses = new LinkedHashSet<String>();
-        for (Grant grant: grants) {
-            buses.addAll(grant.getBusesAsList());
-        }
-        return new ArrayList<String>(buses);
-    }
+public class Grant extends AbstractMessage {
 
     /**
      * Empty default constructor for AWS to use.
@@ -61,206 +41,135 @@ public class Grant extends Base {
      */
     public Grant() {}
     
-    /** Copy constructor */
-    public Grant(Grant other) throws SimpleDBException {
-        Map<String,String> data = new HashMap<String, String>();
-        data.putAll(other);
-        super.init(other.getIdValue(), data);
-    }
-
-    Grant(String code, String busOwnerId, String clientId, String buses, Date expires) throws SimpleDBException {
-        super(code, buses, expires);
-
-        if (StringUtils.isBlank(clientId) || StringUtils.isBlank(busOwnerId) ||
-            StringUtils.isBlank(buses)) {
-            throw new IllegalArgumentException("Invalid grant");
-        }
-
-        put(GrantField.ISSUED_TO_CLIENT_ID.getFieldName(), clientId);
-        put(GrantField.ISSUED_BY_USER_ID.getFieldName(), busOwnerId);
-
-        logger.info("Grant declared by bus owner " + busOwnerId + " for client " + clientId + " with buses: " + buses);
-    }
-
-    public Grant(String busOwnerId, String clientId, String buses) throws SimpleDBException {
-        this(ChannelUtil.randomString(CODE_LENGTH), busOwnerId, clientId, buses, new Date(System.currentTimeMillis() + CODE_EXPIRATION * 1000l));
-    }
-
-    public Grant(String busOwnerId, String clientId, String buses, Date expires) throws SimpleDBException {
-        this(ChannelUtil.randomString(CODE_LENGTH), busOwnerId, clientId, buses, expires);
+    @Override
+    public String getIdValue() {
+        return get(GrantField.ID);
     }
 
     @Override
     public Set<? extends MessageField> getFields() {
-        Set<MessageField> fields = new HashSet<MessageField>();
-        fields.addAll(super.getFields());
-        fields.addAll(EnumSet.allOf(GrantField.class));
-        return fields;
+        return EnumSet.allOf(GrantField.class);
     }
 
-    public String getGrantClientId() {
-        return get(GrantField.ISSUED_TO_CLIENT_ID.getFieldName());
-    }
-
-    public String getBusOwnerId() {
-        return get(GrantField.ISSUED_BY_USER_ID.getFieldName());
-    }
-
-    public String revokeBuses(List<String> busesToRemove) {
-        StringBuilder newBuses = new StringBuilder();
-        for(String bus : getBusesAsList()) {
-            if( ! busesToRemove.contains(bus)) {
-                newBuses.append(bus).append(" ");
-            }
-        }
-        if (newBuses.length() > 0) {
-            newBuses.deleteCharAt(newBuses.length()-1);
-        }
-        put(BaseField.BUSES.getFieldName(), newBuses.toString());
-        return newBuses.toString();
-    }
-
-    public Date getCodeExpiresDate() {
-
-        String expiresString = get(GrantField.DATE_CODE_EXPIRES);
-
-        if (expiresString == null) {
-            return null;
-        }
-
-        Date expires = null;
+    public GrantType getType() {
         try {
-            expires = Backplane2Config.ISO8601.parse(expiresString);
-        } catch (ParseException e) {
-            return null;
+            return GrantType.valueOf(this.get(GrantField.TYPE));
+        } catch (IllegalArgumentException e) {
+            throw new IllegalStateException("Invalid GrantType on for GrantField.Type, should have been validated on grant creation: " + this.get(GrantField.TYPE));
         }
-        return expires;
     }
 
-    public Date getCodeIssuedDate() {
-
-        String issuedString = get(GrantField.DATE_CODE_ISSUED);
-
-        if (issuedString == null) {
-            return null;
-        }
-
-        Date issued = null;
+    public GrantState getState() {
         try {
-            issued = Backplane2Config.ISO8601.parse(issuedString);
-        } catch (ParseException e) {
-            return null;
+            return GrantState.valueOf(this.get(GrantField.STATE));
+        } catch (IllegalArgumentException e) {
+            throw new IllegalStateException("Invalid GrantState on for GrantField.STATE, should have been validated on grant creation: " + this.get(GrantField.STATE));
         }
-        return issued;
     }
-
-    public Date getCodeUsedDate() {
-
-        String usedString = get(GrantField.DATE_CODE_USED);
-
-        if (usedString == null) {
-            return null;
-        }
-
-        Date issued = null;
+    public Date getUpdateTimestamp() {
         try {
-            issued = Backplane2Config.ISO8601.parse(usedString);
+            return Backplane2Config.ISO8601.parse(get(GrantField.TIME_UPDATE));
         } catch (ParseException e) {
-            return null;
+            throw new IllegalStateException("Invalid value on for GrantField.TIME_UPDATE, should have been validated on grant creation: " + this.get(GrantField.TIME_UPDATE));
         }
-        return issued;
-    }
-
-    public void setCodeUsedNow() {
-        put(GrantField.DATE_CODE_USED.getFieldName(), Backplane2Config.ISO8601.format(new Date()));
-    }
-
-    public void setCodeIssuedNow() {
-        put(GrantField.DATE_CODE_ISSUED.getFieldName(), Backplane2Config.ISO8601.format(new Date()));
-    }
-
-    public boolean isCodeIssued() {
-        return getCodeIssuedDate() != null;
-    }
-
-    public boolean isCodeUsed() {
-        return getCodeUsedDate() != null;
-    }
-
-    public boolean isCodeExpired() {
-        Date expires = getCodeExpiresDate();
-        if (expires != null && new Date().getTime() > expires.getTime()) {
-            return true;
-        }
-        return false;
-    }
-
-    public void setCodeExpirationDate(Date expirationDate) {
-        put(GrantField.DATE_CODE_EXPIRES.getFieldName(), Backplane2Config.ISO8601.format(expirationDate));
-    }
-
-    public void setCodeExpirationDefault() {
-        this.setCodeExpirationDate(new Date(System.currentTimeMillis() + CODE_EXPIRATION * 1000L));
-    }
-
-    private String getIssuedTokenIdsAsString() {
-        return get(GrantField.ISSUED_TOKEN_IDS.getFieldName());
     }
 
     /**
-     * Retrieve list of token Ids issued against this grant
-     * @return a non-null but possibly empty list
+     * @return the grant's expiration date, or null if the grant never expires
      */
-    public @NotNull
-    List<String> getIssuedTokenIds() {
-        String ids = getIssuedTokenIdsAsString();
-        if (StringUtils.isEmpty(ids)) {
-            return new ArrayList<String>();
+    public Date getExpirationDate() {
+        String value = this.get(GrantField.TIME_EXPIRE);
+        try {
+            return StringUtils.isNotEmpty(value) ? Backplane2Config.ISO8601.parse(value) : null;
+        } catch (ParseException e) {
+            throw new IllegalStateException("Invalid ISO8601 date for GrantField.TIME_EXPIRE, should have been validated on grant creation/update: " + value);
         }
-
-        String[] tokens = ids.split(" ");
-        return Arrays.asList(tokens);
     }
 
-    public boolean isIssuedToken(String tokenId) {
-        return getIssuedTokenIds().contains(tokenId);
-    }
-
-    public void addIssuedTokenId(@NotNull String tokenId) {
-        List<String> tokenIds = getIssuedTokenIds();
-        if (tokenIds.contains(tokenId)) {
-            // if it exists, no-op
-            return;
+    public Scope getAuthorizedScope() {
+        try {
+            return new Scope(get(GrantField.AUTHORIZED_SCOPES));
+        } catch (TokenException e) {
+            throw new IllegalStateException("Invalid value on for GrantField.AUTHORIZED_SCOPES, should have been validated on grant creation: " + this.get(GrantField.AUTHORIZED_SCOPES));
         }
-        tokenIds.add(tokenId);
-        setIssuedTokens(tokenIds);
     }
 
-    public void setIssuedTokens(List<String> tokenIds) {
-        put(GrantField.ISSUED_TOKEN_IDS.getFieldName(),
-                org.springframework.util.StringUtils.collectionToDelimitedString(tokenIds, " "));
+    public boolean isExpired() {
+        Date expires = getExpirationDate();
+        return expires != null && new Date().getTime() > expires.getTime();
     }
-
-    public boolean removeIssuedTokenId(@NotNull String tokenId) {
-        List<String> tokenIds = getIssuedTokenIds();
-        if (!tokenIds.remove(tokenId)) {
-            return false;
-        }
-        setIssuedTokens(tokenIds);
-        return true;
-    }
-
 
     public static enum GrantField implements MessageField {
 
         // - PUBLIC
 
+        ID("id"), // acts also as the "code" value for authorization_code grants
+
+        TYPE("type") { // GrantType
+            @Override
+            public void validate(String value) throws SimpleDBException {
+                super.validate(value);
+                try {
+                    GrantType.valueOf(value);
+                } catch (IllegalArgumentException e) {
+                    throw new SimpleDBException("Invalid grant type: " + value);
+                }
+            }
+        },
+
         ISSUED_BY_USER_ID("issued_by_user"),
+
         ISSUED_TO_CLIENT_ID("issued_to_client"),
-        DATE_CODE_ISSUED("date_code_issued"),
-        DATE_CODE_EXPIRES("date_code_expires"),
-        DATE_CODE_USED("date_code_used"),
-        ISSUED_TOKEN_IDS("issued_token_ids", false);
+
+        AUTHORIZED_SCOPES("authorized_scopes") {
+            @Override
+            public void validate(String value) throws SimpleDBException {
+                super.validate(value);
+                try {
+                    new Scope(value);
+                } catch (TokenException e) {
+                    throw new SimpleDBException("Invalid grant scope: " + value);
+                }
+            }
+        },
+
+        STATE("state") { // <GrantState enum value>
+            @Override
+            public void validate(String value) throws SimpleDBException {
+                super.validate(value);
+                try {
+                    GrantState.valueOf(value);
+                } catch (IllegalArgumentException e) {
+                    throw new SimpleDBException("Invalid grant value for state: " + value);
+                }
+            }
+        },
+        
+        TIME_UPDATE("time_update") { // <ISO8601 timestamp>
+            @Override
+            public void validate(String value) throws SimpleDBException {
+                super.validate(value);
+                try {
+                    Backplane2Config.ISO8601.parse(value);
+                } catch (ParseException e) {
+                    throw new SimpleDBException("Invalid grant value for time_update: " + value);
+                }
+            }
+        },
+
+        TIME_EXPIRE("time_expire", false) { // <ISO8601 timestamp> when the grant's current state expires
+            @Override
+            public void validate(String value) throws SimpleDBException {
+                super.validate(value);
+                try {
+                    if (StringUtils.isNotEmpty(value)) {
+                        Backplane2Config.ISO8601.parse(value);
+                    }
+                } catch (ParseException e) {
+                    throw new SimpleDBException("Invalid grant value for time_expire: " + value);
+                }
+            }
+        };
 
         @Override
         public String getFieldName() {
@@ -274,7 +183,7 @@ public class Grant extends Base {
 
         @Override
         public void validate(String value) throws SimpleDBException {
-            if (isRequired()) validateNotNull(getFieldName(), value);
+            if (isRequired()) validateNotBlank(getFieldName(), value);
         }
 
         // - PRIVATE
@@ -291,7 +200,72 @@ public class Grant extends Base {
             this.required = required;
         }
     }
+    
+    public static final class Builder {
+        
+        public Builder(GrantType type, GrantState state, String issuedById, String issuedToClientId, String scopes) {
+            data.put(GrantField.TYPE.getFieldName(), type.toString());
+            if (GrantType.AUTHORIZATION_CODE == type) {
+                expireSeconds = CODE_EXPIRATION_SECONDS_DEFAULT;
+            }
+            data.put(GrantField.STATE.getFieldName(), state.toString());
+            data.put(GrantField.ISSUED_BY_USER_ID.getFieldName(), issuedById);
+            data.put(GrantField.ISSUED_TO_CLIENT_ID.getFieldName(), issuedToClientId);
+            data.put(GrantField.AUTHORIZED_SCOPES.getFieldName(), scopes);
+        }
 
-    private static final Logger logger = Logger.getLogger(Access.class);
+        public Builder(Grant other, GrantState state) {
+            data.putAll(other);
+            data.put(GrantField.STATE.getFieldName(), state.toString());
+        }
 
+        public Builder expires(int seconds) {
+            expireSeconds = seconds;
+            return this;
+        }
+
+        public Builder scope(Scope updatedScope) {
+            data.put(GrantField.AUTHORIZED_SCOPES.getFieldName(), updatedScope.toString());
+            return this;
+        }
+
+        public Grant buildGrant() throws SimpleDBException {
+            String id = data.get(GrantField.ID.getFieldName());
+            if ( id == null) {
+                id = ChannelUtil.randomString(CODE_ID_LENGTH);
+                data.put(GrantField.ID.getFieldName(), id);
+            }
+
+            // grant is issued/updated now
+            Date now = new Date();
+            data.put(GrantField.TIME_UPDATE.getFieldName(), Backplane2Config.ISO8601.format(now));
+
+            // ignore expireSeconds fields overrides data entry
+            if (expireSeconds != null) {
+                data.put(GrantField.TIME_EXPIRE.getFieldName(), Backplane2Config.ISO8601.format(new Date(now.getTime() + expireSeconds.longValue() * 1000 )));
+            } else {
+                data.remove(GrantField.TIME_EXPIRE.getFieldName());
+            }
+            
+            return new Grant(id, data);
+        }
+        
+        private Map<String,String> data = new HashMap<String, String>();
+        
+        private Integer expireSeconds = null;
+
+    }
+
+    // - PRIVATE
+    
+    private static final Logger logger = Logger.getLogger(Grant.class);
+
+    private static final int CODE_ID_LENGTH = 20;
+
+    private static final int CODE_EXPIRATION_SECONDS_DEFAULT = 600; // 10 minutes
+
+    private Grant(String id, Map<String,String> data) throws SimpleDBException {
+        super.init(id, data);
+        logger.info("Grant created: " + get(GrantField.ISSUED_BY_USER_ID) + " authorized client " + get(GrantField.ISSUED_TO_CLIENT_ID) + " for scopes: " + get(GrantField.AUTHORIZED_SCOPES));
+    }
 }

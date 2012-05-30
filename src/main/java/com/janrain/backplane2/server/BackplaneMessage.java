@@ -21,12 +21,14 @@ import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import com.janrain.crypto.ChannelUtil;
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
+
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.*;
+
+import static com.janrain.backplane2.server.Scope.ScopeType.*;
 
 /**
  * @author Johnny Bufu
@@ -91,8 +93,7 @@ public class BackplaneMessage extends AbstractMessage {
         HashMap<String, Object> frame = new LinkedHashMap<String, Object>();
 
         String serverUrl = "https://" + serverDomain + "/v2/message";
-
-        frame.put("messageURL", serverUrl + "/" + get(Field.ID));
+        frame.put(Field.MESSAGE_URL.getFieldName(), serverUrl + "/" + get(Field.ID));
         frame.put(Field.SOURCE.getFieldName(), get(Field.SOURCE));
         frame.put(Field.TYPE.getFieldName(), get(Field.TYPE));
         frame.put(Field.BUS.getFieldName(), get(Field.BUS));
@@ -101,7 +102,7 @@ public class BackplaneMessage extends AbstractMessage {
 
         try {
             if (includePayload) {
-                frame.put(Field.PAYLOAD.getFieldName(), (new ObjectMapper()).readValue(get(Field.PAYLOAD), Object.class) ); // un-quote the value)
+                frame.put(Field.PAYLOAD.getFieldName(), (new ObjectMapper()).readValue(get(Field.PAYLOAD), Object.class) ); // un-quote the value
             }
         } catch (IOException e) {
             String errMsg = "Error deserializing message payload: " + e.getMessage();
@@ -109,22 +110,18 @@ public class BackplaneMessage extends AbstractMessage {
             throw new BackplaneServerException(errMsg, e);
         }
 
-        /*  sample response does not include sticky field?  It should, right?
-        String sticky = get(Field.STICKY.getFieldName());
-        if (sticky != null) {
-            // print sticky as a (json) boolean
-            frame.put(Field.STICKY.getFieldName(), Boolean.valueOf(sticky));
-        }
-        */
-
         return frame;
     }
 
     public static enum Field implements MessageField {
-        ID("id"),
-        CHANNEL("channel"),
-        BUS("bus"),
-        STICKY("sticky", false) {
+
+        ID("id", NONE),
+
+        CHANNEL("channel", FILTER),
+
+        BUS("bus", AUTHZ_REQ),
+
+        STICKY("sticky", false, FILTER) {
             @Override
             public void validate(String value) throws SimpleDBException {
                 super.validate(value);
@@ -132,19 +129,27 @@ public class BackplaneMessage extends AbstractMessage {
                     throw new InvalidRequestException("Invalid boolean value for " + getFieldName() + ": " + value);
                 }
             }},
-        SOURCE("source") {
+
+        SOURCE("source", FILTER) {
             @Override
             public void validate(String value) throws SimpleDBException {
                 super.validate(value);
-                try {
-                    new URL(value);
-                } catch (MalformedURLException e) {
-                    throw new InvalidRequestException("Invalid URL for " + getFieldName() + ": " + value);
-                }
+                validateUrl(getFieldName(), value);
             }},
 
-        TYPE("type"),
-        PAYLOAD("payload");
+        TYPE("type", FILTER),
+
+        MESSAGE_URL("messageURL", false, FILTER) {
+            @Override
+            public void validate(String value) throws SimpleDBException {
+                super.validate(value);
+                if (StringUtils.isNotEmpty(value)) {
+                    validateUrl(getFieldName(), value);
+                }
+            }
+        },
+
+        PAYLOAD("payload", NONE);
 
         @Override
         public String getFieldName() {
@@ -158,21 +163,27 @@ public class BackplaneMessage extends AbstractMessage {
 
         @Override
         public void validate(String value) throws SimpleDBException {
-            if (isRequired()) validateNotNull(getFieldName(), value);
+            if (isRequired()) validateNotBlank(getFieldName(), value);
+        }
+
+        public Scope.ScopeType getScopeType() {
+            return scopeType;
         }
 
         // - PRIVATE
 
         private String fieldName;
-        private boolean required = true;
+        private final boolean required;
+        private final Scope.ScopeType scopeType;
 
-        private Field(String fieldName) {
-            this(fieldName, true);
+        private Field(String fieldName, Scope.ScopeType scopeType) {
+            this(fieldName, true, scopeType);
         }
 
-        private Field(String fieldName, boolean required) {
+        private Field(String fieldName, boolean required, Scope.ScopeType scopeType) {
             this.fieldName = fieldName;
             this.required = required;
+            this.scopeType = scopeType;
         }
     }
 
@@ -190,5 +201,4 @@ public class BackplaneMessage extends AbstractMessage {
             throw new BackplaneServerException(errMsg, e);
         }
     }
-
 }

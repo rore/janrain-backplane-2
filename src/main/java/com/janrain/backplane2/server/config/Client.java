@@ -97,7 +97,7 @@ public class Client extends User {
 
         @Override
         public void validate(String value) throws SimpleDBException {
-            if (isRequired()) validateNotNull(name(), value);
+            if (isRequired()) validateNotBlank(name(), value);
         }
     }
 }

@@ -124,7 +124,7 @@ public class AuthorizationRequest extends AbstractMessage {
 
         @Override
         public void validate(String value) throws SimpleDBException {
-            if (isRequired()) validateNotNull(getFieldName().toLowerCase(), value);
+            if (isRequired()) validateNotBlank(getFieldName().toLowerCase(), value);
         }
 
         // - PRIVATE

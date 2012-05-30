@@ -16,8 +16,7 @@
 
 package com.janrain.backplane2.server.provision;
 
-import com.janrain.backplane2.server.Grant;
-import com.janrain.backplane2.server.InvalidRequestException;
+import com.janrain.backplane2.server.*;
 import com.janrain.backplane2.server.config.*;
 import com.janrain.backplane2.server.dao.DaoFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
@@ -25,6 +24,7 @@ import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import com.janrain.crypto.HmacHashUtils;
+import com.janrain.oauth2.TokenException;
 import com.janrain.servlet.ServletUtil;
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Controller;
@@ -150,12 +150,20 @@ public class ProvisioningController2 {
         for(String clientId : listRequest.getEntities()) {
             try {
                 Map<String,String> grantsList = new HashMap<String, String>();
-                for(Grant grant : daoFactory.getGrantDao().retrieveGrants(clientId, null)) {
-                    grantsList.put(grant.getIdValue(), grant.getBusesAsString());
+                Map<Scope, Set<Grant>> scopeGrants = daoFactory.getGrantDao().retrieveClientGrants(clientId, null);
+                for (Set<Grant> grantSets : scopeGrants.values()) {
+                    for(Grant grant : grantSets) {
+                        grantsList.put(grant.getIdValue(), grant.getAuthorizedScope().toString());
+                    }
+                    result.put(clientId, grantsList);
                 }
-                result.put(clientId, grantsList);
             } catch (final SimpleDBException e) {
                 result.put(clientId, new HashMap<String, String>() {{put("error", e.getMessage());}});
+            } catch (final TokenException te) {
+                logger.error("token (unexpected scope processing?) error: " + te.getMessage());
+                result.put(clientId, new HashMap<String, String>() {{
+                    put("error", te.getMessage());
+                }});
             }
         }
         return result;
@@ -331,8 +339,13 @@ public class ProvisioningController2 {
     }
 
     private void addGrant(String issuer, String clientId, String buses) throws SimpleDBException {
-        Grant grant = new Grant(issuer, clientId, buses);
-        grant.setCodeUsedNow();
+        Grant grant = new Grant.Builder(
+                GrantType.CLIENT_CREDENTIALS,
+                GrantState.ACTIVE,
+                issuer,
+                clientId,
+                Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, buses))
+                .buildGrant();
         daoFactory.getGrantDao().persist(grant);
     }
 

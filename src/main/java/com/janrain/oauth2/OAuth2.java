@@ -60,6 +60,7 @@ public class OAuth2 {
     public static final String OAUTH2_TOKEN_RESPONSE_TYPE_CODE = "code";
     public static final String OAUTH2_TOKEN_GRANT_TYPE_AUTH_CODE = "authorization_code";
     public static final String OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS = "client_credentials";
+    public static final String OAUTH2_TOKEN_GRANT_TYPE_REFRESH_TOKEN = "refresh_token";
 
     public static final String OAUTH2_TOKEN_INVALID_REQUEST = "invalid_request";
     public static final String OAUTH2_TOKEN_INVALID_CLIENT = "invalid_client";
@@ -69,19 +70,24 @@ public class OAuth2 {
     public static final String OAUTH2_TOKEN_SERVER_ERROR = "server_error"; // not actually defined in OAuth2 5.2, what should one do?!
 
     public static final String OAUTH2_ACCESS_TOKEN_PARAM_NAME = "access_token";
+    public static final String OAUTH2_REFRESH_TOKEN_PARAM_NAME = "refresh_token";
     public static final String OAUTH2_TOKEN_TYPE_PARAM_NAME = "token_type";
     public static final String OAUTH2_SCOPE_PARAM_NAME = "scope";
+    public static final String OAUTH2_TOKEN_RESPONSE_EXPIRES =  "expires_in";
+
+    public static final String OAUTH2_TOKEN_TYPE_BEARER =  "Bearer";
 
     public static void validateRedirectUri(String redirectUri) throws ValidationException {
         validateRedirectUri(redirectUri, null);
     }
 
     /**
-     * @param redirectUri
-     * @throws ValidationException
+     * @param redirectUri the redirect_uri (per OAuth2) to validate; may be null, which is permitted/valid
+     *
+     * @throws ValidationException if the supplied redirectUri fails the OAuth2 prescribed checks
      */
     public static void validateRedirectUri(String redirectUri, @Nullable String expected) throws ValidationException {
-        if (! StringUtils.isNotEmpty(redirectUri)) {
+        if (StringUtils.isNotEmpty(redirectUri)) {
             try {
                 URL url = new URL(redirectUri);
                 if (StringUtils.isEmpty(url.getProtocol())) {
