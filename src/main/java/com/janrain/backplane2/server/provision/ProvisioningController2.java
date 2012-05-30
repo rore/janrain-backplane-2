@@ -327,7 +327,10 @@ public class ProvisioningController2 {
                         addGrant(grantRequest.getAdmin(), clientId, buses);
                         result.put(clientId, "GRANT_UPDATE_SUCCESS");
                     } else {
-                        daoFactory.getGrantDao().revokeBuses(clientId, buses);
+                        Scope busesToRevoke = new Scope(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, buses));
+                        for(Set<Grant> grants : daoFactory.getGrantDao().retrieveClientGrants(clientId, busesToRevoke).values()) {
+                            daoFactory.getGrantDao().revokeBuses(grants, buses);
+                        }
                         result.put(clientId, "GRANT_UPDATE_SUCCESS");
                     }
                 }

@@ -175,13 +175,17 @@ public class Scope {
 
     /**
      * @param field scope field
-     * @param scopesString space separated scope values
+     * @param scopeValues space separated scope values
      *
      * @return  an encoded space delimited string of scopes e.g.:  "bus:thisbus.com bus:andthatbus.com ..."
      */
-    public static String getEncodedScopesAsString(BackplaneMessage.Field field, String scopesString) {
+    public static String getEncodedScopesAsString(BackplaneMessage.Field field, String scopeValues) {
+        return getEncodedScopesAsString(field, getScopesAsList(scopeValues));
+    }
+
+    public static String getEncodedScopesAsString(BackplaneMessage.Field field, @NotNull List<String> scopeValues) {
         StringBuilder sb = new StringBuilder();
-        for (String value: getScopesAsList(scopesString)) {
+        for (String value: scopeValues) {
             if (sb.length() > 0) sb.append(SEPARATOR);
             sb.append(field.getFieldName()).append(DELIMITER).append(value);
         }

@@ -157,7 +157,7 @@ public class Backplane2ControllerTest {
 	}
 
     @After
-    public void cleanup() {
+    public void cleanup() throws TokenException {
 
         logger.info("Tearing down test writes to db");
 
@@ -212,7 +212,7 @@ public class Backplane2ControllerTest {
         return client;
     }
 
-    private void deleteTestBusAndClient() throws SimpleDBException {
+    private void deleteTestBusAndClient() throws SimpleDBException, TokenException {
         daoFactory.getBusOwnerDAO().delete("testBusOwner");
         daoFactory.getBusDao().delete("testbus");
         daoFactory.getClientDAO().delete(this.testClient.getClientId());

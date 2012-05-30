@@ -25,9 +25,7 @@ import com.janrain.metrics.MetricsAccumulator;
 import com.janrain.oauth2.*;
 import com.janrain.servlet.ServletUtil;
 import com.yammer.metrics.Metrics;
-import com.yammer.metrics.core.HistogramMetric;
 import com.yammer.metrics.core.MeterMetric;
-import com.yammer.metrics.core.TimerMetric;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -627,7 +625,7 @@ public class Backplane2Controller {
             model.put(AuthorizationRequest.Field.REDIRECT_URI.getFieldName().toLowerCase(), authzRequest.getRedirectUri(daoFactory.getClientDAO()));
 
             String scope = authzRequest.get(AuthorizationRequest.Field.SCOPE);
-            List<BusConfig2> ownedBuses = daoFactory.getBusDao().retrieveBuses(authenticatedBusOwner);
+            List<BusConfig2> ownedBuses = daoFactory.getBusDao().retrieveByOwner(authenticatedBusOwner);
             model.put(AuthorizationRequest.Field.SCOPE.getFieldName().toLowerCase(), checkScope(scope, ownedBuses) );
 
             // return authZ form
@@ -697,7 +695,7 @@ public class Backplane2Controller {
                 // todo: use (and check) scope posted back by bus owner
                 String scopeString = checkScope(
                         authorizationRequest.get(AuthorizationRequest.Field.SCOPE),
-                        daoFactory.getBusDao().retrieveBuses(authenticatedBusOwner));
+                        daoFactory.getBusDao().retrieveByOwner(authenticatedBusOwner));
                 // create grant/code
                 Grant grant =  new Grant.Builder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE,
                             authenticatedBusOwner,

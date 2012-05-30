@@ -46,11 +46,18 @@ public class GrantDAO extends DAO<Grant> {
         superSimpleDB.store(bpConfig.getTableName(BP_GRANT), Grant.class, grant, true);
     }
 
+    /** Tokens issued against the deleted grant will also be revoked/deleted */
     @Override
     public void delete(String id) throws SimpleDBException {
-        superSimpleDB.delete(bpConfig.getTableName(BP_GRANT), id);
         daoFactory.getTokenDao().revokeTokenByGrant(id);
-        logger.info("Deleted grant " + id);
+        superSimpleDB.delete(bpConfig.getTableName(BP_GRANT), id);
+        logger.info("Deleted grant (and revoked tokens): " + id);
+    }
+
+    private void update(Grant grant, Grant updated) throws SimpleDBException {
+        daoFactory.getTokenDao().revokeTokenByGrant(updated.getIdValue());
+        superSimpleDB.update(bpConfig.getTableName(BP_GRANT), Grant.class, grant, updated);
+        logger.info("Updated grant (and revoked tokens): " + updated.getIdValue());
     }
 
     public Grant retrieveGrant(String grantId) throws SimpleDBException {
@@ -96,6 +103,20 @@ public class GrantDAO extends DAO<Grant> {
             return updated;
         } else {
             throw new TokenException("Invalid code: " + codeId);
+        }
+    }
+
+    public void deleteByBuses(@NotNull List<String> busesToDelete) throws SimpleDBException, TokenException {
+        // todo: consider multiple 'select .. like .. ' queries/clauses
+        Scope deleteBusesScope = new Scope(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, busesToDelete));
+        for(Grant grant : superSimpleDB.retrieveAll(bpConfig.getTableName(BP_GRANT), Grant.class)) {
+            Set<String> grantBuses = grant.getAuthorizedScope().getScopeFieldValues(BackplaneMessage.Field.BUS);
+            if (grantBuses == null) continue;
+            for(String bus : grantBuses) {
+                if (busesToDelete.contains(bus)) {
+                    revokeBuses(grant, deleteBusesScope);
+                }
+            }
         }
     }
 
@@ -157,30 +178,17 @@ public class GrantDAO extends DAO<Grant> {
     }
 
     /**
-     *  Revokes buses across all grants that contain them.
+     *  Revokes buses across the provided grants.
      *  Not atomic, best effort.
      *  Stops on first error and reports error, even though some grants may have been updated.
      */
-    public void revokeBuses(String clientId, String buses) throws SimpleDBException, BackplaneServerException, TokenException {
+    public void revokeBuses(Set<Grant> grants, String buses) throws SimpleDBException, BackplaneServerException, TokenException {
         Scope busesToRevoke = new Scope(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, buses));
         boolean changes = false;
-        for(Set<Grant> grants : retrieveClientGrants(clientId, busesToRevoke).values()) {
-            for(Grant grant : grants) {
-                Scope grantScope = grant.getAuthorizedScope();
-                Scope updatedScope = Scope.revoke(grantScope, busesToRevoke);
-                if (updatedScope.equals(grantScope)) continue;
-                if ( ! updatedScope.isAuthorizationRequired() ) {
-                    logger.info("Revoked all buses from grant: " + grant.getIdValue());
-                    delete(grant.getIdValue());
-                } else {
-                    Grant updated = new Grant.Builder(grant, grant.getState()).scope(updatedScope).buildGrant();
-                    superSimpleDB.update(bpConfig.getTableName(BP_GRANT), Grant.class, grant, updated);
-                    logger.info("Buses updated updated for grant: " + updated.getIdValue() + " remaining scope: '" + updated.getAuthorizedScope() + "'");
-                }
-                changes = true;
-            }
+        for (Grant grant : grants) {
+            changes = changes || revokeBuses(grant, busesToRevoke);
         }
-        if ( ! changes ) {
+        if (!changes) {
             throw new BackplaneServerException("No grants found to revoke for buses: " + buses);
         }
     }
@@ -191,4 +199,18 @@ public class GrantDAO extends DAO<Grant> {
 
     private final DaoFactory daoFactory;
 
+    private boolean revokeBuses(Grant grant, Scope busesToRevoke) throws SimpleDBException {
+        Scope grantScope = grant.getAuthorizedScope();
+        Scope updatedScope = Scope.revoke(grantScope, busesToRevoke);
+        if (updatedScope.equals(grantScope)) return false;
+        if (!updatedScope.isAuthorizationRequired()) {
+            logger.info("Revoked all buses from grant: " + grant.getIdValue());
+            delete(grant.getIdValue());
+        } else {
+            Grant updated = new Grant.Builder(grant, grant.getState()).scope(updatedScope).buildGrant();
+            update(grant, updated);
+            logger.info("Buses updated updated for grant: " + updated.getIdValue() + " remaining scope: '" + updated.getAuthorizedScope() + "'");
+        }
+        return true;
+    }
 }

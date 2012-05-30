@@ -20,6 +20,7 @@ import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.commons.supersimpledb.message.NamedMap;
+import com.janrain.oauth2.TokenException;
 
 /**
  * @author Tom Raney
@@ -36,6 +37,6 @@ public abstract class DAO<T extends NamedMap> {
     }
 
     abstract public void persist(T obj) throws SimpleDBException;
-    abstract public void delete(String id) throws SimpleDBException;
+    abstract public void delete(String id) throws SimpleDBException, TokenException;
 
 }

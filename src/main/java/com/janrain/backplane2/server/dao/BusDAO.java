@@ -20,7 +20,9 @@ import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.backplane2.server.config.BusConfig2;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
+import com.janrain.oauth2.TokenException;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_BUS_CONFIG;
@@ -30,8 +32,9 @@ import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTabl
  */
 public class BusDAO extends DAO<BusConfig2> {
 
-    BusDAO(SuperSimpleDB superSimpleDB, Backplane2Config bpConfig) {
+    BusDAO(SuperSimpleDB superSimpleDB, Backplane2Config bpConfig, DaoFactory daoFactory) {
         super(superSimpleDB, bpConfig);
+        this.daoFactory = daoFactory;
     }
 
     @Override
@@ -52,10 +55,24 @@ public class BusDAO extends DAO<BusConfig2> {
         return superSimpleDB.retrieve(bpConfig.getTableName(BP_BUS_CONFIG), BusConfig2.class, busId);
     }
 
-    public List<BusConfig2> retrieveBuses(String busOwner) throws SimpleDBException {
+    public List<BusConfig2> retrieveByOwner(String busOwner) throws SimpleDBException {
         return superSimpleDB.retrieveWhere(
                 bpConfig.getTableName(BP_BUS_CONFIG), BusConfig2.class,
                 BusConfig2.Field.OWNER.getFieldName() + "='" + busOwner +"'", true);
     }
 
+    /** Associated grants and tokens are deleted/revoked. */
+    public void deleteByOwner(String busOwner) throws SimpleDBException, TokenException {
+        List<BusConfig2> busConfigs = retrieveByOwner(busOwner);
+        List<String> buses = new ArrayList<String>();
+        for (BusConfig2 busConfig : busConfigs) {
+            buses.add(busConfig.getIdValue());
+        }
+        superSimpleDB.deleteWhere(bpConfig.getTableName(BP_BUS_CONFIG), BusConfig2.Field.OWNER.getFieldName() + "='" + busOwner +"'");
+        daoFactory.getGrantDao().deleteByBuses(buses);
+    }
+
+    // - PRIVATE
+
+    private final DaoFactory daoFactory;
 }

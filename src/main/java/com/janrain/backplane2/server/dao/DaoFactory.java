@@ -33,7 +33,7 @@ import javax.inject.Inject;
 public class DaoFactory {
 
     public BusDAO getBusDao() {
-        return new BusDAO(superSimpleDB, bpConfig);
+        return new BusDAO(superSimpleDB, bpConfig, this);
     }
 
     public TokenDAO getTokenDao() {
@@ -45,7 +45,7 @@ public class DaoFactory {
     }
 
     public BusOwnerDAO getBusOwnerDAO() {
-        return new BusOwnerDAO(superSimpleDB, bpConfig);
+        return new BusOwnerDAO(superSimpleDB, bpConfig, this);
     }
 
     public ClientDAO getClientDAO() {
