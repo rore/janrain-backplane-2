@@ -104,7 +104,7 @@ public class AnonymousTokenRequest implements TokenRequest {
     private Token refreshToken;
 
     private static String generateRefreshToken(GrantType refreshType, Scope scope, DaoFactory daoFactory) throws SimpleDBException {
-        if (! refreshType.isRefresh()) return null;
+        if (refreshType == null || ! refreshType.isRefresh()) return null;
         Token refreshToken = new Token.Builder(refreshType, scope.toString()).buildToken();
         daoFactory.getTokenDao().persist(refreshToken);
         return refreshToken.getIdValue();

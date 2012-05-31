@@ -1475,6 +1475,57 @@ public class Backplane2ControllerTest {
 
     }
 
+    @Test
+    public void testAnonymousRefreshToken() throws Exception {
+
+        Map<String, Object> tokenResponse = new AnonymousTokenRequest("bla", "testbus", null, null, daoFactory, request, null).tokenResponse();
+        String refreshToken = tokenResponse.get(OAUTH2_REFRESH_TOKEN_PARAM_NAME).toString();
+        Scope scope1 = new Scope(tokenResponse.get(OAUTH2_SCOPE_PARAM_NAME).toString());
+
+        refreshRequestAndResponse();
+        request.setRequestURI("/v2/token");
+        request.setMethod("GET");
+        request.setParameter("callback", "bla");
+        request.setParameter(OAUTH2_REFRESH_TOKEN_PARAM_NAME, refreshToken);
+        handlerAdapter.handle(request, response, controller);
+        logger.info(response.getContentAsString());
+
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String,Object> responseBody = mapper.readValue(response.getContentAsString(), new TypeReference<Map<String,Object>>() {});
+        assertNotNull("expected access_token, got null", responseBody.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME));
+        assertNotNull("expected refresh_token, got null", responseBody.get(OAUTH2_REFRESH_TOKEN_PARAM_NAME));
+        Scope scope2 = new Scope(responseBody.get(OAUTH2_SCOPE_PARAM_NAME).toString());
+        assertEquals("initial and refresh token response scopes are not equal", scope1, scope2);
+    }
+
+    @Test
+    public void testPrivilegedRefreshToken() throws Exception {
+        refreshRequestAndResponse();
+        saveGrant(new Grant.Builder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.getClientId(),"bus:testbus").buildGrant());
+        Scope scope1 = new Scope(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, "testbus"));
+        setOAuthBasicAuthentication(request, testClient.getClientId(), testClient.getClientSecret());
+        Map<String, Object> tokenResponse = new AuthenticatedTokenRequest(OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS, testClient,
+                null, null, null, scope1.toString(), daoFactory, request, request.getHeader("Authorization")).tokenResponse();
+        String accessToken = tokenResponse.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME).toString();
+        String refreshToken = tokenResponse.get(OAUTH2_REFRESH_TOKEN_PARAM_NAME).toString();
+
+        refreshRequestAndResponse();
+        request.setRequestURI("/v2/token");
+        request.setMethod("POST");
+        setOAuthBasicAuthentication(request, testClient.getClientId(), "secret");
+        request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_REFRESH_TOKEN);
+        request.setParameter(OAUTH2_REFRESH_TOKEN_PARAM_NAME, refreshToken);
+        handlerAdapter.handle(request, response, controller);
+        logger.info(response.getContentAsString());
+
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String,Object> responseBody = mapper.readValue(response.getContentAsString(), new TypeReference<Map<String,Object>>() {});
+        assertNotNull("expected access_token, got null", responseBody.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME));
+        assertNotNull("expected refresh_token, got null", responseBody.get(OAUTH2_REFRESH_TOKEN_PARAM_NAME));
+        Scope scope2 = new Scope(responseBody.get(OAUTH2_SCOPE_PARAM_NAME).toString());
+        assertEquals("initial and refresh token response scopes are not equal", scope1, scope2);
+    }
+
     // - PRIVATE
 
     private void setOAuthBasicAuthentication(MockHttpServletRequest request, String client_id, String client_password) throws UnsupportedEncodingException {

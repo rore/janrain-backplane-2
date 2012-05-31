@@ -44,7 +44,7 @@ public enum GrantType {
     }
 
     public boolean isRefresh() {
-        return refreshType == null;
+        return refreshType == this;
     }
 
     public int getTokenExpiresSecondsDefault() {
@@ -53,7 +53,8 @@ public enum GrantType {
     }
 
     public Collection<TokenSource> getTokenAllowedSources() {
-        return isPrivileged() ? EnumSet.of(TokenSource.AUTHHEADER) : EnumSet.allOf(TokenSource.class);
+        return ! isPrivileged() ? EnumSet.allOf(TokenSource.class) :
+               isRefresh() ? EnumSet.of(TokenSource.POSTBODY) : EnumSet.of(TokenSource.AUTHHEADER);
     }
 
     /**
@@ -117,6 +118,6 @@ public enum GrantType {
     private GrantType(String tokenPrefix, @Nullable GrantType refreshType, @Nullable String oauthType) {
         this.tokenPrefix = tokenPrefix;
         this.oauthType = oauthType;
-        this.refreshType = refreshType;
+        this.refreshType = refreshType != null ? refreshType : this;
     }
 }
