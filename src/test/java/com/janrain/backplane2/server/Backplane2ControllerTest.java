@@ -1461,7 +1461,7 @@ public class Backplane2ControllerTest {
             //"messageURL": "https://bp.example.com/v2/message/097a5cc401001f95b45d37aca32a3bd2",
             String nextURL = returnedBody.get("nextURL").toString();
             since = nextURL.substring(nextURL.indexOf("since=") + 6);
-            Thread.sleep(1000);
+            //Thread.sleep(1000);
 
         } while (moreMessages);
 

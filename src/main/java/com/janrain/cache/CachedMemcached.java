@@ -10,6 +10,8 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.Collection;
 import java.util.Date;
+import java.util.List;
+import java.util.Map;
 
 /**
  * @author Tom Raney
@@ -23,11 +25,29 @@ public class CachedMemcached implements Cached {
         return instance;
     }
 
+    public synchronized Map<String, Object> getBulk(List<String> keys) {
+        if (client == null || !isEnabled) {
+            return null;
+        }
+
+        try {
+            return client.getBulk(keys);
+        } catch (Exception e) {
+            logger.warn("'getBulk' call to memcached server failed.  disabling cache for " + RETRY_IN/1000 + " seconds", e);
+            // disable
+            isEnabled = false;
+            new RetryThread().start();
+            return null;
+
+        }
+    }
+
     @Override
     public synchronized Object getObject(String key) {
         if (client == null || !isEnabled) {
             return null;
         }
+
         key = makeValidKey(key);
         try {
             return client.get(key);

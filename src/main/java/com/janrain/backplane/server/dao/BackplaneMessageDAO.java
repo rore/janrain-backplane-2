@@ -34,6 +34,9 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
     public void persist(BackplaneMessage message) throws SimpleDBException {
         superSimpleDB.store(bpConfig.getMessagesTableName(), BackplaneMessage.class, message, true);
 
+        // add new message to cache by message id
+        CachedMemcached.getInstance().setObject(message.getIdValue(), 3600, message);
+
         // update the cache
         String channel = message.get(BackplaneMessage.Field.CHANNEL_NAME.getFieldName());
         List<BackplaneMessage> messages = getMessagesByChannel(channel, null, null);
@@ -44,7 +47,7 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
         String bus = message.get(BackplaneMessage.Field.BUS.getFieldName());
         messages = getMessagesByBus(bus, null, null);
         messages.add(message);
-        CachedMemcached.getInstance().setObject(genBusKey(bus), 3600, messages);
+        CachedMemcached.getInstance().setObject(genBusKey(bus), 3600, getMessageIds(messages));
 
     }
 
@@ -79,19 +82,41 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
 
     }
 
+    public List<String> getMessageIds(List<BackplaneMessage> messages) {
+        List<String> ids = new ArrayList<String>();
+        for (BackplaneMessage message : messages) {
+            ids.add(message.getIdValue());
+        }
+        return ids;
+    }
+
     public List<BackplaneMessage> getMessagesByBus(String bus, String since, String sticky) throws SimpleDBException {
 
+        List<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
         //check the cache first
-        List<BackplaneMessage> messages = (List<BackplaneMessage>) CachedMemcached.getInstance().getObject(genBusKey(bus));
+        List<String> messageIds = (List<String>) CachedMemcached.getInstance().getObject(genBusKey(bus));
+        if (messageIds != null) {
+            Map<String, Object> msgs = CachedMemcached.getInstance().getBulk(messageIds);
+            for (Map.Entry<String,Object> entry: msgs.entrySet()) {
+                messages.add((BackplaneMessage) entry.getValue());
+            }
+            // if we don't receive as many records as keys, make sure we do a database check
+            if (messages.size() != messageIds.size()) {
+                messages.clear();
+            }
+        }
 
-        if (messages == null) {
+        if (messages.isEmpty()) {
             //check the DB
             StringBuilder whereClause = new StringBuilder()
                     .append(BackplaneMessage.Field.BUS.getFieldName()).append("='").append(bus).append("'");
 
             messages = superSimpleDB.retrieveWhere(bpConfig.getMessagesTableName(), BackplaneMessage.class, whereClause.toString(), true);
 
-            CachedMemcached.getInstance().setObject(genBusKey(bus), 3600, messages);
+            CachedMemcached.getInstance().setObject(genBusKey(bus), 3600, getMessageIds(messages));
+            for (BackplaneMessage message : messages) {
+                CachedMemcached.getInstance().setObject(message.getIdValue(), 3600, message);
+            }
         }
 
         return filterAndSort(messages, since, sticky);
