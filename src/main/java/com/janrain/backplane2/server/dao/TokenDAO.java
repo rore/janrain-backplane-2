@@ -24,6 +24,8 @@ import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.oauth2.TokenException;
+import com.yammer.metrics.Metrics;
+import com.yammer.metrics.core.TimerMetric;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
@@ -31,6 +33,8 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 
 import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_ACCESS_TOKEN;
 
@@ -45,25 +49,56 @@ public class TokenDAO extends DAO<Token> {
     }
 
     @Override
-    public void persist(Token token) throws SimpleDBException {
-        superSimpleDB.store(bpConfig.getTableName(BP_ACCESS_TOKEN), Token.class, token, true);
+    public void persist(final Token token) throws SimpleDBException {
+        try {
+            v2persistTokenTimer.time(new Callable<Object>() {
+                @Override
+                public Object call() throws SimpleDBException {
+                    superSimpleDB.store(bpConfig.getTableName(BP_ACCESS_TOKEN), Token.class, token, true);
+                    return null;
+                }
+            });
+        } catch (SimpleDBException sdbe) {
+            throw sdbe;
+        } catch (Exception e) {
+            throw new SimpleDBException(e);
+        }
     }
 
     @Override
-    public void delete(String tokenId) throws SimpleDBException {
-        deleteTokenById(tokenId);
+    public void delete(final String tokenId) throws SimpleDBException {
+        try {
+            v2deleteTokenTimer.time(new Callable<Object>() {
+                @Override
+                public Object call() throws SimpleDBException {
+                    superSimpleDB.delete(bpConfig.getTableName(BP_ACCESS_TOKEN), tokenId);
+                    return null;
+                }
+            });
+        } catch (SimpleDBException sdbe) {
+            throw sdbe;
+        } catch (Exception e) {
+            throw new SimpleDBException(e);
+        }
     }
 
-    public Token retrieveToken(String tokenId) throws SimpleDBException {
+    public Token retrieveToken(final String tokenId) throws SimpleDBException {
         if (! Token.looksLikeOurToken(tokenId)) {
             logger.error("invalid token! => '" + tokenId + "'");
             return null; //invalid token id, don't even try
         }
-        return superSimpleDB.retrieve(bpConfig.getTableName(BP_ACCESS_TOKEN), Token.class, tokenId);
-    }
-
-    public void deleteTokenById(String tokenId) throws SimpleDBException {
-        superSimpleDB.delete(bpConfig.getTableName(BP_ACCESS_TOKEN), tokenId);
+        try {
+            return v2retrieveTokenTimer.time(new Callable<Token>() {
+                @Override
+                public Token call() throws SimpleDBException {
+                    return superSimpleDB.retrieve(bpConfig.getTableName(BP_ACCESS_TOKEN), Token.class, tokenId);
+                }
+            });
+        } catch (SimpleDBException sdbe) {
+            throw sdbe;
+        } catch (Exception e) {
+            throw new SimpleDBException(e);
+        }
     }
 
     public void deleteExpiredTokens() throws SimpleDBException {
@@ -109,32 +144,42 @@ public class TokenDAO extends DAO<Token> {
      */
     public String getBusForChannel(String channel) throws SimpleDBException, TokenException {
         if (StringUtils.isEmpty(channel)) return null;
-        Scope singleChannelScope = new Scope(BackplaneMessage.Field.CHANNEL, channel);
-        List<Token> tokens = superSimpleDB.retrieveWhere(bpConfig.getTableName(BP_ACCESS_TOKEN), Token.class,
-                Token.TokenField.TYPE.getFieldName() + "='" + GrantType.ANONYMOUS + "' AND " +
-                Token.TokenField.SCOPE.getFieldName() + " LIKE '%" + singleChannelScope.toString() + "%'", true);
-
-        if (tokens == null || tokens.isEmpty()) {
-            logger.error("No anonymous tokens found to bind channel " + channel + " to a bus");
-            throw new TokenException("invalid channel: " + channel);
-        }
-
-        String bus = null;
-        for (Token token : tokens) {
-            Scope tokenScope = token.getScope();
-            if ( tokenScope.containsScope(singleChannelScope) ) {
-                LinkedHashSet<String> buses = tokenScope.getScopeMap().get(BackplaneMessage.Field.BUS);
-                if (buses == null || buses.isEmpty()) continue;
-                if ( (bus != null && buses.size() == 1) || (buses.size() > 1) )  {
-                    throw new TokenException("invalid channel, bound to more than one bus");
+        final Scope singleChannelScope = new Scope(BackplaneMessage.Field.CHANNEL, channel);
+        try {
+            List<Token> tokens = v2channelBusLookup.time(new Callable<List<Token>>() {
+                @Override
+                public List<Token> call() throws Exception {
+                    return superSimpleDB.retrieveWhere(bpConfig.getTableName(BP_ACCESS_TOKEN), Token.class,
+                                Token.TokenField.TYPE.getFieldName() + "='" + GrantType.ANONYMOUS + "' AND " +
+                                Token.TokenField.SCOPE.getFieldName() + " LIKE '%" + singleChannelScope.toString() + "%'", true);
                 }
-                bus = buses.iterator().next();
+            });
+            if (tokens == null || tokens.isEmpty()) {
+                logger.error("No anonymous tokens found to bind channel " + channel + " to a bus");
+                throw new TokenException("invalid channel: " + channel);
             }
-        }
-        if (bus == null) {
-            throw new TokenException("invalid channel: " + channel);
-        } else {
-            return bus;
+
+            String bus = null;
+            for (Token token : tokens) {
+                Scope tokenScope = token.getScope();
+                if ( tokenScope.containsScope(singleChannelScope) ) {
+                    LinkedHashSet<String> buses = tokenScope.getScopeMap().get(BackplaneMessage.Field.BUS);
+                    if (buses == null || buses.isEmpty()) continue;
+                    if ( (bus != null && buses.size() == 1) || (buses.size() > 1) )  {
+                        throw new TokenException("invalid channel, bound to more than one bus");
+                    }
+                    bus = buses.iterator().next();
+                }
+            }
+            if (bus == null) {
+                throw new TokenException("invalid channel: " + channel);
+            } else {
+                return bus;
+            }
+        } catch (SimpleDBException sdbe) {
+            throw sdbe;
+        } catch (Exception e) {
+            throw new SimpleDBException(e);
         }
     }
 
@@ -150,5 +195,10 @@ public class TokenDAO extends DAO<Token> {
     // - PRIVATE
 
     private static final Logger logger = Logger.getLogger(TokenDAO.class);
+
+    private final TimerMetric v2persistTokenTimer = Metrics.newTimer(TokenDAO.class, "v2_sdb_persist_token", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
+    private final TimerMetric v2retrieveTokenTimer = Metrics.newTimer(TokenDAO.class, "v2_sdb_retrieve_token", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
+    private final TimerMetric v2deleteTokenTimer = Metrics.newTimer(TokenDAO.class, "v2_sdb_delete_token", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
+    private final TimerMetric v2channelBusLookup = Metrics.newTimer(TokenDAO.class, "v2_sdb_bus_channel_lookup", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
 
 }

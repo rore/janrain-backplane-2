@@ -21,9 +21,13 @@ import com.janrain.backplane2.server.config.BusConfig2;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.oauth2.TokenException;
+import com.yammer.metrics.Metrics;
+import com.yammer.metrics.core.TimerMetric;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 
 import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_BUS_CONFIG;
 
@@ -51,8 +55,19 @@ public class BusDAO extends DAO<BusConfig2> {
         return superSimpleDB.retrieveAll(bpConfig.getTableName(BP_BUS_CONFIG), BusConfig2.class);
     }
 
-    public BusConfig2 retrieveBus(String busId) throws SimpleDBException {
-        return superSimpleDB.retrieve(bpConfig.getTableName(BP_BUS_CONFIG), BusConfig2.class, busId);
+    public BusConfig2 retrieveBus(final String busId) throws SimpleDBException {
+        try {
+            return v2busLookup.time(new Callable<BusConfig2>() {
+                @Override
+                public BusConfig2 call() throws Exception {
+                    return superSimpleDB.retrieve(bpConfig.getTableName(BP_BUS_CONFIG), BusConfig2.class, busId);
+                }
+            });
+        } catch (SimpleDBException sdbe) {
+            throw sdbe;
+        } catch (Exception e) {
+            throw new SimpleDBException(e);
+        }
     }
 
     public List<BusConfig2> retrieveByOwner(String busOwner) throws SimpleDBException {
@@ -75,4 +90,7 @@ public class BusDAO extends DAO<BusConfig2> {
     // - PRIVATE
 
     private final DaoFactory daoFactory;
+
+    private final TimerMetric v2busLookup = Metrics.newTimer(BusDAO.class, "v2_sdb_bus_lookup", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
+
 }

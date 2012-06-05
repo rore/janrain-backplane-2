@@ -23,10 +23,14 @@ import com.janrain.backplane2.server.config.Client;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.oauth2.TokenException;
+import com.yammer.metrics.Metrics;
+import com.yammer.metrics.core.TimerMetric;
 import org.apache.log4j.Logger;
 
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 
 import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_CLIENTS;
 
@@ -68,8 +72,19 @@ public class ClientDAO extends DAO<Client> {
         }
     }
 
-    public Client retrieveClient(String client) throws SimpleDBException {
-        return superSimpleDB.retrieve(bpConfig.getTableName(BP_CLIENTS), Client.class, client);
+    public Client retrieveClient(final String client) throws SimpleDBException {
+        try {
+            return v2clientLookup.time(new Callable<Client>() {
+                @Override
+                public Client call() throws Exception {
+                    return superSimpleDB.retrieve(bpConfig.getTableName(BP_CLIENTS), Client.class, client);
+                }
+            });
+        } catch (SimpleDBException sdbe) {
+            throw sdbe;
+        } catch (Exception e) {
+            throw new SimpleDBException(e);
+        }
     }
 
     // - PRIVATE
@@ -77,5 +92,7 @@ public class ClientDAO extends DAO<Client> {
     private static final Logger logger = Logger.getLogger(ClientDAO.class);
 
     private final DaoFactory daoFactory;
+
+    private final TimerMetric v2clientLookup = Metrics.newTimer(ClientDAO.class, "v2_sdb_client_lookup", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
 
 }

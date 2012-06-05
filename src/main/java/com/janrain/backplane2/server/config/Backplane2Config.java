@@ -34,7 +34,6 @@ import org.springframework.context.annotation.Scope;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.inject.Inject;
-import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.EnumSet;
@@ -193,7 +192,7 @@ public class Backplane2Config {
     // Amazon specific instance-id value
     private static String EC2InstanceId = "n/a";
 
-    private final TimerMetric getMessagesTime =
+    private final TimerMetric cleanupTimer =
             Metrics.newTimer(Backplane2Config.class, "cleanup_messages_time", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
 
     private static enum BpServerProperty {
@@ -238,7 +237,7 @@ public class Backplane2Config {
                 compileMetrics();
 
                 try {
-                    getMessagesTime.time(new Callable<Object>() {
+                    cleanupTimer.time(new Callable<Object>() {
                         @Override
                         public Object call() throws Exception {
                             daoFactory.getBackplaneMessageDAO().deleteExpiredMessages();
@@ -293,6 +292,8 @@ public class Backplane2Config {
     private void compileMetrics() {
 
         try {
+            daoFactory.getBackplaneMessageDAO().countMessages();
+
             MetricMessage metric = metricAccumulator.prepareSummary();
 
             logger.debug("Storing metrics for instance " + MetricsAccumulator.getInstanceUuid());
