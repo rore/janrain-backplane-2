@@ -340,7 +340,7 @@ public class Backplane1Controller {
                     try {
                         String payload = mapper.writeValueAsString(frames);
                         payLoadSizesOnGets.update(payload.length());
-                        return mapper.writeValueAsString(frames);
+                        return payload;
                     } catch (IOException e) {
                         String errMsg = "Error converting frames to JSON: " + e.getMessage();
                         logger.error(errMsg, bpConfig.getDebugException(e));
