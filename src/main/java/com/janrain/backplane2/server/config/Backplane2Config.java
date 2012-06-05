@@ -16,7 +16,9 @@
 
 package com.janrain.backplane2.server.config;
 
+import com.janrain.backplane2.server.BackplaneMessage;
 import com.janrain.backplane2.server.dao.DaoFactory;
+import com.janrain.backplane2.server.dao.MessageCache;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.commons.supersimpledb.message.AbstractNamedMap;
@@ -39,10 +41,7 @@ import java.util.Calendar;
 import java.util.EnumSet;
 import java.util.Properties;
 import java.util.TimeZone;
-import java.util.concurrent.Callable;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 
 /**
@@ -128,6 +127,19 @@ public class Backplane2Config {
         return max == null ? Backplane2Config.BP_MAX_MESSAGES_DEFAULT : max;
     }
 
+    public long getMaxMessageCacheBytes() {
+        try {
+            Long max = Long.valueOf(cachedGet(BpServerProperty.MESSAGE_CACHE_MAX_MB));
+            return max == null ? 0L : max * 1024 * 1024;
+        } catch (NumberFormatException nfe) {
+            logger.error("Invalid message cache size value: " + nfe.getMessage(), nfe);
+            return 0L;
+        } catch (SimpleDBException sdbe) {
+            logger.error("Error looking up message cache size: " + sdbe, sdbe);
+            return 0L;
+        }
+    }
+
     public Exception getDebugException(Exception e) {
         try {
             return isDebugMode() ? e : null;
@@ -185,9 +197,12 @@ public class Backplane2Config {
 
     private static final String BP_CONFIG_ENTRY_NAME = "bpserverconfig";
     private static final long BP_MAX_MESSAGES_DEFAULT = 100;
+    private static final long CACHE_UPDATER_INTERVAL_SECONDS = 10;
 
     private final String bpInstanceId;
     private ScheduledExecutorService cleanup;
+    private ExecutorService cacheUpdater;
+
 
     // Amazon specific instance-id value
     private static String EC2InstanceId = "n/a";
@@ -200,6 +215,7 @@ public class Backplane2Config {
         CONFIG_CACHE_AGE_SECONDS,
         CLEANUP_INTERVAL_MINUTES,
         DEFAULT_MESSAGES_MAX,
+        MESSAGE_CACHE_MAX_MB,
         ENCRYPTION_KEY
     }
 
@@ -259,9 +275,28 @@ public class Backplane2Config {
         return cleanupTask;
     }
 
+    private ExecutorService createCacheUpdaterTask() {
+        ScheduledExecutorService cacheUpdater = Executors.newScheduledThreadPool(1);
+        cacheUpdater.scheduleWithFixedDelay(new Runnable() {
+            @Override
+            public void run() {
+                MessageCache<BackplaneMessage> cache = daoFactory.getMessageCache();
+                BackplaneMessage lastCached = cache.getLastMessage();
+                String lastCachedId = lastCached != null ? lastCached.getIdValue() : "";
+                try {
+                    cache.add(daoFactory.getBackplaneMessageDAO().retrieveMessagesNoScope(lastCachedId));
+                } catch (SimpleDBException e) {
+                    logger.error("Error updating message cache: " + e.getMessage(), e);
+                }
+            }
+        }, 10, 10, TimeUnit.SECONDS); // every ten seconds
+        return cacheUpdater;
+    }
+
     @PostConstruct
     private void init() {
         this.cleanup = createCleanupTask();
+        this.cacheUpdater = createCacheUpdaterTask();
 
         for(SimpleDBTables table : EnumSet.allOf(SimpleDBTables.class)) {
             superSimpleDb.checkDomain(getTableName(table));
@@ -270,22 +305,26 @@ public class Backplane2Config {
 
     @PreDestroy
     private void cleanup() {
+        shutdownExecutor(cleanup);
+        shutdownExecutor(cacheUpdater);
+    }
+
+    private void shutdownExecutor(ExecutorService executor) {
         try {
-            this.cleanup.shutdown();
-            if (this.cleanup.awaitTermination(10, TimeUnit.SECONDS)) {
+            executor.shutdown();
+            if (executor.awaitTermination(10, TimeUnit.SECONDS)) {
                 logger.info("Background thread shutdown properly");
             } else {
-                this.cleanup.shutdownNow();
-                if (!this.cleanup.awaitTermination(10, TimeUnit.SECONDS)) {
+                executor.shutdownNow();
+                if (!executor.awaitTermination(10, TimeUnit.SECONDS)) {
                     logger.error("Background thread did not terminate");
                 }
             }
             Metrics.defaultRegistry().threadPools().shutdownThreadPools();
         } catch (InterruptedException e) {
             logger.error("cleanup() threw an exception", e);
-            this.cleanup.shutdownNow();
+            executor.shutdownNow();
             Thread.currentThread().interrupt();
-
         }
     }
 
@@ -326,7 +365,7 @@ public class Backplane2Config {
     }
 
     private String getExpiredMetricClause() {
-        int interval = 0;
+        int interval;
         try {
             interval = Integer.valueOf(cachedGet(BpServerProperty.CLEANUP_INTERVAL_MINUTES));
         } catch (SimpleDBException e) {

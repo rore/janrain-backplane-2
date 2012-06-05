@@ -29,6 +29,7 @@ import com.janrain.oauth2.TokenException;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.HistogramMetric;
 import com.yammer.metrics.core.TimerMetric;
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 
@@ -87,6 +88,15 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
     }
 
     public @NotNull BackplaneMessage retrieveBackplaneMessage(@NotNull final String messageId, @NotNull Token token) throws SimpleDBException, TokenException {
+        MessageCache<BackplaneMessage> cache = daoFactory.getMessageCache();
+        BackplaneMessage firstCached = cache.getFirstMessage();
+        BackplaneMessage lastCached = cache.getLastMessage();
+        if ( firstCached != null && lastCached != null &&
+             firstCached.getIdValue().compareTo(messageId) <= 0 &&
+             lastCached.getIdValue().compareTo(messageId) >= 0) {
+            return cache.get(messageId);
+        }
+
         BackplaneMessage message;
         try {
             message = v2singleGetTimer.time(new Callable<BackplaneMessage>() {
@@ -149,40 +159,25 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
      * @param token access token to be used for message retrieval
      */
     public void retrieveMesssagesPerScope(@NotNull final MessagesResponse bpResponse, @NotNull final Token token) throws SimpleDBException {
+        final Scope scope = token.getScope();
+        filterMessagesPerScope(daoFactory.getMessageCache().getMessagesSince(bpResponse.getLastMessageId()), scope, bpResponse);
+        logger.info("Local cache hits for request: " + bpResponse.messageCount() + " messages");
         try {
             v2multiGetTimer.time(new Callable<Object>() {
                 @Override
                 public Object call() throws Exception {
-                    Scope scope = token.getScope();
                     String query = buildMessageSelectQueryClause(scope);
-                    List<BackplaneMessage> filteredMessages = new ArrayList<BackplaneMessage>();
                     Pair<List<BackplaneMessage>, Boolean> unfilteredMessages;
                     do {
                         // We don't want to use SDB's paginating mechanism and retrieve all available, unfiltered messages
                         unfilteredMessages = superSimpleDB.retrieveSomeWhere(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class,
                                 ((query.length() > 0) ? query + " AND " : "") +
-                                        " id > '" + bpResponse.getLastMessageId() + "' ORDER BY id LIMIT " + SuperSimpleDB.MAX_SELECT_PAGINATION_LIMIT);
+                                " id > '" + bpResponse.getLastMessageId() + "' ORDER BY id LIMIT " + SuperSimpleDB.MAX_SELECT_PAGINATION_LIMIT);
 
-                        // Filter and add to results
-                        for (BackplaneMessage unfilteredMessage : unfilteredMessages.getLeft()) {
-                            if (scope.isMessageInScope(unfilteredMessage)) {
-                                if (filteredMessages.size() >= MAX_MSGS_IN_FRAME) {
-                                    bpResponse.moreMessages(true);
-                                    bpResponse.setLastMessageId(filteredMessages.get(filteredMessages.size() - 1).getIdValue());
-                                    break;
-                                }
-                                filteredMessages.add(unfilteredMessage);
-                            }
-                        }
-
-                        // update lastMessageId to point to last message in this unfiltered result
-                        if (unfilteredMessages.getLeft().size() > 0 && !bpResponse.moreMessages()) {
-                            bpResponse.setLastMessageId(unfilteredMessages.getLeft().get(unfilteredMessages.getLeft().size() - 1).getIdValue());
-                        }
+                        filterMessagesPerScope(unfilteredMessages.getLeft(), scope, bpResponse);
 
                     } while (unfilteredMessages.getLeft().size() > 0 && !bpResponse.moreMessages());
 
-                    bpResponse.addMessages(filteredMessages);
                     return null;
                 }
             });
@@ -193,6 +188,47 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
                 throw new SimpleDBException(e);
             }
         }
+    }
+
+    public List<BackplaneMessage> retrieveMessagesNoScope(String sinceIso8601timestamp) throws SimpleDBException {
+        List<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
+        Pair<List<BackplaneMessage>, Boolean> newMessages;
+        String since = StringUtils.isEmpty(sinceIso8601timestamp) ? "" : sinceIso8601timestamp;
+        while(true) {
+            // We don't want to use SDB's paginating mechanism and retrieve all available, unfiltered messages
+            newMessages = superSimpleDB.retrieveSomeWhere(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class,
+                    " id > '" + since + "' ORDER BY id LIMIT " + SuperSimpleDB.MAX_SELECT_PAGINATION_LIMIT);
+            if (newMessages.getLeft().isEmpty()) {
+                break;
+            } else {
+                messages.addAll(newMessages.getLeft());
+                since = newMessages.getLeft().get(0).getIdValue();
+                if (messages.size() >= MAX_MSGS_IN_FRAME) break;
+            }
+        }
+        return messages;
+    }
+
+    private void filterMessagesPerScope(List<BackplaneMessage> unfilteredMessages, Scope scope, MessagesResponse bpResponse) {
+        // Filter and add to results
+        List<BackplaneMessage> filteredMessages = new ArrayList<BackplaneMessage>();
+        for (BackplaneMessage unfilteredMessage : unfilteredMessages) {
+            if (scope.isMessageInScope(unfilteredMessage)) {
+                if (filteredMessages.size() >= MAX_MSGS_IN_FRAME) {
+                    bpResponse.moreMessages(true);
+                    bpResponse.setLastMessageId(filteredMessages.get(filteredMessages.size() - 1).getIdValue());
+                    break;
+                }
+                filteredMessages.add(unfilteredMessage);
+            }
+        }
+
+        // update lastMessageId to point to last message in this unfiltered result
+        if (unfilteredMessages.size() > 0 && !bpResponse.moreMessages()) {
+            bpResponse.setLastMessageId(unfilteredMessages.get(unfilteredMessages.size() - 1).getIdValue());
+        }
+
+        bpResponse.addMessages(filteredMessages);
     }
 
     public void deleteExpiredMessages() {

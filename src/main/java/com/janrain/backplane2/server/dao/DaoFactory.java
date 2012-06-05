@@ -16,6 +16,7 @@
 
 package com.janrain.backplane2.server.dao;
 
+import com.janrain.backplane2.server.BackplaneMessage;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.backplane2.server.config.BusConfig2;
 import com.janrain.backplane2.server.config.Client;
@@ -23,6 +24,7 @@ import com.janrain.backplane2.server.config.User;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import org.springframework.context.annotation.Scope;
 
+import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 
 /**
@@ -81,10 +83,21 @@ public class DaoFactory {
         return null;
     }
 
+    public MessageCache<BackplaneMessage> getMessageCache() {
+        return messageCache;
+    }
+
     @Inject
     private SuperSimpleDB superSimpleDB;
 
     @Inject
     private Backplane2Config bpConfig;
+
+    private final MessageCache<BackplaneMessage> messageCache = new MessageCache<BackplaneMessage>(0L);
+
+    @PostConstruct
+    private void init() {
+        messageCache.setMaxCacheSizeBytes(bpConfig.getMaxMessageCacheBytes());
+    }
 
 }
