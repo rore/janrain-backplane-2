@@ -52,6 +52,8 @@
         </layout>
     </appender>
 
+    <appender name="metrics" class="com.yammer.metrics.log4j.InstrumentedAppender"/>
+
 	
 	<!-- Janrain logger -->
 	<logger name="com.janrain">
@@ -97,6 +99,7 @@
 		<appender-ref ref="console" />
         <appender-ref ref="mail" />
         <appender-ref ref="syslog" />
+        <appender-ref ref="metrics" />
 	</root>
 	
 </log4j:configuration>

@@ -18,6 +18,7 @@ package com.janrain.backplane2.server.dao;
 
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.backplane2.server.config.BusConfig2;
+import com.janrain.cache.CachedMemcached;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.oauth2.TokenException;
@@ -52,7 +53,17 @@ public class BusDAO extends DAO<BusConfig2> {
     }
 
     public BusConfig2 retrieveBus(String busId) throws SimpleDBException {
-        return superSimpleDB.retrieve(bpConfig.getTableName(BP_BUS_CONFIG), BusConfig2.class, busId);
+        Object obj = null;
+        obj = CachedMemcached.getInstance().getObject(busId);
+        if (obj == null) {
+            BusConfig2 busConfig2 = superSimpleDB.retrieve(bpConfig.getTableName(BP_BUS_CONFIG), BusConfig2.class, busId);
+            if (busConfig2 != null) {
+                CachedMemcached.getInstance().setObject(busId, 3600, busConfig2);
+            }
+            return busConfig2;
+        } else {
+            return (BusConfig2)obj;
+        }
     }
 
     public List<BusConfig2> retrieveByOwner(String busOwner) throws SimpleDBException {

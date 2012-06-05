@@ -22,6 +22,7 @@ import com.janrain.backplane2.server.provision.ProvisioningConfig;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.MessageField;
 
+import java.io.Serializable;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -30,7 +31,7 @@ import java.util.Set;
 /**
  * @author Johnny Bufu
  */
-public class BusConfig2 extends ProvisioningConfig {
+public class BusConfig2 extends ProvisioningConfig implements Serializable {
 
     // - PUBLIC
 

@@ -23,7 +23,6 @@ import com.janrain.commons.util.AwsUtility;
 import com.janrain.commons.util.InitSystemProps;
 import com.janrain.crypto.HmacHashUtils;
 import com.yammer.metrics.Metrics;
-import com.yammer.metrics.core.TimerMetric;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.springframework.context.annotation.Scope;
@@ -188,7 +187,7 @@ public class Backplane1Config {
     // Amazon specific instance-id value
     private static String EC2InstanceId = "n/a";
 
-    private final TimerMetric getMessagesTime =
+    private final com.yammer.metrics.core.Timer getMessagesTime =
             Metrics.newTimer(Backplane1Config.class, "cleanup_messages_time", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
 
     private static enum BpServerProperty {

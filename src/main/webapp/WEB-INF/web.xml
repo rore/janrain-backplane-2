@@ -56,6 +56,16 @@
     </filter-mapping>
 
     <filter>
+        <description>Short circuit condition</description>
+        <filter-name>CircuitBreakerFilter</filter-name>
+        <filter-class>com.janrain.servlet.CircuitBreakerFilter</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>CircuitBreakerFilter</filter-name>
+        <url-pattern>/v2/messages</url-pattern>
+    </filter-mapping>
+
+    <filter>
         <description>Logs processing time for each request</description>
         <filter-name>timer</filter-name>
         <filter-class>com.janrain.servlet.ProcessTimeLoggingFilter</filter-class>
@@ -120,9 +130,34 @@
         <init-param>
             <param-name>detectAllHandlerAdapters</param-name>
             <param-value>false</param-value>
-        </init-param>
+        </init-param>      
         <load-on-startup>1</load-on-startup>
     </servlet>
+    
+    <servlet>
+          <servlet-name>backplane_metrics</servlet-name>
+        <servlet-class>com.yammer.metrics.reporting.MetricsServlet</servlet-class>
+        <init-param>
+            <param-name>metrics-uri</param-name>
+            <param-value>/metrics</param-value>
+        </init-param>
+        <init-param>
+            <param-name>ping-uri</param-name>
+            <param-value>/ping</param-value>
+        </init-param>
+        <init-param>
+            <param-name>healthcheck-uri</param-name>
+            <param-value>/health</param-value>
+        </init-param>
+        <init-param>
+            <param-name>threads-uri</param-name>
+            <param-value>/threads</param-value>
+        </init-param>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>backplane_metrics</servlet-name>
+        <url-pattern>/app/backplane_metrics/*</url-pattern>
+    </servlet-mapping>
     <servlet-mapping>
         <servlet-name>Spring MVC Dispatcher Servlet</servlet-name>
         <url-pattern>/app/*</url-pattern>

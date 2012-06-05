@@ -21,11 +21,11 @@ import com.janrain.backplane2.server.dao.DaoFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.crypto.ChannelUtil;
 import com.janrain.crypto.HmacHashUtils;
-import com.janrain.metrics.MetricsAccumulator;
 import com.janrain.oauth2.*;
 import com.janrain.servlet.ServletUtil;
 import com.yammer.metrics.Metrics;
-import com.yammer.metrics.core.MeterMetric;
+import com.yammer.metrics.core.Meter;
+import com.yammer.metrics.core.TimerContext;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -188,13 +188,14 @@ public class Backplane2Controller {
         }
 
         v2GetRegTokens.mark();
+        final TimerContext context = getRegularTokenTimer.time();
 
         try {
             return (new AnonymousTokenRequest(callback, bus, scope, refresh_token, daoFactory, request, authorizationHeader).tokenResponse());
         } catch (TokenException e) {
             return handleTokenException(e, response);
-        } catch (Exception e) {
-            return handleTokenException(new TokenException(OAUTH2_TOKEN_SERVER_ERROR, "Error converting frames to JSON: " + e.getMessage(), HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e), response);
+        } finally {
+            context.stop();
         }
     }
 
@@ -360,24 +361,25 @@ public class Backplane2Controller {
      */
     @RequestMapping(value = "/message", method = { RequestMethod.POST})
     public @ResponseBody Map<String,Object>  postMessages(
-                  HttpServletRequest request, HttpServletResponse response,
-                  @RequestBody Map<String,Map<String,Object>> messagePostBody,
-                  @RequestParam(value = OAUTH2_ACCESS_TOKEN_PARAM_NAME, required = false) String access_token,
-                  @RequestHeader(value = "Authorization", required = false) String authorizationHeader)
+            HttpServletRequest request, HttpServletResponse response,
+            @RequestBody Map<String,Map<String,Object>> messagePostBody,
+            @RequestParam(value = OAUTH2_ACCESS_TOKEN_PARAM_NAME, required = false) String access_token,
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader)
             throws SimpleDBException {
 
         if (!ServletUtil.isSecure(request)) {
             throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
         }
 
+        final TimerContext context = postTimer.time();
+        // log metric
+        v2Posts.mark();
+
         try {
             Token token = Token.fromRequest(daoFactory, request, access_token, authorizationHeader);
             if ( token.getType().isRefresh() || ! token.getType().isPrivileged() ) {
                 throw new TokenException("Invalid token type: " + token.getType(), HttpServletResponse.SC_FORBIDDEN);
             }
-
-            // log metric
-            v2Posts.mark();
 
             daoFactory.getBackplaneMessageDAO().persist(parsePostedMessage(messagePostBody, token));
 
@@ -386,6 +388,8 @@ public class Backplane2Controller {
 
         } catch (TokenException e) {
             return handleTokenException(e, response);
+        } finally {
+            context.stop();
         }
     }
 
@@ -500,9 +504,6 @@ public class Backplane2Controller {
 
     @Inject
     private DaoFactory daoFactory;
-
-    @Inject
-    private MetricsAccumulator metricAccumulator;
 
     //private static final Random random = new SecureRandom();
 
@@ -824,7 +825,11 @@ public class Backplane2Controller {
         return message;
     }
 
-    private final MeterMetric v2Gets = Metrics.newMeter(Backplane2Controller.class, "v2_get", "v2_gets", TimeUnit.MINUTES);
-    private final MeterMetric v2Posts =  Metrics.newMeter(Backplane2Controller.class, "v2_post", "v2_posts", TimeUnit.MINUTES);
-    private final MeterMetric v2GetRegTokens =  Metrics.newMeter(Backplane2Controller.class, "v2_get_reg_token", "v2_get_reg_tokens", TimeUnit.MINUTES);
+    private final Meter v2Gets = Metrics.newMeter(Backplane2Controller.class, "v2_get", "v2_gets", TimeUnit.MINUTES);
+    private final Meter v2Posts =  Metrics.newMeter(Backplane2Controller.class, "v2_post", "v2_posts", TimeUnit.MINUTES);
+    private final Meter v2GetRegTokens =  Metrics.newMeter(Backplane2Controller.class, "v2_get_reg_token", "v2_get_reg_tokens", TimeUnit.MINUTES);
+    private final com.yammer.metrics.core.Timer postTimer =
+            com.yammer.metrics.Metrics.newTimer(Backplane2Controller.class, "v2_posts_time", TimeUnit.MILLISECONDS, TimeUnit.SECONDS);
+    private final com.yammer.metrics.core.Timer getRegularTokenTimer =
+            com.yammer.metrics.Metrics.newTimer(Backplane2Controller.class, "v2_get_reg_tokens_time", TimeUnit.MILLISECONDS, TimeUnit.SECONDS);
 }

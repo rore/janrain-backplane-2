@@ -23,6 +23,9 @@ import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
 
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.*;
@@ -30,7 +33,7 @@ import java.util.*;
 /**
  * @author Johnny Bufu
  */
-public class BackplaneMessage extends AbstractMessage {
+public class BackplaneMessage extends AbstractMessage implements Serializable {
 
     // - PUBLIC
 
@@ -145,6 +148,8 @@ public class BackplaneMessage extends AbstractMessage {
         }
     }
 
+
+
     // - PACKAGE
 
     public BackplaneMessage() {
@@ -153,6 +158,8 @@ public class BackplaneMessage extends AbstractMessage {
     // - PRIVATE
 
     private static final Logger logger = Logger.getLogger(BackplaneMessage.class);
+
+    private static final long serialVersionUID = 7526471155622776147L;
 
     private String extractFieldValueAsJsonString(Field field, Map<String,Object> data) throws BackplaneServerException {
         try {
@@ -164,4 +171,28 @@ public class BackplaneMessage extends AbstractMessage {
             throw new BackplaneServerException(errMsg, e);
         }
     }
+
+
+    private void writeObject(ObjectOutputStream oos)
+            throws IOException {
+
+        Map<String, String> map = new HashMap<String,String>();
+        for (Map.Entry<String,String> entry : this.entrySet()) {
+            map.put(entry.getKey(), entry.getValue());
+        }
+        oos.writeObject(map);
+
+    }
+
+    private void readObject(ObjectInputStream ois)
+            throws ClassNotFoundException, IOException {
+
+        Map<String,String> map = (Map<String, String>) ois.readObject();
+        try {
+            init(map.get(Field.ID.getFieldName()), map);
+        } catch (SimpleDBException e) {
+            logger.error(e);
+        }
+    }
+
 }

@@ -24,9 +24,9 @@ import com.janrain.commons.util.AwsUtility;
 import com.janrain.commons.util.InitSystemProps;
 import com.janrain.crypto.HmacHashUtils;
 import com.janrain.metrics.MetricMessage;
-import com.janrain.metrics.MetricsAccumulator;
 import com.yammer.metrics.Metrics;
-import com.yammer.metrics.core.TimerMetric;
+import com.yammer.metrics.core.Timer;
+import com.yammer.metrics.reporting.ConsoleReporter;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.springframework.context.annotation.Scope;
@@ -34,7 +34,6 @@ import org.springframework.context.annotation.Scope;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.inject.Inject;
-import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.EnumSet;
@@ -193,7 +192,7 @@ public class Backplane2Config {
     // Amazon specific instance-id value
     private static String EC2InstanceId = "n/a";
 
-    private final TimerMetric getMessagesTime =
+    private final Timer getMessagesTime =
             Metrics.newTimer(Backplane2Config.class, "cleanup_messages_time", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
 
     private static enum BpServerProperty {
@@ -208,6 +207,8 @@ public class Backplane2Config {
     private Backplane2Config() {
         this.bpInstanceId = getAwsProp(InitSystemProps.AWS_INSTANCE_ID);
         this.EC2InstanceId = new AwsUtility().retrieveEC2InstanceId();
+
+        ConsoleReporter.enable(5, TimeUnit.MINUTES);
 
         try {
             buildProperties.load(Backplane2Config.class.getResourceAsStream(BUILD_PROPERTIES));
@@ -235,14 +236,11 @@ public class Backplane2Config {
             @Override
             public void run() {
 
-                compileMetrics();
-
                 try {
                     getMessagesTime.time(new Callable<Object>() {
                         @Override
                         public Object call() throws Exception {
                             daoFactory.getBackplaneMessageDAO().deleteExpiredMessages();
-                            deleteExpiredMetrics();
                             daoFactory.getTokenDao().deleteExpiredTokens();
                             daoFactory.getAuthSessionDAO().deleteExpiredAuthSessions();
                             daoFactory.getAuthorizationRequestDAO().deleteExpiredAuthorizationRequests();
@@ -281,7 +279,6 @@ public class Backplane2Config {
                     logger.error("Background thread did not terminate");
                 }
             }
-            Metrics.defaultRegistry().threadPools().shutdownThreadPools();
         } catch (InterruptedException e) {
             logger.error("cleanup() threw an exception", e);
             this.cleanup.shutdownNow();
@@ -290,59 +287,9 @@ public class Backplane2Config {
         }
     }
 
-    private void compileMetrics() {
-
-        try {
-            MetricMessage metric = metricAccumulator.prepareSummary();
-
-            logger.debug("Storing metrics for instance " + MetricsAccumulator.getInstanceUuid());
-
-            // Create the _metrics table if it doesn't already exist.  This is a light-weight call.
-            superSimpleDb.checkDomain(getTableName(SimpleDBTables.BP_METRICS));
-
-            MetricMessage oldMetric = superSimpleDb.retrieveAndDelete(getTableName(SimpleDBTables.BP_METRICS), MetricMessage.class, metric.getIdValue());
-
-            superSimpleDb.store(getTableName(SimpleDBTables.BP_METRICS), MetricMessage.class, metric, true);
-
-        } catch (Exception e) {
-            logger.error("Error compiling metrics " + e.getMessage(), e);
-        }
-
-    }
-
-    private void deleteExpiredMetrics() {
-        try {
-            logger.info("Backplane metrics cleanup task started.");
-            superSimpleDb.deleteWhere(getTableName(SimpleDBTables.BP_METRICS), getExpiredMetricClause());
-        } catch (SimpleDBException sdbe) {
-            logger.error("Error while removing expired metrics, " + sdbe.getMessage(), sdbe);
-        } catch (Exception e) {
-            // catch-all, else cleanup thread stops
-            logger.error("Backplane messages cleanup task error: " + e.getMessage(), e);
-        } finally {
-            logger.info("Backplane messages cleanup task finished.");
-        }
-    }
-
-    private String getExpiredMetricClause() {
-        int interval = 0;
-        try {
-            interval = Integer.valueOf(cachedGet(BpServerProperty.CLEANUP_INTERVAL_MINUTES));
-        } catch (SimpleDBException e) {
-            throw new RuntimeException("Error getting server property " + BpServerProperty.CLEANUP_INTERVAL_MINUTES, e);
-        }
-        Calendar now = Calendar.getInstance();
-        // Cleanup metrics that may be lingering due to a shutdown server instance
-        now.roll(Calendar.MINUTE, -(interval+2));
-        return "time < '" + ISO8601.format(now.getTime()) + "'";
-    }
-
     @Inject
     @SuppressWarnings({"UnusedDeclaration"})
     private SuperSimpleDB superSimpleDb;
-
-    @Inject
-    private MetricsAccumulator metricAccumulator;
 
     @Inject
     private DaoFactory daoFactory;

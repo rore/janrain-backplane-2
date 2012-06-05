@@ -16,18 +16,19 @@
 
 package com.janrain.backplane.server;
 
-import com.janrain.metrics.*;
 import com.janrain.backplane.server.config.AuthException;
 import com.janrain.backplane.server.config.Backplane1Config;
 import com.janrain.backplane.server.config.BusConfig1;
 import com.janrain.backplane.server.config.User;
+import com.janrain.backplane.server.dao.BackplaneMessageDAO;
+import com.janrain.backplane.server.dao.DaoFactory;
+import com.janrain.cache.CachedMemcached;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.crypto.HmacHashUtils;
 import com.yammer.metrics.Metrics;
-import com.yammer.metrics.core.HistogramMetric;
-import com.yammer.metrics.core.MeterMetric;
-import com.yammer.metrics.core.TimerMetric;
+import com.yammer.metrics.core.Histogram;
+import com.yammer.metrics.core.Meter;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -79,25 +80,12 @@ public class Backplane1Controller {
                                 @RequestParam(value = "sticky", required = false) String sticky )
         throws AuthException, SimpleDBException, BackplaneServerException {
 
-                // log metric
-        busGets.mark();
-
         checkAuth(basicAuth, bus, Backplane1Config.BUS_PERMISSION.GETALL);
 
         // log metric
         busGets.mark();
 
-        StringBuilder whereClause = new StringBuilder()
-            .append(BackplaneMessage.Field.BUS.getFieldName()).append("='").append(bus).append("'");
-        if (! StringUtils.isEmpty(since)) {
-            whereClause.append(" and ").append(BackplaneMessage.Field.ID.getFieldName()).append(" > '").append(since).append("'");
-        }
-        if (! StringUtils.isEmpty(sticky)) {
-            whereClause.append(" and ").append(BackplaneMessage.Field.STICKY.getFieldName()).append("='").append(sticky).append("'");
-        }
-
-        List<BackplaneMessage> messages =
-                superSimpleDb.retrieveWhere(bpConfig.getMessagesTableName(), BackplaneMessage.class, whereClause.toString(), true);
+        List<BackplaneMessage> messages = daoFactory.getBackplaneMessageDAO().getMessagesByBus(bus, since, sticky);
 
         List<HashMap<String,Object>> frames = new ArrayList<HashMap<String, Object>>();
         for (BackplaneMessage message : messages) {
@@ -151,9 +139,11 @@ public class Backplane1Controller {
         //log metric
         posts.mark();
 
+        BackplaneMessageDAO backplaneMessageDAO = daoFactory.getBackplaneMessageDAO();
+
         for(Map<String,Object> messageData : messages) {
             BackplaneMessage message = new BackplaneMessage(generateMessageId(), bus, channel, messageData);
-            superSimpleDb.store(bpConfig.getMessagesTableName(), BackplaneMessage.class, message, true); // todo: make long entries support configurable
+            backplaneMessageDAO.persist(message);
         }
 
         return "";
@@ -223,21 +213,21 @@ public class Backplane1Controller {
     private static final String ERR_MSG_FIELD = "ERR_MSG";
     private static final int CHANNEL_NAME_LENGTH = 32;
 
-    private final MeterMetric posts =
+    private final Meter posts =
             Metrics.newMeter(Backplane1Controller.class, "post", "posts", TimeUnit.MINUTES);
 
-    private final MeterMetric channelGets =
+    private final Meter channelGets =
             Metrics.newMeter(Backplane1Controller.class, "channel_get", "channel_gets", TimeUnit.MINUTES);
 
-    private final MeterMetric busGets =
+    private final Meter busGets =
             Metrics.newMeter(Backplane1Controller.class, "bus_get", "bus_gets", TimeUnit.MINUTES);
 
-    private final TimerMetric getMessagesTime =
+    private final com.yammer.metrics.core.Timer getMessagesTime =
             Metrics.newTimer(Backplane1Controller.class, "get_messages_time", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
 
-    private final HistogramMetric payLoadSizesOnGets = Metrics.newHistogram(Backplane1Controller.class, "payload_sizes_gets");
+    private final Histogram payLoadSizesOnGets = Metrics.newHistogram(Backplane1Controller.class, "payload_sizes_gets");
 
-    private final HistogramMetric messagesPerChannel = Metrics.newHistogram(Backplane1Controller.class, "messages_per_channel");
+    private final Histogram messagesPerChannel = Metrics.newHistogram(Backplane1Controller.class, "messages_per_channel");
 
     @Inject
     private Backplane1Config bpConfig;
@@ -246,7 +236,7 @@ public class Backplane1Controller {
     private SuperSimpleDB superSimpleDb;
 
     @Inject
-    private MetricsAccumulator metricAccumulator;
+    private com.janrain.backplane.server.dao.DaoFactory daoFactory;
 
     private static final Random random = new SecureRandom();
 
@@ -318,18 +308,7 @@ public class Backplane1Controller {
             return getMessagesTime.time(new Callable<String>() {
                 @Override
                 public String call() throws Exception {
-                    StringBuilder whereClause = new StringBuilder()
-                        .append(BackplaneMessage.Field.BUS.getFieldName()).append("='").append(bus).append("'")
-                        .append(" and ").append(BackplaneMessage.Field.CHANNEL_NAME.getFieldName()).append("='").append(channel).append("'");
-                    if (! StringUtils.isEmpty(since)) {
-                        whereClause.append(" and ").append(BackplaneMessage.Field.ID.getFieldName()).append(" > '").append(since).append("'");
-                    }
-                    if (! StringUtils.isEmpty(sticky)) {
-                        whereClause.append(" and ").append(BackplaneMessage.Field.STICKY.getFieldName()).append("='").append(sticky).append("'");
-                    }
-
-                    List<BackplaneMessage> messages = superSimpleDb.retrieveWhere(bpConfig.getMessagesTableName(), BackplaneMessage.class, whereClause.toString(), true);
-
+                    List<BackplaneMessage> messages = daoFactory.getBackplaneMessageDAO().getMessagesByChannel(channel, since, sticky);
                     List<Map<String,Object>> frames = new ArrayList<Map<String, Object>>();
 
                     for (BackplaneMessage message : messages) {
