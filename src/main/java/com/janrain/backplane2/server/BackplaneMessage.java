@@ -70,7 +70,7 @@ public class BackplaneMessage extends AbstractMessage implements Serializable {
      * @return a time-based, lexicographically comparable message ID.
      */
     public static String generateMessageId() {
-        return (Backplane2Config.ISO8601.format(new Date()) + ChannelUtil.randomString(10)).replaceAll("[^\\w]","");
+        return Backplane2Config.ISO8601.format(new Date()) + ChannelUtil.randomString(10);
     }
 
     @Override
