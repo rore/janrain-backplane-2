@@ -115,7 +115,7 @@ public class CachedMemcached implements Cached {
     private static CachedMemcached instance;
     private MemcachedClient client;
     private boolean isEnabled = false;
-    private final long RETRY_IN = 60000l;
+    private final long RETRY_IN = 30000l;
     private static final Logger logger = Logger.getLogger(CachedMemcached.class);
 
     /**
