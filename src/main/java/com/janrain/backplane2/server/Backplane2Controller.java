@@ -798,20 +798,9 @@ public class Backplane2Controller {
             throw new InvalidRequestException("Invalid data in payload", HttpServletResponse.SC_FORBIDDEN);
         }
 
-        BackplaneMessage message;
-        try {
-            message = new BackplaneMessage(token.get(Token.TokenField.CLIENT_SOURCE_URL), msg);
-        } catch (Exception e) {
-            throw new InvalidRequestException("Invalid message data: " + e.getMessage(), HttpServletResponse.SC_FORBIDDEN);
-        }
-
-        if ( ! token.getScope().isMessageInScope(message) ) {
-            throw new InvalidRequestException("Invalid bus in message", HttpServletResponse.SC_FORBIDDEN);
-        }
-
-        String channel = message.getMessageChannel();
-
-        if ( ! daoFactory.getTokenDao().isValidBinding(channel, message.getMessageBus())) {
+        String channel = msg.get(BackplaneMessage.Field.CHANNEL.getFieldName()) != null ? msg.get(BackplaneMessage.Field.CHANNEL.getFieldName()).toString() : null;
+        String bus = msg.get(BackplaneMessage.Field.BUS.getFieldName()) != null ? msg.get(BackplaneMessage.Field.BUS.getFieldName()).toString() : null;
+        if ( ! daoFactory.getTokenDao().isValidBinding(channel, bus)) {
             throw new InvalidRequestException("Invalid bus - channel binding ", HttpServletResponse.SC_FORBIDDEN);
         }
 
@@ -821,7 +810,16 @@ public class Backplane2Controller {
                     HttpServletResponse.SC_FORBIDDEN);
         }
 
-        return message;
+        BackplaneMessage message;
+        try {
+            message = new BackplaneMessage(token.get(Token.TokenField.CLIENT_SOURCE_URL), msg);
+        } catch (Exception e) {
+            throw new InvalidRequestException("Invalid message data: " + e.getMessage(), HttpServletResponse.SC_FORBIDDEN);
+        }
+        if ( ! token.getScope().isMessageInScope(message) ) {
+            throw new InvalidRequestException("Invalid bus in message", HttpServletResponse.SC_FORBIDDEN);
+        }
+        return  message;
     }
 
     private final MeterMetric v2Gets = Metrics.newMeter(Backplane2Controller.class, "v2_get", "v2_gets", TimeUnit.MINUTES);
