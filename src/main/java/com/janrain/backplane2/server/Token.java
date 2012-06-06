@@ -138,7 +138,7 @@ public class Token extends AbstractMessage {
         }
 
         if (token == null) {
-            logger.info("could not locate token " + tokenAndSource.getLeft());
+            logger.warn("token not found" + tokenAndSource.getLeft());
             throw new TokenException("invalid token", HttpServletResponse.SC_FORBIDDEN);
         }
 

@@ -109,11 +109,16 @@ public class MessageCache<T extends Message> {
     private final LinkedHashMap<String,T> cache = new LinkedHashMap<String, T>() {
         @Override
         protected boolean removeEldestEntry(Map.Entry<String, T> eldest) {
+            int removed = 0;
             Iterator<Map.Entry<String, T>> entries = entrySet().iterator();
             while ( size.get() > maxCacheSizeBytes && entries.hasNext()) {
                 Map.Entry<String, T> next = entries.next();
                 entries.remove();
                 size.addAndGet( -1 * next.getValue().sizeBytes());
+                removed++;
+            }
+            if (removed > 0) {
+                logger.info("Removed " + removed + " " + eldest.getClass().getSimpleName() + " items from cache, new size is: " + size() + " items / " + size.get() + " bytes");
             }
             return false;
         }
