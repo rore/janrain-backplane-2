@@ -18,10 +18,10 @@ package com.janrain.backplane.server.dao;
 
 import com.janrain.backplane.server.BackplaneMessage;
 import com.janrain.backplane.server.config.Backplane1Config;
+import com.janrain.cache.CachedL1;
 import com.janrain.cache.CachedMemcached;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
-import com.janrain.locking.DistributedLockingManager;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
@@ -67,25 +67,26 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
 
     public List<BackplaneMessage> getMessagesByChannel(String channel, String since, String sticky) throws SimpleDBException {
 
-        //check the cache first
-        List<BackplaneMessage> messages = (List<BackplaneMessage>) CachedMemcached.getInstance().getObject(genChannelKey(channel));
+        //check the L1 and L2 caches first
+        List<BackplaneMessage> messages = (List<BackplaneMessage>) CachedL1.getInstance().getObject(genChannelKey(channel));
+        if (messages == null) {
+            messages = (List<BackplaneMessage>) CachedMemcached.getInstance().getObject(genChannelKey(channel));
+            if (messages != null) {
+                CachedL1.getInstance().setObject(genChannelKey(channel), -1, messages);
+            }
+        }
 
         if (messages == null) {
-            //check the DB
-            DistributedLockingManager dlm = DistributedLockingManager.getInstance();
-            String lock = dlm.getDistributedLock(channel);
-
-            if (lock == null) {
-                // failed to get lock
-                return new ArrayList<BackplaneMessage>();
-            }
+            // distributed lock required here to avoid race condition while updating L2 cache
 
             StringBuilder whereClause = new StringBuilder()
                     .append(BackplaneMessage.Field.CHANNEL_NAME.getFieldName()).append("='").append(channel).append("'");
 
             messages = superSimpleDB.retrieveWhere(bpConfig.getMessagesTableName(), BackplaneMessage.class, whereClause.toString(), true);
+            CachedL1.getInstance().setObject(genChannelKey(channel), -1, messages);
             CachedMemcached.getInstance().setObject(genChannelKey(channel), 3600, messages);
-            dlm.releaseLock(lock);
+
+            //
         }
 
         return filterAndSort(messages, since, sticky);
