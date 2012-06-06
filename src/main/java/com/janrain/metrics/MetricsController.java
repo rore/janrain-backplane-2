@@ -216,7 +216,7 @@ public class MetricsController {
 
             Map<String, Object> superParent = new LinkedHashMap<String, Object>();
             superParent.put("instances_running", metrics.size());
-            superParent.put("time_collected", bpConfig.ISO8601.format(new Date()));
+            superParent.put("time_collected", bpConfig.ISO8601.get().format(new Date()));
             superParent.put("metrics", reducedMetricsList);
 
             ObjectMapper mapper = new ObjectMapper();

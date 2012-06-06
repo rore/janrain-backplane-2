@@ -111,7 +111,7 @@ public class TokenDAO extends DAO<Token> {
     public void deleteExpiredTokens() throws SimpleDBException {
         try {
             logger.info("Backplane token cleanup task started.");
-            String expiredClause = Token.TokenField.EXPIRES.getFieldName() + " < '" + Backplane2Config.ISO8601.format(new Date(System.currentTimeMillis())) + "'";
+            String expiredClause = Token.TokenField.EXPIRES.getFieldName() + " < '" + Backplane2Config.ISO8601.get().format(new Date(System.currentTimeMillis())) + "'";
             superSimpleDB.deleteWhere(bpConfig.getTableName(BP_ACCESS_TOKEN), expiredClause);
         } catch (Exception e) {
             // catch-all, else cleanup thread stops

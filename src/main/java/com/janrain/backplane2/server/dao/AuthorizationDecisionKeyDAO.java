@@ -52,7 +52,7 @@ public class AuthorizationDecisionKeyDAO extends DAO<AuthorizationDecisionKey> {
     public void deleteExpiredAuthorizationDecisionKeys() {
         try {
             logger.info("Backplane authorization decision keys cleanup task started.");
-            String expiredClause = AuthorizationDecisionKey.Field.EXPIRES.getFieldName() + " < '" + Backplane2Config.ISO8601.format(new Date(System.currentTimeMillis())) + "'";
+            String expiredClause = AuthorizationDecisionKey.Field.EXPIRES.getFieldName() + " < '" + Backplane2Config.ISO8601.get().format(new Date(System.currentTimeMillis())) + "'";
             superSimpleDB.deleteWhere(bpConfig.getTableName(BP_AUTHORIZATION_DECISION_KEY), expiredClause);
         } catch (Exception e) {
             // catch-all, else cleanup thread stops

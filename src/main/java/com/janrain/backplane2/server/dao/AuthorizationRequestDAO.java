@@ -52,7 +52,7 @@ public class AuthorizationRequestDAO extends DAO<AuthorizationRequest> {
     public void deleteExpiredAuthorizationRequests() {
         try {
             logger.info("Backplane authorization requests cleanup task started.");
-            String expiredClause = AuthorizationRequest.Field.EXPIRES.getFieldName() + " < '" + Backplane2Config.ISO8601.format(new Date(System.currentTimeMillis())) + "'";
+            String expiredClause = AuthorizationRequest.Field.EXPIRES.getFieldName() + " < '" + Backplane2Config.ISO8601.get().format(new Date(System.currentTimeMillis())) + "'";
             superSimpleDB.deleteWhere(bpConfig.getTableName(BP_AUTHORIZATION_REQUEST), expiredClause);
         } catch (Exception e) {
             // catch-all, else cleanup thread stops

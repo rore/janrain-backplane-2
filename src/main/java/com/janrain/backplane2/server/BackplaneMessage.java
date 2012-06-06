@@ -67,7 +67,7 @@ public class BackplaneMessage extends AbstractMessage {
      * @return a time-based, lexicographically comparable message ID.
      */
     public static String generateMessageId() {
-        return (Backplane2Config.ISO8601.format(new Date()) + ChannelUtil.randomString(10)).replaceAll("[^\\w]","");
+        return (Backplane2Config.ISO8601.get().format(new Date()) + ChannelUtil.randomString(10)).replaceAll("[^\\w]","");
     }
 
     @Override

@@ -61,7 +61,7 @@ public class MetricsAccumulator {
      */
     public MetricMessage prepareSummary() throws BackplaneServerException {
         try {
-            return new MetricMessage(instanceUuid, Backplane2Config.ISO8601.format(new Date()), new String(toEncodedBytes()));
+            return new MetricMessage(instanceUuid, Backplane2Config.ISO8601.get().format(new Date()), new String(toEncodedBytes()));
         } catch (Exception e) {
             throw new BackplaneServerException(e.getMessage());
         }
@@ -184,7 +184,7 @@ public class MetricsAccumulator {
         double loadAverage = ManagementFactory.getOperatingSystemMXBean().getSystemLoadAverage();
         MemoryUsage mu = ManagementFactory.getMemoryMXBean().getHeapMemoryUsage();
 
-        String startTimeString = Backplane2Config.ISO8601.format(new Date(startTime));
+        String startTimeString = Backplane2Config.ISO8601.get().format(new Date(startTime));
 
         out.put("type", "jvm");
         out.put("unit", "mb");

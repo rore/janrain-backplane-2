@@ -290,7 +290,7 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
                 // http://practicalcloudcomputing.com/post/722621724/simpledb-essentials-for-high-performance-users-part-2
                 STICKY.getFieldName() + " = '" + Boolean.toString(sticky) + "' AND " +
                 ID.getFieldName() + " < '" +
-                Backplane2Config.ISO8601.format(new Date(System.currentTimeMillis() - Long.valueOf(retentionTimeSeconds) * 1000))
+                Backplane2Config.ISO8601.get().format(new Date(System.currentTimeMillis() - Long.valueOf(retentionTimeSeconds) * 1000))
                 + "'";
     }
 
