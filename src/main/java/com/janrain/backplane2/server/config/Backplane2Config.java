@@ -281,6 +281,9 @@ public class Backplane2Config {
             @Override
             public void run() {
                 MessageCache<BackplaneMessage> cache = daoFactory.getMessageCache();
+                long cacheMaxBytes = getMaxMessageCacheBytes();
+                if (cacheMaxBytes <= 0) return;
+                cache.setMaxCacheSizeBytes(cacheMaxBytes);
                 BackplaneMessage lastCached = cache.getLastMessage();
                 String lastCachedId = lastCached != null ? lastCached.getIdValue() : "";
                 try {
@@ -289,7 +292,7 @@ public class Backplane2Config {
                     logger.error("Error updating message cache: " + e.getMessage(), e);
                 }
             }
-        }, 10, 10, TimeUnit.SECONDS); // every ten seconds
+        }, CACHE_UPDATER_INTERVAL_SECONDS, CACHE_UPDATER_INTERVAL_SECONDS, TimeUnit.SECONDS); // every ten seconds
         return cacheUpdater;
     }
 
