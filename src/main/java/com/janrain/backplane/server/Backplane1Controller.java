@@ -275,6 +275,7 @@ public class Backplane1Controller {
         try {
             userEntry = superSimpleDb.retrieve(bpConfig.getTableName(Backplane1Config.SimpleDBTables.BP1_USERS), User.class, user);
         } catch (SimpleDBException e) {
+            logger.error("Error looking up user: " + user, e);
             authError("Error looking up user: " + user);
         }
 
@@ -289,6 +290,7 @@ public class Backplane1Controller {
         try {
             busConfig = superSimpleDb.retrieve(bpConfig.getTableName(BP1_BUS_CONFIG), BusConfig1.class, bus);
         } catch (SimpleDBException e) {
+            logger.error("Error looking up bus configuration for " + bus, e);
             authError("Error looking up bus configuration for " + bus);
         }
         if (busConfig == null) {

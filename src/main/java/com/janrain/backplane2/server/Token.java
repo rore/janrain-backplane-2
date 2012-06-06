@@ -133,6 +133,7 @@ public class Token extends AbstractMessage {
         try {
             token = daoFactory.getTokenDao().retrieveToken(tokenAndSource.getLeft());
         } catch (SimpleDBException e) {
+            logger.error("Error looking up token: " + tokenAndSource.getLeft() , e);
             throw new TokenException(OAuth2.OAUTH2_TOKEN_SERVER_ERROR, "error loading token", HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         }
 

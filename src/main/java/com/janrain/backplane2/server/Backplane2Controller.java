@@ -522,6 +522,7 @@ public class Backplane2Controller {
         try {
             busOwnerEntry = daoFactory.getBusOwnerDAO().retrieveBusOwner(busOwner);
         } catch (SimpleDBException e) {
+            logger.error("Error looking up bus owner user: " + busOwner, e);
             authError("Error looking up bus owner user: " + busOwner);
         }
 
@@ -547,6 +548,7 @@ public class Backplane2Controller {
             logger.info("Session found for previously authenticated bus owner: " + authenticatedOwner);
             return authenticatedOwner;
         } catch (SimpleDBException e) {
+            logger.error("Error looking up session for cookie: " + authSessionCookie, e);
             return null;
         }
     }
@@ -608,6 +610,7 @@ public class Backplane2Controller {
         try {
             clientEntry = daoFactory.getClientDAO().retrieveClient(client);
         } catch (SimpleDBException e) {
+            logger.error("Error looking up client: " + client, e);
             authError("Error looking up client: " + client);
         }
 

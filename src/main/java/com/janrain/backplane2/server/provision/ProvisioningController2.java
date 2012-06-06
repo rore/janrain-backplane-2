@@ -138,9 +138,10 @@ public class ProvisioningController2 {
                     result.put(clientId, grantsList);
                 }
             } catch (final SimpleDBException e) {
+                logger.error("Error looking up grants for client " + clientId, e);
                 result.put(clientId, new HashMap<String, String>() {{put("error", e.getMessage());}});
             } catch (final TokenException te) {
-                logger.error("token (unexpected scope processing?) error: " + te.getMessage());
+                logger.error("token (unexpected scope processing?) error: " + te.getMessage(), te);
                 result.put(clientId, new HashMap<String, String>() {{
                     put("error", te.getMessage());
                 }});
