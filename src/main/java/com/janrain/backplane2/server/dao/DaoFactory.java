@@ -17,6 +17,7 @@
 package com.janrain.backplane2.server.dao;
 
 import com.janrain.backplane2.server.BackplaneMessage;
+import com.janrain.backplane2.server.Token;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.backplane2.server.config.BusConfig2;
 import com.janrain.backplane2.server.config.Client;
@@ -34,40 +35,42 @@ import javax.inject.Inject;
 @Scope(value="singleton")
 public class DaoFactory {
 
+    // - PUBLIC
+
     public BusDAO getBusDao() {
-        return new BusDAO(superSimpleDB, bpConfig, this);
+        return busDao;
     }
 
     public TokenDAO getTokenDao() {
-        return new TokenDAO(superSimpleDB, bpConfig);
+        return tokenDAO;
     }
 
     public GrantDAO getGrantDao() {
-        return new GrantDAO(superSimpleDB, bpConfig, this);
+        return grantDAO;
     }
 
     public BusOwnerDAO getBusOwnerDAO() {
-        return new BusOwnerDAO(superSimpleDB, bpConfig, this);
+        return busOwnerDAO;
     }
 
     public ClientDAO getClientDAO() {
-        return new ClientDAO(superSimpleDB, bpConfig, this);
+        return clientDAO;
     }
 
     public BackplaneMessageDAO getBackplaneMessageDAO() {
-        return new BackplaneMessageDAO(superSimpleDB, bpConfig, this);
+        return backplaneMessageDAO;
     }
 
     public AuthSessionDAO getAuthSessionDAO() {
-        return new AuthSessionDAO(superSimpleDB, bpConfig);
+        return authSessionDAO;
     }
 
     public AuthorizationRequestDAO getAuthorizationRequestDAO() {
-        return new AuthorizationRequestDAO(superSimpleDB, bpConfig);
+        return authorizationRequestDAO;
     }
 
     public AuthorizationDecisionKeyDAO getAuthorizationDecisionKeyDAO() {
-        return new AuthorizationDecisionKeyDAO(superSimpleDB, bpConfig);
+        return authorizationDecisionKeyDAO;
     }
 
     public DAO getDaoByObjectType(Class<?> obj) {
@@ -87,6 +90,12 @@ public class DaoFactory {
         return messageCache;
     }
 
+    public ConfigLRUCache<Token> getTokenCache() {
+        return tokenCache;
+    }
+
+    // - PRIVATE
+
     @Inject
     private SuperSimpleDB superSimpleDB;
 
@@ -94,10 +103,36 @@ public class DaoFactory {
     private Backplane2Config bpConfig;
 
     private final MessageCache<BackplaneMessage> messageCache = new MessageCache<BackplaneMessage>(0L);
+    private final ConfigLRUCache<Token> tokenCache = new ConfigLRUCache<Token>(0L);
 
+    private static final Object initLock = new Object();
+    private static BusDAO busDao;
+    private static TokenDAO tokenDAO;
+    private static GrantDAO grantDAO;
+    private static BusOwnerDAO busOwnerDAO;
+    private static ClientDAO clientDAO;
+    private static BackplaneMessageDAO backplaneMessageDAO;
+    private static AuthSessionDAO authSessionDAO;
+    private static AuthorizationRequestDAO authorizationRequestDAO;
+    private static AuthorizationDecisionKeyDAO authorizationDecisionKeyDAO;
+
+
+    @SuppressWarnings("AssignmentToStaticFieldFromInstanceMethod")
     @PostConstruct
     private void init() {
         messageCache.setMaxCacheSizeBytes(bpConfig.getMaxMessageCacheBytes());
-    }
+        tokenCache.setMaxCacheSizeBytes(bpConfig.getMaxMessageCacheBytes()); // todo: token cache size config
 
+        synchronized (initLock) {
+            busDao = new BusDAO(superSimpleDB, bpConfig, this);
+            tokenDAO = new TokenDAO(superSimpleDB, bpConfig, this);
+            grantDAO = new GrantDAO(superSimpleDB, bpConfig, this);
+            busOwnerDAO = new BusOwnerDAO(superSimpleDB, bpConfig, this);
+            clientDAO = new ClientDAO(superSimpleDB, bpConfig, this);
+            backplaneMessageDAO = new BackplaneMessageDAO(superSimpleDB, bpConfig, this);
+            authSessionDAO = new AuthSessionDAO(superSimpleDB, bpConfig);
+            authorizationRequestDAO = new AuthorizationRequestDAO(superSimpleDB, bpConfig);
+            authorizationDecisionKeyDAO = new AuthorizationDecisionKeyDAO(superSimpleDB, bpConfig);
+        }
+    }
 }

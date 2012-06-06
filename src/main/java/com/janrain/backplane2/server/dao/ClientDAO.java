@@ -62,11 +62,11 @@ public class ClientDAO extends DAO<Client> {
             logger.info("Client " + id + " deleted successfully");
             logger.info("=== END CLIENT DELETE ===");
         } catch (SimpleDBException e) {
-            logger.error("An exception occurred during an atomic operation.  Corruption may have occurred while removing client: " + id);
+            logger.error("An exception occurred during an atomic operation.  Corruption may have occurred while removing client: " + id, e);
             throw e;
         } catch (TokenException e) {
             // should not happen
-            logger.error("An exception occurred during an atomic operation.  Corruption may have occurred while removing client: " + id);
+            logger.error("An exception occurred during an atomic operation.  Corruption may have occurred while removing client: " + id, e);
             throw new SimpleDBException(e);
         }
     }

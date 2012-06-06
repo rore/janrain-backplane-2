@@ -86,7 +86,7 @@ public class AnonymousTokenRequest implements TokenRequest {
                     daoFactory.getTokenDao().delete(this.refreshToken.getIdValue());
                 }
             } catch (SimpleDBException e) {
-                logger.error("error deleting used refresh token: " + refreshToken.getIdValue());
+                logger.error("error deleting used refresh token: " + refreshToken.getIdValue(), e);
             }
         }
     }

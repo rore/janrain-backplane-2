@@ -37,6 +37,7 @@ import org.springframework.context.annotation.Scope;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.inject.Inject;
+import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.EnumSet;
@@ -55,11 +56,15 @@ public class Backplane2Config {
 
     // - PUBLIC
 
-    public enum BUS_PERMISSION { GETALL, POST, GETPAYLOAD, IDENTITY }
-
-    public static final SimpleDateFormat ISO8601 = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'") {{
-        setTimeZone(TimeZone.getTimeZone("GMT"));
-    }};
+    // http://fahdshariff.blogspot.ca/2010/08/dateformat-with-multiple-threads.html
+    public static final ThreadLocal<DateFormat> ISO8601 = new ThreadLocal<DateFormat>() {
+        @Override
+        protected DateFormat initialValue() {
+            return new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'") {{
+                setTimeZone(TimeZone.getTimeZone("GMT"));
+            }};
+        }
+    };
 
     public void checkAdminAuth(String user, String password) throws AuthException {
         checkAuth(getAdminAuthTableName(), user, password);
@@ -198,7 +203,7 @@ public class Backplane2Config {
 
     private static final String BP_CONFIG_ENTRY_NAME = "bpserverconfig";
     private static final long BP_MAX_MESSAGES_DEFAULT = 100;
-    private static final long CACHE_UPDATER_INTERVAL_SECONDS = 10;
+    private static final long CACHE_UPDATER_INTERVAL_MILLISECONDS = 300;
 
     private final String bpInstanceId;
     private ScheduledExecutorService cleanup;
@@ -281,16 +286,21 @@ public class Backplane2Config {
         cacheUpdater.scheduleWithFixedDelay(new Runnable() {
             @Override
             public void run() {
-                MessageCache<BackplaneMessage> cache = daoFactory.getMessageCache();
-                BackplaneMessage lastCached = cache.getLastMessage();
-                String lastCachedId = lastCached != null ? lastCached.getIdValue() : "";
+                long start = System.currentTimeMillis();
                 try {
+                    MessageCache<BackplaneMessage> cache = daoFactory.getMessageCache();
+                    long cacheMaxBytes = getMaxMessageCacheBytes();
+                    if (cacheMaxBytes <= 0) return;
+                    cache.setMaxCacheSizeBytes(cacheMaxBytes);
+                    BackplaneMessage lastCached = cache.getLastMessage();
+                    String lastCachedId = lastCached != null ? lastCached.getIdValue() : "";
                     cache.add(daoFactory.getBackplaneMessageDAO().retrieveMessagesNoScope(lastCachedId));
-                } catch (SimpleDBException e) {
+                } catch (Exception e) {
                     logger.error("Error updating message cache: " + e.getMessage(), e);
                 }
+                logger.info("Cache updated in " + (System.currentTimeMillis() - start) + " ms");
             }
-        }, 10, 10, TimeUnit.SECONDS); // every ten seconds
+        }, CACHE_UPDATER_INTERVAL_MILLISECONDS, CACHE_UPDATER_INTERVAL_MILLISECONDS, TimeUnit.MILLISECONDS);
         return cacheUpdater;
     }
 

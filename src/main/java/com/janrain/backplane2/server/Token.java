@@ -99,8 +99,11 @@ public class Token extends AbstractMessage {
     public Date getExpirationDate() {
         String value = this.get(TokenField.EXPIRES);
         try {
-            return StringUtils.isNotEmpty(value) ? Backplane2Config.ISO8601.parse(value) : null;
+            return StringUtils.isNotEmpty(value) ? Backplane2Config.ISO8601.get().parse(value) : null;
         } catch (ParseException e) {
+            throw new IllegalStateException("Invalid ISO8601 date for TokenField.EXPIRES, should have been validated on token creation: " + value);
+        } catch (NumberFormatException nfe) {
+            logger.error("Error parsing token date: " + value, nfe);
             throw new IllegalStateException("Invalid ISO8601 date for TokenField.EXPIRES, should have been validated on token creation: " + value);
         }
     }
@@ -133,11 +136,12 @@ public class Token extends AbstractMessage {
         try {
             token = daoFactory.getTokenDao().retrieveToken(tokenAndSource.getLeft());
         } catch (SimpleDBException e) {
+            logger.error("Error looking up token: " + tokenAndSource.getLeft() , e);
             throw new TokenException(OAuth2.OAUTH2_TOKEN_SERVER_ERROR, "error loading token", HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         }
 
         if (token == null) {
-            logger.info("could not locate token " + tokenAndSource.getLeft());
+            logger.warn("token not found" + tokenAndSource.getLeft());
             throw new TokenException("invalid token", HttpServletResponse.SC_FORBIDDEN);
         }
 
@@ -188,7 +192,7 @@ public class Token extends AbstractMessage {
                 super.validate(value);
                 try {
                     if (StringUtils.isNotEmpty(value)) {
-                        Backplane2Config.ISO8601.parse(value);
+                        Backplane2Config.ISO8601.get().parse(value);
                     }
                 } catch (ParseException e) {
                     throw new SimpleDBException("Invalid token expiration date: " + value, e);
@@ -257,7 +261,7 @@ public class Token extends AbstractMessage {
         }
 
         public Builder expires(Date expires) {
-            data.put(TokenField.EXPIRES.getFieldName(), Backplane2Config.ISO8601.format(expires));
+            data.put(TokenField.EXPIRES.getFieldName(), Backplane2Config.ISO8601.get().format(expires));
             return this;
         }
         

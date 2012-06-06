@@ -34,22 +34,27 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
 
     @Override
     public void persist(BackplaneMessage message) throws SimpleDBException {
+
+        // TODO: distributed write lock required here
+
         superSimpleDB.store(bpConfig.getMessagesTableName(), BackplaneMessage.class, message, true);
 
-        // add new message to cache by message id
+        // add new message to L2 cache by message id
         CachedMemcached.getInstance().setObject(message.getIdValue(), 3600, message);
 
-        // update the cache
+        // update the L2 cache with a full channel list
         String channel = message.get(BackplaneMessage.Field.CHANNEL_NAME.getFieldName());
         List<BackplaneMessage> messages = getMessagesByChannel(channel, null, null);
         messages.add(message);
         CachedMemcached.getInstance().setObject(genChannelKey(channel), 3600, messages);
 
-        //update the bus list too
+        //update the L2 cache with a full bus list
         String bus = message.get(BackplaneMessage.Field.BUS.getFieldName());
         messages = getMessagesByBus(bus, null, null);
         messages.add(message);
         CachedMemcached.getInstance().setObject(genBusKey(bus), 3600, getMessageIds(messages));
+
+        // END LOCK
 
     }
 

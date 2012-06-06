@@ -48,7 +48,7 @@ public class AuthorizationRequest extends AbstractMessage {
             }
         }
         data.put(Field.COOKIE.getFieldName(), cookie);
-        data.put(Field.EXPIRES.getFieldName(), Backplane2Config.ISO8601.format(new Date(System.currentTimeMillis() + AUTH_REQUEST_TIMEOUT_SECONDS * 1000)));
+        data.put(Field.EXPIRES.getFieldName(), Backplane2Config.ISO8601.get().format(new Date(System.currentTimeMillis() + AUTH_REQUEST_TIMEOUT_SECONDS * 1000)));
         super.init(cookie, data);
     }
 

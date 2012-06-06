@@ -161,7 +161,13 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
     public void retrieveMesssagesPerScope(@NotNull final MessagesResponse bpResponse, @NotNull final Token token) throws SimpleDBException {
         final Scope scope = token.getScope();
         filterMessagesPerScope(daoFactory.getMessageCache().getMessagesSince(bpResponse.getLastMessageId()), scope, bpResponse);
-        logger.info("Local cache hits for request: " + bpResponse.messageCount() + " messages");
+
+        long freshness = System.currentTimeMillis() - daoFactory.getMessageCache().getLastUpdated();
+        logger.info("Local cache hits for request: " + bpResponse.messageCount() + " messages, " +
+                freshness + " ms freshness");
+
+        if (freshness < MAX_CACHE_FRESHNESS_MS) return;
+
         try {
             v2multiGetTimer.time(new Callable<Object>() {
                 @Override
@@ -268,6 +274,7 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
     private static final Logger logger = Logger.getLogger(BackplaneMessageDAO.class);
 
     private static final int MAX_MSGS_IN_FRAME = 25;
+    private static final long MAX_CACHE_FRESHNESS_MS = 700;
 
     private final DaoFactory daoFactory;
 
@@ -283,7 +290,7 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
                 // http://practicalcloudcomputing.com/post/722621724/simpledb-essentials-for-high-performance-users-part-2
                 STICKY.getFieldName() + " = '" + Boolean.toString(sticky) + "' AND " +
                 ID.getFieldName() + " < '" +
-                Backplane2Config.ISO8601.format(new Date(System.currentTimeMillis() - Long.valueOf(retentionTimeSeconds) * 1000))
+                Backplane2Config.ISO8601.get().format(new Date(System.currentTimeMillis() - Long.valueOf(retentionTimeSeconds) * 1000))
                 + "'";
     }
 

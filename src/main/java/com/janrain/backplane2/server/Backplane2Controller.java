@@ -145,9 +145,7 @@ public class Backplane2Controller {
                           @RequestParam(required = false) String busOwner,
                           @RequestParam(required = false) String password) throws AuthException, SimpleDBException {
 
-        if (!ServletUtil.isSecure(request)) {
-            throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
-        }
+        ServletUtil.checkSecure(request);
 
         String httpMethod = request.getMethod();
         if ("GET".equals(httpMethod)) {
@@ -183,9 +181,7 @@ public class Backplane2Controller {
                                            @RequestParam(required = false) final String refresh_token,
                                            @RequestHeader(value = "Authorization", required = false) final String authorizationHeader) {
 
-        if (!ServletUtil.isSecure(request)) {
-            throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
-        }
+        ServletUtil.checkSecure(request);
 
         final TimerContext context = getRegularTokenTimer.time();
 
@@ -226,9 +222,7 @@ public class Backplane2Controller {
                                         @RequestParam(required = false) String refresh_token,
                                         @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
 
-        if (!ServletUtil.isSecure(request)) {
-            throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
-        }
+        ServletUtil.checkSecure(request);
 
         Client authenticatedClient;
         try {
@@ -271,9 +265,7 @@ public class Backplane2Controller {
                                                      @RequestHeader(value = "Authorization", required = false) final String authorizationHeader)
             throws SimpleDBException, BackplaneServerException {
 
-        if (!ServletUtil.isSecure(request)) {
-            throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
-        }
+        ServletUtil.checkSecure(request);
 
         TimerContext context = v2GetsTimer.time();
 
@@ -339,9 +331,7 @@ public class Backplane2Controller {
                                 @RequestHeader(value = "Authorization", required = false) String authorizationHeader)
             throws BackplaneServerException, SimpleDBException {
 
-        if (!ServletUtil.isSecure(request)) {
-            throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
-        }
+        ServletUtil.checkSecure(request);
 
         try {
             new MessageRequest(callback, null, "0"); // validate callback only, if present
@@ -377,9 +367,7 @@ public class Backplane2Controller {
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader)
             throws SimpleDBException, BackplaneServerException {
 
-        if (!ServletUtil.isSecure(request)) {
-            throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
-        }
+        ServletUtil.checkSecure(request);
 
         final TimerContext context = v2PostTimer.time();
 
@@ -414,7 +402,7 @@ public class Backplane2Controller {
     @ExceptionHandler
     @ResponseBody
     public Map<String,Object> handleTokenException(final TokenException e, HttpServletResponse response) {
-        logger.info("Error processing token request: " + e.getMessage(), bpConfig.getDebugException(e));
+        logger.error("Error processing token request: " + e.getMessage(), bpConfig.getDebugException(e));
         response.setStatus(e.getHttpResponseCode());
         return new HashMap<String,Object>() {{
             put(ERR_MSG_FIELD, e.getOauthErrorCode());
@@ -428,7 +416,7 @@ public class Backplane2Controller {
     @ExceptionHandler
     @ResponseBody
     public Map<String, String> handle(final AuthException e, HttpServletResponse response) {
-        logger.info("Backplane authentication error: " + bpConfig.getDebugException(e));
+        logger.error("Backplane authentication error: " + bpConfig.getDebugException(e));
         response.setStatus(SC_UNAUTHORIZED);
         return new HashMap<String,String>() {{
             put(ERR_MSG_FIELD, e.getMessage());
@@ -441,7 +429,7 @@ public class Backplane2Controller {
     @ExceptionHandler
     @ResponseBody
     public Map<String, Object> handleInvalidRequest(final InvalidRequestException e, HttpServletResponse response) {
-        logger.info("Error handling backplane request", bpConfig.getDebugException(e));
+        logger.error("Error handling backplane request", bpConfig.getDebugException(e));
         response.setStatus(e.getHttpResponseCode());
         return new HashMap<String,Object>() {{
             put(ERR_MSG_FIELD, e.getMessage());
@@ -525,6 +513,7 @@ public class Backplane2Controller {
         try {
             busOwnerEntry = daoFactory.getBusOwnerDAO().retrieveBusOwner(busOwner);
         } catch (SimpleDBException e) {
+            logger.error("Error looking up bus owner user: " + busOwner, e);
             authError("Error looking up bus owner user: " + busOwner);
         }
 
@@ -550,6 +539,7 @@ public class Backplane2Controller {
             logger.info("Session found for previously authenticated bus owner: " + authenticatedOwner);
             return authenticatedOwner;
         } catch (SimpleDBException e) {
+            logger.error("Error looking up session for cookie: " + authSessionCookie, e);
             return null;
         }
     }
@@ -611,6 +601,7 @@ public class Backplane2Controller {
         try {
             clientEntry = daoFactory.getClientDAO().retrieveClient(client);
         } catch (SimpleDBException e) {
+            logger.error("Error looking up client: " + client, e);
             authError("Error looking up client: " + client);
         }
 
@@ -639,8 +630,7 @@ public class Backplane2Controller {
             model.put(AuthorizationRequest.Field.REDIRECT_URI.getFieldName().toLowerCase(), authzRequest.getRedirectUri(daoFactory.getClientDAO()));
 
             String scope = authzRequest.get(AuthorizationRequest.Field.SCOPE);
-            List<BusConfig2> ownedBuses = daoFactory.getBusDao().retrieveByOwner(authenticatedBusOwner);
-            model.put(AuthorizationRequest.Field.SCOPE.getFieldName().toLowerCase(), checkScope(scope, ownedBuses) );
+            model.put(AuthorizationRequest.Field.SCOPE.getFieldName().toLowerCase(), checkScope(scope, authenticatedBusOwner) );
 
             // return authZ form
             logger.info("Requesting bus owner authorization for :" + authzRequest.get(AuthorizationRequest.Field.CLIENT_ID) +
@@ -652,8 +642,9 @@ public class Backplane2Controller {
         }
     }
 
-    private String checkScope(String scope, List<BusConfig2> ownedBuses) {
+    private String checkScope(String scope, String authenticatedBusOwner) throws SimpleDBException {
         StringBuilder result = new StringBuilder();
+        List<BusConfig2> ownedBuses = daoFactory.getBusDao().retrieveByOwner(authenticatedBusOwner);
         if(StringUtils.isEmpty(scope)) {
             // request scope empty, ask/offer permission to all owned buses
             for(BusConfig2 bus : ownedBuses) {
@@ -681,7 +672,7 @@ public class Backplane2Controller {
 
         String resultString = result.toString();
         if (! resultString.equals(scope)) {
-            logger.info("Checked scope: " + resultString);
+            logger.info("Authenticated bus owner " + authenticatedBusOwner + " is authoritative for requested scope: " + resultString);
         }
         return resultString;
     }
@@ -707,9 +698,7 @@ public class Backplane2Controller {
                 throw new AuthorizationException(OAuth2.OAUTH2_AUTHZ_ACCESS_DENIED, "Bus owner denied authorization.", authorizationRequest);
             } else {
                 // todo: use (and check) scope posted back by bus owner
-                String scopeString = checkScope(
-                        authorizationRequest.get(AuthorizationRequest.Field.SCOPE),
-                        daoFactory.getBusDao().retrieveByOwner(authenticatedBusOwner));
+                String scopeString = checkScope(authorizationRequest.get(AuthorizationRequest.Field.SCOPE), authenticatedBusOwner);
                 // create grant/code
                 Grant grant =  new Grant.Builder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE,
                             authenticatedBusOwner,

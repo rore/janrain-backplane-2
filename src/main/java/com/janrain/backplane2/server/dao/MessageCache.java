@@ -2,6 +2,7 @@ package com.janrain.backplane2.server.dao;
 
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.Message;
+import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
@@ -23,11 +24,11 @@ public class MessageCache<T extends Message> {
         this.maxCacheSizeBytes = maxCacheSizeBytes;
     }
 
-    public long getMaxCacheSizeBytes() {
+    public synchronized long getMaxCacheSizeBytes() {
         return maxCacheSizeBytes;
     }
 
-    public void setMaxCacheSizeBytes(long maxCacheSizeBytes) {
+    public synchronized void setMaxCacheSizeBytes(long maxCacheSizeBytes) {
         this.maxCacheSizeBytes = maxCacheSizeBytes;
     }
 
@@ -69,7 +70,7 @@ public class MessageCache<T extends Message> {
 
         T first = messages.get(0);
         T lastCached = getLastMessage();
-        if (first.compareTo(lastCached) < 0) {
+        if (lastCached != null && first.compareTo(lastCached) < 0) {
             throw new SimpleDBException("Cache update rejected, newer messages exists: " + lastCached.getIdValue());
         }
 
@@ -77,6 +78,7 @@ public class MessageCache<T extends Message> {
             cache.put(message.getIdValue(), message);
             size.addAndGet(message.sizeBytes());
         }
+        logger.info("Added " + messages.size() + " " + first.getClass().getSimpleName() + " items to cache");
     }
 
     public synchronized @NotNull List<T> getMessagesSince(String sinceIso8601timestamp, long acceptableStaleMillis) {
@@ -100,16 +102,27 @@ public class MessageCache<T extends Message> {
         return result;
     }
 
+    public long getLastUpdated() {
+        return lastUpdated.get();
+    }
+
     // - PRIVATE
+
+    private static final Logger logger = Logger.getLogger(MessageCache.class);
 
     private final LinkedHashMap<String,T> cache = new LinkedHashMap<String, T>() {
         @Override
         protected boolean removeEldestEntry(Map.Entry<String, T> eldest) {
+            int removed = 0;
             Iterator<Map.Entry<String, T>> entries = entrySet().iterator();
             while ( size.get() > maxCacheSizeBytes && entries.hasNext()) {
                 Map.Entry<String, T> next = entries.next();
                 entries.remove();
                 size.addAndGet( -1 * next.getValue().sizeBytes());
+                removed++;
+            }
+            if (removed > 0) {
+                logger.info("Removed " + removed + " " + eldest.getClass().getSimpleName() + " items from cache, new size is: " + size() + " items / " + size.get() + " bytes");
             }
             return false;
         }
