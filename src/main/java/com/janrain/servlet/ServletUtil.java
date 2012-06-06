@@ -19,6 +19,7 @@ package com.janrain.servlet;
 import com.janrain.backplane2.server.InvalidRequestException;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 /**
  * @author Tom Raney
