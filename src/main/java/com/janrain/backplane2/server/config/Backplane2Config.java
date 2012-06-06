@@ -230,6 +230,7 @@ public class Backplane2Config {
         this.bpInstanceId = getAwsProp(InitSystemProps.AWS_INSTANCE_ID);
         this.EC2InstanceId = new AwsUtility().retrieveEC2InstanceId();
 
+        //TODO: remove at some point...
         ConsoleReporter.enable(5, TimeUnit.MINUTES);
 
         try {
