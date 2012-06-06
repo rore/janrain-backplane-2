@@ -2,6 +2,7 @@ package com.janrain.backplane2.server.dao;
 
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.Message;
+import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
@@ -69,7 +70,7 @@ public class MessageCache<T extends Message> {
 
         T first = messages.get(0);
         T lastCached = getLastMessage();
-        if (first.compareTo(lastCached) < 0) {
+        if (lastCached != null && first.compareTo(lastCached) < 0) {
             throw new SimpleDBException("Cache update rejected, newer messages exists: " + lastCached.getIdValue());
         }
 
@@ -77,6 +78,7 @@ public class MessageCache<T extends Message> {
             cache.put(message.getIdValue(), message);
             size.addAndGet(message.sizeBytes());
         }
+        logger.info("Added " + messages.size() + " " + first.getClass().getSimpleName() + " items to cache");
     }
 
     public synchronized @NotNull List<T> getMessagesSince(String sinceIso8601timestamp, long acceptableStaleMillis) {
@@ -101,6 +103,8 @@ public class MessageCache<T extends Message> {
     }
 
     // - PRIVATE
+
+    private static final Logger logger = Logger.getLogger(MessageCache.class);
 
     private final LinkedHashMap<String,T> cache = new LinkedHashMap<String, T>() {
         @Override
