@@ -44,8 +44,9 @@ import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTabl
 
 public class TokenDAO extends DAO<Token> {
 
-    TokenDAO(SuperSimpleDB superSimpleDB, Backplane2Config bpConfig) {
+    TokenDAO(SuperSimpleDB superSimpleDB, Backplane2Config bpConfig, DaoFactory daoFactory) {
         super(superSimpleDB, bpConfig);
+        this.cache = daoFactory.getTokenCache();
     }
 
     @Override
@@ -55,6 +56,7 @@ public class TokenDAO extends DAO<Token> {
                 @Override
                 public Object call() throws SimpleDBException {
                     superSimpleDB.store(bpConfig.getTableName(BP_ACCESS_TOKEN), Token.class, token, true);
+                    cache.add(token);
                     return null;
                 }
             });
@@ -72,6 +74,7 @@ public class TokenDAO extends DAO<Token> {
                 @Override
                 public Object call() throws SimpleDBException {
                     superSimpleDB.delete(bpConfig.getTableName(BP_ACCESS_TOKEN), tokenId);
+                    cache.delete(tokenId);
                     return null;
                 }
             });
@@ -88,10 +91,14 @@ public class TokenDAO extends DAO<Token> {
             return null; //invalid token id, don't even try
         }
         try {
+            Token cached = cache.get(tokenId);
+            if (cached != null) return cached;
             return v2retrieveTokenTimer.time(new Callable<Token>() {
                 @Override
                 public Token call() throws SimpleDBException {
-                    return superSimpleDB.retrieve(bpConfig.getTableName(BP_ACCESS_TOKEN), Token.class, tokenId);
+                    Token token = superSimpleDB.retrieve(bpConfig.getTableName(BP_ACCESS_TOKEN), Token.class, tokenId);
+                    cache.add(token);
+                    return token;
                 }
             });
         } catch (SimpleDBException sdbe) {
@@ -197,6 +204,8 @@ public class TokenDAO extends DAO<Token> {
     // - PRIVATE
 
     private static final Logger logger = Logger.getLogger(TokenDAO.class);
+
+    private final ConfigLRUCache<Token> cache;
 
     private final TimerMetric v2persistTokenTimer = Metrics.newTimer(TokenDAO.class, "v2_sdb_persist_token", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
     private final TimerMetric v2retrieveTokenTimer = Metrics.newTimer(TokenDAO.class, "v2_sdb_retrieve_token", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);

@@ -102,6 +102,9 @@ public class Token extends AbstractMessage {
             return StringUtils.isNotEmpty(value) ? Backplane2Config.ISO8601.parse(value) : null;
         } catch (ParseException e) {
             throw new IllegalStateException("Invalid ISO8601 date for TokenField.EXPIRES, should have been validated on token creation: " + value);
+        } catch (NumberFormatException nfe) {
+            logger.error("Error parsing token date: " + value, nfe);
+            throw new IllegalStateException("Invalid ISO8601 date for TokenField.EXPIRES, should have been validated on token creation: " + value);
         }
     }
 

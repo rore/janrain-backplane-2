@@ -24,11 +24,11 @@ public class MessageCache<T extends Message> {
         this.maxCacheSizeBytes = maxCacheSizeBytes;
     }
 
-    public long getMaxCacheSizeBytes() {
+    public synchronized long getMaxCacheSizeBytes() {
         return maxCacheSizeBytes;
     }
 
-    public void setMaxCacheSizeBytes(long maxCacheSizeBytes) {
+    public synchronized void setMaxCacheSizeBytes(long maxCacheSizeBytes) {
         this.maxCacheSizeBytes = maxCacheSizeBytes;
     }
 
@@ -100,6 +100,10 @@ public class MessageCache<T extends Message> {
             }
         }
         return result;
+    }
+
+    public long getLastUpdated() {
+        return lastUpdated.get();
     }
 
     // - PRIVATE

@@ -197,7 +197,7 @@ public class Backplane2Config {
 
     private static final String BP_CONFIG_ENTRY_NAME = "bpserverconfig";
     private static final long BP_MAX_MESSAGES_DEFAULT = 100;
-    private static final long CACHE_UPDATER_INTERVAL_SECONDS = 10;
+    private static final long CACHE_UPDATER_INTERVAL_MILLISECONDS = 300;
 
     private final String bpInstanceId;
     private ScheduledExecutorService cleanup;
@@ -280,6 +280,7 @@ public class Backplane2Config {
         cacheUpdater.scheduleWithFixedDelay(new Runnable() {
             @Override
             public void run() {
+                long start = System.currentTimeMillis();
                 try {
                     MessageCache<BackplaneMessage> cache = daoFactory.getMessageCache();
                     long cacheMaxBytes = getMaxMessageCacheBytes();
@@ -291,8 +292,9 @@ public class Backplane2Config {
                 } catch (Exception e) {
                     logger.error("Error updating message cache: " + e.getMessage(), e);
                 }
+                logger.info("Cache updated in " + (System.currentTimeMillis() - start) + " ms");
             }
-        }, CACHE_UPDATER_INTERVAL_SECONDS, CACHE_UPDATER_INTERVAL_SECONDS, TimeUnit.SECONDS); // every ten seconds
+        }, CACHE_UPDATER_INTERVAL_MILLISECONDS, CACHE_UPDATER_INTERVAL_MILLISECONDS, TimeUnit.MILLISECONDS);
         return cacheUpdater;
     }
 

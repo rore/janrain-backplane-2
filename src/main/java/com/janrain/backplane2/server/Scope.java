@@ -271,7 +271,7 @@ public class Scope {
     private static Map<BackplaneMessage.Field, LinkedHashSet<String>> parseScopeString(String scopeString) throws TokenException {
 
         Map<BackplaneMessage.Field,LinkedHashSet<String>> scopes = new LinkedHashMap<BackplaneMessage.Field, LinkedHashSet<String>>();
-        logger.info("parsing scopeString = '" + scopeString + "' ...");
+        logger.debug("parsing scopeString = '" + scopeString + "' ...");
 
         if (StringUtils.isNotBlank(scopeString)) {
             // TODO: is there a maximum length for the scope string?
@@ -287,7 +287,7 @@ public class Scope {
                 logger.debug("added " + keyValue.getLeft() + ":" + keyValue.getRight());
             }
         }
-        logger.info("parsed scopes: " + scopes);
+        logger.debug("parsed scopes: " + scopes);
         return scopes;
     }
 
