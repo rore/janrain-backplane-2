@@ -39,6 +39,10 @@ public class MessagesResponse {
         return messages != null && ! messages.isEmpty();
     }
 
+    public int messageCount() {
+        return messages.size();
+    }
+
     public Map<String, Object> asResponseFields(String serverName, boolean privileged) throws BackplaneServerException {
         List<Map<String,Object>> frames = new ArrayList<Map<String, Object>>();
         for (BackplaneMessage message : messages) {

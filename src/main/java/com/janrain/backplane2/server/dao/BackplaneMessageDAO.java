@@ -26,6 +26,9 @@ import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.commons.util.Pair;
 import com.janrain.oauth2.TokenException;
+import com.yammer.metrics.Metrics;
+import com.yammer.metrics.core.Histogram;
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 
@@ -35,6 +38,8 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 
 import static com.janrain.backplane2.server.BackplaneMessage.Field.*;
 import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_MESSAGES;
@@ -48,8 +53,22 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
     // - PUBLIC
 
     @Override
-    public void persist(BackplaneMessage message) throws SimpleDBException {
-        superSimpleDB.store(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class, message);
+    public void persist(final BackplaneMessage message) throws SimpleDBException {
+        try {
+            v2postTimer.time(new Callable<Object>() {
+                @Override
+                public Object call() throws Exception {
+                    superSimpleDB.store(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class, message);
+                    return null;
+                }
+            });
+        } catch (Exception e) {
+            if (e instanceof SimpleDBException) {
+                throw (SimpleDBException) e;
+            } else {
+                throw new SimpleDBException(e);
+            }
+        }
     }
 
     public BackplaneMessage getLatestMessage() throws SimpleDBException {
@@ -68,8 +87,32 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
         superSimpleDB.delete(bpConfig.getTableName(BP_MESSAGES), id);
     }
 
-    public @NotNull BackplaneMessage retrieveBackplaneMessage(@NotNull String messageId, @NotNull Token token) throws SimpleDBException, TokenException {
-        BackplaneMessage message = superSimpleDB.retrieve(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class, messageId);
+    public @NotNull BackplaneMessage retrieveBackplaneMessage(@NotNull final String messageId, @NotNull Token token) throws SimpleDBException, TokenException {
+        MessageCache<BackplaneMessage> cache = daoFactory.getMessageCache();
+        BackplaneMessage firstCached = cache.getFirstMessage();
+        BackplaneMessage lastCached = cache.getLastMessage();
+        if ( firstCached != null && lastCached != null &&
+             firstCached.getIdValue().compareTo(messageId) <= 0 &&
+             lastCached.getIdValue().compareTo(messageId) >= 0) {
+            return cache.get(messageId);
+        }
+
+        BackplaneMessage message;
+        try {
+            message = v2singleGetTimer.time(new Callable<BackplaneMessage>() {
+                @Override
+                public BackplaneMessage call() throws Exception {
+                    return superSimpleDB.retrieve(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class, messageId);
+                }
+            });
+        } catch (Exception e) {
+            if (e instanceof SimpleDBException) {
+                throw (SimpleDBException) e;
+            } else {
+                throw new SimpleDBException(e);
+            }
+        }
+
         if ( message == null || ! token.getScope().isMessageInScope(message)) {
             // don't disclose that the messageId exists if not in scope
             throw new TokenException("Message id '" + messageId + "' not found", HttpServletResponse.SC_NOT_FOUND);
@@ -79,17 +122,33 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
     }
 
     public boolean isChannelFull(String channel) throws SimpleDBException {
-        String whereClause = " channel='" + channel + "'";
-        long count = superSimpleDB.retrieveCount(bpConfig.getTableName(BP_MESSAGES), whereClause);
-        logger.debug(count + " >= " + bpConfig.getDefaultMaxMessageLimit());
-        return count >= bpConfig.getDefaultMaxMessageLimit();
+        return ! canTake(channel, 0);
     }
 
     public boolean canTake(String channel, int msgPostCount) throws SimpleDBException {
-        String whereClause = " channel='" + channel + "'";
-        long count = superSimpleDB.retrieveCount(bpConfig.getTableName(BP_MESSAGES), whereClause);
-        logger.debug(count + " >= " + bpConfig.getDefaultMaxMessageLimit());
-        return count + msgPostCount < bpConfig.getDefaultMaxMessageLimit();
+        final String whereClause = " channel='" + channel + "'";
+        try {
+            long count = v2channelCountTimer.time(new Callable<Long>() {
+                @Override
+                public Long call() throws Exception {
+                    return superSimpleDB.retrieveCount(bpConfig.getTableName(BP_MESSAGES), whereClause);
+                }
+            });
+            logger.debug("channel: '" + channel + "' message count: " + count + ", limit: " + bpConfig.getDefaultMaxMessageLimit());
+            return count + msgPostCount < bpConfig.getDefaultMaxMessageLimit();
+        } catch (Exception e) {
+            if (e instanceof SimpleDBException) {
+                throw (SimpleDBException) e;
+            } else {
+                throw new SimpleDBException(e);
+            }
+        }
+    }
+
+    public long countMessages() throws SimpleDBException {
+        Long messageCount = superSimpleDB.retrieveCount(bpConfig.getTableName(BP_MESSAGES), null);
+        v2messageCount.update(messageCount);
+        return messageCount;
     }
 
     /**
@@ -99,35 +158,75 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
      * @param bpResponse backplane message response
      * @param token access token to be used for message retrieval
      */
-    public void retrieveMesssagesPerScope(@NotNull MessagesResponse bpResponse, @NotNull Token token) throws SimpleDBException {
-        Scope scope = token.getScope();
-        String query = buildMessageSelectQueryClause(scope);
-        List<BackplaneMessage> filteredMessages = new ArrayList<BackplaneMessage>();
-        Pair<List<BackplaneMessage>, Boolean> unfilteredMessages;
-        do {
-            // We don't want to use SDB's paginating mechanism and retrieve all available, unfiltered messages
-            unfilteredMessages = superSimpleDB.retrieveSomeWhere(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class,
-                    ((query.length() > 0) ? query + " AND " : "" ) +
-                    " id > '" + bpResponse.getLastMessageId() + "' ORDER BY id LIMIT " + SuperSimpleDB.MAX_SELECT_PAGINATION_LIMIT);
+    public void retrieveMesssagesPerScope(@NotNull final MessagesResponse bpResponse, @NotNull final Token token) throws SimpleDBException {
+        final Scope scope = token.getScope();
+        filterMessagesPerScope(daoFactory.getMessageCache().getMessagesSince(bpResponse.getLastMessageId()), scope, bpResponse);
+        logger.info("Local cache hits for request: " + bpResponse.messageCount() + " messages");
+        try {
+            v2multiGetTimer.time(new Callable<Object>() {
+                @Override
+                public Object call() throws Exception {
+                    String query = buildMessageSelectQueryClause(scope);
+                    Pair<List<BackplaneMessage>, Boolean> unfilteredMessages;
+                    do {
+                        // We don't want to use SDB's paginating mechanism and retrieve all available, unfiltered messages
+                        unfilteredMessages = superSimpleDB.retrieveSomeWhere(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class,
+                                ((query.length() > 0) ? query + " AND " : "") +
+                                " id > '" + bpResponse.getLastMessageId() + "' ORDER BY id LIMIT " + SuperSimpleDB.MAX_SELECT_PAGINATION_LIMIT);
 
-            // Filter and add to results
-            for (BackplaneMessage unfilteredMessage : unfilteredMessages.getLeft()) {
-                if (scope.isMessageInScope(unfilteredMessage)) {
-                    if (filteredMessages.size() >= MAX_MSGS_IN_FRAME) {
-                        bpResponse.moreMessages(true);
-                        bpResponse.setLastMessageId(filteredMessages.get(filteredMessages.size()-1).getIdValue());
-                        break;
-                    }
-                    filteredMessages.add(unfilteredMessage);
+                        filterMessagesPerScope(unfilteredMessages.getLeft(), scope, bpResponse);
+
+                    } while (unfilteredMessages.getLeft().size() > 0 && !bpResponse.moreMessages());
+
+                    return null;
                 }
+            });
+        } catch (Exception e) {
+            if (e instanceof SimpleDBException) {
+                throw (SimpleDBException) e;
+            } else {
+                throw new SimpleDBException(e);
             }
+        }
+    }
 
-            // update lastMessageId to point to last message in this unfiltered result
-            if (unfilteredMessages.getLeft().size() > 0 && ! bpResponse.moreMessages()) {
-                bpResponse.setLastMessageId(unfilteredMessages.getLeft().get(unfilteredMessages.getLeft().size()-1).getIdValue());
+    public List<BackplaneMessage> retrieveMessagesNoScope(String sinceIso8601timestamp) throws SimpleDBException {
+        List<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
+        Pair<List<BackplaneMessage>, Boolean> newMessages;
+        String since = StringUtils.isEmpty(sinceIso8601timestamp) ? "" : sinceIso8601timestamp;
+        while(true) {
+            // We don't want to use SDB's paginating mechanism and retrieve all available, unfiltered messages
+            newMessages = superSimpleDB.retrieveSomeWhere(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class,
+                    " id > '" + since + "' ORDER BY id LIMIT " + SuperSimpleDB.MAX_SELECT_PAGINATION_LIMIT);
+            if (newMessages.getLeft().isEmpty()) {
+                break;
+            } else {
+                messages.addAll(newMessages.getLeft());
+                since = newMessages.getLeft().get(0).getIdValue();
+                if (messages.size() >= MAX_MSGS_IN_FRAME) break;
             }
+        }
+        return messages;
+    }
 
-        } while ( unfilteredMessages.getLeft().size() > 0 && ! bpResponse.moreMessages() );
+    private void filterMessagesPerScope(List<BackplaneMessage> unfilteredMessages, Scope scope, MessagesResponse bpResponse) {
+        // Filter and add to results
+        List<BackplaneMessage> filteredMessages = new ArrayList<BackplaneMessage>();
+        for (BackplaneMessage unfilteredMessage : unfilteredMessages) {
+            if (scope.isMessageInScope(unfilteredMessage)) {
+                if (filteredMessages.size() >= MAX_MSGS_IN_FRAME) {
+                    bpResponse.moreMessages(true);
+                    bpResponse.setLastMessageId(filteredMessages.get(filteredMessages.size() - 1).getIdValue());
+                    break;
+                }
+                filteredMessages.add(unfilteredMessage);
+            }
+        }
+
+        // update lastMessageId to point to last message in this unfiltered result
+        if (unfilteredMessages.size() > 0 && !bpResponse.moreMessages()) {
+            bpResponse.setLastMessageId(unfilteredMessages.get(unfilteredMessages.size() - 1).getIdValue());
+        }
 
         bpResponse.addMessages(filteredMessages);
     }
@@ -171,6 +270,12 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
     private static final int MAX_MSGS_IN_FRAME = 25;
 
     private final DaoFactory daoFactory;
+
+    private final com.yammer.metrics.core.Timer v2postTimer = Metrics.newTimer(BackplaneMessageDAO.class, "v2_sdb_post_message", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
+    private final com.yammer.metrics.core.Timer v2singleGetTimer = Metrics.newTimer(BackplaneMessageDAO.class, "v2_sdb_get_message", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
+    private final com.yammer.metrics.core.Timer v2multiGetTimer = Metrics.newTimer(BackplaneMessageDAO.class, "v2_sdb_get_messages", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
+    private final com.yammer.metrics.core.Timer v2channelCountTimer = Metrics.newTimer(BackplaneMessageDAO.class, "v2_sdb_channel_count", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
+    private final Histogram v2messageCount = Metrics.newHistogram(BackplaneMessageDAO.class, "v2_sdb_message_count");
 
     private String getExpiredMessagesClause(String busId, boolean sticky, String retentionTimeSeconds) {
         return BUS.getFieldName() + " = '" + busId + "' AND " +

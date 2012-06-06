@@ -182,7 +182,7 @@ public class Backplane2ControllerTest {
             logger.info("checking for tokens to delete...");
             for (String key:this.createdTokenKeys) {
                 logger.info("deleting Token " + key);
-                daoFactory.getTokenDao().deleteTokenById(key);
+                daoFactory.getTokenDao().delete(key);
             }
 
             for (String key:this.createdGrantsKeys) {

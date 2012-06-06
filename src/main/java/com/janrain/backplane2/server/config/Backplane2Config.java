@@ -16,7 +16,9 @@
 
 package com.janrain.backplane2.server.config;
 
+import com.janrain.backplane2.server.BackplaneMessage;
 import com.janrain.backplane2.server.dao.DaoFactory;
+import com.janrain.backplane2.server.dao.MessageCache;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.commons.supersimpledb.message.AbstractNamedMap;
@@ -26,6 +28,7 @@ import com.janrain.crypto.HmacHashUtils;
 import com.janrain.metrics.MetricMessage;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Timer;
+import com.yammer.metrics.core.TimerContext;
 import com.yammer.metrics.reporting.ConsoleReporter;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -39,10 +42,7 @@ import java.util.Calendar;
 import java.util.EnumSet;
 import java.util.Properties;
 import java.util.TimeZone;
-import java.util.concurrent.Callable;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 
 /**
@@ -128,6 +128,19 @@ public class Backplane2Config {
         return max == null ? Backplane2Config.BP_MAX_MESSAGES_DEFAULT : max;
     }
 
+    public long getMaxMessageCacheBytes() {
+        try {
+            Long max = Long.valueOf(cachedGet(BpServerProperty.MESSAGE_CACHE_MAX_MB));
+            return max == null ? 0L : max * 1024 * 1024;
+        } catch (NumberFormatException nfe) {
+            logger.error("Invalid message cache size value: " + nfe.getMessage(), nfe);
+            return 0L;
+        } catch (SimpleDBException sdbe) {
+            logger.error("Error looking up message cache size: " + sdbe, sdbe);
+            return 0L;
+        }
+    }
+
     public Exception getDebugException(Exception e) {
         try {
             return isDebugMode() ? e : null;
@@ -185,21 +198,25 @@ public class Backplane2Config {
 
     private static final String BP_CONFIG_ENTRY_NAME = "bpserverconfig";
     private static final long BP_MAX_MESSAGES_DEFAULT = 100;
+    private static final long CACHE_UPDATER_INTERVAL_SECONDS = 10;
 
     private final String bpInstanceId;
     private ScheduledExecutorService cleanup;
+    private ExecutorService cacheUpdater;
+
 
     // Amazon specific instance-id value
     private static String EC2InstanceId = "n/a";
 
-    private final Timer getMessagesTime =
-            Metrics.newTimer(Backplane2Config.class, "cleanup_messages_time", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
+    private final com.yammer.metrics.core.Timer v2CleanupTimer =
+        com.yammer.metrics.Metrics.newTimer(Backplane2Config.class, "cleanup_messages_time", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
 
     private static enum BpServerProperty {
         DEBUG_MODE,
         CONFIG_CACHE_AGE_SECONDS,
         CLEANUP_INTERVAL_MINUTES,
         DEFAULT_MESSAGES_MAX,
+        MESSAGE_CACHE_MAX_MB,
         ENCRYPTION_KEY
     }
 
@@ -236,31 +253,51 @@ public class Backplane2Config {
             @Override
             public void run() {
 
+                final TimerContext context = v2CleanupTimer.time();
+
                 try {
-                    getMessagesTime.time(new Callable<Object>() {
-                        @Override
-                        public Object call() throws Exception {
-                            daoFactory.getBackplaneMessageDAO().deleteExpiredMessages();
-                            daoFactory.getTokenDao().deleteExpiredTokens();
-                            daoFactory.getAuthSessionDAO().deleteExpiredAuthSessions();
-                            daoFactory.getAuthorizationRequestDAO().deleteExpiredAuthorizationRequests();
-                            daoFactory.getAuthorizationDecisionKeyDAO().deleteExpiredAuthorizationDecisionKeys();
-                            return null;
-                        }
-                    });
+
+                    daoFactory.getBackplaneMessageDAO().deleteExpiredMessages();
+                    daoFactory.getTokenDao().deleteExpiredTokens();
+                    daoFactory.getAuthSessionDAO().deleteExpiredAuthSessions();
+                    daoFactory.getAuthorizationRequestDAO().deleteExpiredAuthorizationRequests();
+                    daoFactory.getAuthorizationDecisionKeyDAO().deleteExpiredAuthorizationDecisionKeys();
+
                 } catch (Exception e) {
                     logger.error("Error while cleaning up expired stuff, " + e.getMessage(), e);
+                } finally {
+                    context.stop();
                 }
             }
-
         }, cleanupIntervalMinutes, cleanupIntervalMinutes, TimeUnit.MINUTES);
 
         return cleanupTask;
+
+
+    }
+
+    private ExecutorService createCacheUpdaterTask() {
+        ScheduledExecutorService cacheUpdater = Executors.newScheduledThreadPool(1);
+        cacheUpdater.scheduleWithFixedDelay(new Runnable() {
+            @Override
+            public void run() {
+                MessageCache<BackplaneMessage> cache = daoFactory.getMessageCache();
+                BackplaneMessage lastCached = cache.getLastMessage();
+                String lastCachedId = lastCached != null ? lastCached.getIdValue() : "";
+                try {
+                    cache.add(daoFactory.getBackplaneMessageDAO().retrieveMessagesNoScope(lastCachedId));
+                } catch (SimpleDBException e) {
+                    logger.error("Error updating message cache: " + e.getMessage(), e);
+                }
+            }
+        }, 10, 10, TimeUnit.SECONDS); // every ten seconds
+        return cacheUpdater;
     }
 
     @PostConstruct
     private void init() {
         this.cleanup = createCleanupTask();
+        this.cacheUpdater = createCacheUpdaterTask();
 
         for(SimpleDBTables table : EnumSet.allOf(SimpleDBTables.class)) {
             superSimpleDb.checkDomain(getTableName(table));
@@ -269,21 +306,25 @@ public class Backplane2Config {
 
     @PreDestroy
     private void cleanup() {
+        shutdownExecutor(cleanup);
+        shutdownExecutor(cacheUpdater);
+    }
+
+    private void shutdownExecutor(ExecutorService executor) {
         try {
-            this.cleanup.shutdown();
-            if (this.cleanup.awaitTermination(10, TimeUnit.SECONDS)) {
+            executor.shutdown();
+            if (executor.awaitTermination(10, TimeUnit.SECONDS)) {
                 logger.info("Background thread shutdown properly");
             } else {
-                this.cleanup.shutdownNow();
-                if (!this.cleanup.awaitTermination(10, TimeUnit.SECONDS)) {
+                executor.shutdownNow();
+                if (!executor.awaitTermination(10, TimeUnit.SECONDS)) {
                     logger.error("Background thread did not terminate");
                 }
             }
         } catch (InterruptedException e) {
             logger.error("cleanup() threw an exception", e);
-            this.cleanup.shutdownNow();
+            executor.shutdownNow();
             Thread.currentThread().interrupt();
-
         }
     }
 

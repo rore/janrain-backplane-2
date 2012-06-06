@@ -21,12 +21,15 @@ import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.oauth2.TokenException;
+import com.yammer.metrics.Metrics;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 
 import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_GRANT;
 
@@ -78,9 +81,21 @@ public class GrantDAO extends DAO<Grant> {
      *
      * @throws SimpleDBException on any error while interacting with SimpleDB
      */
-    public Grant getAndActivateCodeGrant(String codeId, String authenticatedClientId) throws SimpleDBException, TokenException {
+    public Grant getAndActivateCodeGrant(final String codeId, String authenticatedClientId) throws SimpleDBException, TokenException {
 
-        Grant existing = superSimpleDB.retrieve(bpConfig.getTableName(BP_GRANT), Grant.class, codeId);
+        Grant existing;
+        try {
+            existing = v2grantActivateTimer.time(new Callable<Grant>() {
+                    @Override
+                    public Grant call() throws Exception {
+                        return superSimpleDB.retrieve(bpConfig.getTableName(BP_GRANT), Grant.class, codeId);
+                    }
+                });
+        } catch (SimpleDBException sdbe) {
+            throw sdbe;
+        } catch (Exception e) {
+            throw new SimpleDBException(e);
+        }
 
         GrantState updatedState = GrantState.ACTIVE;
         if ( existing == null) {
@@ -131,11 +146,23 @@ public class GrantDAO extends DAO<Grant> {
      * @return  map of authorized scopes backed-by grants
      * @throws SimpleDBException
      */
-    public @NotNull Map<Scope,Set<Grant>> retrieveClientGrants(String clientId, @Nullable Scope scope) throws SimpleDBException, TokenException {
+    public @NotNull Map<Scope,Set<Grant>> retrieveClientGrants(final String clientId, @Nullable Scope scope) throws SimpleDBException, TokenException {
 
-        List<Grant> clientActiveGrants = superSimpleDB.retrieveWhere(bpConfig.getTableName(BP_GRANT), Grant.class,
-                Grant.GrantField.ISSUED_TO_CLIENT_ID.getFieldName() + "='" + clientId + "' AND " +
-                Grant.GrantField.STATE.getFieldName() + "='" + GrantState.ACTIVE.toString() + "'", true);
+        List<Grant> clientActiveGrants;
+        try {
+            clientActiveGrants = v2grantClientsTimer.time(new Callable<List<Grant>>() {
+                @Override
+                public List<Grant> call() throws Exception {
+                    return superSimpleDB.retrieveWhere(bpConfig.getTableName(BP_GRANT), Grant.class,
+                            Grant.GrantField.ISSUED_TO_CLIENT_ID.getFieldName() + "='" + clientId + "' AND " +
+                            Grant.GrantField.STATE.getFieldName() + "='" + GrantState.ACTIVE.toString() + "'", true);
+                }
+            });
+        } catch (SimpleDBException sdbe) {
+            throw sdbe;
+        } catch (Exception e) {
+            throw new SimpleDBException(e);
+        }
 
         Map<Scope,Set<Grant>> result = new LinkedHashMap<Scope, Set<Grant>>();
 
@@ -198,6 +225,9 @@ public class GrantDAO extends DAO<Grant> {
     private static final Logger logger = Logger.getLogger(GrantDAO.class);
 
     private final DaoFactory daoFactory;
+
+    private final com.yammer.metrics.core.Timer v2grantActivateTimer = Metrics.newTimer(GrantDAO.class, "v2_sdb_grant_activate", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
+    private final com.yammer.metrics.core.Timer v2grantClientsTimer = Metrics.newTimer(GrantDAO.class, "v2_sdb_grant_clients", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
 
     private boolean revokeBuses(Grant grant, Scope busesToRevoke) throws SimpleDBException {
         Scope grantScope = grant.getAuthorizedScope();

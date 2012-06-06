@@ -176,18 +176,17 @@ public class Backplane2Controller {
 
     @RequestMapping(value = "/token", method = { RequestMethod.GET})
     @ResponseBody
-    public Map<String,Object> getToken(HttpServletRequest request, HttpServletResponse response,
-                                           @RequestParam(value = OAUTH2_SCOPE_PARAM_NAME, required = false) String scope,
-                                           @RequestParam(required = false) String bus,
-                                           @RequestParam(required = false) String callback,
-                                           @RequestParam(required = false) String refresh_token,
-                                           @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+    public Map<String,Object> getToken(final HttpServletRequest request, HttpServletResponse response,
+                                           @RequestParam(value = OAUTH2_SCOPE_PARAM_NAME, required = false) final String scope,
+                                           @RequestParam(required = false) final String bus,
+                                           @RequestParam(required = false) final String callback,
+                                           @RequestParam(required = false) final String refresh_token,
+                                           @RequestHeader(value = "Authorization", required = false) final String authorizationHeader) {
 
         if (!ServletUtil.isSecure(request)) {
             throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
         }
 
-        v2GetRegTokens.mark();
         final TimerContext context = getRegularTokenTimer.time();
 
         try {
@@ -264,19 +263,22 @@ public class Backplane2Controller {
      */
 
     @RequestMapping(value = "/messages", method = { RequestMethod.GET})
-    public @ResponseBody Map<String,Object> messages(HttpServletRequest request, HttpServletResponse response,
-                                @RequestParam(value = OAUTH2_ACCESS_TOKEN_PARAM_NAME, required = false) String access_token,
-                                @RequestParam(value = "block", defaultValue = "0", required = false) String block,
-                                @RequestParam(required = false) String callback,
-                                @RequestParam(value = "since", required = false) String since,
-                                @RequestHeader(value = "Authorization", required = false) String authorizationHeader)
+    public @ResponseBody Map<String,Object> messages(final HttpServletRequest request, HttpServletResponse response,
+                                                     @RequestParam(value = OAUTH2_ACCESS_TOKEN_PARAM_NAME, required = false) final String access_token,
+                                                     @RequestParam(value = "block", defaultValue = "0", required = false) String block,
+                                                     @RequestParam(required = false) String callback,
+                                                     @RequestParam(value = "since", required = false) String since,
+                                                     @RequestHeader(value = "Authorization", required = false) final String authorizationHeader)
             throws SimpleDBException, BackplaneServerException {
 
         if (!ServletUtil.isSecure(request)) {
             throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
         }
 
+        TimerContext context = v2GetsTimer.time();
+
         MessageRequest messageRequest;
+
         try {
             messageRequest = new MessageRequest(callback, since, block);
         } catch (InvalidRequestException e) {
@@ -284,19 +286,17 @@ public class Backplane2Controller {
         }
 
         try {
+
             Token token = Token.fromRequest(daoFactory, request, access_token, authorizationHeader);
             if (token.getType().isRefresh()) {
                 throw new TokenException("Invalid token type: " + token.getType(), HttpServletResponse.SC_FORBIDDEN);
             }
 
-            // log metric
-            v2Gets.mark();
-
             MessagesResponse bpResponse = new MessagesResponse(messageRequest.getSince());
             boolean exit = false;
             do {
                 daoFactory.getBackplaneMessageDAO().retrieveMesssagesPerScope(bpResponse, token);
-                if (! bpResponse.hasMessages() && new Date().before(messageRequest.getReturnBefore())) {
+                if (!bpResponse.hasMessages() && new Date().before(messageRequest.getReturnBefore())) {
                     try {
                         Thread.sleep(3000);
                     } catch (InterruptedException e) {
@@ -311,6 +311,16 @@ public class Backplane2Controller {
 
         } catch (TokenException te) {
             return handleTokenException(te, response);
+        } catch (SimpleDBException sdbe) {
+            throw sdbe;
+        } catch (BackplaneServerException bse) {
+            throw bse;
+        } catch (InvalidRequestException ire) {
+            throw ire;
+        } catch (Exception e) {
+            throw new BackplaneServerException("Error processing messages request: " + e.getMessage(), e);
+        } finally {
+            context.stop();
         }
     }
 
@@ -365,15 +375,13 @@ public class Backplane2Controller {
             @RequestBody Map<String,Map<String,Object>> messagePostBody,
             @RequestParam(value = OAUTH2_ACCESS_TOKEN_PARAM_NAME, required = false) String access_token,
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader)
-            throws SimpleDBException {
+            throws SimpleDBException, BackplaneServerException {
 
         if (!ServletUtil.isSecure(request)) {
             throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
         }
 
-        final TimerContext context = postTimer.time();
-        // log metric
-        v2Posts.mark();
+        final TimerContext context = v2PostTimer.time();
 
         try {
             Token token = Token.fromRequest(daoFactory, request, access_token, authorizationHeader);
@@ -382,12 +390,17 @@ public class Backplane2Controller {
             }
 
             daoFactory.getBackplaneMessageDAO().persist(parsePostedMessage(messagePostBody, token));
-
             response.setStatus(HttpServletResponse.SC_CREATED);
             return null;
 
-        } catch (TokenException e) {
-            return handleTokenException(e, response);
+        } catch (TokenException te) {
+            return handleTokenException(te, response);
+        } catch (SimpleDBException sdbe) {
+            throw sdbe;
+        } catch (InvalidRequestException ire) {
+            throw ire;
+        } catch (Exception e) {
+            throw new BackplaneServerException("Error processing post request: " + e.getMessage(), e);
         } finally {
             context.stop();
         }
@@ -799,20 +812,9 @@ public class Backplane2Controller {
             throw new InvalidRequestException("Invalid data in payload", HttpServletResponse.SC_FORBIDDEN);
         }
 
-        BackplaneMessage message;
-        try {
-            message = new BackplaneMessage(token.get(Token.TokenField.CLIENT_SOURCE_URL), msg);
-        } catch (Exception e) {
-            throw new InvalidRequestException("Invalid message data: " + e.getMessage(), HttpServletResponse.SC_FORBIDDEN);
-        }
-
-        if ( ! token.getScope().isMessageInScope(message) ) {
-            throw new InvalidRequestException("Invalid bus in message", HttpServletResponse.SC_FORBIDDEN);
-        }
-
-        String channel = message.getMessageChannel();
-
-        if ( ! daoFactory.getTokenDao().isValidBinding(channel, message.getMessageBus())) {
+        String channel = msg.get(BackplaneMessage.Field.CHANNEL.getFieldName()) != null ? msg.get(BackplaneMessage.Field.CHANNEL.getFieldName()).toString() : null;
+        String bus = msg.get(BackplaneMessage.Field.BUS.getFieldName()) != null ? msg.get(BackplaneMessage.Field.BUS.getFieldName()).toString() : null;
+        if ( ! daoFactory.getTokenDao().isValidBinding(channel, bus)) {
             throw new InvalidRequestException("Invalid bus - channel binding ", HttpServletResponse.SC_FORBIDDEN);
         }
 
@@ -822,14 +824,23 @@ public class Backplane2Controller {
                     HttpServletResponse.SC_FORBIDDEN);
         }
 
-        return message;
+        BackplaneMessage message;
+        try {
+            message = new BackplaneMessage(token.get(Token.TokenField.CLIENT_SOURCE_URL), msg);
+        } catch (Exception e) {
+            throw new InvalidRequestException("Invalid message data: " + e.getMessage(), HttpServletResponse.SC_FORBIDDEN);
+        }
+        if ( ! token.getScope().isMessageInScope(message) ) {
+            throw new InvalidRequestException("Invalid bus in message", HttpServletResponse.SC_FORBIDDEN);
+        }
+        return  message;
     }
 
-    private final Meter v2Gets = Metrics.newMeter(Backplane2Controller.class, "v2_get", "v2_gets", TimeUnit.MINUTES);
-    private final Meter v2Posts =  Metrics.newMeter(Backplane2Controller.class, "v2_post", "v2_posts", TimeUnit.MINUTES);
-    private final Meter v2GetRegTokens =  Metrics.newMeter(Backplane2Controller.class, "v2_get_reg_token", "v2_get_reg_tokens", TimeUnit.MINUTES);
-    private final com.yammer.metrics.core.Timer postTimer =
+    private final com.yammer.metrics.core.Timer v2GetsTimer =
+            com.yammer.metrics.Metrics.newTimer(Backplane2Controller.class, "v2_gets_time", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
+    private final com.yammer.metrics.core.Timer v2PostTimer =
             com.yammer.metrics.Metrics.newTimer(Backplane2Controller.class, "v2_posts_time", TimeUnit.MILLISECONDS, TimeUnit.SECONDS);
     private final com.yammer.metrics.core.Timer getRegularTokenTimer =
             com.yammer.metrics.Metrics.newTimer(Backplane2Controller.class, "v2_get_reg_tokens_time", TimeUnit.MILLISECONDS, TimeUnit.SECONDS);
+
 }
