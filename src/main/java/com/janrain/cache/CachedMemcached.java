@@ -1,5 +1,7 @@
 package com.janrain.cache;
 
+import net.spy.memcached.AddrUtil;
+import net.spy.memcached.BinaryConnectionFactory;
 import net.spy.memcached.MemcachedClient;
 import net.spy.memcached.OperationTimeoutException;
 import net.spy.memcached.internal.OperationFuture;
@@ -25,13 +27,13 @@ public class CachedMemcached implements Cached {
         return instance;
     }
 
-    public synchronized Map<String, Object> getBulk(List<String> keys) {
+    public Map<String, Object> getBulk(List<String> keys) {
         if (client == null || !isEnabled) {
             return null;
         }
 
         try {
-            return client.getBulk(keys);
+            return getCache().getBulk(keys);
         } catch (Exception e) {
             logger.warn("'getBulk' call to memcached server failed.  disabling cache for " + RETRY_IN/1000 + " seconds", e);
             // disable
@@ -43,14 +45,14 @@ public class CachedMemcached implements Cached {
     }
 
     @Override
-    public synchronized Object getObject(String key) {
+    public Object getObject(String key) {
         if (client == null || !isEnabled) {
             return null;
         }
 
         key = makeValidKey(key);
         try {
-            return client.get(key);
+            return getCache().get(key);
         } catch (Exception e) {
             logger.warn("'get' call to memcached server failed.  disabling cache for " + RETRY_IN/1000 + " seconds", e);
             // disable
@@ -61,12 +63,12 @@ public class CachedMemcached implements Cached {
     }
 
     @Override
-    public synchronized void setObject(String key, int expiration, Object obj) {
+    public void setObject(String key, int expiration, Object obj) {
         if (client == null || !isEnabled) {
             return;
         }
         key = makeValidKey(key);
-        OperationFuture future = client.set(key, expiration, obj);
+        OperationFuture future = getCache().set(key, expiration, obj);
         try {
             Boolean result = (Boolean)future.get();
             if (result == false) {
@@ -93,9 +95,7 @@ public class CachedMemcached implements Cached {
                     logger.warn("memcached disabled - retrying in " + RETRY_IN/1000 + " seconds");
                     Thread.sleep(RETRY_IN);
                     try {
-                        if (client != null) {
-                            client.get("foo");
-                        }
+                        getCache().get("foo");
                         // success, stop testing process
                         logger.warn("memcached re-enabled");
                         isEnabled = true;
@@ -113,7 +113,7 @@ public class CachedMemcached implements Cached {
     }
 
     private static CachedMemcached instance;
-    private MemcachedClient client;
+    private MemcachedClient[] client;
     private boolean isEnabled = false;
     private final long RETRY_IN = 30000l;
     private static final Logger logger = Logger.getLogger(CachedMemcached.class);
@@ -136,20 +136,12 @@ public class CachedMemcached implements Cached {
             }
 
             logger.info("creating memcached client");
-            InetSocketAddress sock = new InetSocketAddress(memcachedServer, 11211);
-            client = new MemcachedClient(sock);
-            // test ping
-            getObject("foo");
-            Collection<SocketAddress> servers = client.getAvailableServers();
-            if (servers.isEmpty()) {
-                logger.warn("could not reach memcached server(s)");
-                isEnabled = false;
-                new RetryThread().start();
-                return;
-            } else {
-                for (SocketAddress server : servers) {
-                    logger.info("connected to memcached server: " + server.toString());
-                }
+
+            client = new MemcachedClient[20];
+            for (int i=0 ; i< 20; i++) {
+                MemcachedClient c = new MemcachedClient(new BinaryConnectionFactory(),
+                        AddrUtil.getAddresses(memcachedServer + ":11211"));
+                client[i] = c;
             }
 
             isEnabled = true;
@@ -157,6 +149,10 @@ public class CachedMemcached implements Cached {
         } catch (Exception e) {
             logger.error(e);
         }
+    }
+
+    private MemcachedClient getCache() {
+        return client[(int)(Math.random()*19)];
     }
 
 

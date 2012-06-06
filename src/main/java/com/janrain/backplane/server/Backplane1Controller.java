@@ -21,16 +21,12 @@ import com.janrain.backplane.server.config.Backplane1Config;
 import com.janrain.backplane.server.config.BusConfig1;
 import com.janrain.backplane.server.config.User;
 import com.janrain.backplane.server.dao.BackplaneMessageDAO;
-import com.janrain.backplane.server.dao.DaoFactory;
-import com.janrain.cache.CachedMemcached;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.crypto.HmacHashUtils;
 import com.yammer.metrics.Metrics;
-import com.yammer.metrics.core.Histogram;
-import com.yammer.metrics.core.Meter;
+import com.yammer.metrics.core.*;
 import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.springframework.http.HttpHeaders;
@@ -47,7 +43,6 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.SecureRandom;
 import java.util.*;
-import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 import static com.janrain.backplane.server.config.Backplane1Config.SimpleDBTables.BP1_BUS_CONFIG;
@@ -74,79 +69,94 @@ public class Backplane1Controller {
 
     @RequestMapping(value = "/bus/{bus}", method = RequestMethod.GET)
     public @ResponseBody List<HashMap<String,Object>> getBusMessages(
-                                @RequestHeader(value = "Authorization", required = false) String basicAuth,
-                                @PathVariable String bus,
-                                @RequestParam(value = "since", defaultValue = "") String since,
-                                @RequestParam(value = "sticky", required = false) String sticky )
-        throws AuthException, SimpleDBException, BackplaneServerException {
+            @RequestHeader(value = "Authorization", required = false) String basicAuth,
+            @PathVariable String bus,
+            @RequestParam(value = "since", defaultValue = "") String since,
+            @RequestParam(value = "sticky", required = false) String sticky )
+            throws AuthException, SimpleDBException, BackplaneServerException {
 
         checkAuth(basicAuth, bus, Backplane1Config.BUS_PERMISSION.GETALL);
 
-        // log metric
-        busGets.mark();
+        final TimerContext context = getBusMessagesTime.time();
 
-        List<BackplaneMessage> messages = daoFactory.getBackplaneMessageDAO().getMessagesByBus(bus, since, sticky);
+        try {
 
-        List<HashMap<String,Object>> frames = new ArrayList<HashMap<String, Object>>();
-        for (BackplaneMessage message : messages) {
-            frames.add(message.asFrame());
+            List<BackplaneMessage> messages = daoFactory.getBackplaneMessageDAO().getMessagesByBus(bus, since, sticky);
+
+            List<HashMap<String,Object>> frames = new ArrayList<HashMap<String, Object>>();
+            for (BackplaneMessage message : messages) {
+                frames.add(message.asFrame());
+            }
+            return frames;
+
+        } finally {
+            context.stop();
         }
-        return frames;
 
     }
 
     @RequestMapping(value = "/bus/{bus}/channel/{channel}", method = RequestMethod.GET)
     public ResponseEntity<String> getChannel(
-                                @PathVariable String bus,
-                                @PathVariable String channel,
-                                @RequestParam(required = false) String callback,
-                                @RequestParam(value = "since", required = false) String since,
-                                @RequestParam(value = "sticky", required = false) String sticky )
-        throws SimpleDBException, AuthException, BackplaneServerException {
+            @PathVariable String bus,
+            @PathVariable String channel,
+            @RequestParam(required = false) String callback,
+            @RequestParam(value = "since", required = false) String since,
+            @RequestParam(value = "sticky", required = false) String sticky )
+            throws SimpleDBException, AuthException, BackplaneServerException {
 
-        // log metric
-        channelGets.mark();
+        final TimerContext context = getChannelMessagesTime.time();
 
-        return new ResponseEntity<String>(
+        try {
+
+            return new ResponseEntity<String>(
                     NEW_CHANNEL_LAST_PATH.equals(channel) ? newChannel() : getChannelMessages(bus, channel, since, sticky),
                     new HttpHeaders() {{
                         add("Content-Type", "application/json");
                     }},
                     HttpStatus.OK);
 
+        } finally {
+            context.stop();
+        }
+
     }
 
     @RequestMapping(value = "/bus/{bus}/channel/{channel}", method = RequestMethod.POST)
     public @ResponseBody String postToChannel(
-                                @RequestHeader(value = "Authorization", required = false) String basicAuth,
-                                @RequestBody List<Map<String,Object>> messages,
-                                @PathVariable String bus,
-                                @PathVariable String channel) throws AuthException, SimpleDBException, BackplaneServerException {
+            @RequestHeader(value = "Authorization", required = false) String basicAuth,
+            @RequestBody List<Map<String,Object>> messages,
+            @PathVariable String bus,
+            @PathVariable String channel) throws AuthException, SimpleDBException, BackplaneServerException {
         checkAuth(basicAuth, bus, Backplane1Config.BUS_PERMISSION.POST);
 
-        //Block post if the caller has exceeded the message post limit
-        Long count = superSimpleDb.retrieveCount(bpConfig.getMessagesTableName(),
-                " bus='" + bus + "' and channel_name='" + channel + "'");
+        final TimerContext context = postMessagesTime.time();
 
-        if (count >= bpConfig.getDefaultMaxMessageLimit()) {
-            logger.error("Message limit of " + bpConfig.getDefaultMaxMessageLimit() + " exceeded for channel: " + channel + " on bus: " + bus);
-            throw new BackplaneServerException("Message limit exceeded for this channel");
+        try {
+
+            //Block post if the caller has exceeded the message post limit
+            Long count = superSimpleDb.retrieveCount(bpConfig.getMessagesTableName(),
+                    " bus='" + bus + "' and channel_name='" + channel + "'");
+
+            if (count >= bpConfig.getDefaultMaxMessageLimit()) {
+                logger.error("Message limit of " + bpConfig.getDefaultMaxMessageLimit() + " exceeded for channel: " + channel + " on bus: " + bus);
+                throw new BackplaneServerException("Message limit exceeded for this channel");
+            }
+
+            //log metric - although this metric may need to be seeded on instance startup to be accurate
+            messagesPerChannel.update(count);
+
+            BackplaneMessageDAO backplaneMessageDAO = daoFactory.getBackplaneMessageDAO();
+
+            for(Map<String,Object> messageData : messages) {
+                BackplaneMessage message = new BackplaneMessage(generateMessageId(), bus, channel, messageData);
+                backplaneMessageDAO.persist(message);
+            }
+
+            return "";
+
+        } finally {
+            context.stop();
         }
-
-        //log metric - although this metric may need to be seeded on instance startup to be accurate
-        messagesPerChannel.update(count);
-
-        //log metric
-        posts.mark();
-
-        BackplaneMessageDAO backplaneMessageDAO = daoFactory.getBackplaneMessageDAO();
-
-        for(Map<String,Object> messageData : messages) {
-            BackplaneMessage message = new BackplaneMessage(generateMessageId(), bus, channel, messageData);
-            backplaneMessageDAO.persist(message);
-        }
-
-        return "";
     }
 
     /**
@@ -213,17 +223,14 @@ public class Backplane1Controller {
     private static final String ERR_MSG_FIELD = "ERR_MSG";
     private static final int CHANNEL_NAME_LENGTH = 32;
 
-    private final Meter posts =
-            Metrics.newMeter(Backplane1Controller.class, "post", "posts", TimeUnit.MINUTES);
+    private final com.yammer.metrics.core.Timer getBusMessagesTime =
+            Metrics.newTimer(Backplane1Controller.class, "get_bus_messages_time", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
 
-    private final Meter channelGets =
-            Metrics.newMeter(Backplane1Controller.class, "channel_get", "channel_gets", TimeUnit.MINUTES);
+    private final com.yammer.metrics.core.Timer getChannelMessagesTime =
+            Metrics.newTimer(Backplane1Controller.class, "get_channel_messages_time", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
 
-    private final Meter busGets =
-            Metrics.newMeter(Backplane1Controller.class, "bus_get", "bus_gets", TimeUnit.MINUTES);
-
-    private final com.yammer.metrics.core.Timer getMessagesTime =
-            Metrics.newTimer(Backplane1Controller.class, "get_messages_time", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
+    private final com.yammer.metrics.core.Timer postMessagesTime =
+            Metrics.newTimer(Backplane1Controller.class, "post_messages_time", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
 
     private final Histogram payLoadSizesOnGets = Metrics.newHistogram(Backplane1Controller.class, "payload_sizes_gets");
 
@@ -305,28 +312,24 @@ public class Backplane1Controller {
     private String getChannelMessages(final String bus, final String channel, final String since, final String sticky) throws SimpleDBException, BackplaneServerException {
 
         try {
-            return getMessagesTime.time(new Callable<String>() {
-                @Override
-                public String call() throws Exception {
-                    List<BackplaneMessage> messages = daoFactory.getBackplaneMessageDAO().getMessagesByChannel(channel, since, sticky);
-                    List<Map<String,Object>> frames = new ArrayList<Map<String, Object>>();
 
-                    for (BackplaneMessage message : messages) {
-                        frames.add(message.asFrame());
-                    }
+            List<BackplaneMessage> messages = daoFactory.getBackplaneMessageDAO().getMessagesByChannel(channel, since, sticky);
+            List<Map<String,Object>> frames = new ArrayList<Map<String, Object>>();
 
-                    ObjectMapper mapper = new ObjectMapper();
-                    try {
-                        String payload = mapper.writeValueAsString(frames);
-                        payLoadSizesOnGets.update(payload.length());
-                        return mapper.writeValueAsString(frames);
-                    } catch (IOException e) {
-                        String errMsg = "Error converting frames to JSON: " + e.getMessage();
-                        logger.error(errMsg, bpConfig.getDebugException(e));
-                        throw new BackplaneServerException(errMsg, e);
-                    }
-                }
-            });
+            for (BackplaneMessage message : messages) {
+                frames.add(message.asFrame());
+            }
+
+            ObjectMapper mapper = new ObjectMapper();
+            try {
+                String payload = mapper.writeValueAsString(frames);
+                payLoadSizesOnGets.update(payload.length());
+                return mapper.writeValueAsString(frames);
+            } catch (IOException e) {
+                String errMsg = "Error converting frames to JSON: " + e.getMessage();
+                logger.error(errMsg, bpConfig.getDebugException(e));
+                throw new BackplaneServerException(errMsg, e);
+            }
         } catch (SimpleDBException sdbe) {
             throw sdbe;
         } catch (BackplaneServerException bse) {

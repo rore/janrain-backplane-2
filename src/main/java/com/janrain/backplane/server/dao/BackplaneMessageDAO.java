@@ -22,6 +22,7 @@ import com.janrain.cache.CachedMemcached;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 
 import java.util.*;
 
@@ -74,7 +75,6 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
                     .append(BackplaneMessage.Field.CHANNEL_NAME.getFieldName()).append("='").append(channel).append("'");
 
             messages = superSimpleDB.retrieveWhere(bpConfig.getMessagesTableName(), BackplaneMessage.class, whereClause.toString(), true);
-
             CachedMemcached.getInstance().setObject(genChannelKey(channel), 3600, messages);
         }
 
@@ -92,21 +92,22 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
 
     public List<BackplaneMessage> getMessagesByBus(String bus, String since, String sticky) throws SimpleDBException {
 
-        List<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
+        List<BackplaneMessage> messages = null;
         //check the cache first
         List<String> messageIds = (List<String>) CachedMemcached.getInstance().getObject(genBusKey(bus));
         if (messageIds != null) {
+            messages = new ArrayList<BackplaneMessage>();
             Map<String, Object> msgs = CachedMemcached.getInstance().getBulk(messageIds);
             for (Map.Entry<String,Object> entry: msgs.entrySet()) {
                 messages.add((BackplaneMessage) entry.getValue());
             }
             // if we don't receive as many records as keys, make sure we do a database check
             if (messages.size() != messageIds.size()) {
-                messages.clear();
+                messages = null;
             }
         }
 
-        if (messages.isEmpty()) {
+        if (messages == null) {
             //check the DB
             StringBuilder whereClause = new StringBuilder()
                     .append(BackplaneMessage.Field.BUS.getFieldName()).append("='").append(bus).append("'");
@@ -131,6 +132,8 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
     }
 
     // - PRIVATE
+
+    private static final Logger logger = Logger.getLogger(BackplaneMessageDAO.class);
 
     private final DaoFactory daoFactory;
 
