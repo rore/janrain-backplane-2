@@ -75,11 +75,11 @@ public class Backplane1Controller {
             @RequestParam(value = "sticky", required = false) String sticky )
             throws AuthException, SimpleDBException, BackplaneServerException {
 
-        checkAuth(basicAuth, bus, Backplane1Config.BUS_PERMISSION.GETALL);
-
         final TimerContext context = getBusMessagesTime.time();
 
         try {
+
+            checkAuth(basicAuth, bus, Backplane1Config.BUS_PERMISSION.GETALL);
 
             List<BackplaneMessage> messages = daoFactory.getBackplaneMessageDAO().getMessagesByBus(bus, since, sticky);
 

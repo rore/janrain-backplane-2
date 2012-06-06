@@ -21,6 +21,7 @@ import com.janrain.backplane.server.config.Backplane1Config;
 import com.janrain.cache.CachedMemcached;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
+import com.janrain.locking.DistributedLockingManager;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
@@ -71,11 +72,20 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
 
         if (messages == null) {
             //check the DB
+            DistributedLockingManager dlm = DistributedLockingManager.getInstance();
+            String lock = dlm.getDistributedLock(channel);
+
+            if (lock == null) {
+                // failed to get lock
+                return new ArrayList<BackplaneMessage>();
+            }
+
             StringBuilder whereClause = new StringBuilder()
                     .append(BackplaneMessage.Field.CHANNEL_NAME.getFieldName()).append("='").append(channel).append("'");
 
             messages = superSimpleDB.retrieveWhere(bpConfig.getMessagesTableName(), BackplaneMessage.class, whereClause.toString(), true);
             CachedMemcached.getInstance().setObject(genChannelKey(channel), 3600, messages);
+            dlm.releaseLock(lock);
         }
 
         return filterAndSort(messages, since, sticky);
