@@ -17,7 +17,6 @@
 package com.janrain.metrics;
 
 import com.janrain.backplane2.server.BackplaneServerException;
-import com.janrain.backplane2.server.InvalidRequestException;
 import com.janrain.backplane2.server.config.AuthException;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
@@ -30,11 +29,12 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 
 import javax.inject.Inject;
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -66,9 +66,7 @@ public class MetricsController {
     public ResponseEntity<String> dump (HttpServletRequest request, @RequestBody MetricRequest metricRequest)
             throws SimpleDBException, BackplaneServerException, AuthException {
 
-        if (!ServletUtil.isSecure(request)) {
-            throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
-        }
+        ServletUtil.checkSecure(request);
 
         bpConfig.checkMetricAuth(metricRequest.getUser(), metricRequest.getSecret());
 
@@ -89,9 +87,7 @@ public class MetricsController {
     public ResponseEntity<String> dumpAggregate(HttpServletRequest request, @RequestBody MetricRequest metricRequest)
             throws AuthException {
 
-        if (!ServletUtil.isSecure(request)) {
-            throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
-        }
+        ServletUtil.checkSecure(request);
 
         bpConfig.checkMetricAuth(metricRequest.getUser(), metricRequest.getSecret());
 

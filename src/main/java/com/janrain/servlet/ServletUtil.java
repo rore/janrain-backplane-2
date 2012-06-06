@@ -16,9 +16,10 @@
 
 package com.janrain.servlet;
 
-import org.apache.http.HttpRequest;
+import com.janrain.backplane2.server.InvalidRequestException;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 /**
  * @author Tom Raney
@@ -47,5 +48,14 @@ public class ServletUtil {
         return isSecure;
     }
 
+    /**
+     * @throws InvalidRequestException if the request is not secure, as indicated by either
+     * (1) x-forwarded-proto header or (2) request URL scheme
+     */
+    public static void checkSecure(HttpServletRequest request) throws InvalidRequestException {
+        if ( ! isSecure(request) ) {
+            throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
+        }
+    }
 
 }

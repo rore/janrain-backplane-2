@@ -146,9 +146,7 @@ public class Backplane2Controller {
                           @RequestParam(required = false) String busOwner,
                           @RequestParam(required = false) String password) throws AuthException, SimpleDBException {
 
-        if (!ServletUtil.isSecure(request)) {
-            throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
-        }
+        ServletUtil.checkSecure(request);
 
         String httpMethod = request.getMethod();
         if ("GET".equals(httpMethod)) {
@@ -184,9 +182,7 @@ public class Backplane2Controller {
                                            @RequestParam(required = false) final String refresh_token,
                                            @RequestHeader(value = "Authorization", required = false) final String authorizationHeader) {
 
-        if (!ServletUtil.isSecure(request)) {
-            throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
-        }
+        ServletUtil.checkSecure(request);
 
         try {
             return v2GetRegTokens.time(new Callable<Map<String, Object>>() {
@@ -232,9 +228,7 @@ public class Backplane2Controller {
                                         @RequestParam(required = false) String refresh_token,
                                         @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
 
-        if (!ServletUtil.isSecure(request)) {
-            throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
-        }
+        ServletUtil.checkSecure(request);
 
         Client authenticatedClient;
         try {
@@ -277,9 +271,7 @@ public class Backplane2Controller {
                                 @RequestHeader(value = "Authorization", required = false) final String authorizationHeader)
             throws SimpleDBException, BackplaneServerException {
 
-        if (!ServletUtil.isSecure(request)) {
-            throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
-        }
+        ServletUtil.checkSecure(request);
 
         final MessageRequest messageRequest;
         try {
@@ -344,9 +336,7 @@ public class Backplane2Controller {
                                 @RequestHeader(value = "Authorization", required = false) String authorizationHeader)
             throws BackplaneServerException, SimpleDBException {
 
-        if (!ServletUtil.isSecure(request)) {
-            throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
-        }
+        ServletUtil.checkSecure(request);
 
         try {
             new MessageRequest(callback, null, "0"); // validate callback only, if present
@@ -382,9 +372,7 @@ public class Backplane2Controller {
                   @RequestHeader(value = "Authorization", required = false) final String authorizationHeader)
             throws SimpleDBException, BackplaneServerException {
 
-        if (!ServletUtil.isSecure(request)) {
-            throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
-        }
+        ServletUtil.checkSecure(request);
 
         try {
             return v2Posts.time(new Callable<Map<String, Object>>() {

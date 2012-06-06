@@ -280,15 +280,15 @@ public class Backplane2Config {
         cacheUpdater.scheduleWithFixedDelay(new Runnable() {
             @Override
             public void run() {
-                MessageCache<BackplaneMessage> cache = daoFactory.getMessageCache();
-                long cacheMaxBytes = getMaxMessageCacheBytes();
-                if (cacheMaxBytes <= 0) return;
-                cache.setMaxCacheSizeBytes(cacheMaxBytes);
-                BackplaneMessage lastCached = cache.getLastMessage();
-                String lastCachedId = lastCached != null ? lastCached.getIdValue() : "";
                 try {
+                    MessageCache<BackplaneMessage> cache = daoFactory.getMessageCache();
+                    long cacheMaxBytes = getMaxMessageCacheBytes();
+                    if (cacheMaxBytes <= 0) return;
+                    cache.setMaxCacheSizeBytes(cacheMaxBytes);
+                    BackplaneMessage lastCached = cache.getLastMessage();
+                    String lastCachedId = lastCached != null ? lastCached.getIdValue() : "";
                     cache.add(daoFactory.getBackplaneMessageDAO().retrieveMessagesNoScope(lastCachedId));
-                } catch (SimpleDBException e) {
+                } catch (Exception e) {
                     logger.error("Error updating message cache: " + e.getMessage(), e);
                 }
             }

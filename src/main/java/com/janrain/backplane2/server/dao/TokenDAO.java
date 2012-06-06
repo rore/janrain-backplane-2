@@ -178,6 +178,8 @@ public class TokenDAO extends DAO<Token> {
             }
         } catch (SimpleDBException sdbe) {
             throw sdbe;
+        } catch (TokenException te) {
+            throw te;
         } catch (Exception e) {
             throw new SimpleDBException(e);
         }

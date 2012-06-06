@@ -52,9 +52,7 @@ public class ProvisioningController2 {
     @RequestMapping(value = "/bus/list", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, Map<String, String>> busList(HttpServletRequest request, @RequestBody ListRequest listRequest) throws AuthException {
-        if (!ServletUtil.isSecure(request)) {
-            throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
-        }
+        ServletUtil.checkSecure(request);
         bpConfig.checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
         return doList(bpConfig.getTableName(BP_BUS_CONFIG), BusConfig2.class, listRequest.getEntities(), BusConfig2.Field.BUS_NAME);
     }
@@ -62,9 +60,7 @@ public class ProvisioningController2 {
     @RequestMapping(value = "/user/list", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, Map<String, String>> userList(HttpServletRequest request, @RequestBody ListRequest listRequest) throws AuthException {
-        if (!ServletUtil.isSecure(request)) {
-            throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
-        }
+        ServletUtil.checkSecure(request);
         bpConfig.checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
         return doList(bpConfig.getTableName(BP_BUS_OWNERS), User.class, listRequest.getEntities(), User.Field.USER);
     }
@@ -72,9 +68,7 @@ public class ProvisioningController2 {
     @RequestMapping(value = "/client/list", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, Map<String, String>> clientList(HttpServletRequest request, @RequestBody ListRequest listRequest) throws AuthException {
-        if (!ServletUtil.isSecure(request)) {
-            throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
-        }
+        ServletUtil.checkSecure(request);
         bpConfig.checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
         return doList(bpConfig.getTableName(BP_CLIENTS), Client.class, listRequest.getEntities(), Client.Field.USER);
     }
@@ -82,9 +76,7 @@ public class ProvisioningController2 {
     @RequestMapping(value = "/bus/delete", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, String> busDelete(HttpServletRequest request, @RequestBody ListRequest deleteRequest) throws AuthException {
-        if (!ServletUtil.isSecure(request)) {
-            throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
-        }
+        ServletUtil.checkSecure(request);
         bpConfig.checkAdminAuth(deleteRequest.getAdmin(), deleteRequest.getSecret());
         return doDelete(bpConfig.getTableName(BP_BUS_CONFIG), BusConfig2.class, deleteRequest.getEntities());
     }
@@ -92,9 +84,7 @@ public class ProvisioningController2 {
     @RequestMapping(value = "/user/delete", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, String> userDelete(HttpServletRequest request, @RequestBody ListRequest deleteRequest) throws AuthException {
-        if (!ServletUtil.isSecure(request)) {
-            throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
-        }
+        ServletUtil.checkSecure(request);
         bpConfig.checkAdminAuth(deleteRequest.getAdmin(), deleteRequest.getSecret());
         return doDelete(bpConfig.getTableName(BP_BUS_OWNERS), User.class, deleteRequest.getEntities());
     }
@@ -102,9 +92,7 @@ public class ProvisioningController2 {
     @RequestMapping(value = "/client/delete", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, String> clientDelete(HttpServletRequest request, @RequestBody ListRequest deleteRequest) throws AuthException {
-        if (!ServletUtil.isSecure(request)) {
-            throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
-        }
+        ServletUtil.checkSecure(request);
         bpConfig.checkAdminAuth(deleteRequest.getAdmin(), deleteRequest.getSecret());
         return doDelete(bpConfig.getTableName(BP_CLIENTS), Client.class, deleteRequest.getEntities());
     }
@@ -112,27 +100,21 @@ public class ProvisioningController2 {
     @RequestMapping(value = "/bus/update", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, String> busUpdate(HttpServletRequest request, @RequestBody BusUpdateRequest updateRequest) throws AuthException {
-        if (!ServletUtil.isSecure(request)) {
-            throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
-        }
+        ServletUtil.checkSecure(request);
         return doUpdate(bpConfig.getTableName(BP_BUS_CONFIG), BusConfig2.class, updateRequest);
     }
 
     @RequestMapping(value = "/user/update", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, String> userUpdate(HttpServletRequest request, @RequestBody UserUpdateRequest updateRequest) throws AuthException {
-        if (!ServletUtil.isSecure(request)) {
-            throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
-        }
+        ServletUtil.checkSecure(request);
         return doUpdate(bpConfig.getTableName(BP_BUS_OWNERS), User.class, updateRequest);
     }
 
     @RequestMapping(value = "/client/update", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, String> clientUpdate(HttpServletRequest request, @RequestBody ClientUpdateRequest updateRequest) throws AuthException {
-        if (!ServletUtil.isSecure(request)) {
-            throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
-        }
+        ServletUtil.checkSecure(request);
         logger.debug("client updateRequest: '" + updateRequest + "'");
         return doUpdate(bpConfig.getTableName(BP_CLIENTS), Client.class, updateRequest);
     }
@@ -140,9 +122,7 @@ public class ProvisioningController2 {
     @RequestMapping(value = "/grant/list", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, Map<String, String>> grantList(HttpServletRequest request, @RequestBody ListRequest listRequest) throws AuthException {
-        if (!ServletUtil.isSecure(request)) {
-            throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
-        }
+        ServletUtil.checkSecure(request);
         bpConfig.checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
 
         Map<String,Map<String,String>> result = new LinkedHashMap<String, Map<String, String>>();
@@ -172,9 +152,7 @@ public class ProvisioningController2 {
     @RequestMapping(value = "/grant/add", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, String> grantAdd(HttpServletRequest request, @RequestBody GrantRequest grantRequest) throws AuthException {
-        if (!ServletUtil.isSecure(request)) {
-            throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
-        }
+        ServletUtil.checkSecure(request);
         logger.debug("grant add request: '" + grantRequest + "'");
         return doGrant(grantRequest, true);
     }
@@ -182,9 +160,7 @@ public class ProvisioningController2 {
     @RequestMapping(value = "/grant/revoke", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, String> gantRevoke(HttpServletRequest request, @RequestBody GrantRequest grantRequest) throws AuthException {
-        if (!ServletUtil.isSecure(request)) {
-            throw new InvalidRequestException("Connection must be made over https", HttpServletResponse.SC_FORBIDDEN);
-        }
+        ServletUtil.checkSecure(request);
         logger.debug("grant revoke request: '" + grantRequest + "'");
         return doGrant(grantRequest, false);
     }
