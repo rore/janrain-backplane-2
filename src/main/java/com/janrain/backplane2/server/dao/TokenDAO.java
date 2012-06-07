@@ -37,6 +37,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_ACCESS_TOKEN;
+import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_REVOKED_TOKEN;
 
 /**
  * @author Tom Raney
@@ -56,7 +57,6 @@ public class TokenDAO extends DAO<Token> {
                 @Override
                 public Object call() throws SimpleDBException {
                     superSimpleDB.store(bpConfig.getTableName(BP_ACCESS_TOKEN), Token.class, token, true);
-                    cache.add(token);
                     return null;
                 }
             });
@@ -74,7 +74,6 @@ public class TokenDAO extends DAO<Token> {
                 @Override
                 public Object call() throws SimpleDBException {
                     superSimpleDB.delete(bpConfig.getTableName(BP_ACCESS_TOKEN), tokenId);
-                    cache.delete(tokenId);
                     return null;
                 }
             });
@@ -97,7 +96,7 @@ public class TokenDAO extends DAO<Token> {
                 @Override
                 public Token call() throws SimpleDBException {
                     Token token = superSimpleDB.retrieve(bpConfig.getTableName(BP_ACCESS_TOKEN), Token.class, tokenId);
-                    cache.add(token);
+                    if (! token.getType().isRefresh()) cache.add(token);
                     return token;
                 }
             });
@@ -113,11 +112,18 @@ public class TokenDAO extends DAO<Token> {
             logger.info("Backplane token cleanup task started.");
             String expiredClause = Token.TokenField.EXPIRES.getFieldName() + " < '" + Backplane2Config.ISO8601.get().format(new Date(System.currentTimeMillis())) + "'";
             superSimpleDB.deleteWhere(bpConfig.getTableName(BP_ACCESS_TOKEN), expiredClause);
+            superSimpleDB.deleteWhere(bpConfig.getTableName(BP_REVOKED_TOKEN), expiredClause);
         } catch (Exception e) {
             // catch-all, else cleanup thread stops
             logger.error("Backplane token cleanup task error: " + e.getMessage(), e);
         } finally {
             logger.info("Backplane token cleanup task finished.");
+        }
+    }
+
+    public void cacheRevokedCleanup() throws SimpleDBException {
+        for(Token revoked : superSimpleDB.retrieveWhere(bpConfig.getTableName(BP_REVOKED_TOKEN), Token.class, null, true)) {
+            cache.delete(revoked.getIdValue());
         }
     }
 
@@ -136,6 +142,7 @@ public class TokenDAO extends DAO<Token> {
         List<Token> tokens = retrieveTokensByGrant(grantId);
         for (Token token : tokens) {
             delete(token.getIdValue());
+            superSimpleDB.store(bpConfig.getTableName(BP_REVOKED_TOKEN), Token.class, token, true);
             logger.info("revoked token " + token.getIdValue());
         }
         if (! tokens.isEmpty()) {

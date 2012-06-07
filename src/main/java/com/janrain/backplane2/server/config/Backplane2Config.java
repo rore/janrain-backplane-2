@@ -90,6 +90,7 @@ public class Backplane2Config {
         BP_METRIC_AUTH("_bpMetricAuth"),
         BP_GRANT("_v2_grants"),
         BP_ACCESS_TOKEN("_v2_accessTokens"),
+        BP_REVOKED_TOKEN("_v2_revokedTokens"),
         BP_AUTH_SESSION("_v2_authSessions"),
         BP_AUTHORIZATION_REQUEST("_v2_authorizationRequests"),
         BP_AUTHORIZATION_DECISION_KEY("_v2_authorizationDecisions");
@@ -202,11 +203,13 @@ public class Backplane2Config {
 
     private static final String BP_CONFIG_ENTRY_NAME = "bpserverconfig";
     private static final long BP_MAX_MESSAGES_DEFAULT = 100;
-    private static final long CACHE_UPDATER_INTERVAL_MILLISECONDS = 300;
+    private static final long MESSAGE_CACHE_UPDATE_INTERVAL_MILLISECONDS = 300;
+    private static final long TOKEN_CACHE_REVOKE_CLEANUP_INTERVAL_SECONDS = 5;
 
     private final String bpInstanceId;
     private ScheduledExecutorService cleanup;
-    private ExecutorService cacheUpdater;
+    private ExecutorService messageCacheUpdater;
+    private ExecutorService tokenCacheCleanup;
 
 
     // Amazon specific instance-id value
@@ -299,14 +302,30 @@ public class Backplane2Config {
                 }
                 logger.info("Cache updated in " + (System.currentTimeMillis() - start) + " ms");
             }
-        }, CACHE_UPDATER_INTERVAL_MILLISECONDS, CACHE_UPDATER_INTERVAL_MILLISECONDS, TimeUnit.MILLISECONDS);
+        }, MESSAGE_CACHE_UPDATE_INTERVAL_MILLISECONDS, MESSAGE_CACHE_UPDATE_INTERVAL_MILLISECONDS, TimeUnit.MILLISECONDS);
+        return cacheUpdater;
+    }
+
+    private ExecutorService createCacheCleanupTask() {
+        ScheduledExecutorService cacheUpdater = Executors.newScheduledThreadPool(1);
+        cacheUpdater.scheduleWithFixedDelay(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    daoFactory.getTokenDao().cacheRevokedCleanup();
+                } catch (Exception e) {
+                    logger.error("Error clearing revoked tokens from cache: " + e.getMessage(), e);
+                }
+            }
+        }, TOKEN_CACHE_REVOKE_CLEANUP_INTERVAL_SECONDS, TOKEN_CACHE_REVOKE_CLEANUP_INTERVAL_SECONDS, TimeUnit.SECONDS);
         return cacheUpdater;
     }
 
     @PostConstruct
     private void init() {
         this.cleanup = createCleanupTask();
-        this.cacheUpdater = createCacheUpdaterTask();
+        this.messageCacheUpdater = createCacheUpdaterTask();
+        this.tokenCacheCleanup = createCacheCleanupTask();
 
         for(SimpleDBTables table : EnumSet.allOf(SimpleDBTables.class)) {
             superSimpleDb.checkDomain(getTableName(table));
@@ -316,7 +335,8 @@ public class Backplane2Config {
     @PreDestroy
     private void cleanup() {
         shutdownExecutor(cleanup);
-        shutdownExecutor(cacheUpdater);
+        shutdownExecutor(messageCacheUpdater);
+        shutdownExecutor(tokenCacheCleanup);
     }
 
     private void shutdownExecutor(ExecutorService executor) {
