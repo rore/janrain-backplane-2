@@ -300,7 +300,7 @@ public class Backplane2Config {
                 } catch (Exception e) {
                     logger.error("Error updating message cache: " + e.getMessage(), e);
                 }
-                logger.info("Cache updated in " + (System.currentTimeMillis() - start) + " ms");
+                logger.debug("Cache updated in " + (System.currentTimeMillis() - start) + " ms");
             }
         }, MESSAGE_CACHE_UPDATE_INTERVAL_MILLISECONDS, MESSAGE_CACHE_UPDATE_INTERVAL_MILLISECONDS, TimeUnit.MILLISECONDS);
         return cacheUpdater;

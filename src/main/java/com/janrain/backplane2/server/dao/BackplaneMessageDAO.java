@@ -163,11 +163,13 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
         filterMessagesPerScope(daoFactory.getMessageCache().getMessagesSince(bpResponse.getLastMessageId()), scope, bpResponse);
 
         long freshness = System.currentTimeMillis() - daoFactory.getMessageCache().getLastUpdated();
-        logger.info("Local cache hits for request: " + bpResponse.messageCount() + " messages, " +
-                freshness + " ms freshness");
 
-        if (freshness < MAX_CACHE_FRESHNESS_MS) return;
+        if (isAdaptiveFreshEnough(freshness)) {
+            logger.info("Local cache hits for request: " + bpResponse.messageCount() + " messages, freshness (ms) " + freshness);
+            return;
+        }
 
+        long start = System.currentTimeMillis();
         try {
             v2multiGetTimer.time(new Callable<Object>() {
                 @Override
@@ -187,6 +189,7 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
                     return null;
                 }
             });
+            logger.info(freshness + " ms cache not fresh enough; sdb lookup (ms) " + (System.currentTimeMillis() - start));
         } catch (Exception e) {
             if (e instanceof SimpleDBException) {
                 throw (SimpleDBException) e;
@@ -194,6 +197,11 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
                 throw new SimpleDBException(e);
             }
         }
+    }
+
+    private boolean isAdaptiveFreshEnough(long freshness) {
+        // todo: any way to retrieve the percentile over an arbitrary recent period, e.g. last 2 min?
+        return freshness < MAX_CACHE_FRESHNESS_MS && freshness < v2multiGetTimer.percentiles(0.95)[0];
     }
 
     public List<BackplaneMessage> retrieveMessagesNoScope(String sinceIso8601timestamp) throws SimpleDBException {
