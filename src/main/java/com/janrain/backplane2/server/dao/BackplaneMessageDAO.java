@@ -58,7 +58,7 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
             v2postTimer.time(new Callable<Object>() {
                 @Override
                 public Object call() throws Exception {
-                    superSimpleDB.store(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class, message);
+                    superSimpleDB.store(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class, message, true);
                     return null;
                 }
             });
