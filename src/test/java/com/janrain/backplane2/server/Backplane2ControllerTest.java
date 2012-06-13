@@ -965,7 +965,7 @@ public class Backplane2ControllerTest {
 
         Map<String,Object> returnedBody = mapper.readValue(response.getContentAsString(), new TypeReference<Map<String,Object>>() {});
         List<Map<String,Object>> returnedMsgs = (List<Map<String, Object>>) returnedBody.get("messages");
-        assertTrue(returnedMsgs.size() == 2);
+        assertTrue("Expected 2 messages, received "  + returnedMsgs.size() + " :\n " + response.getContentAsString(), returnedMsgs.size() == 2);
     }
 
     @Test
@@ -1007,7 +1007,7 @@ public class Backplane2ControllerTest {
         // should just receive one of the two messages
         Map<String,Object> returnedBody = mapper.readValue(response.getContentAsString(), new TypeReference<Map<String,Object>>() {});
         List<Map<String,Object>> returnedMsgs = (List<Map<String, Object>>) returnedBody.get("messages");
-        assertTrue(returnedMsgs.size() == 1);
+        assertTrue("Expected 1 message, received "  + returnedMsgs.size(), returnedMsgs.size() == 1);
 
         logger.info("========================================================");
 
@@ -1465,7 +1465,7 @@ public class Backplane2ControllerTest {
 
         } while (moreMessages);
 
-        assertTrue(allMsgs.size() == numMessages);
+        assertTrue("Expected " + numMessages + " messages, received "  + allMsgs.size(), allMsgs.size() == numMessages);
         // they should be returned in lexicographic order by ID
         String prev = "";
         for (Map<String,Object> m : allMsgs) {
