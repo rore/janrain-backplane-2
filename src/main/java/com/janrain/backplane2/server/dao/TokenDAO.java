@@ -96,7 +96,7 @@ public class TokenDAO extends DAO<Token> {
                 @Override
                 public Token call() throws SimpleDBException {
                     Token token = superSimpleDB.retrieve(bpConfig.getTableName(BP_ACCESS_TOKEN), Token.class, tokenId);
-                    if (! token.getType().isRefresh()) cache.add(token);
+                    if (token != null && ! token.getType().isRefresh()) cache.add(token);
                     return token;
                 }
             });
