@@ -90,13 +90,12 @@ public class TokenDAO extends DAO<Token> {
             return null; //invalid token id, don't even try
         }
         try {
-            Token cached = cache.get(tokenId);
-            if (cached != null) return cached;
+            if (cache.isCached(tokenId)) return cache.get(tokenId);
             return v2retrieveTokenTimer.time(new Callable<Token>() {
                 @Override
                 public Token call() throws SimpleDBException {
                     Token token = superSimpleDB.retrieve(bpConfig.getTableName(BP_ACCESS_TOKEN), Token.class, tokenId);
-                    if (token != null && ! token.getType().isRefresh()) cache.add(token);
+                    if (token == null || ! token.getType().isRefresh()) cache.add(tokenId, token);
                     return token;
                 }
             });

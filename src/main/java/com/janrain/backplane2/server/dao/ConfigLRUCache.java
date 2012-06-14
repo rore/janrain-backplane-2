@@ -30,12 +30,20 @@ public class ConfigLRUCache<T extends Message> {
         this.maxCacheSizeBytes = maxCacheSizeBytes;
     }
 
+    public boolean isCached(String tokenId) {
+        return cache.keySet().contains(tokenId);
+    }
     public synchronized T get(String id) {
         return cache.get(id);
     }
 
     public synchronized T add(T item) {
         return cache.put(item.getIdValue(), item);
+    }
+
+    /** allows caching of null items */
+    public synchronized T add(String id, T item) {
+        return cache.put(id, item);
     }
 
     public synchronized T delete(String id) {

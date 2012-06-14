@@ -133,6 +133,19 @@ public class Backplane2Config {
         return max == null ? Backplane2Config.BP_MAX_MESSAGES_DEFAULT : max;
     }
 
+    public long getMaxTokenCacheBytes() {
+        try {
+            Long max = Long.valueOf(cachedGet(BpServerProperty.TOKEN_CACHE_MAX_MB));
+            return max == null ? 0L : max * 1024 * 1024;
+        } catch (NumberFormatException nfe) {
+            logger.error("Invalid message cache size value: " + nfe.getMessage(), nfe);
+            return 0L;
+        } catch (SimpleDBException sdbe) {
+            logger.error("Error looking up message cache size: " + sdbe, sdbe);
+            return 0L;
+        }
+    }
+
     public long getMaxMessageCacheBytes() {
         try {
             Long max = Long.valueOf(cachedGet(BpServerProperty.MESSAGE_CACHE_MAX_MB));
@@ -223,6 +236,7 @@ public class Backplane2Config {
         CONFIG_CACHE_AGE_SECONDS,
         CLEANUP_INTERVAL_MINUTES,
         DEFAULT_MESSAGES_MAX,
+        TOKEN_CACHE_MAX_MB,
         MESSAGE_CACHE_MAX_MB,
         ENCRYPTION_KEY
     }

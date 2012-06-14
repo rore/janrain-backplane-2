@@ -121,7 +121,7 @@ public class DaoFactory {
     @PostConstruct
     private void init() {
         messageCache.setMaxCacheSizeBytes(bpConfig.getMaxMessageCacheBytes());
-        tokenCache.setMaxCacheSizeBytes(bpConfig.getMaxMessageCacheBytes()); // todo: token cache size config
+        tokenCache.setMaxCacheSizeBytes(bpConfig.getMaxTokenCacheBytes());
 
         synchronized (initLock) {
             busDao = new BusDAO(superSimpleDB, bpConfig, this);
