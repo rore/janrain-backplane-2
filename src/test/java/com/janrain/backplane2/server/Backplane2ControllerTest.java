@@ -888,7 +888,7 @@ public class Backplane2ControllerTest {
         // Create appropriate token
         String testBus = "testbus";
         saveGrant(new Grant.Builder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.getClientId(),"bus:" + testBus).buildGrant());
-        String token = privTokenRequest(testBus);
+        String token = privTokenRequest(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, testBus));
 
         // Seed message
         ObjectMapper mapper = new ObjectMapper();
@@ -939,7 +939,7 @@ public class Backplane2ControllerTest {
         String testBuses = "this.com that.com";
         saveGrant(new Grant.Builder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.getClientId(),
                 Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, testBuses)).buildGrant());
-        String token = privTokenRequest(testBuses);
+        String token = privTokenRequest(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, testBuses));
 
         // Seed 2 messages
         ObjectMapper mapper = new ObjectMapper();
@@ -1020,7 +1020,7 @@ public class Backplane2ControllerTest {
 
         // Create inappropriate token
         try {
-            privTokenRequest("mybus.com yourbus.com invalidbus.com");
+            privTokenRequest(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, "mybus.com yourbus.com invalidbus.com"));
         } catch (TokenException bpe) {
             //expected
             return;
@@ -1038,7 +1038,7 @@ public class Backplane2ControllerTest {
         // Create appropriate token
         saveGrant(new Grant.Builder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.getClientId(),
                 Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, "testbus otherbus")).buildGrant());
-        String token2 = privTokenRequest("testbus otherbus");
+        String token2 = privTokenRequest(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, "testbus otherbus"));
 
         // Make the call
         refreshRequestAndResponse();
@@ -1076,7 +1076,7 @@ public class Backplane2ControllerTest {
         // Create appropriate token
         saveGrant(new Grant.Builder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.getClientId(),
                 Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, "testbus otherbus")).buildGrant());
-        String token2 = privTokenRequest("testbus otherbus");
+        String token2 = privTokenRequest(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, "testbus otherbus"));
 
         // Make the call
         refreshRequestAndResponse();
@@ -1146,7 +1146,7 @@ public class Backplane2ControllerTest {
         // Create appropriate token
         saveGrant(new Grant.Builder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.getClientId(),
                 Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, "testbus otherbus")).buildGrant());
-        String token2 = privTokenRequest("testbus otherbus");
+        String token2 = privTokenRequest(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, "testbus otherbus"));
 
          // Seed 1 message
         ObjectMapper mapper = new ObjectMapper();
@@ -1178,7 +1178,7 @@ public class Backplane2ControllerTest {
         // Create appropriate token
         saveGrant(new Grant.Builder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.getClientId(),
                 Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, "testbus otherbus")).buildGrant());
-        String token2 = privTokenRequest("testbus otherbus");
+        String token2 = privTokenRequest(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, "testbus otherbus"));
 
         boolean success = false;
         int numberOfPostedMessages = 0;
@@ -1243,7 +1243,7 @@ public class Backplane2ControllerTest {
         grants.add(grant2);
 
         // Create appropriate token
-        String  token = privTokenRequest("");
+        String  token = privTokenRequest(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, ""));
 
         // Revoke token based on one code
         daoFactory.getTokenDao().revokeTokenByGrant(grant1.getIdValue());
@@ -1412,7 +1412,7 @@ public class Backplane2ControllerTest {
         // Create appropriate token
         saveGrant(new Grant.Builder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.getClientId(),
                 Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, "testbus otherbus")).buildGrant());
-        String token2 = privTokenRequest("testbus otherbus");
+        String token2 = privTokenRequest(Scope.getEncodedScopesAsString(BackplaneMessage.Field.CHANNEL, tokenAndChannel.getRight()));
 
 
         ObjectMapper mapper = new ObjectMapper();
@@ -1445,6 +1445,7 @@ public class Backplane2ControllerTest {
             refreshRequestAndResponse();
             request.setRequestURI("/v2/messages");
             request.setMethod("GET");
+            request.setParameter("scope", "channel:" + tokenAndChannel.getRight());
             if (org.apache.commons.lang.StringUtils.isNotBlank(since)) {
                 request.setParameter("since", since);
             }
@@ -1545,9 +1546,9 @@ public class Backplane2ControllerTest {
         return new Pair<String, String>(tokenResponse.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME).toString(), scope.getScopeFieldValues(BackplaneMessage.Field.CHANNEL).iterator().next());
     }
 
-    private String privTokenRequest(String buses) throws UnsupportedEncodingException, TokenException {
+    private String privTokenRequest(String scopeString) throws UnsupportedEncodingException, TokenException {
         refreshRequestAndResponse();
-        Scope scope = new Scope(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, buses));
+        Scope scope = new Scope(scopeString);
         setOAuthBasicAuthentication(request, testClient.getClientId(), testClient.getClientSecret());
         TokenRequest req = new AuthenticatedTokenRequest(OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS, testClient,
                 null, null, null, scope.toString(), daoFactory, request, request.getHeader("Authorization"));
