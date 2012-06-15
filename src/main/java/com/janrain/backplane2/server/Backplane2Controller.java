@@ -803,11 +803,11 @@ public class Backplane2Controller {
 
         Map<String,Object> msg = messagePostBody.get("message");
         if (msg == null) { // no message body?
-            throw new InvalidRequestException("Missing message payload", HttpServletResponse.SC_FORBIDDEN);
+            throw new InvalidRequestException("Missing message payload", HttpServletResponse.SC_BAD_REQUEST);
         }
 
         if (messagePostBody.keySet().size() != 1) { // other garbage in the payload
-            throw new InvalidRequestException("Invalid data in payload", HttpServletResponse.SC_FORBIDDEN);
+            throw new InvalidRequestException("Invalid data in payload", HttpServletResponse.SC_BAD_REQUEST);
         }
 
         String channel = msg.get(BackplaneMessage.Field.CHANNEL.getFieldName()) != null ? msg.get(BackplaneMessage.Field.CHANNEL.getFieldName()).toString() : null;
@@ -826,7 +826,7 @@ public class Backplane2Controller {
         try {
             message = new BackplaneMessage(token.get(Token.TokenField.CLIENT_SOURCE_URL), msg);
         } catch (Exception e) {
-            throw new InvalidRequestException("Invalid message data: " + e.getMessage(), HttpServletResponse.SC_FORBIDDEN);
+            throw new InvalidRequestException("Invalid message data: " + e.getMessage(), HttpServletResponse.SC_BAD_REQUEST);
         }
         if ( ! token.getScope().isMessageInScope(message) ) {
             throw new InvalidRequestException("Invalid bus in message", HttpServletResponse.SC_FORBIDDEN);
