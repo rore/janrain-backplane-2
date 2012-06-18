@@ -328,7 +328,7 @@ public class Backplane2Controller {
      * @param response
      * @return
      */
-    @RequestMapping(value = "/message/{msg_id}", method = { RequestMethod.GET})
+    @RequestMapping(value = "/message/{msg_id:.*}", method = { RequestMethod.GET})
     public @ResponseBody Map<String,Object> message(HttpServletRequest request, HttpServletResponse response,
                                 @PathVariable final String msg_id,
                                 @RequestParam(value = OAUTH2_ACCESS_TOKEN_PARAM_NAME, required = false) String access_token,
