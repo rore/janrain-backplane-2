@@ -47,8 +47,9 @@ public class BusDAO extends DAO<BusConfig2> {
     }
 
     @Override
-    public void delete(String id) throws SimpleDBException {
+    public void delete(final String id) throws SimpleDBException, TokenException {
         superSimpleDB.delete(bpConfig.getTableName(BP_BUS_CONFIG), id);
+        daoFactory.getGrantDao().deleteByBuses(new ArrayList<String>() {{add(id);}});
     }
 
     public List<BusConfig2> retrieveBuses() throws SimpleDBException {
