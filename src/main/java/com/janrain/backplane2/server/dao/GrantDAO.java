@@ -209,16 +209,16 @@ public class GrantDAO extends DAO<Grant> {
      *  Revokes buses across the provided grants.
      *  Not atomic, best effort.
      *  Stops on first error and reports error, even though some grants may have been updated.
+     *
+     *  @return true if any of the existing grants were updated, false if nothing was updated
      */
-    public void revokeBuses(Set<Grant> grants, String buses) throws SimpleDBException, BackplaneServerException, TokenException {
+    public boolean revokeBuses(Set<Grant> grants, String buses) throws SimpleDBException, BackplaneServerException, TokenException {
         Scope busesToRevoke = new Scope(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, buses));
         boolean changes = false;
         for (Grant grant : grants) {
-            changes = changes || revokeBuses(grant, busesToRevoke);
+            changes = revokeBuses(grant, busesToRevoke) || changes;
         }
-        if (!changes) {
-            throw new BackplaneServerException("No grants found to revoke for buses: " + buses);
-        }
+        return changes;
     }
 
     // - PRIVATE
