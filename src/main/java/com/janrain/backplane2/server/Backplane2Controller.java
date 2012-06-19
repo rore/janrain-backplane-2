@@ -30,6 +30,7 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.ModelAndView;
 
@@ -443,6 +444,19 @@ public class Backplane2Controller {
             if (StringUtils.isNotEmpty(errorDescription)) {
                 put(ERR_MSG_DESCRIPTION, errorDescription);
             }
+        }};
+    }
+
+    /**
+     * Handle invalid HTTP request method exceptions
+     */
+    @ExceptionHandler
+    @ResponseBody
+    public Map<String, Object> handleInvalidRequest(final HttpRequestMethodNotSupportedException e, HttpServletResponse response) {
+        logger.warn("Error handling backplane request", bpConfig.getDebugException(e));
+        response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+        return new HashMap<String,Object>() {{
+            put(ERR_MSG_FIELD, e.getMessage());
         }};
     }
 
