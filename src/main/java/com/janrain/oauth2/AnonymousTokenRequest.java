@@ -52,7 +52,9 @@ public class AnonymousTokenRequest implements TokenRequest {
         }
 
         this.requestScope = new Scope(scope);
-        if ( this.requestScope.isAuthorizationRequired() ) {
+        if ( this.requestScope.isAuthorizationRequired() ||
+             ( this.requestScope.getScopeFieldValues(BackplaneMessage.Field.CHANNEL) != null &&
+               ! this.requestScope.getScopeFieldValues(BackplaneMessage.Field.CHANNEL).isEmpty())) {
             throw new TokenException(OAuth2.OAUTH2_TOKEN_INVALID_SCOPE, "Buses and channels not allowed in the scope of anonymous token requests");
         }
 
