@@ -423,7 +423,7 @@ public class Backplane2Controller {
     @ExceptionHandler
     @ResponseBody
     public Map<String, String> handle(final AuthException e, HttpServletResponse response) {
-        logger.error("Backplane authentication error: " + bpConfig.getDebugException(e));
+        logger.error("Backplane authentication error: " + e.getMessage(), bpConfig.getDebugException(e));
         response.setStatus(SC_UNAUTHORIZED);
         return new HashMap<String,String>() {{
             put(ERR_MSG_FIELD, e.getMessage());
@@ -804,11 +804,11 @@ public class Backplane2Controller {
                 queryParamsMap.put(nameVal[0], nameVal.length >0 ? nameVal[1] : null);
             }
             if(queryParamsMap.containsKey("client_id") || queryParamsMap.containsKey("client_secret")) {
-                throw new AuthException("Client credentials MUST NOT be included in the request URI (OAuth2 2.3.1)");
+                authError("Client credentials MUST NOT be included in the request URI (OAuth2 2.3.1)");
             }
         }
         if (StringUtils.isNotEmpty(client_id) || StringUtils.isNotEmpty(client_secret)) {
-            throw new AuthException("Client credentials in request body are NOT RECOMMENDED (OAuth2 2.3.1)");
+            authError("Client credentials in request body are NOT RECOMMENDED (OAuth2 2.3.1)");
         }
     }
 

@@ -473,10 +473,12 @@ public class Backplane2Config {
             User userEntry = superSimpleDb.retrieve(authTable, User.class, user);
             String authKey = userEntry == null ? null : userEntry.get(User.Field.PWDHASH);
             if ( ! HmacHashUtils.checkHmacHash(password, authKey) ) {
-                throw new AuthException("User " + user + " not authorized in " + authTable);
+                logger.error("User " + user + " not authorized in " + authTable);
+                throw new AuthException("Access denied");
             }
         } catch (SimpleDBException e) {
-            throw new AuthException("User " + user + " not authorized in " + authTable + " , " + e.getMessage(), e);
+            logger.error("Error authenticating user " + user + " : " + e.getMessage(), getDebugException(e));
+            throw new AuthException("Access denied", e);
         }
     }
     public static class BpServerConfigMap extends AbstractNamedMap {

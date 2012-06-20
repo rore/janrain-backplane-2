@@ -165,7 +165,7 @@ public class Backplane1Controller {
     @ExceptionHandler
     @ResponseBody
     public Map<String, String> handle(final AuthException e, HttpServletResponse response) {
-        logger.error("Backplane authentication error: " + bpConfig.getDebugException(e));
+        logger.error("Backplane authentication error: " + e.getMessage(), bpConfig.getDebugException(e));
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         return new HashMap<String,String>() {{
             put(ERR_MSG_FIELD, e.getMessage());
@@ -296,8 +296,7 @@ public class Backplane1Controller {
         if (busConfig == null) {
             authError("Bus configuration not found for " + bus);
         } else if (!busConfig.getPermissions(user).contains(permission)) {
-            logger.error("User " + user + " denied " + permission + " to " + bus);
-            throw new AuthException("Access denied.");
+            authError("User " + user + " denied " + permission + " to " + bus);
         }
     }
 
