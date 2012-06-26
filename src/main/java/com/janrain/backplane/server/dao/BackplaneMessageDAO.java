@@ -155,22 +155,25 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
 
     public List<BackplaneMessage> getMessagesByBus(String bus, String since, String sticky) throws SimpleDBException, BackplaneServerException {
 
-        //List<byte[]> messageIdBytes = Redis.getInstance().lrange(getBusKey(bus), 0, -1);
-        double sinceInMs = 0;
-        if (StringUtils.isNotBlank(since)) {
-            sinceInMs = BackplaneMessageNew.getDateFromId(since).getTime();
-        }
-
-        // todo: what is a message score, how is it set?
-        Set<byte[]> messageIdBytes = Redis.getInstance().zrangebyscore(BackplaneMessageDAO.getBusKey(bus), sinceInMs, Double.POSITIVE_INFINITY);
-
-        List<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
-
-        Jedis jedis = Redis.getInstance().getJedis();
-        Pipeline pipeline = jedis.pipelined();
-        List<Response> responses = new ArrayList<Response>();
+        Jedis jedis = null;
 
         try {
+
+            jedis = Redis.getInstance().getJedis();
+
+            double sinceInMs = 0;
+            if (StringUtils.isNotBlank(since)) {
+                sinceInMs = BackplaneMessageNew.getDateFromId(since).getTime();
+            }
+
+            // every message has a unique timestamp - which serves as a key for indexing
+            Set<byte[]> messageIdBytes = Redis.getInstance().zrangebyscore(BackplaneMessageDAO.getBusKey(bus), sinceInMs, Double.POSITIVE_INFINITY);
+
+            List<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
+
+            Pipeline pipeline = jedis.pipelined();
+            List<Response> responses = new ArrayList<Response>();
+
             if (messageIdBytes != null) {
                 for (byte[] b: messageIdBytes) {
                     responses.add(pipeline.get(b));
@@ -183,11 +186,12 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
                     }
                 }
             }
+
+            return filterAndSort(messages, since, sticky);
+
         } finally {
             Redis.getInstance().releaseToPool(jedis);
         }
-
-        return filterAndSort(messages, since, sticky);
 
     }
 

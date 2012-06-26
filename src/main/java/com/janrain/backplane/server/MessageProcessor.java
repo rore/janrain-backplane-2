@@ -87,8 +87,9 @@ public class MessageProcessor extends JedisPubSub {
 
     /**
      * Processor to pull messages off queue and make them available
+     *
      */
-    public synchronized void doWork() {
+    public void doWork() {
 
         // retrieve as many messages as possible from the queue
 
@@ -150,11 +151,12 @@ public class MessageProcessor extends JedisPubSub {
                             BackplaneMessageNew bmn = BackplaneMessageNew.fromBytes(responseBytes);
 
                             if (bmn != null) {
-                                // set messageID
-                                bmn.setId(Backplane1Controller.generateMessageId());
+
+                                // the id is set by the node that queued the message - record
+                                // how long the message was in the queue - we assume here that the time
+                                // to post and make the message available is minimal
 
                                 {
-                                    // todo: msgId was just set one line / milli/micro seconds ago, shouldn't it be the time/id from the queue, before the new ID?
                                     Date insertionTime = BackplaneMessageNew.getDateFromId(bmn.getId());
                                     long now = System.currentTimeMillis();
                                     long diff = now - insertionTime.getTime();
@@ -163,7 +165,7 @@ public class MessageProcessor extends JedisPubSub {
                                     }
                                 }
 
-                                // verify that the new message is greater than all existing messages
+                                // verify that the new message ID is greater than all existing message IDs
                                 // if not, uptick id by 1 ms and insert
                                 // this means that all message ids have unique time stamps, even if they
                                 // arrived at the same time.
@@ -179,9 +181,9 @@ public class MessageProcessor extends JedisPubSub {
                                     }
                                 }
 
+                                // messageTime is guaranteed to be a unique identifier of the message
                                 long messageTime = BackplaneMessageNew.getDateFromId(bmn.getId()).getTime();
 
-                                // todo: are all these atomic, on the next pipeline.sync() ?
                                 // stuff the message id into a sorted set keyed by bus
                                 pipeline.zadd(BackplaneMessageDAO.getBusKey(bmn.getBus()), messageTime, bmn.getId().getBytes());
 
@@ -191,6 +193,11 @@ public class MessageProcessor extends JedisPubSub {
                                 //TODO: ttl?
                                 // append message to list of messages in a channel
                                 pipeline.rpush(BackplaneMessageDAO.getChannelKey(bmn.getBus(), bmn.getChannel()), bmn.toBytes()); // todo: ... twice, by design?
+                                pipeline.set(bmn.getId().getBytes(), bmn.toBytes());
+
+                                //TODO: ttl?
+                                // append message to list of messages in a channel
+                                pipeline.rpush(BackplaneMessageDAO.getChannelKey(bmn.getBus(), bmn.getChannel()), bmn.toBytes());
 
                                 // add message id to sorted set of all message ids
                                 pipeline.zadd(BackplaneMessageDAO.V1_MESSAGES.getBytes(), messageTime, bmn.getId().getBytes());
