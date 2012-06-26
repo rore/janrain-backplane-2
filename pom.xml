@@ -264,11 +264,18 @@
         </dependency>
 
         <dependency>
+            <!--
             <groupId>redis.clients</groupId>
             <artifactId>jedis</artifactId>
             <version>2.1.0</version>
             <type>jar</type>
             <scope>compile</scope>
+            -->
+            <!-- patched version below -->
+            <groupId>redis.clients</groupId>
+            <artifactId>jedis</artifactId>
+            <version>2.1.0.a</version>
+
         </dependency>
     </dependencies>
     <repositories>
