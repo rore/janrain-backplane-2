@@ -21,10 +21,7 @@ import com.janrain.backplane.server.redis.Redis;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Histogram;
 import org.apache.log4j.Logger;
-import redis.clients.jedis.Jedis;
-import redis.clients.jedis.JedisPubSub;
-import redis.clients.jedis.Pipeline;
-import redis.clients.jedis.Response;
+import redis.clients.jedis.*;
 
 import java.util.*;
 
@@ -101,7 +98,7 @@ public class MessageProcessor extends JedisPubSub {
             logger.info("message processor waiting for exclusive write lock");
 
             // TRY forever to get lock to do work
-            String lock = Redis.getInstance().getLock("write", uuid, -1, 30);
+            String lock = Redis.getInstance().getLock(V1_WRITE_LOCK, uuid, -1, 30);
             // todo: if one processing loop takes longer than 30s, what prevents some else from getting the lock?
 
             if (lock != null) {
@@ -117,38 +114,30 @@ public class MessageProcessor extends JedisPubSub {
 
                 try {
 
-                    // retrieve the latest message ID from Redis
                     jedis = Redis.getInstance().getJedis();
-                    Pipeline pipeline = jedis.pipelined();
 
-                    Response<Set<String>> latestMessageIdSet = pipeline.zrange(BackplaneMessageDAO.V1_MESSAGES.getBytes(), -1, -1);
-                    List<Response<byte[]>> queue = new ArrayList<Response<byte[]>>();
-
-                    // pop a handful of messages off queue for processing
-                    for (int i=0; i< 10; i++ ) {
-                        queue.add(pipeline.lpop(BackplaneMessageDAO.V1_MESSAGE_QUEUE.getBytes()));
-                    }
-
-                    // go!
-                    pipeline.sync();
-
-                    //TODO: if we crash here, these messages would be lost...
-                    //pop may not be the best solution here
-
+                    // retrieve the latest 'live' message ID
                     String latestMessageId = "";
-                    if (latestMessageId != null && !latestMessageIdSet.get().isEmpty()) {
-                        Set<String> set = latestMessageIdSet.get();
-                        latestMessageId = set.iterator().next();
+                    Set<String> latestMessageIdSet = jedis.zrange(BackplaneMessageDAO.V1_MESSAGES, -1, -1);
+                    if (latestMessageIdSet != null && !latestMessageIdSet.isEmpty()) {
+                        latestMessageId = latestMessageIdSet.iterator().next();
                     }
 
-                    // pipeline the writes
+                    // retrieve a handful of messages (ten) off the queue for processing
+                    List<byte[]> messagesToProcess = jedis.lrange(BackplaneMessageDAO.V1_MESSAGE_QUEUE.getBytes(), 0, 9);
+
+                    // 'watch' sets a conditional for the transaction to not process on the server
+                    // if the key changes - as would happen if another process assumed the lock
+                    jedis.watch(V1_WRITE_LOCK);
+
+                    Transaction transaction = jedis.multi();
+
                     int inserts = 0;
 
-                    for (Response<byte[]> response : queue) {
-                        byte[] responseBytes = response.get();
+                    for (byte[] messageBytes : messagesToProcess) {
 
-                        if (responseBytes != null) {
-                            BackplaneMessageNew bmn = BackplaneMessageNew.fromBytes(responseBytes);
+                        if (messageBytes != null) {
+                            BackplaneMessageNew bmn = BackplaneMessageNew.fromBytes(messageBytes);
 
                             if (bmn != null) {
 
@@ -165,6 +154,7 @@ public class MessageProcessor extends JedisPubSub {
                                     }
                                 }
 
+                                // TOTAL ORDER GUARANTEE
                                 // verify that the new message ID is greater than all existing message IDs
                                 // if not, uptick id by 1 ms and insert
                                 // this means that all message ids have unique time stamps, even if they
@@ -182,32 +172,31 @@ public class MessageProcessor extends JedisPubSub {
                                 }
 
                                 // messageTime is guaranteed to be a unique identifier of the message
+                                // because of the TOTAL ORDER mechanism above
                                 long messageTime = BackplaneMessageNew.getDateFromId(bmn.getId()).getTime();
 
-                                // stuff the message id into a sorted set keyed by bus
-                                pipeline.zadd(BackplaneMessageDAO.getBusKey(bmn.getBus()), messageTime, bmn.getId().getBytes());
-
                                 // save the individual message by key
-                                pipeline.set(bmn.getId().getBytes(), bmn.toBytes()); // todo: are messages persisted...
+                                transaction.set(bmn.getId().getBytes(), bmn.toBytes());
 
-                                //TODO: ttl?
-                                // append message to list of messages in a channel
-                                pipeline.rpush(BackplaneMessageDAO.getChannelKey(bmn.getBus(), bmn.getChannel()), bmn.toBytes()); // todo: ... twice, by design?
-                                pipeline.set(bmn.getId().getBytes(), bmn.toBytes());
+                                // append entire message to list of messages in a channel for retrieval efficiency
+                                transaction.rpush(BackplaneMessageDAO.getChannelKey(bmn.getBus(), bmn.getChannel()), bmn.toBytes());
 
-                                //TODO: ttl?
-                                // append message to list of messages in a channel
-                                pipeline.rpush(BackplaneMessageDAO.getChannelKey(bmn.getBus(), bmn.getChannel()), bmn.toBytes());
+                                // add message id to sorted set of all message ids as an index
+                                transaction.zadd(BackplaneMessageDAO.V1_MESSAGES.getBytes(), messageTime, bmn.getId().getBytes());
 
-                                // add message id to sorted set of all message ids
-                                pipeline.zadd(BackplaneMessageDAO.V1_MESSAGES.getBytes(), messageTime, bmn.getId().getBytes());
+                                // add message id to sorted set keyed by bus as an index
+                                transaction.zadd(BackplaneMessageDAO.getBusKey(bmn.getBus()), messageTime, bmn.getId().getBytes());
 
                                 // make sure all subscribers get the update
-                                pipeline.publish("alerts", bmn.getId());
+                                transaction.publish("alerts", bmn.getId());
+
+                                // pop one message off the queue - which will only happen if this transaction is successful
+                                transaction.lpop(BackplaneMessageDAO.V1_MESSAGE_QUEUE);
 
                                 logger.info("message " + bmn.getId() + " pushed");
                                 inserts++;
 
+                                // update the 'latest' message id with the one just inserted
                                 latestMessageId = bmn.getId();
 
                             }
@@ -215,16 +204,22 @@ public class MessageProcessor extends JedisPubSub {
                     }
 
                     if (inserts > 0) {
-                        logger.info("flushing pipeline with " + inserts + " messages");
-                        pipeline.sync();
+                        logger.info("processing transaction with " + inserts + " messages");
+                        if (transaction.exec() == null) {
+                            // the transaction failed, which likely means the lock was lost
+                            logger.warn("transaction failed! - halting work for now");
+                            return;
+                        }
                     }
 
-                    if (!Redis.getInstance().refreshLock("write", uuid, 30)) {
+                    if (!Redis.getInstance().refreshLock(V1_WRITE_LOCK, uuid, 30)) {
                         logger.warn("lost lock! - halting work for now");
                         return;
                     }
 
                 } finally {
+                    // we may have already lost the lock, but if we exit for any other reason, good to release it
+                    Redis.getInstance().releaseLock(V1_WRITE_LOCK, uuid);
                     Redis.getInstance().releaseToPool(jedis);
                 }
 
@@ -239,6 +234,8 @@ public class MessageProcessor extends JedisPubSub {
         }
 
     }
+
+    private static final String V1_WRITE_LOCK = "v1_write_lock";
 
     private static final Logger logger = Logger.getLogger(MessageProcessor.class);
 
