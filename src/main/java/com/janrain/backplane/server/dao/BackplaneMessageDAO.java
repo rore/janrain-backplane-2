@@ -16,15 +16,24 @@
 
 package com.janrain.backplane.server.dao;
 
-import com.janrain.backplane.server.BackplaneMessage;
+import com.janrain.backplane.server.migrate.legacy.BackplaneMessage;
+import com.janrain.backplane.server.BackplaneMessageNew;
+import com.janrain.backplane.server.BackplaneServerException;
 import com.janrain.backplane.server.config.Backplane1Config;
+import com.janrain.backplane.server.redis.Redis;
 import com.janrain.cache.CachedL1;
-import com.janrain.cache.CachedMemcached;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
+import com.janrain.locking.DistributedLockingManager;
+import com.yammer.metrics.Metrics;
+import com.yammer.metrics.core.Histogram;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.Pipeline;
+import redis.clients.jedis.Response;
 
+import java.io.*;
 import java.util.*;
 
 /**
@@ -32,34 +41,85 @@ import java.util.*;
  */
 public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
 
+    final public static String V1_MESSAGE_QUEUE = "v1_message_queue";
+    final public static String V1_MESSAGES = "v1_messages";
+
+    public static byte[] getBusKey(String bus) {
+        return new String("v1_" + bus).getBytes();
+    }
+
+    public static byte[] getChannelKey(String bus, String channel) {
+        return new String("v1_" + bus + "_" + channel).getBytes();
+    }
+
+    public static byte[] getMessageIdKey(String bus, String channel, String id) {
+        return new String( new String(getChannelKey(bus, channel)) + "_" + id).getBytes();
+    }
+
+
     @Override
     public void persist(BackplaneMessage message) throws SimpleDBException {
 
-        // TODO: distributed write lock required here
+        //superSimpleDB.store(bpConfig.getMessagesTableName(), BackplaneMessage.class, message, true);
 
-        superSimpleDB.store(bpConfig.getMessagesTableName(), BackplaneMessage.class, message, true);
+        BackplaneMessageNew bmn = new BackplaneMessageNew(message);
 
-        // add new message to L2 cache by message id
-        CachedMemcached.getInstance().setObject(message.getIdValue(), 3600, message);
+        //TODO: pipeline the rest.  No reason to serialize these ops
 
-        // update the L2 cache with a full channel list
-        String channel = message.get(BackplaneMessage.Field.CHANNEL_NAME.getFieldName());
-        List<BackplaneMessage> messages = getMessagesByChannel(channel, null, null);
-        messages.add(message);
-        CachedMemcached.getInstance().setObject(genChannelKey(channel), 3600, messages);
+        Redis.getInstance().rpush(getBusKey(bmn.getBus()), getMessageIdKey(bmn.getBus(), bmn.getChannel(), bmn.getId()));
+        Redis.getInstance().set(getMessageIdKey(bmn.getBus(), bmn.getChannel(), bmn.getId()), bmn.toBytes());
 
-        //update the L2 cache with a full bus list
-        String bus = message.get(BackplaneMessage.Field.BUS.getFieldName());
-        messages = getMessagesByBus(bus, null, null);
-        messages.add(message);
-        CachedMemcached.getInstance().setObject(genBusKey(bus), 3600, getMessageIds(messages));
+        //TODO: ttl?
+        //append message to list of messages in a channel
+        Redis.getInstance().rpush(getChannelKey(bmn.getBus(), bmn.getChannel()), bmn.toBytes());
 
-        // END LOCK
+        //TODO: add ttl here?
+        Redis.getInstance().rpush(V1_MESSAGES.getBytes(), bmn.getId().getBytes());
 
+    }
+
+
+
+    /**
+     * Add message to work queue - any node may add since it is an atomic operation
+     * However, the message ID will be determined later by the message processor
+     * @param message
+     */
+
+    public void addToQueue(BackplaneMessage message) {
+        BackplaneMessageNew backplaneMessageNew = new BackplaneMessageNew(message);
+        Redis.getInstance().rpush(V1_MESSAGE_QUEUE.getBytes(), backplaneMessageNew.toBytes());
     }
 
     @Override
     public void delete(String id) throws SimpleDBException {
+
+    }
+
+    public BackplaneMessage get(String key) {
+        byte[] messageBytes = Redis.getInstance().get(key.getBytes());
+        if (messageBytes != null) {
+            BackplaneMessageNew backplaneMessageNew = BackplaneMessageNew.fromBytes(messageBytes);
+            if (backplaneMessageNew != null) {
+                try {
+                    return backplaneMessageNew.convertToOld();
+                } catch (SimpleDBException e) {
+
+                } catch (BackplaneServerException e) {
+
+                }
+            }
+        }
+        return null;
+    }
+
+    public boolean canTake(String bus, String channel, int msgPostCount) throws SimpleDBException {
+
+        long count = Redis.getInstance().llen(getChannelKey(bus, channel));
+
+        logger.debug("channel: '" + channel + "' message count: " + count + ", limit: " + bpConfig.getDefaultMaxMessageLimit());
+
+        return count + msgPostCount < bpConfig.getDefaultMaxMessageLimit();
 
     }
 
@@ -70,28 +130,18 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
      * @return
      */
 
-    public List<BackplaneMessage> getMessagesByChannel(String channel, String since, String sticky) throws SimpleDBException {
+    public List<BackplaneMessage> getMessagesByChannel(String bus, String channel, String since, String sticky) throws SimpleDBException, BackplaneServerException {
 
-        //check the L1 and L2 caches first
-        List<BackplaneMessage> messages = (List<BackplaneMessage>) CachedL1.getInstance().getObject(genChannelKey(channel));
-        if (messages == null) {
-            messages = (List<BackplaneMessage>) CachedMemcached.getInstance().getObject(genChannelKey(channel));
-            if (messages != null) {
-                CachedL1.getInstance().setObject(genChannelKey(channel), -1, messages);
+        List<byte[]> messageBytes = Redis.getInstance().lrange(getChannelKey(bus, channel), 0, -1);
+
+        List<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
+        if (messageBytes != null) {
+            for (byte[] b: messageBytes) {
+                BackplaneMessageNew bmn = BackplaneMessageNew.fromBytes(b);
+                if (bmn != null) {
+                    messages.add(bmn.convertToOld());
+                }
             }
-        }
-
-        if (messages == null) {
-            // distributed lock required here to avoid race condition while updating L2 cache
-
-            StringBuilder whereClause = new StringBuilder()
-                    .append(BackplaneMessage.Field.CHANNEL_NAME.getFieldName()).append("='").append(channel).append("'");
-
-            messages = superSimpleDB.retrieveWhere(bpConfig.getMessagesTableName(), BackplaneMessage.class, whereClause.toString(), true);
-            CachedL1.getInstance().setObject(genChannelKey(channel), -1, messages);
-            CachedMemcached.getInstance().setObject(genChannelKey(channel), 3600, messages);
-
-            //
         }
 
         return filterAndSort(messages, since, sticky);
@@ -106,34 +156,31 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
         return ids;
     }
 
-    public List<BackplaneMessage> getMessagesByBus(String bus, String since, String sticky) throws SimpleDBException {
+    public List<BackplaneMessage> getMessagesByBus(String bus, String since, String sticky) throws SimpleDBException, BackplaneServerException {
 
-        List<BackplaneMessage> messages = null;
-        //check the cache first
-        List<String> messageIds = (List<String>) CachedMemcached.getInstance().getObject(genBusKey(bus));
-        if (messageIds != null) {
-            messages = new ArrayList<BackplaneMessage>();
-            Map<String, Object> msgs = CachedMemcached.getInstance().getBulk(messageIds);
-            for (Map.Entry<String,Object> entry: msgs.entrySet()) {
-                messages.add((BackplaneMessage) entry.getValue());
+        List<byte[]> messageIdBytes = Redis.getInstance().lrange(getBusKey(bus), 0, -1);
+
+        List<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
+
+        Jedis jedis = Redis.getInstance().getJedis();
+        Pipeline pipeline = jedis.pipelined();
+        List<Response> responses = new ArrayList<Response>();
+
+        try {
+            if (messageIdBytes != null) {
+                for (byte[] b: messageIdBytes) {
+                    responses.add(pipeline.get(b));
+                }
+                pipeline.sync();
+                for (Response<byte[]> response: responses) {
+                    BackplaneMessageNew bmn = BackplaneMessageNew.fromBytes(response.get());
+                    if (bmn != null) {
+                        messages.add(bmn.convertToOld());
+                    }
+                }
             }
-            // if we don't receive as many records as keys, make sure we do a database check
-            if (messages.size() != messageIds.size()) {
-                messages = null;
-            }
-        }
-
-        if (messages == null) {
-            //check the DB
-            StringBuilder whereClause = new StringBuilder()
-                    .append(BackplaneMessage.Field.BUS.getFieldName()).append("='").append(bus).append("'");
-
-            messages = superSimpleDB.retrieveWhere(bpConfig.getMessagesTableName(), BackplaneMessage.class, whereClause.toString(), true);
-
-            CachedMemcached.getInstance().setObject(genBusKey(bus), 3600, getMessageIds(messages));
-            for (BackplaneMessage message : messages) {
-                CachedMemcached.getInstance().setObject(message.getIdValue(), 3600, message);
-            }
+        } finally {
+            Redis.getInstance().releaseToPool(jedis);
         }
 
         return filterAndSort(messages, since, sticky);
@@ -150,6 +197,8 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
     // - PRIVATE
 
     private static final Logger logger = Logger.getLogger(BackplaneMessageDAO.class);
+
+    private final Histogram messagesPerChannel = Metrics.newHistogram(BackplaneMessageDAO.class, "v1_messages_per_channel");
 
     private final DaoFactory daoFactory;
 
@@ -196,4 +245,6 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
     private String genChannelKey(String key) {
         return "v1channel" + key;
     }
+
+
 }

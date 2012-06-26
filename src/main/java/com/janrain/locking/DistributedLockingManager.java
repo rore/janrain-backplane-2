@@ -17,8 +17,11 @@
 package com.janrain.locking;
 
 import org.apache.zookeeper.*;
+import org.apache.zookeeper.data.Stat;
 
+import javax.print.DocFlavor;
 import java.io.IOException;
+import java.util.List;
 
 /**
  * @author Tom Raney
@@ -31,6 +34,9 @@ public class DistributedLockingManager implements Watcher {
     private DistributedLockingManager() {
         try {
             zooKeeper = new ZooKeeper("localhost:2181", 3000, this);
+            this.addNode("/messages", null);
+            this.addNode("/channels", null);
+            this.addNode("/buses", null);
         } catch (IOException e) {
             System.out.println("ZooKeeper failed! " + e.getMessage());
         }
@@ -42,6 +48,64 @@ public class DistributedLockingManager implements Watcher {
             instance = new DistributedLockingManager();
         }
         return instance;
+    }
+
+    public String addNode(String path, byte[] data) {
+        try {
+            return zooKeeper.create(path, data, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+        } catch (KeeperException e) {
+            // locked?
+            System.out.println("Could not write node: " + e.getLocalizedMessage());
+        } catch (InterruptedException e) {
+            System.out.println("Could not write node: " + e.getLocalizedMessage());
+        }
+        return null;
+
+    }
+
+    public Stat setData(String path, byte[] data, int version) {
+        try {
+            return zooKeeper.setData(path, data, version);
+        } catch (InterruptedException e) {
+            System.out.println("Could not update node: " + e.getLocalizedMessage());
+        } catch (KeeperException e) {
+            System.out.println("Could not update node: " + e.getLocalizedMessage());
+        }
+        return null;
+    }
+
+    public Stat exists(String path, boolean watch) {
+        try {
+            return zooKeeper.exists(path, watch);
+        } catch (InterruptedException e) {
+            System.out.println("exists check failed: " + e.getLocalizedMessage());
+        } catch (KeeperException e) {
+            System.out.println("exists check failed: " + e.getLocalizedMessage());
+        }
+        return null;
+    }
+
+    public byte[] getData(String path, Stat stat) {
+        try {
+            return zooKeeper.getData(path, this, stat);
+        } catch (KeeperException e) {
+            System.out.println("Could not read node: " + e.getLocalizedMessage());
+        } catch (InterruptedException e) {
+            System.out.println("Could not read node: " + e.getLocalizedMessage());
+        }
+        return null;
+    }
+
+    public List<String> getChildren(String path, boolean watch) {
+        try {
+            return zooKeeper.getChildren(path, watch);
+        } catch (InterruptedException e) {
+            System.out.println("Could not getChildren: " + e.getLocalizedMessage());
+        } catch (KeeperException e) {
+            System.out.println("Could not getChildren: " + e.getLocalizedMessage());
+        }
+        return null;
+
     }
 
     public String getDistributedLock(String mutex) {
@@ -82,6 +146,7 @@ public class DistributedLockingManager implements Watcher {
 
     @Override
     public void process(WatchedEvent watchedEvent) {
+        System.out.println("received watchedEvent" + watchedEvent.getPath());
 
     }
 }

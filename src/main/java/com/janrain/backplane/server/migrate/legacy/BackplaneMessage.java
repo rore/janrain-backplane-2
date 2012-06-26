@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-package com.janrain.backplane.server;
+package com.janrain.backplane.server.migrate.legacy;
 
+import com.janrain.backplane.server.BackplaneServerException;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
@@ -148,8 +149,6 @@ public class BackplaneMessage extends AbstractMessage implements Serializable {
         }
     }
 
-
-
     // - PACKAGE
 
     public BackplaneMessage() {
@@ -158,8 +157,6 @@ public class BackplaneMessage extends AbstractMessage implements Serializable {
     // - PRIVATE
 
     private static final Logger logger = Logger.getLogger(BackplaneMessage.class);
-
-    private static final long serialVersionUID = 7526471155622776147L;
 
     private String extractFieldValueAsJsonString(Field field, Map<String,Object> data) throws BackplaneServerException {
         try {
@@ -171,7 +168,6 @@ public class BackplaneMessage extends AbstractMessage implements Serializable {
             throw new BackplaneServerException(errMsg, e);
         }
     }
-
 
     private void writeObject(ObjectOutputStream oos)
             throws IOException {
@@ -194,5 +190,4 @@ public class BackplaneMessage extends AbstractMessage implements Serializable {
             logger.error(e);
         }
     }
-
 }

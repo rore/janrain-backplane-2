@@ -18,8 +18,8 @@ package com.janrain.backplane.server.provision;
 
 import com.janrain.backplane.server.config.AuthException;
 import com.janrain.backplane.server.config.Backplane1Config;
-import com.janrain.backplane.server.config.BusConfig1;
-import com.janrain.backplane.server.config.User;
+import com.janrain.backplane.server.migrate.legacy.BusConfig1;
+import com.janrain.backplane.server.migrate.legacy.User;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;

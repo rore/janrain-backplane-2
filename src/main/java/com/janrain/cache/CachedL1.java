@@ -22,6 +22,10 @@ import net.sf.ehcache.Element;
 import net.sf.ehcache.config.CacheConfiguration;
 import net.sf.ehcache.store.MemoryStoreEvictionPolicy;
 import org.apache.log4j.Logger;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 
 /**
  * @author Tom Raney
@@ -41,7 +45,7 @@ public class CachedL1 implements Cached {
                             .memoryStoreEvictionPolicy(MemoryStoreEvictionPolicy.LFU)
                             .overflowToDisk(false)
                             .eternal(false)
-                            .timeToLiveSeconds(5)
+                            .timeToLiveSeconds(3600)
                             .timeToIdleSeconds(30)
                             .diskPersistent(false)
                             .diskExpiryThreadIntervalSeconds(0));
@@ -63,6 +67,19 @@ public class CachedL1 implements Cached {
         return instance;
     }
 
+    public Map<Object,Element> getAll(Collection<String> keys) {
+        if (!isEnabled) {
+            return null;
+        }
+        try {
+            Cache cache = CacheManager.getInstance().getCache("memory");
+            return cache.getAll(keys);
+        } catch (Exception e) {
+            logger.warn("L1 cached failed to getAll");
+            return null;
+        }
+    }
+
 
 
     @Override
@@ -70,6 +87,7 @@ public class CachedL1 implements Cached {
         if (!isEnabled) {
             return null;
         }
+
         try {
             Cache cache = CacheManager.getInstance().getCache("memory");
             Element element = cache.get(key);

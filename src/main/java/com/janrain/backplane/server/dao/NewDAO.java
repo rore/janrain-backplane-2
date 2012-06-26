@@ -19,32 +19,25 @@ package com.janrain.backplane.server.dao;
 import com.janrain.backplane.server.config.Backplane1Config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
-import org.springframework.context.annotation.Scope;
-import javax.inject.Inject;
+import com.janrain.commons.supersimpledb.message.NamedMap;
 
 /**
  * @author Tom Raney
  */
 
-@Scope(value="singleton")
-public class DaoFactory {
+public abstract class NewDAO<T> {
 
-    public BackplaneMessageDAO getBackplaneMessageDAO() {
-        return new BackplaneMessageDAO(superSimpleDB, bpConfig, this);
+    protected SuperSimpleDB superSimpleDB;
+    protected Backplane1Config bpConfig;
+
+    NewDAO() {};
+
+    NewDAO(SuperSimpleDB superSimpleDB, Backplane1Config bpConfig) {
+        this.superSimpleDB = superSimpleDB;
+        this.bpConfig = bpConfig;
     }
 
-    public UserNewDAO getNewUserDAO() {
-        return new UserNewDAO(superSimpleDB, bpConfig, this);
-    }
-
-    public BusConfig1DAO getNewBusDAO() {
-        return new BusConfig1DAO(superSimpleDB, bpConfig, this);
-    }
-
-    @Inject
-    private SuperSimpleDB superSimpleDB;
-
-    @Inject
-    private Backplane1Config bpConfig;
+    abstract public void persist(T obj) throws SimpleDBException;
+    abstract public void delete(String id) throws SimpleDBException;
 
 }

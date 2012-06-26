@@ -16,13 +16,12 @@
 
 package com.janrain.backplane.server;
 
-import com.janrain.backplane.server.config.AuthException;
-import com.janrain.backplane.server.config.Backplane1Config;
-import com.janrain.backplane.server.config.BusConfig1;
-import com.janrain.backplane.server.config.User;
+import com.janrain.backplane.server.config.*;
 import com.janrain.backplane.server.dao.BackplaneMessageDAO;
+import com.janrain.backplane.server.migrate.legacy.BackplaneMessage;
+import com.janrain.backplane.server.migrate.legacy.BusConfig1;
+import com.janrain.backplane.server.migrate.legacy.User;
 import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.crypto.HmacHashUtils;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.*;
@@ -44,8 +43,6 @@ import java.io.UnsupportedEncodingException;
 import java.security.SecureRandom;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-
-import static com.janrain.backplane.server.config.Backplane1Config.SimpleDBTables.BP1_BUS_CONFIG;
 
 /**
  * Backplane API implementation.
@@ -127,29 +124,24 @@ public class Backplane1Controller {
             @RequestBody List<Map<String,Object>> messages,
             @PathVariable String bus,
             @PathVariable String channel) throws AuthException, SimpleDBException, BackplaneServerException {
+
         checkAuth(basicAuth, bus, Backplane1Config.BUS_PERMISSION.POST);
 
         final TimerContext context = postMessagesTime.time();
 
         try {
 
-            //Block post if the caller has exceeded the message post limit
-            Long count = superSimpleDb.retrieveCount(bpConfig.getMessagesTableName(),
-                    " bus='" + bus + "' and channel_name='" + channel + "'");
-
-            if (count >= bpConfig.getDefaultMaxMessageLimit()) {
-                logger.error("Message limit of " + bpConfig.getDefaultMaxMessageLimit() + " exceeded for channel: " + channel + " on bus: " + bus);
-                throw new BackplaneServerException("Message limit exceeded for this channel");
-            }
-
-            //log metric - although this metric may need to be seeded on instance startup to be accurate
-            messagesPerChannel.update(count);
-
             BackplaneMessageDAO backplaneMessageDAO = daoFactory.getBackplaneMessageDAO();
+
+            //Block post if the caller has exceeded the message post limit
+/*            if (!backplaneMessageDAO.canTake(channel, 1)) {
+                                logger.error("Message limit of " + bpConfig.getDefaultMaxMessageLimit() + " exceeded for channel: " + channel + " on bus: " + bus);
+                throw new BackplaneServerException("Message limit exceeded for this channel");
+            }*/
 
             for(Map<String,Object> messageData : messages) {
                 BackplaneMessage message = new BackplaneMessage(generateMessageId(), bus, channel, messageData);
-                backplaneMessageDAO.persist(message);
+                backplaneMessageDAO.addToQueue(message);
             }
 
             return "";
@@ -234,13 +226,11 @@ public class Backplane1Controller {
 
     private final Histogram payLoadSizesOnGets = Metrics.newHistogram(Backplane1Controller.class, "payload_sizes_gets");
 
-    private final Histogram messagesPerChannel = Metrics.newHistogram(Backplane1Controller.class, "messages_per_channel");
-
     @Inject
     private Backplane1Config bpConfig;
 
-    @Inject
-    private SuperSimpleDB superSimpleDb;
+    //@Inject
+    //private SuperSimpleDB superSimpleDb;
 
     @Inject
     private com.janrain.backplane.server.dao.DaoFactory daoFactory;
@@ -270,7 +260,9 @@ public class Backplane1Controller {
 
         User userEntry = null;
         try {
-            userEntry = superSimpleDb.retrieve(bpConfig.getTableName(Backplane1Config.SimpleDBTables.BP1_USERS), User.class, user);
+                //userEntry = superSimpleDb.retrieve(bpConfig.getTableName(Backplane1Config.SimpleDBTables.BP1_USERS), User.class, user);
+                userEntry = daoFactory.getNewUserDAO().get(user).convertToOld();
+
         } catch (SimpleDBException e) {
             logger.error("Error looking up user: " + user, e);
             authError("Error looking up user: " + user);
@@ -285,7 +277,10 @@ public class Backplane1Controller {
         // authZ
         BusConfig1 busConfig = null;
         try {
-            busConfig = superSimpleDb.retrieve(bpConfig.getTableName(BP1_BUS_CONFIG), BusConfig1.class, bus);
+            if (busConfig == null) {
+                //busConfig = superSimpleDb.retrieve(bpConfig.getTableName(BP1_BUS_CONFIG), BusConfig1.class, bus);
+                busConfig = daoFactory.getNewBusDAO().get(bus).convertToOld();
+            }
         } catch (SimpleDBException e) {
             logger.error("Error looking up bus configuration for " + bus, e);
             authError("Error looking up bus configuration for " + bus);
@@ -314,7 +309,7 @@ public class Backplane1Controller {
     private String getChannelMessages(final String bus, final String channel, final String since, final String sticky) throws SimpleDBException, BackplaneServerException {
 
         try {
-            List<BackplaneMessage> messages = daoFactory.getBackplaneMessageDAO().getMessagesByChannel(channel, since, sticky);
+            List<BackplaneMessage> messages = daoFactory.getBackplaneMessageDAO().getMessagesByChannel(bus, channel, since, sticky);
             List<Map<String,Object>> frames = new ArrayList<Map<String, Object>>();
 
             for (BackplaneMessage message : messages) {

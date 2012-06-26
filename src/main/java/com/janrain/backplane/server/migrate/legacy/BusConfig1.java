@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-package com.janrain.backplane.server.config;
+package com.janrain.backplane.server.migrate.legacy;
 
+import com.janrain.backplane.server.config.Backplane1Config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;

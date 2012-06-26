@@ -19,7 +19,6 @@ package com.janrain.servlet;
 import com.janrain.backplane2.server.InvalidRequestException;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.cache.Cached;
-import com.janrain.cache.CachedMemcached;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Meter;
 import org.apache.log4j.Logger;

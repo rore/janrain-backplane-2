@@ -282,6 +282,7 @@ public class Backplane2Config {
 
     }
 
+    /*
     private ExecutorService createCacheUpdaterTask() {
         ScheduledExecutorService cacheUpdater = Executors.newScheduledThreadPool(1);
         cacheUpdater.scheduleWithFixedDelay(new Runnable() {
@@ -304,11 +305,12 @@ public class Backplane2Config {
         }, CACHE_UPDATER_INTERVAL_MILLISECONDS, CACHE_UPDATER_INTERVAL_MILLISECONDS, TimeUnit.MILLISECONDS);
         return cacheUpdater;
     }
+    */
 
     @PostConstruct
     private void init() {
         this.cleanup = createCleanupTask();
-        this.cacheUpdater = createCacheUpdaterTask();
+        //this.cacheUpdater = createCacheUpdaterTask();
 
         for(SimpleDBTables table : EnumSet.allOf(SimpleDBTables.class)) {
             superSimpleDb.checkDomain(getTableName(table));

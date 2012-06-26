@@ -16,6 +16,10 @@
 
 package com.janrain.backplane.server.config;
 
+import com.janrain.backplane.server.MessageProcessor;
+import com.janrain.backplane.server.migrate.Migrate;
+import com.janrain.backplane.server.migrate.legacy.BusConfig1;
+import com.janrain.backplane.server.migrate.legacy.User;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.commons.supersimpledb.message.AbstractNamedMap;
@@ -38,9 +42,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import static com.janrain.backplane.server.BackplaneMessage.Field.*;
+import static com.janrain.backplane.server.migrate.legacy.BackplaneMessage.Field.*;
 import static com.janrain.backplane.server.config.Backplane1Config.SimpleDBTables.*;
-import static com.janrain.backplane.server.config.BusConfig1.Field.*;
+import static com.janrain.backplane.server.migrate.legacy.BusConfig1.Field.*;
 
 
 /**
@@ -183,6 +187,7 @@ public class Backplane1Config {
 
     private final String bpInstanceId;
     private ScheduledExecutorService cleanup;
+    private ScheduledExecutorService messageProcessor;
 
     // Amazon specific instance-id value
     private static String EC2InstanceId = "n/a";
@@ -210,6 +215,37 @@ public class Backplane1Config {
         }
 
         logger.info("Configured Backplane Server instance: " + bpInstanceId);
+    }
+
+    private ScheduledExecutorService createMessageWorker() {
+
+        long cleanupIntervalMinutes;
+        logger.info("calling createMessageWorker()");
+
+        ScheduledExecutorService messageWorkerTask = Executors.newScheduledThreadPool(2);
+
+        messageWorkerTask.scheduleAtFixedRate(new Runnable() {
+            @Override
+            public void run() {
+                if (!MessageProcessor.messageProcessorRunning) {
+                    logger.info("creating message processor thread");
+                    new MessageProcessor().doWork();
+                }
+            }
+        }, 0, 1, TimeUnit.MINUTES);
+
+        messageWorkerTask.scheduleAtFixedRate(new Runnable() {
+            @Override
+            public void run() {
+                if (!MessageProcessor.subscriberRunning) {
+                    logger.info("creating subscriber thread");
+                    new MessageProcessor().subscribe();
+                }
+            }
+        }, 0, 1, TimeUnit.MINUTES);
+
+        return messageWorkerTask;
+
     }
 
     private ScheduledExecutorService createCleanupTask() {
@@ -248,9 +284,16 @@ public class Backplane1Config {
     @PostConstruct
     private void init() {
         this.cleanup = createCleanupTask();
+        this.messageProcessor = createMessageWorker();
 
         for(SimpleDBTables table : EnumSet.allOf(SimpleDBTables.class)) {
             superSimpleDb.checkDomain(getTableName(table));
+        }
+
+        try {
+            new Migrate(superSimpleDb, this, daoFactory).migrate();
+        } catch (SimpleDBException e) {
+            logger.error(e);
         }
     }
 
@@ -315,6 +358,9 @@ public class Backplane1Config {
     @Inject
     @SuppressWarnings({"UnusedDeclaration"})
     private SuperSimpleDB superSimpleDb;
+
+    @Inject
+    private com.janrain.backplane.server.dao.DaoFactory daoFactory;
 
     private Pair<BpServerConfigMap,Long> bpServerConfigCache;
 

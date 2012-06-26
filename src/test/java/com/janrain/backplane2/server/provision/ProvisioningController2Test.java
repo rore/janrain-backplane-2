@@ -16,8 +16,8 @@
 
 package com.janrain.backplane2.server.provision;
 
+import com.janrain.backplane.server.migrate.legacy.User;
 import com.janrain.backplane2.server.BackplaneMessage;
-import com.janrain.backplane.server.config.User;
 import com.janrain.backplane2.server.Scope;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.backplane2.server.config.Client;
