@@ -26,10 +26,7 @@ import redis.clients.jedis.JedisPubSub;
 import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.Response;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * @author Tom Raney
@@ -122,7 +119,7 @@ public class MessageProcessor extends JedisPubSub {
                     jedis = Redis.getInstance().getJedis();
                     Pipeline pipeline = jedis.pipelined();
 
-                    Response<List<String>> latestMessageIdList = pipeline.lrange(BackplaneMessageDAO.V1_MESSAGES.getBytes(), -1, -1);
+                    Response<Set<String>> latestMessageIdSet = pipeline.zrange(BackplaneMessageDAO.V1_MESSAGES.getBytes(), -1, -1);
                     List<Response<byte[]>> queue = new ArrayList<Response<byte[]>>();
 
                     // pop a handful of messages off queue for processing
@@ -137,8 +134,9 @@ public class MessageProcessor extends JedisPubSub {
                     //pop may not be the best solution here
 
                     String latestMessageId = "";
-                    if (latestMessageId != null && !latestMessageIdList.get().isEmpty()) {
-                        latestMessageId = new String(latestMessageIdList.get().get(0));
+                    if (latestMessageId != null && !latestMessageIdSet.get().isEmpty()) {
+                        Set<String> set = latestMessageIdSet.get();
+                        latestMessageId = set.iterator().next();
                     }
 
                     // pipeline the writes
@@ -154,8 +152,6 @@ public class MessageProcessor extends JedisPubSub {
                                 // set messageID
                                 bmn.setId(Backplane1Controller.generateMessageId());
 
-                                //2012-06-22T21:38:12.065Z-a0c92c9624 that is not > the latest id of 2012-06-22T21:38:12.065Z-b8c4014d1a
-
                                 {
                                     Date insertionTime = BackplaneMessageNew.getDateFromId(bmn.getId());
                                     long now = System.currentTimeMillis();
@@ -164,6 +160,11 @@ public class MessageProcessor extends JedisPubSub {
                                         timeInQueue.update(now-insertionTime.getTime());
                                     }
                                 }
+
+                                // verify that the new message is greater than all existing messages
+                                // if not, uptick id by 1 ms and insert
+                                // this means that all message ids have unique time stamps, even if they
+                                // arrived at the same time.
 
                                 if (bmn.getId().compareTo(latestMessageId) <= 0) {
                                     logger.warn("new message has an id " + bmn.getId() + " that is not > the latest id of " + latestMessageId);
@@ -176,17 +177,20 @@ public class MessageProcessor extends JedisPubSub {
                                     }
                                 }
 
-                                pipeline.rpush(BackplaneMessageDAO.getBusKey(bmn.getBus()),
-                                        BackplaneMessageDAO.getMessageIdKey(bmn.getBus(), bmn.getChannel(), bmn.getId()));
-                                pipeline.set(BackplaneMessageDAO.getMessageIdKey(bmn.getBus(),
-                                        bmn.getChannel(), bmn.getId()), bmn.toBytes());
+                                long messageTime = BackplaneMessageNew.getDateFromId(bmn.getId()).getTime();
+
+                                // stuff the message id into a sorted set keyed by bus
+                                pipeline.zadd(BackplaneMessageDAO.getBusKey(bmn.getBus()), messageTime, bmn.getId().getBytes());
+
+                                // save the individual message by key
+                                pipeline.set(bmn.getId().getBytes(), bmn.toBytes());
 
                                 //TODO: ttl?
-                                //append message to list of messages in a channel
+                                // append message to list of messages in a channel
                                 pipeline.rpush(BackplaneMessageDAO.getChannelKey(bmn.getBus(), bmn.getChannel()), bmn.toBytes());
 
-                                //TODO: add ttl here?
-                                pipeline.rpush(BackplaneMessageDAO.V1_MESSAGES.getBytes(), bmn.getId().getBytes());
+                                // add message id to sorted set of all message ids
+                                pipeline.zadd(BackplaneMessageDAO.V1_MESSAGES.getBytes(), messageTime, bmn.getId().getBytes());
 
                                 // make sure all subscribers get the update
                                 pipeline.publish("alerts", bmn.getId());

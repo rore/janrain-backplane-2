@@ -19,6 +19,7 @@ package com.janrain.backplane.server.redis;
 import org.apache.log4j.Logger;
 import redis.clients.jedis.*;
 import java.util.List;
+import java.util.Set;
 
 /**
  * @author Tom Raney
@@ -128,6 +129,7 @@ public class Redis {
 
     public boolean refreshLock(String lockName, String identifier, int lockTimeSeconds) {
         Jedis jedis = pool.getResource();
+
         try {
             // refresh lock
             byte[] currentIdentifier = jedis.get(lockName.getBytes());
@@ -223,6 +225,15 @@ public class Redis {
         Jedis jedis = pool.getResource();
         try {
             return jedis.lrange(key, start, end);
+        } finally {
+            pool.returnResource(jedis);
+        }
+    }
+
+    public Set<byte[]> zrangebyscore(final byte[] key, double min, double max) {
+        Jedis jedis = pool.getResource();
+        try {
+            return jedis.zrangeByScore(key, min, max);
         } finally {
             pool.returnResource(jedis);
         }

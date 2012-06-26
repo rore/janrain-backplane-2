@@ -158,7 +158,13 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
 
     public List<BackplaneMessage> getMessagesByBus(String bus, String since, String sticky) throws SimpleDBException, BackplaneServerException {
 
-        List<byte[]> messageIdBytes = Redis.getInstance().lrange(getBusKey(bus), 0, -1);
+        //List<byte[]> messageIdBytes = Redis.getInstance().lrange(getBusKey(bus), 0, -1);
+        double sinceInMs = 0;
+        if (StringUtils.isNotBlank(since)) {
+            sinceInMs = BackplaneMessageNew.getDateFromId(since).getTime();
+        }
+
+        Set<byte[]> messageIdBytes = Redis.getInstance().zrangebyscore(BackplaneMessageDAO.getBusKey(bus), sinceInMs, Double.POSITIVE_INFINITY);
 
         List<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
 
