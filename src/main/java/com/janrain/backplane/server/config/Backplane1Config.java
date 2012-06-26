@@ -227,6 +227,7 @@ public class Backplane1Config {
         messageWorkerTask.scheduleAtFixedRate(new Runnable() {
             @Override
             public void run() {
+                // todo: why synchronized/flag, scheduleAtFixedRate will create only one thread at any one time
                 if (!MessageProcessor.messageProcessorRunning) {
                     logger.info("creating message processor thread");
                     new MessageProcessor().doWork();
@@ -237,9 +238,10 @@ public class Backplane1Config {
         messageWorkerTask.scheduleAtFixedRate(new Runnable() {
             @Override
             public void run() {
+                // todo: why synchronized/flag, scheduleAtFixedRate will create only one thread at any one time
                 if (!MessageProcessor.subscriberRunning) {
                     logger.info("creating subscriber thread");
-                    new MessageProcessor().subscribe();
+                    new MessageProcessor().subscribe(); // todo: why two instances, one should do
                 }
             }
         }, 0, 1, TimeUnit.MINUTES);

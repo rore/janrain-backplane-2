@@ -101,6 +101,7 @@ public class MessageProcessor extends JedisPubSub {
 
             // TRY forever to get lock to do work
             String lock = Redis.getInstance().getLock("write", uuid, -1, 30);
+            // todo: if one processing loop takes longer than 30s, what prevents some else from getting the lock?
 
             if (lock != null) {
                 logger.info("message processor got lock " + lock);
@@ -153,11 +154,12 @@ public class MessageProcessor extends JedisPubSub {
                                 bmn.setId(Backplane1Controller.generateMessageId());
 
                                 {
+                                    // todo: msgId was just set one line / milli/micro seconds ago, shouldn't it be the time/id from the queue, before the new ID?
                                     Date insertionTime = BackplaneMessageNew.getDateFromId(bmn.getId());
                                     long now = System.currentTimeMillis();
                                     long diff = now - insertionTime.getTime();
                                     if (diff >= 0) {
-                                        timeInQueue.update(now-insertionTime.getTime());
+                                        timeInQueue.update(now-insertionTime.getTime()); // todo: why 'now' and not on pipeline.sync()
                                     }
                                 }
 
@@ -179,15 +181,16 @@ public class MessageProcessor extends JedisPubSub {
 
                                 long messageTime = BackplaneMessageNew.getDateFromId(bmn.getId()).getTime();
 
+                                // todo: are all these atomic, on the next pipeline.sync() ?
                                 // stuff the message id into a sorted set keyed by bus
                                 pipeline.zadd(BackplaneMessageDAO.getBusKey(bmn.getBus()), messageTime, bmn.getId().getBytes());
 
                                 // save the individual message by key
-                                pipeline.set(bmn.getId().getBytes(), bmn.toBytes());
+                                pipeline.set(bmn.getId().getBytes(), bmn.toBytes()); // todo: are messages persisted...
 
                                 //TODO: ttl?
                                 // append message to list of messages in a channel
-                                pipeline.rpush(BackplaneMessageDAO.getChannelKey(bmn.getBus(), bmn.getChannel()), bmn.toBytes());
+                                pipeline.rpush(BackplaneMessageDAO.getChannelKey(bmn.getBus(), bmn.getChannel()), bmn.toBytes()); // todo: ... twice, by design?
 
                                 // add message id to sorted set of all message ids
                                 pipeline.zadd(BackplaneMessageDAO.V1_MESSAGES.getBytes(), messageTime, bmn.getId().getBytes());

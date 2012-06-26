@@ -16,15 +16,13 @@
 
 package com.janrain.backplane.server.dao;
 
-import com.janrain.backplane.server.migrate.legacy.BackplaneMessage;
 import com.janrain.backplane.server.BackplaneMessageNew;
 import com.janrain.backplane.server.BackplaneServerException;
 import com.janrain.backplane.server.config.Backplane1Config;
+import com.janrain.backplane.server.migrate.legacy.BackplaneMessage;
 import com.janrain.backplane.server.redis.Redis;
-import com.janrain.cache.CachedL1;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
-import com.janrain.locking.DistributedLockingManager;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Histogram;
 import org.apache.commons.lang.StringUtils;
@@ -33,7 +31,6 @@ import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.Response;
 
-import java.io.*;
 import java.util.*;
 
 /**
@@ -164,6 +161,7 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
             sinceInMs = BackplaneMessageNew.getDateFromId(since).getTime();
         }
 
+        // todo: what is a message score, how is it set?
         Set<byte[]> messageIdBytes = Redis.getInstance().zrangebyscore(BackplaneMessageDAO.getBusKey(bus), sinceInMs, Double.POSITIVE_INFINITY);
 
         List<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
