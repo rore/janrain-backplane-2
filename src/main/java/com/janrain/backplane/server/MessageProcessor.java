@@ -30,9 +30,6 @@ import java.util.*;
  */
 public class MessageProcessor extends JedisPubSub {
 
-    public static boolean messageProcessorRunning = false;
-    public static boolean subscriberRunning = false;
-
     public MessageProcessor() {}
 
     @Override
@@ -65,21 +62,16 @@ public class MessageProcessor extends JedisPubSub {
 
     }
 
-    public synchronized void subscribe() {
-
-        subscriberRunning = true;
+    public void subscribe() {
 
         Jedis jedis = null;
-
         try {
             jedis = Redis.getInstance().getJedis();
             //this call is blocking
             jedis.subscribe(this, "alerts");
         } finally {
             Redis.getInstance().releaseToPool(jedis);
-            subscriberRunning = false;
         }
-
     }
 
     /**
@@ -89,9 +81,6 @@ public class MessageProcessor extends JedisPubSub {
     public void doWork() {
 
         // retrieve as many messages as possible from the queue
-
-        messageProcessorRunning = true;
-
         String uuid = UUID.randomUUID().toString();
 
         try {
@@ -236,9 +225,7 @@ public class MessageProcessor extends JedisPubSub {
             logger.info("message processor releasing lock");
             // we may have already lost the lock, but if we exit for any other reason, good to release it
             Redis.getInstance().releaseLock(V1_WRITE_LOCK, uuid);
-            messageProcessorRunning = false;
         }
-
     }
 
     private static final String V1_WRITE_LOCK = "v1_write_lock";
