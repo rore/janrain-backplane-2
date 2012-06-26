@@ -210,7 +210,7 @@ public class MessageProcessor extends JedisPubSub {
                             }
                         }
 
-                        logger.info("processing transaction with " + inserts + " messages");
+                        logger.info("processing transaction with " + inserts + " message(s)");
                         if (transaction.exec() == null) {
                             // the transaction failed, which likely means the lock was lost
                             logger.warn("transaction failed! - halting work for now");
