@@ -57,7 +57,7 @@ public class OAuth2 {
     public static final String OAUTH2_TOKEN_ERROR_FIELD_NAME = "error";
     public static final String OAUTH2_TOKEN_ERROR_DESC_FIELD_NAME = "error_description";
 
-    public static final String OAUTH2_TOKEN_RESPONSE_TYPE_CODE = "code";
+    public static final String OAUTH2_TOKEN_RESPONSE_TYPE_CODE = "token";
     public static final String OAUTH2_TOKEN_GRANT_TYPE_AUTH_CODE = "authorization_code";
     public static final String OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS = "client_credentials";
     public static final String OAUTH2_TOKEN_GRANT_TYPE_REFRESH_TOKEN = "refresh_token";
