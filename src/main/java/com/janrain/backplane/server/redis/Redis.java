@@ -134,8 +134,8 @@ public class Redis {
             // refresh lock
             byte[] currentIdentifier = jedis.get(lockName.getBytes());
 
-            if (new String(currentIdentifier).equals(identifier)) {
-                jedis.expire("write", lockTimeSeconds);
+            if (currentIdentifier != null && new String(currentIdentifier).equals(identifier)) {
+                jedis.expire(lockName, lockTimeSeconds);
                 return true;
             }
         } finally {
