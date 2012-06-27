@@ -16,12 +16,17 @@
 
 package com.janrain.backplane.server;
 
+import com.janrain.backplane.server.config.Backplane1Config;
 import com.janrain.backplane.server.dao.BackplaneMessageDAO;
 import com.janrain.backplane.server.redis.Redis;
+import com.janrain.commons.util.Pair;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Histogram;
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import redis.clients.jedis.*;
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisPubSub;
+import redis.clients.jedis.Transaction;
 
 import java.util.*;
 
@@ -108,11 +113,15 @@ public class MessageProcessor extends JedisPubSub {
                     jedis = Redis.getInstance().getJedis();
 
                     // retrieve the latest 'live' message ID
-                    String latestMessageId = "";
+                    String latestMessageId = null;
                     Set<String> latestMessageIdSet = jedis.zrange(BackplaneMessageDAO.V1_MESSAGES, -1, -1);
                     if (latestMessageIdSet != null && !latestMessageIdSet.isEmpty()) {
                         latestMessageId = latestMessageIdSet.iterator().next();
                     }
+
+                    Pair<String,Date> lastIdAndDate = StringUtils.isEmpty(latestMessageId) ?
+                            new Pair<String, Date>("", new Date(0)) :
+                            new Pair<String, Date>(latestMessageId, Backplane1Config.ISO8601.get().parse(latestMessageId.substring(0, latestMessageId.indexOf("Z") + 1)));
 
                     // retrieve a handful of messages (ten) off the queue for processing
                     List<byte[]> messagesToProcess = jedis.lrange(BackplaneMessageDAO.V1_MESSAGE_QUEUE.getBytes(), 0, 9);
@@ -143,17 +152,7 @@ public class MessageProcessor extends JedisPubSub {
                                     // this means that all message ids have unique time stamps, even if they
                                     // arrived at the same time.
 
-                                    if (oldId.compareTo(latestMessageId) <= 0) {
-                                        logger.warn("message has an id " + oldId + " that is not > the latest id of " + latestMessageId);
-                                        Date lastMessageDate = BackplaneMessageNew.getDateFromId(latestMessageId);
-                                        if (lastMessageDate != null) {
-                                            bmn.setId(BackplaneMessageNew.generateMessageId(new Date(lastMessageDate.getTime()+1)));
-                                            logger.warn("fixed");
-                                        } else {
-                                            // todo: this breaks the order guarantee, should not just contiune
-                                            logger.warn("could not modify id of new message");
-                                        }
-                                    }
+                                    lastIdAndDate = bmn.updateId(lastIdAndDate);
                                     String newId = bmn.getId();
 
                                     // messageTime is guaranteed to be a unique identifier of the message
@@ -181,10 +180,6 @@ public class MessageProcessor extends JedisPubSub {
                                     // </ATOMIC>
 
                                     logger.info("pipelined message " + oldId + " -> " + newId);
-
-                                    // update the 'latest' message id with the one just inserted
-                                    latestMessageId = newId;
-
                                 }
                             }
                         }
@@ -198,6 +193,7 @@ public class MessageProcessor extends JedisPubSub {
                         logger.info("flushed " + insertionTimes.size() + " messages");
                         long now = System.currentTimeMillis();
                         for(String insertionId : insertionTimes) {
+                            // todo: NPE if getDateFromId returns null
                             timeInQueue.update(now - BackplaneMessageNew.getDateFromId(insertionId).getTime());
                         }
                     }

@@ -3,6 +3,7 @@ package com.janrain.backplane.server;
 import com.janrain.backplane.server.config.Backplane1Config;
 import com.janrain.backplane.server.migrate.legacy.BackplaneMessage;
 import com.janrain.commons.supersimpledb.SimpleDBException;
+import com.janrain.commons.util.Pair;
 import com.janrain.crypto.ChannelUtil;
 import org.apache.log4j.Logger;
 
@@ -44,6 +45,18 @@ public class BackplaneMessageNew implements Serializable {
 
     public void setId(String id) {
         this.id = id;
+    }
+
+    public Pair<String, Date> updateId(Pair<String, Date> lastIdAndDate) {
+        if (id.compareTo(lastIdAndDate.getLeft()) <= 0) {
+            logger.warn("message has an id " + id + " that is not > the latest id of " + lastIdAndDate.getLeft());
+            Date newDate = new Date(lastIdAndDate.getRight().getTime() + 1);
+            id = generateMessageId(newDate);
+            logger.warn("fixed");
+            return new Pair<String, Date>(id, newDate);
+        } else {
+            return lastIdAndDate;
+        }
     }
 
     public String getBus() {
@@ -145,7 +158,7 @@ public class BackplaneMessageNew implements Serializable {
         }
 
         try {
-            return Backplane1Config.ISO8601.parse(backplaneMessageId.substring(0, backplaneMessageId.indexOf("Z")+1));
+            return Backplane1Config.ISO8601.get().parse(backplaneMessageId.substring(0, backplaneMessageId.indexOf("Z") + 1));
         } catch (ParseException e) {
             logger.warn(e);
         }
@@ -155,15 +168,8 @@ public class BackplaneMessageNew implements Serializable {
     /**
      * @return a time-based, lexicographically comparable message ID.
      */
-    public static String generateMessageId() {
-        return Backplane1Config.ISO8601.format(new Date()) + "-" + ChannelUtil.randomString(10);
-    }
-
-    /**
-     * @return a time-based, lexicographically comparable message ID.
-     */
     public static String generateMessageId(Date date) {
-        return Backplane1Config.ISO8601.format(date) + "-" + ChannelUtil.randomString(10);
+        return Backplane1Config.ISO8601.get().format(date) + "-" + ChannelUtil.randomString(10);
     }
 
     // - PRIVATE

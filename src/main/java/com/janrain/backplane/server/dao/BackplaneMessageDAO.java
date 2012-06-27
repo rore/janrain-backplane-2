@@ -163,6 +163,7 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
 
             double sinceInMs = 0;
             if (StringUtils.isNotBlank(since)) {
+                // todo: NPE if returned date is null
                 sinceInMs = BackplaneMessageNew.getDateFromId(since).getTime();
             }
 
