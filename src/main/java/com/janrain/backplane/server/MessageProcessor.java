@@ -150,6 +150,7 @@ public class MessageProcessor extends JedisPubSub {
                                             bmn.setId(BackplaneMessageNew.generateMessageId(new Date(lastMessageDate.getTime()+1)));
                                             logger.warn("fixed");
                                         } else {
+                                            // todo: this breaks the order guarantee, should not just contiune
                                             logger.warn("could not modify id of new message");
                                         }
                                     }
