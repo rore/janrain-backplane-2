@@ -71,11 +71,7 @@ public class Redis {
                     jedis.expire(lockName, lockTimeSeconds);
                 }
                 Thread.sleep((int)(Math.random()*20));
-                if (waitInMilliSeconds < 0 ) {
-                    loop = true;
-                } else {
-                    loop = end > System.currentTimeMillis() ? true: false;
-                }
+                loop = waitInMilliSeconds < 0 || end > System.currentTimeMillis();
             }
         } catch (InterruptedException e) {
             logger.warn(e);

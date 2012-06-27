@@ -17,9 +17,10 @@
 package com.janrain.backplane.server.dao;
 
 import com.janrain.backplane.server.config.Backplane1Config;
-import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import org.springframework.context.annotation.Scope;
+
+import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 
 /**
@@ -29,22 +30,42 @@ import javax.inject.Inject;
 @Scope(value="singleton")
 public class DaoFactory {
 
+    // - PUBLIC
+
     public BackplaneMessageDAO getBackplaneMessageDAO() {
-        return new BackplaneMessageDAO(superSimpleDB, bpConfig, this);
+        return messageDao;
     }
 
     public UserNewDAO getNewUserDAO() {
-        return new UserNewDAO(superSimpleDB, bpConfig, this);
+        return userDao;
     }
 
     public BusConfig1DAO getNewBusDAO() {
-        return new BusConfig1DAO(superSimpleDB, bpConfig, this);
+        return busDao;
     }
+
+    // - PRIVATE
 
     @Inject
     private SuperSimpleDB superSimpleDB;
 
     @Inject
     private Backplane1Config bpConfig;
+
+    private static final Object initLock = new Object();
+
+    private static BackplaneMessageDAO messageDao;
+    private static UserNewDAO userDao;
+    private static BusConfig1DAO busDao;
+
+    @SuppressWarnings("AssignmentToStaticFieldFromInstanceMethod")
+    @PostConstruct
+    private void init() {
+        synchronized (initLock) {
+            busDao = new BusConfig1DAO(superSimpleDB, bpConfig);
+            userDao = new UserNewDAO(superSimpleDB, bpConfig);
+            messageDao = new BackplaneMessageDAO(superSimpleDB, bpConfig);
+        }
+    }
 
 }
