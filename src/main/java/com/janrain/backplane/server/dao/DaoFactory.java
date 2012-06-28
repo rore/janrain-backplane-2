@@ -36,7 +36,7 @@ public class DaoFactory {
         return messageDao;
     }
 
-    public UserNewDAO getNewUserDAO() {
+    public UserDAO getUserDAO() {
         return userDao;
     }
 
@@ -55,7 +55,7 @@ public class DaoFactory {
     private static final Object initLock = new Object();
 
     private static BackplaneMessageDAO messageDao;
-    private static UserNewDAO userDao;
+    private static UserDAO userDao;
     private static BusConfig1DAO busDao;
 
     @SuppressWarnings("AssignmentToStaticFieldFromInstanceMethod")
@@ -63,7 +63,7 @@ public class DaoFactory {
     private void init() {
         synchronized (initLock) {
             busDao = new BusConfig1DAO(superSimpleDB, bpConfig);
-            userDao = new UserNewDAO(superSimpleDB, bpConfig);
+            userDao = new UserDAO(superSimpleDB, bpConfig);
             messageDao = new BackplaneMessageDAO(superSimpleDB, bpConfig);
         }
     }

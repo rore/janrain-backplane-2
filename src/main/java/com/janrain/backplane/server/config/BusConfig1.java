@@ -14,23 +14,32 @@
  * limitations under the License.
  */
 
-package com.janrain.backplane.server.migrate.legacy;
+package com.janrain.backplane.server.config;
 
-import com.janrain.backplane.server.config.Backplane1Config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
+import com.janrain.commons.util.IOUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 
-import java.util.EnumSet;
-import java.util.Set;
+import java.io.*;
+import java.util.*;
 
 /**
  * @author Johnny Bufu
  */
-public class BusConfig1 extends AbstractMessage {
+public final class BusConfig1 extends AbstractMessage implements Serializable {
 
     // - PUBLIC
+
+    /** For AWS use only */
+    public BusConfig1() { }
+
+    public BusConfig1(HashMap<String, Object> data) throws SimpleDBException {
+        Map<String,String> d = new LinkedHashMap<String, String>(toStringMap(data));
+        super.init(d.get(Field.BUS_NAME.getFieldName()), d);
+    }
 
     @Override
     public String getIdValue() {
@@ -42,7 +51,7 @@ public class BusConfig1 extends AbstractMessage {
         return EnumSet.allOf(Field.class);
     }
 
-    public EnumSet<Backplane1Config.BUS_PERMISSION> getPermissions(String user) {
+    public Collection<Backplane1Config.BUS_PERMISSION> getPermissions(String user) {
         if (isBusConfigField(user)) {
             throw new IllegalArgumentException("Invalid user name: " + user);
         }
@@ -55,6 +64,40 @@ public class BusConfig1 extends AbstractMessage {
             }
         }
         return result;
+    }
+
+    public byte[] toBytes() {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        ObjectOutputStream oos = null;
+        try {
+            oos = new ObjectOutputStream(bos);
+            oos.writeObject(this);
+            oos.flush();
+            return bos.toByteArray();
+        } catch (IOException e) {
+            logger.error("Error serializing bus config", e);
+            return null;
+        } finally {
+            IOUtils.closeSilently(oos);
+            IOUtils.closeSilently(bos);
+        }
+    }
+
+    public static BusConfig1 fromBytes(byte[] bytes) {
+        if (bytes == null) {
+            return null;
+        }
+
+        ObjectInputStream in = null;
+        try {
+            in = new ObjectInputStream(new ByteArrayInputStream(bytes));
+            return (BusConfig1) in.readObject();
+        } catch (Exception e) {
+            logger.error("Error deserializign bus config", e);
+            return null;
+        } finally {
+            IOUtils.closeSilently(in);
+        }
     }
 
     public static enum Field implements MessageField {
@@ -115,12 +158,46 @@ public class BusConfig1 extends AbstractMessage {
 
     // - PRIVATE
 
+    private static final Logger logger = Logger.getLogger(BusConfig1.class);
+
     private boolean isBusConfigField(String name) {
         try {
             Field.valueOf(name);
             return true;
         } catch (IllegalArgumentException e) {
             return false;
+        }
+    }
+
+    private Object writeReplace() {
+        return new SerializationProxy(this);
+    }
+
+    private void readObject(ObjectInputStream stream) throws InvalidObjectException {
+        throw new InvalidObjectException("Proxy required");
+    }
+
+    /** Class representing the logical serialization format for a backplane v1 bus config */
+    private static class SerializationProxy implements Serializable {
+
+        public SerializationProxy(BusConfig1 busConfig) {
+            data.putAll(busConfig);
+        }
+
+        private static final long serialVersionUID = 1632268909973084052L;
+
+        // data HashMap is all we need
+        // todo: consider a custom string serialization format, for easy editing directly in the DB
+        private final HashMap<String,Object> data = new HashMap<String, Object>();
+
+        private Object readResolve() throws ObjectStreamException {
+            // use public constructor
+            try {
+                return new BusConfig1(data);
+            } catch (Exception e) {
+                logger.error("Error deserializign bus config", e);
+                throw new InvalidObjectException(e.getMessage());
+            }
         }
     }
 }

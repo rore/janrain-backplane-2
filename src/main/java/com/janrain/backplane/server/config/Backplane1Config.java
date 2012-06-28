@@ -18,8 +18,6 @@ package com.janrain.backplane.server.config;
 
 import com.janrain.backplane.server.MessageProcessor;
 import com.janrain.backplane.server.migrate.Migrate;
-import com.janrain.backplane.server.migrate.legacy.BusConfig1;
-import com.janrain.backplane.server.migrate.legacy.User;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.commons.supersimpledb.message.AbstractNamedMap;
@@ -45,7 +43,7 @@ import java.util.concurrent.TimeUnit;
 
 import static com.janrain.backplane.server.BackplaneMessage.Field.*;
 import static com.janrain.backplane.server.config.Backplane1Config.SimpleDBTables.*;
-import static com.janrain.backplane.server.migrate.legacy.BusConfig1.Field.*;
+import static com.janrain.backplane.server.config.BusConfig1.Field.*;
 
 
 /**

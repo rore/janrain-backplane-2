@@ -34,9 +34,12 @@ import java.util.*;
 /**
  * @author Johnny Bufu
  */
-public class BackplaneMessage extends AbstractMessage implements Serializable {
+public final class BackplaneMessage extends AbstractMessage implements Serializable {
 
     // - PUBLIC
+
+    /** For AWS use only */
+    public BackplaneMessage() { }
 
     public BackplaneMessage(boolean generateNewId, String bus, String channel, Map<String, Object> data) throws BackplaneServerException, SimpleDBException {
         Map<String,String> d = new LinkedHashMap<String, String>(toStringMap(data));
@@ -230,11 +233,6 @@ public class BackplaneMessage extends AbstractMessage implements Serializable {
         }
     }
 
-    // - PACKAGE
-
-    public BackplaneMessage() {
-    }
-
     // - PRIVATE
 
     private static final Logger logger = Logger.getLogger(BackplaneMessage.class);
@@ -258,7 +256,7 @@ public class BackplaneMessage extends AbstractMessage implements Serializable {
         throw new InvalidObjectException("Proxy required");
     }
 
-    /** Class representing the logical serialization format for a backplane message */
+    /** Class representing the logical serialization format for a backplane v1 message */
     private static class SerializationProxy implements Serializable {
 
         public SerializationProxy(BackplaneMessage message) {

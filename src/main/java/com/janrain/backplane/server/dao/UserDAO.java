@@ -1,7 +1,7 @@
 package com.janrain.backplane.server.dao;
 
 import com.janrain.backplane.server.config.Backplane1Config;
-import com.janrain.backplane.server.config.UserNew;
+import com.janrain.backplane.server.config.User;
 import com.janrain.backplane.server.redis.Redis;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
@@ -10,9 +10,9 @@ import org.apache.log4j.Logger;
 /**
  * @author Tom Raney
  */
-public class UserNewDAO extends NewDAO<UserNew> {
+public class UserDAO extends DAO<User> {
 
-    UserNewDAO(SuperSimpleDB superSimpleDB, Backplane1Config bpConfig) {
+    UserDAO(SuperSimpleDB superSimpleDB, Backplane1Config bpConfig) {
         super(superSimpleDB, bpConfig);
     }
 
@@ -21,10 +21,10 @@ public class UserNewDAO extends NewDAO<UserNew> {
     }
 
     @Override
-    public void persist(UserNew user) {
-        byte[] key = getUserKey(user.getId());
+    public void persist(User user) {
+        byte[] key = getUserKey(user.getIdValue());
         logger.info("writing key to redis: " + new String(key));
-        Redis.getInstance().set(getUserKey(user.getId()), user.toBytes());
+        Redis.getInstance().set(getUserKey(user.getIdValue()), user.toBytes());
     }
 
     @Override
@@ -32,9 +32,9 @@ public class UserNewDAO extends NewDAO<UserNew> {
         //To change body of implemented methods use File | Settings | File Templates.
     }
 
-    public UserNew get(String key) {
-        return UserNew.fromBytes(Redis.getInstance().get(getUserKey(key)));
+    public User get(String key) {
+        return User.fromBytes(Redis.getInstance().get(getUserKey(key)));
     }
 
-    private static final Logger logger = Logger.getLogger(UserNewDAO.class);
+    private static final Logger logger = Logger.getLogger(UserDAO.class);
 }

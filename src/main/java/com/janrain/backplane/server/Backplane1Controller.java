@@ -18,8 +18,8 @@ package com.janrain.backplane.server;
 
 import com.janrain.backplane.server.config.*;
 import com.janrain.backplane.server.dao.BackplaneMessageDAO;
-import com.janrain.backplane.server.migrate.legacy.BusConfig1;
-import com.janrain.backplane.server.migrate.legacy.User;
+import com.janrain.backplane.server.config.BusConfig1;
+import com.janrain.backplane.server.config.User;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.crypto.HmacHashUtils;
 import com.yammer.metrics.Metrics;
@@ -250,16 +250,9 @@ public class Backplane1Controller {
         String user = userPass.substring(0, delim);
         String pass = userPass.substring(delim + 1);
 
-        User userEntry = null;
-        try {
-                //userEntry = superSimpleDb.retrieve(bpConfig.getTableName(Backplane1Config.SimpleDBTables.BP1_USERS), User.class, user);
-                userEntry = daoFactory.getNewUserDAO().get(user).convertToOld();
-
-        } catch (SimpleDBException e) {
-            logger.error("Error looking up user: " + user, e);
-            authError("Error looking up user: " + user);
-        }
-
+        // authN
+        //userEntry = superSimpleDb.retrieve(bpConfig.getTableName(Backplane1Config.SimpleDBTables.BP1_USERS), User.class, user);
+        User userEntry = daoFactory.getUserDAO().get(user);
         if (userEntry == null) {
             authError("User not found: " + user);
         } else if ( ! HmacHashUtils.checkHmacHash(pass, userEntry.get(User.Field.PWDHASH)) ) {
@@ -267,16 +260,8 @@ public class Backplane1Controller {
         }
 
         // authZ
-        BusConfig1 busConfig = null;
-        try {
-            if (busConfig == null) {
-                //busConfig = superSimpleDb.retrieve(bpConfig.getTableName(BP1_BUS_CONFIG), BusConfig1.class, bus);
-                busConfig = daoFactory.getNewBusDAO().get(bus).convertToOld();
-            }
-        } catch (SimpleDBException e) {
-            logger.error("Error looking up bus configuration for " + bus, e);
-            authError("Error looking up bus configuration for " + bus);
-        }
+        //busConfig = superSimpleDb.retrieve(bpConfig.getTableName(BP1_BUS_CONFIG), BusConfig1.class, bus);
+        BusConfig1 busConfig = daoFactory.getNewBusDAO().get(bus);
         if (busConfig == null) {
             authError("Bus configuration not found for " + bus);
         } else if (!busConfig.getPermissions(user).contains(permission)) {

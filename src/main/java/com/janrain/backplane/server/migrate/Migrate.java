@@ -17,13 +17,11 @@
 package com.janrain.backplane.server.migrate;
 
 import com.janrain.backplane.server.config.Backplane1Config;
-import com.janrain.backplane.server.config.BusConfig1New;
 import com.janrain.backplane.server.dao.BusConfig1DAO;
-import com.janrain.backplane.server.migrate.legacy.BusConfig1;
-import com.janrain.backplane.server.migrate.legacy.User;
-import com.janrain.backplane.server.config.UserNew;
+import com.janrain.backplane.server.config.BusConfig1;
+import com.janrain.backplane.server.config.User;
 import com.janrain.backplane.server.dao.DaoFactory;
-import com.janrain.backplane.server.dao.UserNewDAO;
+import com.janrain.backplane.server.dao.UserDAO;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import org.apache.log4j.Logger;
@@ -50,11 +48,11 @@ public class Migrate {
         List<User> users = superSimpleDB.retrieveAll(bpConfig.getTableName(Backplane1Config.SimpleDBTables.BP1_USERS), User.class);
         int recs = 0;
 
-        UserNewDAO userNewDAO = daoFactory.getNewUserDAO();
+        UserDAO userDAO = daoFactory.getUserDAO();
 
         for (User user: users) {
             logger.info("(" + ++recs + ") User records imported: " + user.getIdValue());
-            userNewDAO.persist(new UserNew(user));
+            userDAO.persist(user);
         }
 
         BusConfig1DAO busConfig1DAO = daoFactory.getNewBusDAO();
@@ -62,7 +60,7 @@ public class Migrate {
         recs = 0;
         for (BusConfig1 bus: buses) {
             logger.info("(" + ++recs + ") BusConfig records imported: " + bus.getIdValue());
-            busConfig1DAO.persist(new BusConfig1New(bus));
+            busConfig1DAO.persist(bus);
         }
 
         //TODO existing messages?
