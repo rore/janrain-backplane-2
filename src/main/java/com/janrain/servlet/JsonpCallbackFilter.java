@@ -55,9 +55,9 @@ public class JsonpCallbackFilter implements Filter {
 
             chain.doFilter(request, wrapper);
 
-            stream.write(new String(callbackName + "(").getBytes());
+            stream.write((callbackName + "(").getBytes());
             stream.write(wrapper.getData());
-            stream.write(new String(");").getBytes());
+            stream.write(");".getBytes());
 
             wrapper.setContentType("text/javascript;charset=UTF-8");
             // always return 200 when using the callback to allow the message to

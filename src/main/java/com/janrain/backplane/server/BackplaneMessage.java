@@ -14,19 +14,19 @@
  * limitations under the License.
  */
 
-package com.janrain.backplane.server.migrate.legacy;
+package com.janrain.backplane.server;
 
-import com.janrain.backplane.server.BackplaneServerException;
+import com.janrain.backplane.server.config.Backplane1Config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
+import com.janrain.commons.util.IOUtils;
+import com.janrain.commons.util.Pair;
+import com.janrain.crypto.ChannelUtil;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
+import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.*;
@@ -38,16 +38,18 @@ public class BackplaneMessage extends AbstractMessage implements Serializable {
 
     // - PUBLIC
 
-    public BackplaneMessage(String id, String bus, String channel, Map<String, Object> data) throws BackplaneServerException, SimpleDBException {
+    public BackplaneMessage(boolean generateNewId, String bus, String channel, Map<String, Object> data) throws BackplaneServerException, SimpleDBException {
         Map<String,String> d = new LinkedHashMap<String, String>(toStringMap(data));
-        d.put(Field.ID.getFieldName(), id);
+        if (generateNewId) {
+            d.put(Field.ID.getFieldName(), generateMessageId(new Date()));
+        }
         d.put(Field.BUS.getFieldName(), bus);
         d.put(Field.CHANNEL_NAME.getFieldName(), channel);
         d.put(Field.PAYLOAD.getFieldName(), extractFieldValueAsJsonString(Field.PAYLOAD, data));
         if (! d.containsKey(Field.STICKY.getFieldName())) {
             d.put(Field.STICKY.getFieldName(), Boolean.FALSE.toString());
         }
-        super.init(id, d);
+        super.init(d.get(BackplaneMessage.Field.ID.getFieldName()), d);
     }
 
     @Override
@@ -93,8 +95,87 @@ public class BackplaneMessage extends AbstractMessage implements Serializable {
         return frame;
     }
 
+    /**
+     * @return a time-based, lexicographically comparable message ID.
+     */
+    public static String generateMessageId(Date date) {
+        return Backplane1Config.ISO8601.get().format(date) + "-" + ChannelUtil.randomString(10);
+    }
+
+    public static Date parseIdDate(String idValue) {
+        try {
+            return Backplane1Config.ISO8601.get().parse(idValue.substring(0, idValue.indexOf("Z") + 1));
+        } catch (Exception e) {
+            logger.error("Invalid ID value: " + idValue);
+            return null;
+        }
+    }
+
+    public Pair<String, Date> updateId(Pair<String, Date> lastIdAndDate) throws SimpleDBException {
+        String id = get(Field.ID);
+        if (id.compareTo(lastIdAndDate.getLeft()) <= 0) {
+            logger.warn("message has an id " + id + " that is not > the latest id of " + lastIdAndDate.getLeft());
+            Date newDate = new Date(lastIdAndDate.getRight().getTime() + 1);
+            id = generateMessageId(newDate);
+            put(Field.ID.getFieldName(), id);
+            Field.ID.validate(id);
+            logger.warn("fixed");
+            return new Pair<String, Date>(id, newDate);
+        } else {
+            return lastIdAndDate;
+        }
+    }
+
+    public Date getDate() {
+        return parseIdDate(getIdValue());
+    }
+
+    public byte[] toBytes() {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        ObjectOutputStream oos = null;
+        try {
+            oos = new ObjectOutputStream(bos);
+            oos.writeObject(this);
+            oos.flush();
+            return bos.toByteArray();
+        } catch (IOException e) {
+            logger.error("Error serializing message", e);
+            return null;
+        } finally {
+            IOUtils.closeSilently(oos);
+            IOUtils.closeSilently(bos);
+        }
+    }
+
+    public static BackplaneMessage fromBytes(byte[] bytes) {
+        if (bytes == null) {
+            return null;
+        }
+
+        ObjectInputStream in = null;
+        try {
+            in = new ObjectInputStream(new ByteArrayInputStream(bytes));
+            return (BackplaneMessage) in.readObject();
+        } catch (Exception e) {
+            logger.error("Error deserializign message", e);
+            return null;
+        } finally {
+            IOUtils.closeSilently(in);
+        }
+    }
+
+    // serialization
+
     public static enum Field implements MessageField {
-        ID("id"),
+        ID("id") {
+            @Override
+            public void validate(String value) throws SimpleDBException {
+                super.validate(value);
+                if (parseIdDate(value) == null) {
+                    throw new IllegalArgumentException("Invalid value for " + getFieldName() + ": " + value);
+                }
+            }
+        },
         CHANNEL_NAME("channel_name"),
         BUS("bus"),
         STICKY("sticky", false) {
@@ -169,25 +250,36 @@ public class BackplaneMessage extends AbstractMessage implements Serializable {
         }
     }
 
-    private void writeObject(ObjectOutputStream oos)
-            throws IOException {
-
-        Map<String, String> map = new HashMap<String,String>();
-        for (Map.Entry<String,String> entry : this.entrySet()) {
-            map.put(entry.getKey(), entry.getValue());
-        }
-        oos.writeObject(map);
-
+    private Object writeReplace() {
+        return new SerializationProxy(this);
     }
 
-    private void readObject(ObjectInputStream ois)
-            throws ClassNotFoundException, IOException {
+    private void readObject(ObjectInputStream stream) throws InvalidObjectException {
+        throw new InvalidObjectException("Proxy required");
+    }
 
-        Map<String,String> map = (Map<String, String>) ois.readObject();
-        try {
-            init(map.get(Field.ID.getFieldName()), map);
-        } catch (SimpleDBException e) {
-            logger.error(e);
+    /** Class representing the logical serialization format for a backplane message */
+    private static class SerializationProxy implements Serializable {
+
+        public SerializationProxy(BackplaneMessage message) {
+            data.putAll(message);
+        }
+
+        private static final long serialVersionUID = 1958933880821698459L;
+
+        // data HashMap is all we need
+        private final HashMap<String,Object> data = new HashMap<String, Object>();
+
+        private Object readResolve() throws ObjectStreamException {
+            Object bus = data.get(BackplaneMessage.Field.BUS.getFieldName());
+            Object channel = data.get(BackplaneMessage.Field.CHANNEL_NAME.getFieldName());
+            // use public constructor
+            try {
+                return new BackplaneMessage(false, bus != null ? bus.toString() : null, channel != null ? channel.toString() : null, data);
+            } catch (Exception e) {
+                logger.error("Error deserializign message", e);
+                throw new InvalidObjectException(e.getMessage());
+            }
         }
     }
 }

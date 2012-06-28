@@ -92,7 +92,7 @@ public class MessageProcessor extends JedisPubSub {
             logger.info("message processor waiting for exclusive write lock");
 
             // TRY forever to get lock to do work
-            String lock = Redis.getInstance().getLock(V1_WRITE_LOCK, uuid, -1, 30);
+            String lock = Redis.getInstance().getLock(V1_WRITE_LOCK, uuid, -1, V1_WRITE_LOCK_SECONDS);
 
             // if we lose our lock sometime between this point and the lock refresh, the
             // transaction will fail
@@ -105,7 +105,7 @@ public class MessageProcessor extends JedisPubSub {
             }
 
             Jedis jedis = null;
-            List<String> insertionTimes = new ArrayList<String>();
+            List<Long> insertionTimes = new ArrayList<Long>();
             while(true) {
 
                 try {
@@ -140,11 +140,10 @@ public class MessageProcessor extends JedisPubSub {
                         for (byte[] messageBytes : messagesToProcess) {
 
                             if (messageBytes != null) {
-                                BackplaneMessageNew bmn = BackplaneMessageNew.fromBytes(messageBytes);
+                                BackplaneMessage message = BackplaneMessage.fromBytes(messageBytes);
 
-                                if (bmn != null) {
-                                    String oldId = bmn.getId();
-                                    insertionTimes.add(oldId);
+                                if (message != null) {
+                                    insertionTimes.add(message.getDate().getTime());
 
                                     // TOTAL ORDER GUARANTEE
                                     // verify that the new message ID is greater than all existing message IDs
@@ -152,25 +151,27 @@ public class MessageProcessor extends JedisPubSub {
                                     // this means that all message ids have unique time stamps, even if they
                                     // arrived at the same time.
 
-                                    lastIdAndDate = bmn.updateId(lastIdAndDate);
-                                    String newId = bmn.getId();
+                                    lastIdAndDate = message.updateId(lastIdAndDate);
+                                    String newId = message.getIdValue();
 
                                     // messageTime is guaranteed to be a unique identifier of the message
                                     // because of the TOTAL ORDER mechanism above
-                                    long messageTime = BackplaneMessageNew.getDateFromId(newId).getTime();
+                                    long messageTime = message.getDate().getTime();
 
                                     // <ATOMIC>
                                     // save the individual message by key
-                                    transaction.set(newId.getBytes(), bmn.toBytes());
+                                    transaction.set(newId.getBytes(), message.toBytes());
 
                                     // append entire message to list of messages in a channel for retrieval efficiency
-                                    transaction.rpush(BackplaneMessageDAO.getChannelKey(bmn.getBus(), bmn.getChannel()), bmn.toBytes());
+                                    transaction.rpush(BackplaneMessageDAO.getChannelKey(
+                                            message.get(BackplaneMessage.Field.BUS),
+                                            message.get(BackplaneMessage.Field.CHANNEL_NAME)), message.toBytes());
 
                                     // add message id to sorted set of all message ids as an index
                                     transaction.zadd(BackplaneMessageDAO.V1_MESSAGES.getBytes(), messageTime, newId.getBytes());
 
                                     // add message id to sorted set keyed by bus as an index
-                                    transaction.zadd(BackplaneMessageDAO.getBusKey(bmn.getBus()), messageTime, newId.getBytes());
+                                    transaction.zadd(BackplaneMessageDAO.getBusKey(message.get(BackplaneMessage.Field.BUS)), messageTime, newId.getBytes());
 
                                     // make sure all subscribers get the update
                                     transaction.publish("alerts", newId);
@@ -179,7 +180,7 @@ public class MessageProcessor extends JedisPubSub {
                                     transaction.lpop(BackplaneMessageDAO.V1_MESSAGE_QUEUE);
                                     // </ATOMIC>
 
-                                    logger.info("pipelined message " + oldId + " -> " + newId);
+                                    logger.info("pipelined message " + newId);
                                 }
                             }
                         }
@@ -192,13 +193,12 @@ public class MessageProcessor extends JedisPubSub {
                         }
                         logger.info("flushed " + insertionTimes.size() + " messages");
                         long now = System.currentTimeMillis();
-                        for(String insertionId : insertionTimes) {
-                            // todo: NPE if getDateFromId returns null
-                            timeInQueue.update(now - BackplaneMessageNew.getDateFromId(insertionId).getTime());
+                        for(Long insertionTime : insertionTimes) {
+                            timeInQueue.update(now - insertionTime);
                         }
                     }
 
-                    if (!Redis.getInstance().refreshLock(V1_WRITE_LOCK, uuid, 30)) {
+                    if (!Redis.getInstance().refreshLock(V1_WRITE_LOCK, uuid, V1_WRITE_LOCK_SECONDS)) {
                         logger.warn("lost lock! - halting work for now");
                         return;
                     }
@@ -217,6 +217,7 @@ public class MessageProcessor extends JedisPubSub {
     }
 
     private static final String V1_WRITE_LOCK = "v1_write_lock";
+    private static final int V1_WRITE_LOCK_SECONDS = 30;
 
     private static final Logger logger = Logger.getLogger(MessageProcessor.class);
 

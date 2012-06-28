@@ -43,7 +43,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import static com.janrain.backplane.server.migrate.legacy.BackplaneMessage.Field.*;
+import static com.janrain.backplane.server.BackplaneMessage.Field.*;
 import static com.janrain.backplane.server.config.Backplane1Config.SimpleDBTables.*;
 import static com.janrain.backplane.server.migrate.legacy.BusConfig1.Field.*;
 

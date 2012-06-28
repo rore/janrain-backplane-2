@@ -18,7 +18,6 @@ package com.janrain.backplane.server;
 
 import com.janrain.backplane.server.config.*;
 import com.janrain.backplane.server.dao.BackplaneMessageDAO;
-import com.janrain.backplane.server.migrate.legacy.BackplaneMessage;
 import com.janrain.backplane.server.migrate.legacy.BusConfig1;
 import com.janrain.backplane.server.migrate.legacy.User;
 import com.janrain.commons.supersimpledb.SimpleDBException;
@@ -140,7 +139,7 @@ public class Backplane1Controller {
             }*/
 
             for(Map<String,Object> messageData : messages) {
-                BackplaneMessage message = new BackplaneMessage(generateMessageId(), bus, channel, messageData);
+                BackplaneMessage message = new BackplaneMessage(true, bus, channel, messageData);
                 backplaneMessageDAO.addToQueue(message);
             }
 
@@ -179,13 +178,6 @@ public class Backplane1Controller {
                 put(ERR_MSG_FIELD, "Error processing request.");
             }
         }};
-    }
-
-    /**
-     * @return a time-based, lexicographically comparable message ID.
-     */
-    public static String generateMessageId() {
-        return Backplane1Config.ISO8601.get().format(new Date()) + "-" + randomString(10);
     }
 
     public static String randomString(int length) {
