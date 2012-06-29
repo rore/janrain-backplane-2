@@ -14,23 +14,25 @@
  * limitations under the License.
  */
 
-package com.janrain.backplane.server.migrate.legacy;
+package com.janrain.backplane.server;
 
-import com.janrain.backplane.server.config.Backplane1Config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 
-import java.util.EnumSet;
-import java.util.Set;
+import java.io.*;
+import java.util.*;
 
 /**
  * @author Johnny Bufu
  */
-public class BusConfig1 extends AbstractMessage {
+public class BusConfig1 extends AbstractMessage implements Externalizable {
 
     // - PUBLIC
+
+    public enum BUS_PERMISSION { GETALL, POST, GETPAYLOAD, IDENTITY }
 
     @Override
     public String getIdValue() {
@@ -42,19 +44,49 @@ public class BusConfig1 extends AbstractMessage {
         return EnumSet.allOf(Field.class);
     }
 
-    public EnumSet<Backplane1Config.BUS_PERMISSION> getPermissions(String user) {
+    public String getBusName() {
+        return getIdValue();
+    }
+
+    public int getRetentionTimeSeconds() {
+        return Integer.valueOf(get(Field.RETENTION_TIME_SECONDS));
+    }
+
+    public int getRetentionTimeStickySeconds() {
+        return Integer.valueOf(get(Field.RETENTION_STICKY_TIME_SECONDS));
+    }
+
+    public EnumSet<BUS_PERMISSION> getPermissions(String user) {
         if (isBusConfigField(user)) {
             throw new IllegalArgumentException("Invalid user name: " + user);
         }
 
         String perms = get(user);
-        EnumSet<Backplane1Config.BUS_PERMISSION> result = EnumSet.noneOf(Backplane1Config.BUS_PERMISSION.class);
+        EnumSet<BUS_PERMISSION> result = EnumSet.noneOf(BUS_PERMISSION.class);
         if (StringUtils.isNotBlank(perms)) {
             for(String perm : perms.split(",")) {
-                result.add(Backplane1Config.BUS_PERMISSION.valueOf(perm));
+                result.add(BUS_PERMISSION.valueOf(perm));
             }
         }
         return result;
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput objectOutput) throws IOException {
+        HashMap<String, String> map = new HashMap<String, String>();
+        Set<String> keys = this.keySet();
+        Iterator it = keys.iterator();
+        while (it.hasNext()) {
+            String key = (String) it.next();
+            map.put(key, this.get(key));
+        }
+
+        objectOutput.writeObject(map);
+    }
+
+    @Override
+    public void readExternal(ObjectInput objectInput) throws IOException, ClassNotFoundException {
+        this.putAll((Map<? extends String, ? extends String>) objectInput.readObject());
     }
 
     public static enum Field implements MessageField {
@@ -113,7 +145,59 @@ public class BusConfig1 extends AbstractMessage {
 
     }
 
+    public byte[] toBytes() {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        ObjectOutputStream oos = null;
+        byte[] bytes = null;
+        try {
+            oos = new ObjectOutputStream(bos);
+            oos.writeObject(this);
+            oos.flush();
+            bytes = bos.toByteArray();
+        } catch (IOException e) {
+            logger.error(e);
+        } finally {
+            try {
+                if (oos != null) {
+                    oos.close();
+                }
+                bos.close();
+            } catch (IOException e) {
+                logger.error(e);
+            }
+        }
+        return bytes;
+    }
+
+    public static BusConfig1 fromBytes(byte[] bytes) {
+
+        if (bytes == null) {
+            return null;
+        }
+
+        ObjectInputStream in = null;
+        try {
+            in = new ObjectInputStream(new ByteArrayInputStream(bytes));
+            return (BusConfig1) in.readObject();
+        } catch (Exception e1) {
+            logger.error(e1);
+        } finally {
+            try {
+                if (in != null) {
+                    in.close();
+                }
+            } catch (IOException e) {
+                logger.error(e);
+            }
+        }
+        return null;
+    }
+
     // - PRIVATE
+
+    private static final long serialVersionUID = 2634562172424519254L;
+
+    private static final Logger logger = Logger.getLogger(BusConfig1.class);
 
     private boolean isBusConfigField(String name) {
         try {

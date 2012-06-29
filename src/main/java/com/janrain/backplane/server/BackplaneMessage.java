@@ -14,27 +14,26 @@
  * limitations under the License.
  */
 
-package com.janrain.backplane.server.migrate.legacy;
+package com.janrain.backplane.server;
 
-import com.janrain.backplane.server.BackplaneServerException;
+import com.janrain.backplane.server.config.Backplane1Config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
+import com.janrain.crypto.ChannelUtil;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
+import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.text.ParseException;
 import java.util.*;
 
 /**
  * @author Johnny Bufu
  */
-public class BackplaneMessage extends AbstractMessage implements Serializable {
+public class BackplaneMessage extends AbstractMessage implements Externalizable {
 
     // - PUBLIC
 
@@ -53,6 +52,26 @@ public class BackplaneMessage extends AbstractMessage implements Serializable {
     @Override
     public String getIdValue() {
         return get(Field.ID);
+    }
+
+    public void setIdValue(String id) {
+        this.put(Field.ID.getFieldName(), id);
+        try {
+            this.setName(id);
+        } catch (SimpleDBException ignore) {
+        }
+    }
+
+    public String getBus() {
+        return this.get(Field.BUS);
+    }
+
+    public String getChannel() {
+        return this.get(Field.CHANNEL_NAME);
+    }
+
+    public boolean isSticky() {
+        return "true".equalsIgnoreCase(get(Field.STICKY));
     }
 
     @Override
@@ -149,12 +168,105 @@ public class BackplaneMessage extends AbstractMessage implements Serializable {
         }
     }
 
-    // - PACKAGE
+    public static Date getDateFromId(String backplaneMessageId) {
+        if (backplaneMessageId == null) {
+            return null;
+        }
+
+        try {
+            return Backplane1Config.ISO8601.parse(backplaneMessageId.substring(0, backplaneMessageId.indexOf("Z")+1));
+        } catch (ParseException e) {
+            logger.warn(e);
+        }
+        return null;
+    }
+
+    /**
+     * @return a time-based, lexicographically comparable message ID.
+     */
+    public static String generateMessageId() {
+        return Backplane1Config.ISO8601.format(new Date()) + "-" + ChannelUtil.randomString(10);
+    }
+
+    /**
+     * @return a time-based, lexicographically comparable message ID.
+     */
+    public static String generateMessageId(Date date) {
+        return Backplane1Config.ISO8601.format(date) + "-" + ChannelUtil.randomString(10);
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput objectOutput) throws IOException {
+        HashMap<String, String> map = new HashMap<String, String>();
+        Set<String> keys = this.keySet();
+        Iterator it = keys.iterator();
+        while (it.hasNext()) {
+            String key = (String) it.next();
+            map.put(key, this.get(key));
+        }
+
+        objectOutput.writeObject(map);
+    }
+
+    @Override
+    public void readExternal(ObjectInput objectInput) throws IOException, ClassNotFoundException {
+        this.putAll((Map<? extends String, ? extends String>) objectInput.readObject());
+    }
+
+    public byte[] toBytes() {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        ObjectOutputStream oos = null;
+        byte[] bytes = null;
+        try {
+            oos = new ObjectOutputStream(bos);
+            oos.writeObject(this);
+            oos.flush();
+            bytes = bos.toByteArray();
+        } catch (IOException e) {
+            logger.error(e);
+        } finally {
+            try {
+                if (oos != null) {
+                    oos.close();
+                }
+                bos.close();
+            } catch (IOException e) {
+                logger.error(e);
+            }
+        }
+        return bytes;
+    }
+
+    public static BackplaneMessage fromBytes(byte[] bytes) {
+
+        if (bytes == null) {
+            return null;
+        }
+
+        ObjectInputStream in = null;
+        try {
+            in = new ObjectInputStream(new ByteArrayInputStream(bytes));
+            return (BackplaneMessage) in.readObject();
+        } catch (Exception e1) {
+            logger.error(e1);
+        } finally {
+            try {
+                if (in != null) {
+                    in.close();
+                }
+            } catch (IOException e) {
+                logger.error(e);
+            }
+        }
+        return null;
+    }
 
     public BackplaneMessage() {
     }
 
     // - PRIVATE
+
+    private static final long serialVersionUID = -4601517360705157923L;
 
     private static final Logger logger = Logger.getLogger(BackplaneMessage.class);
 

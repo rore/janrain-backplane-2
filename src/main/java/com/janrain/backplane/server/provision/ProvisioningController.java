@@ -16,10 +16,10 @@
 
 package com.janrain.backplane.server.provision;
 
+import com.janrain.backplane.server.BusConfig1;
+import com.janrain.backplane.server.User;
 import com.janrain.backplane.server.config.AuthException;
 import com.janrain.backplane.server.config.Backplane1Config;
-import com.janrain.backplane.server.migrate.legacy.BusConfig1;
-import com.janrain.backplane.server.migrate.legacy.User;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
@@ -52,28 +52,28 @@ public class ProvisioningController {
     @RequestMapping(value = "/bus/list", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, Map<String, String>> busList(@RequestBody ListRequest listRequest) throws AuthException {
-        bpConfig.checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
+        checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
         return doList(bpConfig.getTableName(BP1_BUS_CONFIG), BusConfig1.class, listRequest.getEntities());
     }
 
     @RequestMapping(value = "/user/list", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, Map<String, String>> userList(@RequestBody ListRequest listRequest) throws AuthException {
-        bpConfig.checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
+        checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
         return doList(bpConfig.getTableName(BP1_USERS), User.class, listRequest.getEntities());
     }
 
     @RequestMapping(value = "/bus/delete", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, String> busDelete(@RequestBody ListRequest deleteRequest) throws AuthException {
-        bpConfig.checkAdminAuth(deleteRequest.getAdmin(), deleteRequest.getSecret());
+        checkAdminAuth(deleteRequest.getAdmin(), deleteRequest.getSecret());
         return doDelete(bpConfig.getTableName(BP1_BUS_CONFIG), BusConfig1.class, deleteRequest.getEntities());
     }
 
     @RequestMapping(value = "/user/delete", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, String> userDelete(@RequestBody ListRequest deleteRequest) throws AuthException {
-        bpConfig.checkAdminAuth(deleteRequest.getAdmin(), deleteRequest.getSecret());
+        checkAdminAuth(deleteRequest.getAdmin(), deleteRequest.getSecret());
         return doDelete(bpConfig.getTableName(BP1_USERS), User.class, deleteRequest.getEntities());
     }
 
@@ -143,6 +143,22 @@ public class ProvisioningController {
     @Inject
     private SuperSimpleDB superSimpleDb;
 
+    private void checkAdminAuth(String user, String password) throws AuthException {
+        checkAuth("v1_admin", user, password);
+    }
+
+    private void checkAuth(String authTable, String user, String password) throws AuthException {
+        try {
+            User userEntry = superSimpleDb.retrieve(authTable, User.class, user);
+            String authKey = userEntry == null ? null : userEntry.get(User.Field.PWDHASH);
+            if ( ! HmacHashUtils.checkHmacHash(password, authKey) ) {
+                throw new AuthException("User " + user + " not authorized in " + authTable);
+            }
+        } catch (SimpleDBException e) {
+            throw new AuthException("User " + user + " not authorized in " + authTable + " , " + e.getMessage(), e);
+        }
+    }
+
     private <T extends AbstractMessage> Map<String, Map<String, String>> doList(String tableName, Class<T> entityType, List<String> entityNames) {
 
         if (entityNames.size() == 0) return doListAll(tableName, entityType);
@@ -192,7 +208,7 @@ public class ProvisioningController {
     }
 
     private <T extends AbstractMessage> Map<String, String> doUpdate(String tableName, Class<T> entityType, UpdateRequest<T> updateRequest) throws AuthException, SimpleDBException {
-        bpConfig.checkAdminAuth(updateRequest.getAdmin(), updateRequest.getSecret());
+        checkAdminAuth(updateRequest.getAdmin(), updateRequest.getSecret());
         validateConfigs(entityType, updateRequest);
         return updateConfigs(tableName, entityType, updateRequest.getConfigs());
     }

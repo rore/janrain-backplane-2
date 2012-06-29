@@ -155,6 +155,15 @@ public class Redis {
         }
     }
 
+    public void del(byte[] key) {
+        Jedis jedis = pool.getResource();
+        try {
+            jedis.del(key);
+        } finally {
+            pool.returnResource(jedis);
+        }
+    }
+
     public void set(byte[] key, byte[] value, int seconds) {
         Jedis jedis = pool.getResource();
         try {

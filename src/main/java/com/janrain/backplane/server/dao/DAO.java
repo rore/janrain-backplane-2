@@ -28,12 +28,7 @@ import com.janrain.commons.supersimpledb.message.NamedMap;
 
 public abstract class DAO<T extends NamedMap> {
 
-    protected SuperSimpleDB superSimpleDB;
-    protected Backplane1Config bpConfig;
-
-    DAO(SuperSimpleDB superSimpleDB, Backplane1Config bpConfig) {
-        this.superSimpleDB = superSimpleDB;
-        this.bpConfig = bpConfig;
+    DAO() {
     }
 
     abstract public void persist(T obj) throws SimpleDBException;

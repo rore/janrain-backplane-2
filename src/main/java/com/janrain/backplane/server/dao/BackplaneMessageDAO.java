@@ -16,15 +16,15 @@
 
 package com.janrain.backplane.server.dao;
 
-import com.janrain.backplane.server.BackplaneMessageNew;
+import com.janrain.backplane.server.BackplaneMessage;
 import com.janrain.backplane.server.BackplaneServerException;
 import com.janrain.backplane.server.config.Backplane1Config;
-import com.janrain.backplane.server.migrate.legacy.BackplaneMessage;
 import com.janrain.backplane.server.redis.Redis;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Histogram;
+import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import redis.clients.jedis.Jedis;
@@ -56,26 +56,8 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
 
     @Override
     public void persist(BackplaneMessage message) throws SimpleDBException {
-
-        //superSimpleDB.store(bpConfig.getMessagesTableName(), BackplaneMessage.class, message, true);
-
-        BackplaneMessageNew bmn = new BackplaneMessageNew(message);
-
-        //TODO: pipeline the rest.  No reason to serialize these ops
-
-        Redis.getInstance().rpush(getBusKey(bmn.getBus()), getMessageIdKey(bmn.getBus(), bmn.getChannel(), bmn.getId()));
-        Redis.getInstance().set(getMessageIdKey(bmn.getBus(), bmn.getChannel(), bmn.getId()), bmn.toBytes());
-
-        //TODO: ttl?
-        //append message to list of messages in a channel
-        Redis.getInstance().rpush(getChannelKey(bmn.getBus(), bmn.getChannel()), bmn.toBytes());
-
-        //TODO: add ttl here?
-        Redis.getInstance().rpush(V1_MESSAGES.getBytes(), bmn.getId().getBytes());
-
+        throw new NotImplementedException();
     }
-
-
 
     /**
      * Add message to work queue - any node may add since it is an atomic operation
@@ -84,8 +66,7 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
      */
 
     public void addToQueue(BackplaneMessage message) {
-        BackplaneMessageNew backplaneMessageNew = new BackplaneMessageNew(message);
-        Redis.getInstance().rpush(V1_MESSAGE_QUEUE.getBytes(), backplaneMessageNew.toBytes());
+        Redis.getInstance().rpush(V1_MESSAGE_QUEUE.getBytes(), message.toBytes());
     }
 
     @Override
@@ -96,21 +77,12 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
     public BackplaneMessage get(String key) {
         byte[] messageBytes = Redis.getInstance().get(key.getBytes());
         if (messageBytes != null) {
-            BackplaneMessageNew backplaneMessageNew = BackplaneMessageNew.fromBytes(messageBytes);
-            if (backplaneMessageNew != null) {
-                try {
-                    return backplaneMessageNew.convertToOld();
-                } catch (SimpleDBException e) {
-
-                } catch (BackplaneServerException e) {
-
-                }
-            }
+            return BackplaneMessage.fromBytes(messageBytes);
         }
         return null;
     }
 
-    public boolean canTake(String bus, String channel, int msgPostCount) throws SimpleDBException {
+/*    public boolean canTake(String bus, String channel, int msgPostCount) throws SimpleDBException {
 
         long count = Redis.getInstance().llen(getChannelKey(bus, channel));
 
@@ -118,7 +90,7 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
 
         return count + msgPostCount < bpConfig.getDefaultMaxMessageLimit();
 
-    }
+    }*/
 
     /**
      * Fetch a list (possibly empty) of backplane messages that exist on the channel
@@ -134,9 +106,9 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
         List<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
         if (messageBytes != null) {
             for (byte[] b: messageBytes) {
-                BackplaneMessageNew bmn = BackplaneMessageNew.fromBytes(b);
-                if (bmn != null) {
-                    messages.add(bmn.convertToOld());
+                BackplaneMessage backplaneMessage = BackplaneMessage.fromBytes(b);
+                if (backplaneMessage != null) {
+                    messages.add(backplaneMessage);
                 }
             }
         }
@@ -163,7 +135,7 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
 
             double sinceInMs = 0;
             if (StringUtils.isNotBlank(since)) {
-                sinceInMs = BackplaneMessageNew.getDateFromId(since).getTime();
+                sinceInMs = BackplaneMessage.getDateFromId(since).getTime();
             }
 
             // every message has a unique timestamp - which serves as a key for indexing
@@ -180,9 +152,9 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
                 }
                 pipeline.sync();
                 for (Response<byte[]> response: responses) {
-                    BackplaneMessageNew bmn = BackplaneMessageNew.fromBytes(response.get());
-                    if (bmn != null) {
-                        messages.add(bmn.convertToOld());
+                    BackplaneMessage backplaneMessage = BackplaneMessage.fromBytes(response.get());
+                    if (backplaneMessage != null) {
+                        messages.add(backplaneMessage);
                     }
                 }
             }
@@ -197,9 +169,8 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
 
     // - PACKAGE
 
-    BackplaneMessageDAO(SuperSimpleDB superSimpleDB, Backplane1Config bpConfig, com.janrain.backplane.server.dao.DaoFactory daoFactory) {
-        super(superSimpleDB, bpConfig);
-        this.daoFactory = daoFactory;
+    BackplaneMessageDAO() {
+        super();
     }
 
     // - PRIVATE
@@ -207,8 +178,6 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
     private static final Logger logger = Logger.getLogger(BackplaneMessageDAO.class);
 
     private final Histogram messagesPerChannel = Metrics.newHistogram(BackplaneMessageDAO.class, "v1_messages_per_channel");
-
-    private final DaoFactory daoFactory;
 
     private List<BackplaneMessage> filterAndSort(List<BackplaneMessage> messages, String since, String sticky) {
 
@@ -235,9 +204,6 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
         Collections.sort(messages, new Comparator<BackplaneMessage>() {
             @Override
             public int compare(BackplaneMessage backplaneMessage, BackplaneMessage backplaneMessage1) {
-                if (backplaneMessage == backplaneMessage1) {
-                    return 0;
-                }
                 return backplaneMessage.getIdValue().compareTo(backplaneMessage1.getIdValue());
             }
         });

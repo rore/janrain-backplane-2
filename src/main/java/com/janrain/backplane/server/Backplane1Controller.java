@@ -18,9 +18,6 @@ package com.janrain.backplane.server;
 
 import com.janrain.backplane.server.config.*;
 import com.janrain.backplane.server.dao.BackplaneMessageDAO;
-import com.janrain.backplane.server.migrate.legacy.BackplaneMessage;
-import com.janrain.backplane.server.migrate.legacy.BusConfig1;
-import com.janrain.backplane.server.migrate.legacy.User;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.crypto.HmacHashUtils;
 import com.yammer.metrics.Metrics;
@@ -76,7 +73,7 @@ public class Backplane1Controller {
 
         try {
 
-            checkAuth(basicAuth, bus, Backplane1Config.BUS_PERMISSION.GETALL);
+            checkAuth(basicAuth, bus, BusConfig1.BUS_PERMISSION.GETALL);
 
             List<BackplaneMessage> messages = daoFactory.getBackplaneMessageDAO().getMessagesByBus(bus, since, sticky);
 
@@ -125,7 +122,7 @@ public class Backplane1Controller {
             @PathVariable String bus,
             @PathVariable String channel) throws AuthException, SimpleDBException, BackplaneServerException {
 
-        checkAuth(basicAuth, bus, Backplane1Config.BUS_PERMISSION.POST);
+        checkAuth(basicAuth, bus, BusConfig1.BUS_PERMISSION.POST);
 
         final TimerContext context = postMessagesTime.time();
 
@@ -173,11 +170,7 @@ public class Backplane1Controller {
         logger.error("Error handling backplane request", bpConfig.getDebugException(e));
         response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
         return new HashMap<String,String>() {{
-            try {
-                put(ERR_MSG_FIELD, bpConfig.isDebugMode() ? e.getMessage() : "Error processing request.");
-            } catch (SimpleDBException e1) {
-                put(ERR_MSG_FIELD, "Error processing request.");
-            }
+            put(ERR_MSG_FIELD, bpConfig.isDebugMode() ? e.getMessage() : "Error processing request.");
         }};
     }
 
@@ -237,7 +230,7 @@ public class Backplane1Controller {
 
     private static final Random random = new SecureRandom();
 
-    private void checkAuth(String basicAuth, String bus, Backplane1Config.BUS_PERMISSION permission) throws AuthException {
+    private void checkAuth(String basicAuth, String bus, BusConfig1.BUS_PERMISSION permission) throws AuthException {
         // authN
         String userPass = null;
         if ( basicAuth == null || ! basicAuth.startsWith("Basic ") || basicAuth.length() < 7) {
@@ -259,14 +252,9 @@ public class Backplane1Controller {
         String pass = userPass.substring(delim + 1);
 
         User userEntry = null;
-        try {
-                //userEntry = superSimpleDb.retrieve(bpConfig.getTableName(Backplane1Config.SimpleDBTables.BP1_USERS), User.class, user);
-                userEntry = daoFactory.getNewUserDAO().get(user).convertToOld();
 
-        } catch (SimpleDBException e) {
-            logger.error("Error looking up user: " + user, e);
-            authError("Error looking up user: " + user);
-        }
+        //userEntry = superSimpleDb.retrieve(bpConfig.getTableName(Backplane1Config.SimpleDBTables.BP1_USERS), User.class, user);
+        userEntry = daoFactory.getUserDAO().get(user);
 
         if (userEntry == null) {
             authError("User not found: " + user);
@@ -276,15 +264,10 @@ public class Backplane1Controller {
 
         // authZ
         BusConfig1 busConfig = null;
-        try {
-            if (busConfig == null) {
-                //busConfig = superSimpleDb.retrieve(bpConfig.getTableName(BP1_BUS_CONFIG), BusConfig1.class, bus);
-                busConfig = daoFactory.getNewBusDAO().get(bus).convertToOld();
-            }
-        } catch (SimpleDBException e) {
-            logger.error("Error looking up bus configuration for " + bus, e);
-            authError("Error looking up bus configuration for " + bus);
-        }
+
+        //busConfig = superSimpleDb.retrieve(bpConfig.getTableName(BP1_BUS_CONFIG), BusConfig1.class, bus);
+        busConfig = daoFactory.getBusDAO().get(bus);
+
         if (busConfig == null) {
             authError("Bus configuration not found for " + bus);
         } else if (!busConfig.getPermissions(user).contains(permission)) {
