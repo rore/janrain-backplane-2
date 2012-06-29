@@ -66,13 +66,6 @@ public class BackplaneMessage extends AbstractMessage implements Serializable {
         super.init(id, d);
     }
 
-    /**
-     * @return a time-based, lexicographically comparable message ID.
-     */
-    public static String generateMessageId() {
-        return (Backplane2Config.ISO8601.get().format(new Date()) + ChannelUtil.randomString(10)).replaceAll("[^\\w]","");
-    }
-
     @Override
     public String getIdValue() {
         return get(Field.ID);
@@ -81,14 +74,6 @@ public class BackplaneMessage extends AbstractMessage implements Serializable {
     @Override
     public Set<? extends MessageField> getFields() {
         return EnumSet.allOf(Field.class);
-    }
-
-    public String getMessageBus() {
-        return get(Field.BUS);
-    }
-
-    public String getMessageChannel() {
-        return get(Field.CHANNEL);
     }
 
     public Map<String, Object> asFrame(String serverDomain, boolean includePayload) throws BackplaneServerException {
@@ -193,6 +178,13 @@ public class BackplaneMessage extends AbstractMessage implements Serializable {
     // - PRIVATE
 
     private static final Logger logger = Logger.getLogger(BackplaneMessage.class);
+
+    /**
+     * @return a time-based, lexicographically comparable message ID.
+     */
+    private static String generateMessageId() {
+        return (Backplane2Config.ISO8601.get().format(new Date()) + ChannelUtil.randomString(10)).replaceAll("[^\\w]","");
+    }
 
     private String extractFieldValueAsJsonString(Field field, Map<String,Object> data) throws BackplaneServerException {
         try {

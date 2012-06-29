@@ -98,13 +98,6 @@ public final class BackplaneMessage extends AbstractMessage implements Serializa
         return frame;
     }
 
-    /**
-     * @return a time-based, lexicographically comparable message ID.
-     */
-    public static String generateMessageId(Date date) {
-        return Backplane1Config.ISO8601.get().format(date) + "-" + ChannelUtil.randomString(10);
-    }
-
     public static Date parseIdDate(String idValue) {
         try {
             return Backplane1Config.ISO8601.get().parse(idValue.substring(0, idValue.indexOf("Z") + 1));
@@ -166,8 +159,6 @@ public final class BackplaneMessage extends AbstractMessage implements Serializa
             IOUtils.closeSilently(in);
         }
     }
-
-    // serialization
 
     public static enum Field implements MessageField {
         ID("id") {
@@ -236,6 +227,13 @@ public final class BackplaneMessage extends AbstractMessage implements Serializa
     // - PRIVATE
 
     private static final Logger logger = Logger.getLogger(BackplaneMessage.class);
+
+    /**
+     * @return a time-based, lexicographically comparable message ID.
+     */
+    private static String generateMessageId(Date date) {
+        return Backplane1Config.ISO8601.get().format(date) + "-" + ChannelUtil.randomString(10);
+    }
 
     private String extractFieldValueAsJsonString(Field field, Map<String,Object> data) throws BackplaneServerException {
         try {
