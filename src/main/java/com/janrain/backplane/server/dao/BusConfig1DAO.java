@@ -6,6 +6,7 @@ import com.janrain.backplane.server.redis.Redis;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import org.apache.commons.lang.NotImplementedException;
+import org.apache.commons.lang.SerializationUtils;
 import org.apache.log4j.Logger;
 
 /**
@@ -25,7 +26,7 @@ public class BusConfig1DAO extends DAO<BusConfig1> {
 
     @Override
     public void persist(BusConfig1 busConfig1) throws SimpleDBException {
-        Redis.getInstance().set(getBusKey(busConfig1.getBusName()), busConfig1.toBytes());
+        Redis.getInstance().set(getBusKey(busConfig1.getBusName()), SerializationUtils.serialize(busConfig1));
     }
 
     @Override
@@ -34,7 +35,12 @@ public class BusConfig1DAO extends DAO<BusConfig1> {
     }
 
     public BusConfig1 get(String bus) {
-        return BusConfig1.fromBytes(Redis.getInstance().get(getBusKey(bus)));
+        byte[] bytes = Redis.getInstance().get(getBusKey(bus));
+        if (bytes != null) {
+            return (BusConfig1) SerializationUtils.deserialize(bytes);
+        } else {
+            return null;
+        }
     }
 
 }

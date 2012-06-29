@@ -21,6 +21,7 @@ import com.janrain.backplane.server.dao.DaoFactory;
 import com.janrain.backplane.server.redis.Redis;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Histogram;
+import org.apache.commons.lang.SerializationUtils;
 import org.apache.log4j.Logger;
 import redis.clients.jedis.*;
 
@@ -175,7 +176,7 @@ public class MessageProcessor extends JedisPubSub {
                         for (byte[] messageBytes : messagesToProcess) {
 
                             if (messageBytes != null) {
-                                BackplaneMessage backplaneMessage = BackplaneMessage.fromBytes(messageBytes);
+                                BackplaneMessage backplaneMessage = (BackplaneMessage) SerializationUtils.deserialize(messageBytes);
 
                                 if (backplaneMessage != null) {
 
@@ -188,7 +189,6 @@ public class MessageProcessor extends JedisPubSub {
                                         retentionTimeSeconds = busConfig1.getRetentionTimeSeconds();
                                         retentionTimeStickySeconds = busConfig1.getRetentionTimeStickySeconds();
                                     }
-
 
                                     // the id is set by the node that queued the message - record
                                     // how long the message was in the queue - we assume here that the time
@@ -228,7 +228,7 @@ public class MessageProcessor extends JedisPubSub {
 
                                     // <ATOMIC>
                                     // save the individual message by key
-                                    transaction.set(backplaneMessage.getIdValue().getBytes(), backplaneMessage.toBytes());
+                                    transaction.set(backplaneMessage.getIdValue().getBytes(), SerializationUtils.serialize(backplaneMessage));
                                     // set the message TTL
                                     if (backplaneMessage.isSticky()) {
                                         transaction.expire(backplaneMessage.getIdValue().getBytes(), retentionTimeStickySeconds);
@@ -237,7 +237,8 @@ public class MessageProcessor extends JedisPubSub {
                                     }
 
                                     // append entire message to list of messages in a channel for retrieval efficiency
-                                    transaction.rpush(BackplaneMessageDAO.getChannelKey(backplaneMessage.getBus(), backplaneMessage.getChannel()), backplaneMessage.toBytes());
+                                    transaction.rpush(BackplaneMessageDAO.getChannelKey(backplaneMessage.getBus(),
+                                            backplaneMessage.getChannel()), SerializationUtils.serialize(backplaneMessage));
 
                                     // add message id to sorted set of all message ids as an index
                                     String metaData = backplaneMessage.getBus() + " " + backplaneMessage.getChannel() + " " + backplaneMessage.getIdValue();

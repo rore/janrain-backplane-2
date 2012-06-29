@@ -25,6 +25,7 @@ import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Histogram;
 import org.apache.commons.lang.NotImplementedException;
+import org.apache.commons.lang.SerializationUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import redis.clients.jedis.Jedis;
@@ -66,7 +67,7 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
      */
 
     public void addToQueue(BackplaneMessage message) {
-        Redis.getInstance().rpush(V1_MESSAGE_QUEUE.getBytes(), message.toBytes());
+        Redis.getInstance().rpush(V1_MESSAGE_QUEUE.getBytes(), SerializationUtils.serialize(message));
     }
 
     @Override
@@ -77,7 +78,7 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
     public BackplaneMessage get(String key) {
         byte[] messageBytes = Redis.getInstance().get(key.getBytes());
         if (messageBytes != null) {
-            return BackplaneMessage.fromBytes(messageBytes);
+            return (BackplaneMessage) SerializationUtils.deserialize(messageBytes);
         }
         return null;
     }
@@ -106,7 +107,7 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
         List<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
         if (messageBytes != null) {
             for (byte[] b: messageBytes) {
-                BackplaneMessage backplaneMessage = BackplaneMessage.fromBytes(b);
+                BackplaneMessage backplaneMessage = (BackplaneMessage) SerializationUtils.deserialize(b);
                 if (backplaneMessage != null) {
                     messages.add(backplaneMessage);
                 }
@@ -152,7 +153,7 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
                 }
                 pipeline.sync();
                 for (Response<byte[]> response: responses) {
-                    BackplaneMessage backplaneMessage = BackplaneMessage.fromBytes(response.get());
+                    BackplaneMessage backplaneMessage = (BackplaneMessage) SerializationUtils.deserialize(response.get());
                     if (backplaneMessage != null) {
                         messages.add(backplaneMessage);
                     }

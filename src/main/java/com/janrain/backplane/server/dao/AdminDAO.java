@@ -5,6 +5,7 @@ import com.janrain.backplane.server.config.Backplane1Config;
 import com.janrain.backplane.server.redis.Redis;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
+import org.apache.commons.lang.SerializationUtils;
 import org.apache.log4j.Logger;
 
 /**
@@ -24,7 +25,7 @@ public class AdminDAO extends DAO<User> {
     public void persist(User user) throws SimpleDBException {
         byte[] key = getAdminUserKey(user.getIdValue());
         logger.info("writing key to redis: " + new String(key));
-        Redis.getInstance().set(getAdminUserKey(user.getIdValue()), user.toBytes());
+        Redis.getInstance().set(getAdminUserKey(user.getIdValue()), SerializationUtils.serialize(user));
     }
 
     @Override

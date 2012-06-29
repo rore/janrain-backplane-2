@@ -83,55 +83,6 @@ public class User extends AbstractMessage implements Externalizable {
     }
 
 
-    public byte[] toBytes() {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        ObjectOutputStream oos = null;
-        byte[] bytes = null;
-        try {
-            oos = new ObjectOutputStream(bos);
-            oos.writeObject(this);
-            oos.flush();
-            bytes = bos.toByteArray();
-        } catch (IOException e) {
-            logger.error(e);
-        } finally {
-            try {
-                if (oos != null) {
-                    oos.close();
-                }
-                bos.close();
-            } catch (IOException e) {
-                logger.error(e);
-            }
-        }
-        return bytes;
-    }
-
-    public static User fromBytes(byte[] bytes) {
-
-        if (bytes == null) {
-            return null;
-        }
-
-        ObjectInputStream in = null;
-        try {
-            in = new ObjectInputStream(new ByteArrayInputStream(bytes));
-            return (User) in.readObject();
-        } catch (Exception e1) {
-            logger.error(e1);
-        } finally {
-            try {
-                if (in != null) {
-                    in.close();
-                }
-            } catch (IOException e) {
-                logger.error(e);
-            }
-        }
-        return null;
-    }
-
-
     // PRIVATE
 
     private static final long serialVersionUID = -2193539128976254287L;

@@ -6,6 +6,7 @@ import com.janrain.backplane.server.redis.Redis;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import org.apache.commons.lang.NotImplementedException;
+import org.apache.commons.lang.SerializationUtils;
 import org.apache.log4j.Logger;
 
 /**
@@ -24,7 +25,7 @@ public class UserDAO extends DAO<User> {
     public void persist(User user) {
         byte[] key = getUserKey(user.getIdValue());
         logger.info("writing key to redis: " + new String(key));
-        Redis.getInstance().set(getUserKey(user.getIdValue()), user.toBytes());
+        Redis.getInstance().set(getUserKey(user.getIdValue()), SerializationUtils.serialize(user));
     }
 
     @Override
@@ -33,7 +34,12 @@ public class UserDAO extends DAO<User> {
     }
 
     public User get(String key) {
-        return User.fromBytes(Redis.getInstance().get(getUserKey(key)));
+        byte[] bytes = Redis.getInstance().get(getUserKey(key));
+        if (bytes != null) {
+            return (User) SerializationUtils.deserialize(bytes);
+        } else {
+            return null;
+        }
     }
 
     private static final Logger logger = Logger.getLogger(UserDAO.class);

@@ -21,6 +21,7 @@ import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import com.janrain.crypto.ChannelUtil;
+import org.apache.commons.lang.SerializationUtils;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
 
@@ -211,54 +212,6 @@ public class BackplaneMessage extends AbstractMessage implements Externalizable 
     @Override
     public void readExternal(ObjectInput objectInput) throws IOException, ClassNotFoundException {
         this.putAll((Map<? extends String, ? extends String>) objectInput.readObject());
-    }
-
-    public byte[] toBytes() {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        ObjectOutputStream oos = null;
-        byte[] bytes = null;
-        try {
-            oos = new ObjectOutputStream(bos);
-            oos.writeObject(this);
-            oos.flush();
-            bytes = bos.toByteArray();
-        } catch (IOException e) {
-            logger.error(e);
-        } finally {
-            try {
-                if (oos != null) {
-                    oos.close();
-                }
-                bos.close();
-            } catch (IOException e) {
-                logger.error(e);
-            }
-        }
-        return bytes;
-    }
-
-    public static BackplaneMessage fromBytes(byte[] bytes) {
-
-        if (bytes == null) {
-            return null;
-        }
-
-        ObjectInputStream in = null;
-        try {
-            in = new ObjectInputStream(new ByteArrayInputStream(bytes));
-            return (BackplaneMessage) in.readObject();
-        } catch (Exception e1) {
-            logger.error(e1);
-        } finally {
-            try {
-                if (in != null) {
-                    in.close();
-                }
-            } catch (IOException e) {
-                logger.error(e);
-            }
-        }
-        return null;
     }
 
     public BackplaneMessage() {
