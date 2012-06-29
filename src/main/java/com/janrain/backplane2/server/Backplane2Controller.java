@@ -605,7 +605,7 @@ public class Backplane2Controller {
 
         if (clientEntry == null) {
             authError("Client not found: " + client);
-        } else if (!HmacHashUtils.checkHmacHash(pass, clientEntry.get(Client.Field.PWDHASH))) {
+        } else if (!HmacHashUtils.checkHmacHash(pass, clientEntry.get(Client.ClientField.PWDHASH))) {
             authError("Incorrect password for client " + client);
         }
 
@@ -813,7 +813,7 @@ public class Backplane2Controller {
 
         BackplaneMessage message;
         try {
-            message = new BackplaneMessage(token.get(Token.TokenField.CLIENT_SOURCE_URL), msg);
+            message = new BackplaneMessage(true, token.get(Token.TokenField.CLIENT_SOURCE_URL), msg);
         } catch (Exception e) {
             throw new InvalidRequestException("Invalid message data: " + e.getMessage(), HttpServletResponse.SC_FORBIDDEN);
         }

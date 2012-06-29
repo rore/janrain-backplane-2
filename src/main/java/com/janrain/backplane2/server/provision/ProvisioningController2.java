@@ -70,7 +70,7 @@ public class ProvisioningController2 {
     public Map<String, Map<String, String>> clientList(HttpServletRequest request, @RequestBody ListRequest listRequest) throws AuthException {
         ServletUtil.checkSecure(request);
         bpConfig.checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
-        return doList(bpConfig.getTableName(BP_CLIENTS), Client.class, listRequest.getEntities(), Client.Field.USER);
+        return doList(bpConfig.getTableName(BP_CLIENTS), Client.class, listRequest.getEntities(), Client.ClientField.USER);
     }
 
     @RequestMapping(value = "/bus/delete", method = RequestMethod.POST)

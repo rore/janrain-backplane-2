@@ -21,17 +21,18 @@ import com.janrain.backplane2.server.dao.DaoFactory;
 import com.janrain.backplane2.server.provision.ProvisioningConfig;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.MessageField;
+import org.apache.log4j.Logger;
 
+import java.io.InvalidObjectException;
+import java.io.ObjectInputStream;
+import java.io.ObjectStreamException;
 import java.io.Serializable;
-import java.util.EnumSet;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * @author Johnny Bufu
  */
-public class BusConfig2 extends ProvisioningConfig implements Serializable {
+public final class BusConfig2 extends ProvisioningConfig implements Serializable {
 
     // - PUBLIC
 
@@ -121,5 +122,43 @@ public class BusConfig2 extends ProvisioningConfig implements Serializable {
         private static final int RETENTION_STICKY_MIN_SECONDS = 28800; // eight hours
         private static final int RETENTION_STICKY_MAX_VALUE = 604800; // one week
 
+    }
+
+    // - PRIVATE
+
+    private static final Logger logger = Logger.getLogger(BusConfig2.class);
+
+    private BusConfig2(Map<String, String> data) throws SimpleDBException {
+        super.init(data.get(Field.BUS_NAME.getFieldName()), data);
+    }
+
+    private Object writeReplace() {
+        return new SerializationProxy(this);
+    }
+
+    private void readObject(ObjectInputStream stream) throws InvalidObjectException {
+        throw new InvalidObjectException("Proxy required");
+    }
+
+    /** Class representing the logical serialization format for a backplane v2 bus config */
+    private static class SerializationProxy implements Serializable {
+
+        public SerializationProxy(BusConfig2 busConfig) {
+            data.putAll(busConfig);
+        }
+
+        private static final long serialVersionUID = 7775028410592611544L;
+
+        // data HashMap is all we need
+        private final HashMap<String,String> data = new HashMap<String, String>();
+
+        private Object readResolve() throws ObjectStreamException {
+            try {
+                return new BusConfig2(data);
+            } catch (Exception e) {
+                logger.error("Error deserializing bus config", e);
+                throw new InvalidObjectException(e.getMessage());
+            }
+        }
     }
 }

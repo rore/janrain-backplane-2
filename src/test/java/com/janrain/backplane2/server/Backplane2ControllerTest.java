@@ -202,10 +202,7 @@ public class Backplane2ControllerTest {
 
 
     private Client createTestBusAndClient() throws SimpleDBException {
-        daoFactory.getBusOwnerDAO().persist(new User() {{
-            put(Field.USER.getFieldName(), "testBusOwner");
-            put(Field.PWDHASH.getFieldName(), HmacHashUtils.hmacHash("busOwnerSecret"));
-        }});
+        daoFactory.getBusOwnerDAO().persist(new User("testBusOwner", HmacHashUtils.hmacHash("busOwnerSecret")));
         daoFactory.getBusDao().persist(new BusConfig2("testbus", "testBusOwner", "600", "28800"));
         Client client = new Client(ChannelUtil.randomString(15), HmacHashUtils.hmacHash("secret"), "http://source_url.com", "http://redirect.com");
         daoFactory.getClientDAO().persist(client);
@@ -630,7 +627,7 @@ public class Backplane2ControllerTest {
         Map<String,Object> msg = mapper.readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {});
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), randomBuses.get(randomBuses.size()-1));
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), "randomchannel");
-        BackplaneMessage message1 = new BackplaneMessage(testClient.getSourceUrl(), msg);
+        BackplaneMessage message1 = new BackplaneMessage(true, testClient.getSourceUrl(), msg);
         this.saveMessage(message1);
 
          // Make the call
@@ -850,7 +847,7 @@ public class Backplane2ControllerTest {
         Map<String,Object> msg = mapper.readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {});
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), tokenBus);
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokenAndChannel.getRight());
-        BackplaneMessage message = new BackplaneMessage(testClient.getSourceUrl(), msg);
+        BackplaneMessage message = new BackplaneMessage(true, testClient.getSourceUrl(), msg);
         this.saveMessage(message);
 
         // Make the call
@@ -895,7 +892,7 @@ public class Backplane2ControllerTest {
         Map<String,Object> msg = mapper.readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {});
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), testBus);
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), "randomchannel");
-        BackplaneMessage message = new BackplaneMessage(testClient.getSourceUrl(), msg);
+        BackplaneMessage message = new BackplaneMessage(true, testClient.getSourceUrl(), msg);
         this.saveMessage(message);
 
         // Make the call
@@ -947,12 +944,12 @@ public class Backplane2ControllerTest {
 
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), "this.com");
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), "qCDsQm3JTnhZ91RiPpri8R31ehJQ9lhp");
-        BackplaneMessage message1 = new BackplaneMessage(testClient.getSourceUrl(), msg);
+        BackplaneMessage message1 = new BackplaneMessage(true, testClient.getSourceUrl(), msg);
         this.saveMessage(message1);
 
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), "that.com");
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), "randomchannel");
-        BackplaneMessage message2 = new BackplaneMessage(testClient.getSourceUrl(), msg);
+        BackplaneMessage message2 = new BackplaneMessage(true, testClient.getSourceUrl(), msg);
         this.saveMessage(message2);
 
          // Make the call
@@ -983,13 +980,13 @@ public class Backplane2ControllerTest {
 
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), "otherbus");
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokenAndchannel.getRight());
-        BackplaneMessage message1 = new BackplaneMessage(testClient.getSourceUrl(), msg);
+        BackplaneMessage message1 = new BackplaneMessage(true, testClient.getSourceUrl(), msg);
         this.saveMessage(message1);
 
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), "testbus");
         // same channel / different bus should never happen in production with true random, server-generated channel name
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokenAndchannel.getRight());
-        BackplaneMessage message2 = new BackplaneMessage(testClient.getSourceUrl(), msg);
+        BackplaneMessage message2 = new BackplaneMessage(true, testClient.getSourceUrl(), msg);
         this.saveMessage(message2);
 
          // Make the call
@@ -1153,7 +1150,7 @@ public class Backplane2ControllerTest {
         Map<String,Object> msg = mapper.readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {});
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), testBus);
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokenAndChannel.getRight());
-        BackplaneMessage message1 = new BackplaneMessage(testClient.getSourceUrl(), msg);
+        BackplaneMessage message1 = new BackplaneMessage(true, testClient.getSourceUrl(), msg);
         this.saveMessage(message1);
 
         // Make the call
@@ -1425,7 +1422,7 @@ public class Backplane2ControllerTest {
         ArrayList<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
 
         for (int i=0;i <= numMessages; i++) {
-            messages.add(new BackplaneMessage(testClient.getSourceUrl(), msg));
+            messages.add(new BackplaneMessage(true, testClient.getSourceUrl(), msg));
         }
 
         // use #0 to set the 'since' from server time, don't count #0

@@ -20,16 +20,33 @@ import com.janrain.backplane2.server.dao.DaoFactory;
 import com.janrain.backplane2.server.provision.ProvisioningConfig;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.MessageField;
+import org.apache.log4j.Logger;
 
+import java.io.InvalidObjectException;
+import java.io.ObjectInputStream;
+import java.io.ObjectStreamException;
+import java.io.Serializable;
 import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 /**
  * @author Johnny Bufu
  */
-public class User extends ProvisioningConfig {
+public final class User extends ProvisioningConfig implements Serializable {
 
     // - PUBLIC
+
+    /**
+     * Empty default constructor for AWS to use
+     */
+    public User() {}
+
+    public User(String userName, String pwdHash) {
+        put(Field.USER.getFieldName(), userName);
+        put(Field.PWDHASH.getFieldName(), pwdHash);
+    }
 
     @Override
     public String getIdValue() {
@@ -66,6 +83,44 @@ public class User extends ProvisioningConfig {
         @Override
         public void validate(String value) throws SimpleDBException {
             if (isRequired()) validateNotBlank(name(), value);
+        }
+    }
+
+    // - PRIVATE
+
+    private static final Logger logger = Logger.getLogger(User.class);
+
+    private User(Map<String, String> data) throws SimpleDBException {
+        super.init(data.get(Field.USER.getFieldName()), data);
+    }
+
+    private Object writeReplace() {
+        return new SerializationProxy(this);
+    }
+
+    private void readObject(ObjectInputStream stream) throws InvalidObjectException {
+        throw new InvalidObjectException("Proxy required");
+    }
+
+    /** Class representing the logical serialization format for a backplane v2 bus owner */
+    private static class SerializationProxy implements Serializable {
+
+        public SerializationProxy(User user) {
+            data.putAll(user);
+        }
+
+        private static final long serialVersionUID = 4751544645113124933L;
+
+        // data HashMap is all we need
+        private final HashMap<String,String> data = new HashMap<String, String>();
+
+        private Object readResolve() throws ObjectStreamException {
+            try {
+                return new User(data);
+            } catch (Exception e) {
+                logger.error("Error deserializing user", e);
+                throw new InvalidObjectException(e.getMessage());
+            }
         }
     }
 }

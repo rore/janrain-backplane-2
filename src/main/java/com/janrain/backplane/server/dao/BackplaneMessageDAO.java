@@ -16,12 +16,13 @@
 
 package com.janrain.backplane.server.dao;
 
+import com.janrain.backplane.server.BackplaneMessage;
 import com.janrain.backplane.server.BackplaneServerException;
 import com.janrain.backplane.server.config.Backplane1Config;
-import com.janrain.backplane.server.BackplaneMessage;
 import com.janrain.backplane.server.redis.Redis;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
+import com.janrain.commons.util.SerializationUtils;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Histogram;
 import org.apache.commons.lang.StringUtils;
@@ -65,11 +66,11 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
         String channel = message.get(BackplaneMessage.Field.CHANNEL_NAME);
 
         Redis.getInstance().rpush(getBusKey(bus), getMessageIdKey(bus, channel, id));
-        Redis.getInstance().set(getMessageIdKey(bus, channel, id), message.toBytes());
+        Redis.getInstance().set(getMessageIdKey(bus, channel, id), SerializationUtils.toBytes(message));
 
         //TODO: ttl?
         //append message to list of messages in a channel
-        Redis.getInstance().rpush(getChannelKey(bus, channel), message.toBytes());
+        Redis.getInstance().rpush(getChannelKey(bus, channel), SerializationUtils.toBytes(message));
 
         //TODO: add ttl here?
         Redis.getInstance().rpush(V1_MESSAGES.getBytes(), id.getBytes());
@@ -81,7 +82,7 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
      * @param message
      */
     public void addToQueue(BackplaneMessage message) {
-        Redis.getInstance().rpush(V1_MESSAGE_QUEUE.getBytes(), message.toBytes());
+        Redis.getInstance().rpush(V1_MESSAGE_QUEUE.getBytes(), SerializationUtils.toBytes(message));
     }
 
     @Override
@@ -90,7 +91,7 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
     }
 
     public BackplaneMessage get(String key) {
-        return BackplaneMessage.fromBytes(Redis.getInstance().get(key.getBytes()));
+        return SerializationUtils.fromBytes(Redis.getInstance().get(key.getBytes()));
     }
 
     public boolean canTake(String bus, String channel, int msgPostCount) throws SimpleDBException {
@@ -116,7 +117,7 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
         List<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
         if (messageBytes != null) {
             for (byte[] b: messageBytes) {
-                BackplaneMessage message = BackplaneMessage.fromBytes(b);
+                BackplaneMessage message = SerializationUtils.fromBytes(b);
                 if (message != null) {
                     messages.add(message);
                 }
@@ -158,7 +159,7 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
                 }
                 pipeline.sync();
                 for (Response<byte[]> response: responses) {
-                    BackplaneMessage message = BackplaneMessage.fromBytes(response.get());
+                    BackplaneMessage message = SerializationUtils.fromBytes(response.get());
                     if (message != null) {
                         messages.add(message);
                     }

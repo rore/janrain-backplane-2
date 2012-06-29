@@ -25,6 +25,10 @@ import com.janrain.oauth2.TokenException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
+import java.io.InvalidObjectException;
+import java.io.ObjectInputStream;
+import java.io.ObjectStreamException;
+import java.io.Serializable;
 import java.text.ParseException;
 import java.util.*;
 
@@ -33,7 +37,7 @@ import java.util.*;
  *
  * @author Tom Raney, Johnny Bufu
  */
-public class Grant extends AbstractMessage {
+public final class Grant extends AbstractMessage implements Serializable {
 
     /**
      * Empty default constructor for AWS to use.
@@ -267,5 +271,35 @@ public class Grant extends AbstractMessage {
     private Grant(String id, Map<String,String> data) throws SimpleDBException {
         super.init(id, data);
         logger.info("Grant created: " + get(GrantField.ISSUED_BY_USER_ID) + " authorized client " + get(GrantField.ISSUED_TO_CLIENT_ID) + " for scopes: " + get(GrantField.AUTHORIZED_SCOPES));
+    }
+
+    private Object writeReplace() {
+        return new SerializationProxy(this);
+    }
+
+    private void readObject(ObjectInputStream stream) throws InvalidObjectException {
+        throw new InvalidObjectException("Proxy required");
+    }
+
+    /** Class representing the logical serialization format for a backplane v2 grant */
+    private static class SerializationProxy implements Serializable {
+
+        public SerializationProxy(Grant grant) {
+            data.putAll(grant);
+        }
+
+        private static final long serialVersionUID = 8203839805402960525L;
+
+        // data HashMap is all we need
+        private final HashMap<String,String> data = new HashMap<String, String>();
+
+        private Object readResolve() throws ObjectStreamException {
+            try {
+                return new Grant(data.get(GrantField.ID.getFieldName()), data);
+            } catch (Exception e) {
+                logger.error("Error deserializing token", e);
+                throw new InvalidObjectException(e.getMessage());
+            }
+        }
     }
 }

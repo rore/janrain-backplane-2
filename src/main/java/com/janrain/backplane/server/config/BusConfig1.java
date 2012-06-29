@@ -19,11 +19,13 @@ package com.janrain.backplane.server.config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
-import com.janrain.commons.util.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
-import java.io.*;
+import java.io.InvalidObjectException;
+import java.io.ObjectInputStream;
+import java.io.ObjectStreamException;
+import java.io.Serializable;
 import java.util.*;
 
 /**
@@ -64,40 +66,6 @@ public final class BusConfig1 extends AbstractMessage implements Serializable {
             }
         }
         return result;
-    }
-
-    public byte[] toBytes() {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        ObjectOutputStream oos = null;
-        try {
-            oos = new ObjectOutputStream(bos);
-            oos.writeObject(this);
-            oos.flush();
-            return bos.toByteArray();
-        } catch (IOException e) {
-            logger.error("Error serializing bus config", e);
-            return null;
-        } finally {
-            IOUtils.closeSilently(oos);
-            IOUtils.closeSilently(bos);
-        }
-    }
-
-    public static BusConfig1 fromBytes(byte[] bytes) {
-        if (bytes == null) {
-            return null;
-        }
-
-        ObjectInputStream in = null;
-        try {
-            in = new ObjectInputStream(new ByteArrayInputStream(bytes));
-            return (BusConfig1) in.readObject();
-        } catch (Exception e) {
-            logger.error("Error deserializign bus config", e);
-            return null;
-        } finally {
-            IOUtils.closeSilently(in);
-        }
     }
 
     public static enum Field implements MessageField {

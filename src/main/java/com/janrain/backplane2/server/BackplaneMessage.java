@@ -25,10 +25,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
+import java.io.*;
 import java.util.*;
 
 import static com.janrain.backplane2.server.Scope.ScopeType.*;
@@ -36,20 +33,21 @@ import static com.janrain.backplane2.server.Scope.ScopeType.*;
 /**
  * @author Johnny Bufu
  */
-public class BackplaneMessage extends AbstractMessage implements Serializable {
+public final class BackplaneMessage extends AbstractMessage implements Serializable {
 
     // - PUBLIC
 
     @SuppressWarnings("UnusedDeclaration")
     public BackplaneMessage() {}
 
-    public BackplaneMessage(String clientSourceUrl, Map<String, Object> data) throws BackplaneServerException, SimpleDBException {
+    public BackplaneMessage(boolean generateNewId, String clientSourceUrl, Map<String, Object> data) throws BackplaneServerException, SimpleDBException {
         if (data.containsKey(Field.SOURCE.getFieldName())) {
             throw new InvalidRequestException("Upstream messages must not include the 'source' field.");
         }
         Map<String,String> d = new LinkedHashMap<String, String>(toStringMap(data));
-        String id = generateMessageId();
-        d.put(Field.ID.getFieldName(), id);
+        if (generateNewId) {
+            d.put(Field.ID.getFieldName(), generateMessageId(new Date()));
+        }
         d.put(Field.TYPE.getFieldName(), data.get(Field.TYPE.getFieldName()).toString());
         d.put(Field.SOURCE.getFieldName(), clientSourceUrl);
         d.put(Field.BUS.getFieldName(), data.get(Field.BUS.getFieldName()).toString());
@@ -63,7 +61,7 @@ public class BackplaneMessage extends AbstractMessage implements Serializable {
             throw new InvalidRequestException("Extra invalid parameter(s)");
         }
 
-        super.init(id, d);
+        super.init(d.get(BackplaneMessage.Field.ID.getFieldName()), d);
     }
 
     @Override
@@ -182,8 +180,8 @@ public class BackplaneMessage extends AbstractMessage implements Serializable {
     /**
      * @return a time-based, lexicographically comparable message ID.
      */
-    private static String generateMessageId() {
-        return (Backplane2Config.ISO8601.get().format(new Date()) + ChannelUtil.randomString(10)).replaceAll("[^\\w]","");
+    private static String generateMessageId(Date date) {
+        return (Backplane2Config.ISO8601.get().format(date) + ChannelUtil.randomString(10)).replaceAll("[^\\w]","");
     }
 
     private String extractFieldValueAsJsonString(Field field, Map<String,Object> data) throws BackplaneServerException {
@@ -197,25 +195,35 @@ public class BackplaneMessage extends AbstractMessage implements Serializable {
         }
     }
 
-    private void writeObject(ObjectOutputStream oos)
-            throws IOException {
-
-        Map<String, String> map = new HashMap<String,String>();
-        for (Map.Entry<String,String> entry : this.entrySet()) {
-            map.put(entry.getKey(), entry.getValue());
-        }
-        oos.writeObject(map);
-
+    private Object writeReplace() {
+        return new SerializationProxy(this);
     }
 
-    private void readObject(ObjectInputStream ois)
-            throws ClassNotFoundException, IOException {
+    private void readObject(ObjectInputStream stream) throws InvalidObjectException {
+        throw new InvalidObjectException("Proxy required");
+    }
 
-        Map<String,String> map = (Map<String, String>) ois.readObject();
-        try {
-            init(map.get(Field.ID.getFieldName()), map);
-        } catch (SimpleDBException e) {
-            logger.error(e);
+    /** Class representing the logical serialization format for a backplane v2 message */
+    private static class SerializationProxy implements Serializable {
+
+        public SerializationProxy(BackplaneMessage message) {
+            data.putAll(message);
+        }
+
+        private static final long serialVersionUID = 6086491061129860051L;
+
+        // data HashMap is all we need
+        private final HashMap<String,Object> data = new HashMap<String, Object>();
+
+        private Object readResolve() throws ObjectStreamException {
+            Object clientSourceUrl = data.get(Field.SOURCE.getFieldName());
+            // use public constructor
+            try {
+                return new BackplaneMessage(false, clientSourceUrl != null ? clientSourceUrl.toString() : null, data);
+            } catch (Exception e) {
+                logger.error("Error deserializing message", e);
+                throw new InvalidObjectException(e.getMessage());
+            }
         }
     }
 }

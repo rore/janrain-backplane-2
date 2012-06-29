@@ -20,7 +20,6 @@ import com.janrain.backplane.server.config.Backplane1Config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
-import com.janrain.commons.util.IOUtils;
 import com.janrain.commons.util.Pair;
 import com.janrain.crypto.ChannelUtil;
 import org.apache.log4j.Logger;
@@ -124,40 +123,6 @@ public final class BackplaneMessage extends AbstractMessage implements Serializa
 
     public Date getDate() {
         return parseIdDate(getIdValue());
-    }
-
-    public byte[] toBytes() {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        ObjectOutputStream oos = null;
-        try {
-            oos = new ObjectOutputStream(bos);
-            oos.writeObject(this);
-            oos.flush();
-            return bos.toByteArray();
-        } catch (IOException e) {
-            logger.error("Error serializing message", e);
-            return null;
-        } finally {
-            IOUtils.closeSilently(oos);
-            IOUtils.closeSilently(bos);
-        }
-    }
-
-    public static BackplaneMessage fromBytes(byte[] bytes) {
-        if (bytes == null) {
-            return null;
-        }
-
-        ObjectInputStream in = null;
-        try {
-            in = new ObjectInputStream(new ByteArrayInputStream(bytes));
-            return (BackplaneMessage) in.readObject();
-        } catch (Exception e) {
-            logger.error("Error deserializign message", e);
-            return null;
-        } finally {
-            IOUtils.closeSilently(in);
-        }
     }
 
     public static enum Field implements MessageField {
@@ -273,7 +238,7 @@ public final class BackplaneMessage extends AbstractMessage implements Serializa
             try {
                 return new BackplaneMessage(false, bus != null ? bus.toString() : null, channel != null ? channel.toString() : null, data);
             } catch (Exception e) {
-                logger.error("Error deserializign message", e);
+                logger.error("Error deserializing message", e);
                 throw new InvalidObjectException(e.getMessage());
             }
         }

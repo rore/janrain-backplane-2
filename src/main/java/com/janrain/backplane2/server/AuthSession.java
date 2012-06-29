@@ -20,13 +20,18 @@ import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
+import org.apache.log4j.Logger;
 
+import java.io.InvalidObjectException;
+import java.io.ObjectInputStream;
+import java.io.ObjectStreamException;
+import java.io.Serializable;
 import java.util.*;
 
 /**
  * @author Johnny Bufu
  */
-public class AuthSession extends AbstractMessage {
+public final class AuthSession extends AbstractMessage implements Serializable {
 
     // - PUBLIC
 
@@ -80,4 +85,40 @@ public class AuthSession extends AbstractMessage {
     // - PRIVATE
 
     private static final long AUTH_SESSION_TIMEOUT_SECONDS = 3600l;
+
+    private static final Logger logger = Logger.getLogger(AuthSession.class);
+
+    private AuthSession(Map<String, String> data) throws SimpleDBException {
+        super.init(data.get(Field.COOKIE.getFieldName()), data);
+    }
+
+    private Object writeReplace() {
+        return new SerializationProxy(this);
+    }
+
+    private void readObject(ObjectInputStream stream) throws InvalidObjectException {
+        throw new InvalidObjectException("Proxy required");
+    }
+
+    /** Class representing the logical serialization format for a backplane v2 authentication session */
+    private static class SerializationProxy implements Serializable {
+
+        public SerializationProxy(AuthSession authSession) {
+            data.putAll(authSession);
+        }
+
+        private static final long serialVersionUID = 1172887278719701898L;
+
+        // data HashMap is all we need
+        private final HashMap<String,String> data = new HashMap<String, String>();
+
+        private Object readResolve() throws ObjectStreamException {
+            try {
+                return new AuthSession(data);
+            } catch (Exception e) {
+                logger.error("Error deserializing bus auth session", e);
+                throw new InvalidObjectException(e.getMessage());
+            }
+        }
+    }
 }

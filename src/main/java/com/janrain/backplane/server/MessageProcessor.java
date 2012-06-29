@@ -20,6 +20,7 @@ import com.janrain.backplane.server.config.Backplane1Config;
 import com.janrain.backplane.server.dao.BackplaneMessageDAO;
 import com.janrain.backplane.server.redis.Redis;
 import com.janrain.commons.util.Pair;
+import com.janrain.commons.util.SerializationUtils;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Histogram;
 import org.apache.commons.lang.StringUtils;
@@ -140,7 +141,7 @@ public class MessageProcessor extends JedisPubSub {
                         for (byte[] messageBytes : messagesToProcess) {
 
                             if (messageBytes != null) {
-                                BackplaneMessage message = BackplaneMessage.fromBytes(messageBytes);
+                                BackplaneMessage message = SerializationUtils.fromBytes(messageBytes);
 
                                 if (message != null) {
                                     insertionTimes.add(message.getDate().getTime());
@@ -160,12 +161,12 @@ public class MessageProcessor extends JedisPubSub {
 
                                     // <ATOMIC>
                                     // save the individual message by key
-                                    transaction.set(newId.getBytes(), message.toBytes());
+                                    transaction.set(newId.getBytes(), SerializationUtils.toBytes(message));
 
                                     // append entire message to list of messages in a channel for retrieval efficiency
                                     transaction.rpush(BackplaneMessageDAO.getChannelKey(
                                             message.get(BackplaneMessage.Field.BUS),
-                                            message.get(BackplaneMessage.Field.CHANNEL_NAME)), message.toBytes());
+                                            message.get(BackplaneMessage.Field.CHANNEL_NAME)), SerializationUtils.toBytes(message));
 
                                     // add message id to sorted set of all message ids as an index
                                     transaction.zadd(BackplaneMessageDAO.V1_MESSAGES.getBytes(), messageTime, newId.getBytes());

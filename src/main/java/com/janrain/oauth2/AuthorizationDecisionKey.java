@@ -21,13 +21,18 @@ import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import com.janrain.crypto.ChannelUtil;
+import org.apache.log4j.Logger;
 
+import java.io.InvalidObjectException;
+import java.io.ObjectInputStream;
+import java.io.ObjectStreamException;
+import java.io.Serializable;
 import java.util.*;
 
 /**
  * @author Johnny Bufu
  */
-public class AuthorizationDecisionKey extends AbstractMessage {
+public final class AuthorizationDecisionKey extends AbstractMessage implements Serializable {
 
     // - PUBLIC
 
@@ -81,4 +86,40 @@ public class AuthorizationDecisionKey extends AbstractMessage {
 
     private static final int AUTHORIZATION_DECISION_KEY_LENGTH = 30;
     private static final long AUTHORIZATION_DECISION_TIMEOUT_SECONDS = 300l;
+
+    private static final Logger logger = Logger.getLogger(AuthorizationDecisionKey.class);
+
+    private AuthorizationDecisionKey(Map<String, String> data) throws SimpleDBException {
+        super.init(data.get(Field.KEY.getFieldName()), data);
+    }
+
+    private Object writeReplace() {
+        return new SerializationProxy(this);
+    }
+
+    private void readObject(ObjectInputStream stream) throws InvalidObjectException {
+        throw new InvalidObjectException("Proxy required");
+    }
+
+    /** Class representing the logical serialization format for a backplane v2 authorization decision key */
+    private static class SerializationProxy implements Serializable {
+
+        public SerializationProxy(AuthorizationDecisionKey authKey) {
+            data.putAll(authKey);
+        }
+
+        private static final long serialVersionUID = 4416457050191583591L;
+
+        // data HashMap is all we need
+        private final HashMap<String,String> data = new HashMap<String, String>();
+
+        private Object readResolve() throws ObjectStreamException {
+            try {
+                return new AuthorizationDecisionKey(data);
+            } catch (Exception e) {
+                logger.error("Error deserializing bus auth session", e);
+                throw new InvalidObjectException(e.getMessage());
+            }
+        }
+    }
 }

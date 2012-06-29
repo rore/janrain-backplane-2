@@ -19,10 +19,12 @@ package com.janrain.backplane.server.config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
-import com.janrain.commons.util.IOUtils;
 import org.apache.log4j.Logger;
 
-import java.io.*;
+import java.io.InvalidObjectException;
+import java.io.ObjectInputStream;
+import java.io.ObjectStreamException;
+import java.io.Serializable;
 import java.util.*;
 
 /**
@@ -48,40 +50,6 @@ public final class User extends AbstractMessage implements Serializable {
     @Override
     public Set<? extends MessageField> getFields() {
         return EnumSet.allOf(Field.class);
-    }
-
-    public byte[] toBytes() {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        ObjectOutputStream oos = null;
-        try {
-            oos = new ObjectOutputStream(bos);
-            oos.writeObject(this);
-            oos.flush();
-            return bos.toByteArray();
-        } catch (IOException e) {
-            logger.error("Error serializing user config", e);
-            return null;
-        } finally {
-            IOUtils.closeSilently(oos);
-            IOUtils.closeSilently(bos);
-        }
-    }
-
-    public static User fromBytes(byte[] bytes) {
-        if (bytes == null) {
-            return null;
-        }
-
-        ObjectInputStream in = null;
-        try {
-            in = new ObjectInputStream(new ByteArrayInputStream(bytes));
-            return (User) in.readObject();
-        } catch (Exception e) {
-            logger.error("Error deserializign user config", e);
-            return null;
-        } finally {
-            IOUtils.closeSilently(in);
-        }
     }
 
     public static enum Field implements MessageField {

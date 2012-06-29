@@ -31,6 +31,10 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.InvalidObjectException;
+import java.io.ObjectInputStream;
+import java.io.ObjectStreamException;
+import java.io.Serializable;
 import java.text.ParseException;
 import java.util.*;
 
@@ -42,7 +46,7 @@ import static com.janrain.oauth2.OAuth2.OAUTH2_SCOPE_PARAM_NAME;
  * @author Tom Raney, Johnny Bufu
  */
 
-public class Token extends AbstractMessage {
+public final class Token extends AbstractMessage implements Serializable{
 
     /**
      * Empty default constructor for AWS to use.
@@ -345,6 +349,36 @@ public class Token extends AbstractMessage {
         for(TokenSource tokenSource : tokenFoundIn) {
             if (! getType().getTokenAllowedSources().contains(tokenSource)) {
                 throw new TokenException("token source not allowed: " + tokenSource, HttpServletResponse.SC_FORBIDDEN);
+            }
+        }
+    }
+
+    private Object writeReplace() {
+        return new SerializationProxy(this);
+    }
+
+    private void readObject(ObjectInputStream stream) throws InvalidObjectException {
+        throw new InvalidObjectException("Proxy required");
+    }
+
+    /** Class representing the logical serialization format for a backplane v2 token */
+    private static class SerializationProxy implements Serializable {
+
+        public SerializationProxy(Token token) {
+            data.putAll(token);
+        }
+
+        private static final long serialVersionUID = 9108079855989003239L;
+
+        // data HashMap is all we need
+        private final HashMap<String,String> data = new HashMap<String, String>();
+
+        private Object readResolve() throws ObjectStreamException {
+            try {
+                return new Token(data.get(TokenField.ID.getFieldName()), data);
+            } catch (Exception e) {
+                logger.error("Error deserializing token", e);
+                throw new InvalidObjectException(e.getMessage());
             }
         }
     }
