@@ -197,7 +197,7 @@ public class V2MessageProcessor extends JedisPubSub {
                                     // to post and make the message available is minimal
 
                                     {
-                                        long insertTime = com.janrain.backplane.server.BackplaneMessage.getDateFromId(backplaneMessage.getIdValue()).getTime();
+                                        long insertTime = BackplaneMessage.getDateFromId(backplaneMessage.getIdValue()).getTime();
                                         long now = System.currentTimeMillis();
                                         long diff = now - insertTime;
                                         if (diff >= 0 && diff < 2880000) {
@@ -215,7 +215,7 @@ public class V2MessageProcessor extends JedisPubSub {
 
                                     if (backplaneMessage.getIdValue().compareTo(latestMessageId) <= 0) {
                                         logger.warn("new message has an id " + backplaneMessage.getIdValue() + " that is not > the latest id of " + latestMessageId);
-                                        Date lastMessageDate = com.janrain.backplane.server.BackplaneMessage.getDateFromId(latestMessageId);
+                                        Date lastMessageDate = BackplaneMessage.getDateFromId(latestMessageId);
                                         if (lastMessageDate != null) {
                                             backplaneMessage.setIdValue(com.janrain.backplane.server.BackplaneMessage.generateMessageId(new Date(lastMessageDate.getTime() + 1)));
                                             logger.warn("fixed");

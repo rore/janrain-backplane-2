@@ -16,6 +16,8 @@
 
 package com.janrain.servlet.debug;
 
+import com.janrain.commons.util.IOUtils;
+
 import javax.servlet.ServletOutputStream;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletResponse;
@@ -58,17 +60,8 @@ public class OutputStreamResponseWrapper extends HttpServletResponseWrapper {
 	}
 
 	public void finishResponse() {
-		try {
-			if (writer != null) {
-				writer.close();
-			} else {
-				if (stream != null) {
-					stream.close();
-				}
-			}
-		} catch (IOException e) {
-            // do nothing
-		}
+        IOUtils.closeSilently(writer);
+        IOUtils.closeSilently(stream);
 	}
 
 	@Override
