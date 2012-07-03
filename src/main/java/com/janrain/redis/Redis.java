@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.janrain.backplane.server.redis;
+package com.janrain.redis;
 
 import org.apache.log4j.Logger;
 import redis.clients.jedis.*;

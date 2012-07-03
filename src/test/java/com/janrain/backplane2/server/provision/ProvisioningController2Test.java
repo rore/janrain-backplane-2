@@ -16,16 +16,17 @@
 
 package com.janrain.backplane2.server.provision;
 
-import com.janrain.backplane.server.User;
 import com.janrain.backplane2.server.BackplaneMessage;
+import com.janrain.backplane2.server.BackplaneServerException;
 import com.janrain.backplane2.server.Scope;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.backplane2.server.config.Client;
-import com.janrain.backplane2.server.dao.DaoFactory;
+import com.janrain.backplane2.server.config.User;
+import com.janrain.backplane2.server.dao.DAOFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.crypto.ChannelUtil;
 import com.janrain.crypto.HmacHashUtils;
+import com.janrain.oauth2.TokenException;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.type.MapType;
@@ -60,10 +61,10 @@ public class ProvisioningController2Test {
 	 * Initialize before every individual test method
 	 */
 	@Before
-	public void init() throws SimpleDBException {
+    public void init() throws BackplaneServerException {
 
         handlerAdapter = applicationContext.getBean("handlerAdapter", HandlerAdapter.class);
-		refreshRequestAndResponse();
+        refreshRequestAndResponse();
 
         // create temporary admin user account to enable the tests to work
         user = new User();
@@ -71,21 +72,26 @@ public class ProvisioningController2Test {
         user.put(User.Field.USER.getFieldName(), ChannelUtil.randomString(20));
         user.put(User.Field.PWDHASH.getFieldName(), HmacHashUtils.hmacHash(pw));
 
-        superSimpleDB.store(bpConfig.getTableName(Backplane2Config.SimpleDBTables.BP_ADMIN_AUTH), User.class, user);
-        
+        //superSimpleDB.store(bpConfig.getTableName(Backplane2Config.SimpleDBTables.BP_ADMIN_AUTH), User.class, user);
+        daoFactory.getAdminDAO().persist(user);
+
         busOwner = new User();
         busOwner.put(User.Field.USER.getFieldName(), ChannelUtil.randomString(20));
         busOwner.put(User.Field.PWDHASH.getFieldName(), HmacHashUtils.hmacHash(pw));
-
-        client = new Client( ChannelUtil.randomString(20), pw, "http://source.com", "http://redirect.com" );
-        daoFactory.getClientDAO().persist(client);
-        logger.info("Created test client: " + client.getClientId());
-	}
+        try {
+            client = new Client( ChannelUtil.randomString(20), pw, "http://source.com", "http://redirect.com" );
+            daoFactory.getClientDAO().persist(client);
+            logger.info("Created test client: " + client.getClientId());
+        } catch (SimpleDBException e) {
+            throw new BackplaneServerException(e.getMessage());
+        }
+    }
 
     @After
-    public void cleanup() throws SimpleDBException {
-        superSimpleDB.delete(bpConfig.getTableName(Backplane2Config.SimpleDBTables.BP_ADMIN_AUTH), user.getIdValue());
-        superSimpleDB.delete(bpConfig.getTableName(Backplane2Config.SimpleDBTables.BP_CLIENTS), client.getIdValue());
+    public void cleanup() throws BackplaneServerException, TokenException {
+        //superSimpleDB.delete(bpConfig.getTableName(Backplane2Config.SimpleDBTables.BP_ADMIN_AUTH), user.getIdValue());
+        daoFactory.getAdminDAO().delete(user.getIdValue());
+        //superSimpleDB.delete(bpConfig.getTableName(Backplane2Config.SimpleDBTables.BP_CLIENTS), client.getIdValue());
         daoFactory.getClientDAO().delete(client.getClientId());
     }
 
@@ -501,14 +507,14 @@ public class ProvisioningController2Test {
     @Inject
     private ProvisioningController2 controller;
 
-    @Inject
-    private SuperSimpleDB superSimpleDB;
+   // @Inject
+  //  private SuperSimpleDB superSimpleDB;
 
     @Inject
     private Backplane2Config bpConfig;
 
     @Inject
-    private DaoFactory daoFactory;
+    private DAOFactory daoFactory;
 
     private MockHttpServletRequest request;
     private MockHttpServletResponse response;

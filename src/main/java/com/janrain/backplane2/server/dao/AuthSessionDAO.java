@@ -17,6 +17,7 @@
 package com.janrain.backplane2.server.dao;
 
 import com.janrain.backplane2.server.AuthSession;
+import com.janrain.backplane2.server.BackplaneServerException;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
@@ -28,41 +29,10 @@ import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTabl
 /**
  * @author Johnny Bufu
  */
-public class AuthSessionDAO extends DAO<AuthSession> {
+public interface AuthSessionDAO extends DAO<AuthSession> {
 
-    AuthSessionDAO(SuperSimpleDB superSimpleDB, Backplane2Config bpConfig) {
-        super(superSimpleDB, bpConfig);
-    }
-
-    @Override
-    public void persist(AuthSession authSession) throws SimpleDBException {
-        superSimpleDB.store(bpConfig.getTableName(BP_AUTH_SESSION), AuthSession.class, authSession);
-    }
-
-    @Override
-    public void delete(String id) throws SimpleDBException {
-        superSimpleDB.delete(bpConfig.getTableName(BP_AUTH_SESSION), id);
-    }
-
-    public AuthSession retrieveAuthSession(String cookie) throws SimpleDBException {
-        return superSimpleDB.retrieve(bpConfig.getTableName(BP_AUTH_SESSION), AuthSession.class, cookie);
-    }
-
-    public void deleteExpiredAuthSessions() {
-        try {
-            logger.info("Backplane auth sessions cleanup task started.");
-            String expiredClause = AuthSession.Field.EXPIRES.getFieldName() + " < '" + Backplane2Config.ISO8601.get().format(new Date(System.currentTimeMillis())) + "'";
-            superSimpleDB.deleteWhere(bpConfig.getTableName(BP_AUTH_SESSION), expiredClause);
-        } catch (Exception e) {
-            // catch-all, else cleanup thread stops
-            logger.error("Backplane auth sessions cleanup task error: " + e.getMessage(), e);
-        } finally {
-            logger.info("Backplane auth sessions cleanup task finished.");
-        }
-    }
-
-    // - PRIVATE
-
-    private static final Logger logger = Logger.getLogger(AuthSessionDAO.class);
+    void persist(AuthSession authSession) throws BackplaneServerException;
+    void delete(String id) throws BackplaneServerException;
+    void deleteExpiredAuthSessions();
 
 }

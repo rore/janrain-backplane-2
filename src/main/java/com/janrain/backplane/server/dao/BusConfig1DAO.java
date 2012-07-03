@@ -1,13 +1,14 @@
 package com.janrain.backplane.server.dao;
 
+import com.janrain.backplane.server.BackplaneServerException;
 import com.janrain.backplane.server.BusConfig1;
-import com.janrain.backplane.server.config.Backplane1Config;
-import com.janrain.backplane.server.redis.Redis;
+import com.janrain.redis.Redis;
 import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.log4j.Logger;
+
+import java.util.List;
 
 /**
  * @author Tom Raney
@@ -25,12 +26,12 @@ public class BusConfig1DAO extends DAO<BusConfig1> {
     private static final Logger logger = Logger.getLogger(BusConfig1DAO.class);
 
     @Override
-    public void persist(BusConfig1 busConfig1) throws SimpleDBException {
+    public void persist(BusConfig1 busConfig1) throws BackplaneServerException {
         Redis.getInstance().set(getBusKey(busConfig1.getBusName()), SerializationUtils.serialize(busConfig1));
     }
 
     @Override
-    public void delete(String id) throws SimpleDBException {
+    public void delete(String id) throws BackplaneServerException {
         throw new NotImplementedException();
     }
 
@@ -41,6 +42,11 @@ public class BusConfig1DAO extends DAO<BusConfig1> {
         } else {
             return null;
         }
+    }
+
+    @Override
+    public List<BusConfig1> getAll() throws BackplaneServerException {
+        throw new NotImplementedException();
     }
 
 }

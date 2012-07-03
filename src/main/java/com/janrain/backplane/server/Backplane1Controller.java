@@ -138,7 +138,7 @@ public class Backplane1Controller {
 
             for(Map<String,Object> messageData : messages) {
                 BackplaneMessage message = new BackplaneMessage(generateMessageId(), bus, channel, messageData);
-                backplaneMessageDAO.addToQueue(message);
+                backplaneMessageDAO.persist(message);
             }
 
             return "";
@@ -221,9 +221,6 @@ public class Backplane1Controller {
 
     @Inject
     private Backplane1Config bpConfig;
-
-    //@Inject
-    //private SuperSimpleDB superSimpleDb;
 
     @Inject
     private com.janrain.backplane.server.dao.DaoFactory daoFactory;

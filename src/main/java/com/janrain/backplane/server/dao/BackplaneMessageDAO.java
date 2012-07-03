@@ -18,10 +18,8 @@ package com.janrain.backplane.server.dao;
 
 import com.janrain.backplane.server.BackplaneMessage;
 import com.janrain.backplane.server.BackplaneServerException;
-import com.janrain.backplane.server.config.Backplane1Config;
-import com.janrain.backplane.server.redis.Redis;
+import com.janrain.redis.Redis;
 import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Histogram;
 import org.apache.commons.lang.NotImplementedException;
@@ -54,25 +52,20 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
         return new String( new String(getChannelKey(bus, channel)) + "_" + id).getBytes();
     }
 
-
-    @Override
-    public void persist(BackplaneMessage message) throws SimpleDBException {
-        throw new NotImplementedException();
-    }
-
     /**
      * Add message to work queue - any node may add since it is an atomic operation
      * However, the message ID will be determined later by the message processor
      * @param message
      */
 
-    public void addToQueue(BackplaneMessage message) {
+    @Override
+    public void persist(BackplaneMessage message) throws BackplaneServerException {
         Redis.getInstance().rpush(V1_MESSAGE_QUEUE.getBytes(), SerializationUtils.serialize(message));
     }
 
     @Override
-    public void delete(String id) throws SimpleDBException {
-
+    public void delete(String id) throws BackplaneServerException {
+        throw new NotImplementedException();
     }
 
     public BackplaneMessage get(String key) {
@@ -81,6 +74,11 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
             return (BackplaneMessage) SerializationUtils.deserialize(messageBytes);
         }
         return null;
+    }
+
+    @Override
+    public List<BackplaneMessage> getAll() throws BackplaneServerException {
+        throw new NotImplementedException();
     }
 
 /*    public boolean canTake(String bus, String channel, int msgPostCount) throws SimpleDBException {

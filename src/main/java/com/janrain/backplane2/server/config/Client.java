@@ -22,12 +22,13 @@ import com.janrain.commons.supersimpledb.message.MessageField;
 import com.janrain.oauth2.OAuth2;
 import com.janrain.oauth2.ValidationException;
 
+import java.io.Externalizable;
 import java.util.*;
 
 /**
  * @author Tom Raney
  */
-public class Client extends User {
+public class Client extends User implements Externalizable {
 
     /**
      * Empty default constructor for AWS to use

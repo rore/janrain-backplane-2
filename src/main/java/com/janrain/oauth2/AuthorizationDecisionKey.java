@@ -21,13 +21,18 @@ import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import com.janrain.crypto.ChannelUtil;
+import org.apache.commons.lang.NotImplementedException;
 
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 import java.util.*;
 
 /**
  * @author Johnny Bufu
  */
-public class AuthorizationDecisionKey extends AbstractMessage {
+public class AuthorizationDecisionKey extends AbstractMessage implements Externalizable {
 
     // - PUBLIC
 
@@ -53,6 +58,24 @@ public class AuthorizationDecisionKey extends AbstractMessage {
     @Override
     public Set<? extends MessageField> getFields() {
         return EnumSet.allOf(Field.class);
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput objectOutput) throws IOException {
+        HashMap<String, String> map = new HashMap<String, String>();
+        Set<String> keys = this.keySet();
+        Iterator it = keys.iterator();
+        while (it.hasNext()) {
+            String key = (String) it.next();
+            map.put(key, this.get(key));
+        }
+
+        objectOutput.writeObject(map);
+    }
+
+    @Override
+    public void readExternal(ObjectInput objectInput) throws IOException, ClassNotFoundException {
+        this.putAll((Map<? extends String, ? extends String>) objectInput.readObject());
     }
 
     public static enum Field implements MessageField {

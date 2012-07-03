@@ -16,27 +16,21 @@
 
 package com.janrain.backplane2.server.dao;
 
-import com.janrain.backplane2.server.config.Backplane2Config;
-import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.commons.supersimpledb.SuperSimpleDB;
+import com.janrain.backplane2.server.BackplaneServerException;
 import com.janrain.commons.supersimpledb.message.NamedMap;
 import com.janrain.oauth2.TokenException;
+
+import java.util.List;
 
 /**
  * @author Tom Raney
  */
 
-public abstract class DAO<T extends NamedMap> {
+public interface DAO<T extends NamedMap> {
 
-    protected SuperSimpleDB superSimpleDB;
-    protected Backplane2Config bpConfig;
-
-    DAO(SuperSimpleDB superSimpleDB, Backplane2Config bpConfig) {
-        this.superSimpleDB = superSimpleDB;
-        this.bpConfig = bpConfig;
-    }
-
-    abstract public void persist(T obj) throws SimpleDBException;
-    abstract public void delete(String id) throws SimpleDBException, TokenException;
+    abstract public T get(String id) throws BackplaneServerException;
+    abstract public List<T> getAll() throws BackplaneServerException;
+    abstract public void persist(T obj) throws BackplaneServerException;
+    abstract public void delete(String id) throws BackplaneServerException, TokenException;
 
 }

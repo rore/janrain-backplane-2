@@ -16,6 +16,7 @@
 
 package com.janrain.oauth2;
 
+import com.janrain.backplane2.server.BackplaneServerException;
 import com.janrain.backplane2.server.InvalidRequestException;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.backplane2.server.config.Client;
@@ -23,14 +24,19 @@ import com.janrain.backplane2.server.dao.ClientDAO;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
+import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
 
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 import java.util.*;
 
 /**
  * @author Johnny Bufu
  */
-public class AuthorizationRequest extends AbstractMessage {
+public class AuthorizationRequest extends AbstractMessage implements Externalizable {
 
     // - PUBLIC
 
@@ -62,9 +68,15 @@ public class AuthorizationRequest extends AbstractMessage {
         return EnumSet.allOf(Field.class);
     }
     
-    public String getRedirectUri(ClientDAO clientDAO) throws AuthorizationException, SimpleDBException {
+    public String getRedirectUri(ClientDAO clientDAO) throws AuthorizationException {
         String client_id = get(Field.CLIENT_ID);
-        Client client = clientDAO.retrieveClient(client_id);
+
+        Client client = null;
+        try {
+            client = clientDAO.get(client_id);
+        } catch (BackplaneServerException e) {
+            // ignore
+        }
         if(client == null) {
             throw new AuthorizationException(OAuth2.OAUTH2_AUTHZ_DIRECT_ERROR, "invalid client_id: " + client_id , this);
         }
@@ -80,6 +92,24 @@ public class AuthorizationRequest extends AbstractMessage {
         } else {
             return client.get(Client.ClientField.REDIRECT_URI);
         }
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput objectOutput) throws IOException {
+        HashMap<String, String> map = new HashMap<String, String>();
+        Set<String> keys = this.keySet();
+        Iterator it = keys.iterator();
+        while (it.hasNext()) {
+            String key = (String) it.next();
+            map.put(key, this.get(key));
+        }
+
+        objectOutput.writeObject(map);
+    }
+
+    @Override
+    public void readExternal(ObjectInput objectInput) throws IOException, ClassNotFoundException {
+        this.putAll((Map<? extends String, ? extends String>) objectInput.readObject());
     }
 
     public static enum Field implements MessageField {

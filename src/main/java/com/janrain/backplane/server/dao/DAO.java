@@ -16,11 +16,11 @@
 
 package com.janrain.backplane.server.dao;
 
-import com.janrain.backplane.server.config.Backplane1Config;
-import com.janrain.backplane2.server.config.Backplane2Config;
-import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.commons.supersimpledb.SuperSimpleDB;
+
+import com.janrain.backplane.server.BackplaneServerException;
 import com.janrain.commons.supersimpledb.message.NamedMap;
+
+import java.util.List;
 
 /**
  * @author Tom Raney
@@ -28,10 +28,9 @@ import com.janrain.commons.supersimpledb.message.NamedMap;
 
 public abstract class DAO<T extends NamedMap> {
 
-    DAO() {
-    }
-
-    abstract public void persist(T obj) throws SimpleDBException;
-    abstract public void delete(String id) throws SimpleDBException;
+    abstract public void persist(T obj) throws BackplaneServerException;
+    abstract public void delete(String id) throws BackplaneServerException;
+    abstract public T get(String id) throws BackplaneServerException;
+    abstract public List<T> getAll() throws BackplaneServerException;
 
 }

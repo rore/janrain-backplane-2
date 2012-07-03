@@ -218,7 +218,7 @@ public class Backplane1Config {
                 logger.info("creating message cleanup thread");
                 messageProcessor.cleanupMessages();
             }
-        }, 0, 1, TimeUnit.MINUTES);
+        }, 2, 1, TimeUnit.MINUTES);
 
         return messageWorkerTask;
 
@@ -302,7 +302,7 @@ public class Backplane1Config {
         BpServerConfig bpServerConfigCache = (BpServerConfig) CachedL1.getInstance().getObject(BpServerConfig.BPSERVER_CONFIG_KEY);
         if (bpServerConfigCache == null) {
             // pull from db if not found in cache
-            bpServerConfigCache = daoFactory.getConfigDAO().get();
+            bpServerConfigCache = daoFactory.getConfigDAO().get(null);
             if (bpServerConfigCache == null) {
                 // no instance found in cache or the db, so let's use the default record
                 bpServerConfigCache = new BpServerConfig();

@@ -16,9 +16,13 @@
 
 package com.janrain.backplane2.server.config;
 
+import com.janrain.backplane.server.config.BpServerConfig;
+import com.janrain.backplane.server.dao.DAO;
 import com.janrain.backplane2.server.BackplaneMessage;
-import com.janrain.backplane2.server.dao.DaoFactory;
+import com.janrain.backplane2.server.BackplaneServerException;
+import com.janrain.backplane2.server.dao.DAOFactory;
 import com.janrain.backplane2.server.dao.MessageCache;
+import com.janrain.cache.CachedL1;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.commons.supersimpledb.message.AbstractNamedMap;
@@ -67,11 +71,7 @@ public class Backplane2Config {
     };
 
     public void checkAdminAuth(String user, String password) throws AuthException {
-        checkAuth(getAdminAuthTableName(), user, password);
-    }
-
-    public void checkMetricAuth(String user, String password) throws AuthException {
-        checkAuth(getMetricAuthTableName(), user, password);
+        checkAdminAuth(getAdminAuthTableName(), user, password);
     }
 
     public String getTableName(SimpleDBTables table) {
@@ -113,8 +113,8 @@ public class Backplane2Config {
     /**
 	 * @return the debugMode
 	 */
-	public boolean isDebugMode() throws SimpleDBException {
-		return Boolean.valueOf(cachedGet(BpServerProperty.DEBUG_MODE));
+	public boolean isDebugMode() {
+        return Boolean.valueOf(cachedGet(BpServerConfig.Field.DEBUG_MODE));
 	}
 
     /**
@@ -128,31 +128,13 @@ public class Backplane2Config {
      * @return the server default max message value per channel
      * @throws SimpleDBException
      */
-    public long getDefaultMaxMessageLimit() throws SimpleDBException {
-        Long max = Long.valueOf(cachedGet(BpServerProperty.DEFAULT_MESSAGES_MAX));
+    public long getDefaultMaxMessageLimit() {
+        Long max = Long.valueOf(cachedGet(BpServerConfig.Field.DEFAULT_MESSAGES_MAX));
         return max == null ? Backplane2Config.BP_MAX_MESSAGES_DEFAULT : max;
     }
 
-    public long getMaxMessageCacheBytes() {
-        try {
-            Long max = Long.valueOf(cachedGet(BpServerProperty.MESSAGE_CACHE_MAX_MB));
-            return max == null ? 0L : max * 1024 * 1024;
-        } catch (NumberFormatException nfe) {
-            logger.error("Invalid message cache size value: " + nfe.getMessage(), nfe);
-            return 0L;
-        } catch (SimpleDBException sdbe) {
-            logger.error("Error looking up message cache size: " + sdbe, sdbe);
-            return 0L;
-        }
-    }
-
     public Exception getDebugException(Exception e) {
-        try {
-            return isDebugMode() ? e : null;
-        } catch (SimpleDBException sdbe) {
-            logger.error("Error getting debug mode", sdbe); // shouldn't happen
-            return e;
-        }
+        return isDebugMode() ? e: null;
     }
 
     public String getInstanceId() {
@@ -216,14 +198,6 @@ public class Backplane2Config {
     private final com.yammer.metrics.core.Timer v2CleanupTimer =
         com.yammer.metrics.Metrics.newTimer(Backplane2Config.class, "cleanup_messages_time", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
 
-    private static enum BpServerProperty {
-        DEBUG_MODE,
-        CONFIG_CACHE_AGE_SECONDS,
-        CLEANUP_INTERVAL_MINUTES,
-        DEFAULT_MESSAGES_MAX,
-        MESSAGE_CACHE_MAX_MB,
-        ENCRYPTION_KEY
-    }
 
     @SuppressWarnings({"UnusedDeclaration"})
     private Backplane2Config() {
@@ -248,38 +222,38 @@ public class Backplane2Config {
     private ScheduledExecutorService createCleanupTask() {
         long cleanupIntervalMinutes;
         logger.info("calling createCleanupTask()");
-        try {
-            cleanupIntervalMinutes = Long.valueOf(cachedGet(BpServerProperty.CLEANUP_INTERVAL_MINUTES));
-        } catch (SimpleDBException e) {
-            throw new RuntimeException("Error getting server property " + BpServerProperty.CLEANUP_INTERVAL_MINUTES, e);
-        }
+        cleanupIntervalMinutes = Long.valueOf(cachedGet(BpServerConfig.Field.CLEANUP_INTERVAL_MINUTES));
 
         ScheduledExecutorService cleanupTask = Executors.newScheduledThreadPool(1);
         cleanupTask.scheduleAtFixedRate(new Runnable() {
             @Override
             public void run() {
 
-                final TimerContext context = v2CleanupTimer.time();
-
                 try {
-
-                    daoFactory.getBackplaneMessageDAO().deleteExpiredMessages();
-                    daoFactory.getTokenDao().deleteExpiredTokens();
-                    daoFactory.getAuthSessionDAO().deleteExpiredAuthSessions();
-                    daoFactory.getAuthorizationRequestDAO().deleteExpiredAuthorizationRequests();
-                    daoFactory.getAuthorizationDecisionKeyDAO().deleteExpiredAuthorizationDecisionKeys();
-
+                    deleteExpiredMessages();
                 } catch (Exception e) {
-                    logger.error("Error while cleaning up expired stuff, " + e.getMessage(), e);
-                } finally {
-                    context.stop();
+                    logger.error("Error while cleaning up expired messages, " + e.getMessage(), e);
                 }
+
             }
+
         }, cleanupIntervalMinutes, cleanupIntervalMinutes, TimeUnit.MINUTES);
 
         return cleanupTask;
+    }
 
+    private void deleteExpiredMessages() {
+        try {
+            logger.info("Backplane message cleanup task started.");
 
+            //TODO: configure for redis
+
+        } catch (Exception e) {
+            // catch-all, else cleanup thread stops
+            logger.error("Backplane messages cleanup task error: " + e.getMessage(), e);
+        } finally {
+            logger.info("Backplane messages cleanup task finished.");
+        }
     }
 
     /*
@@ -312,9 +286,9 @@ public class Backplane2Config {
         this.cleanup = createCleanupTask();
         //this.cacheUpdater = createCacheUpdaterTask();
 
-        for(SimpleDBTables table : EnumSet.allOf(SimpleDBTables.class)) {
+        /*for(SimpleDBTables table : EnumSet.allOf(SimpleDBTables.class)) {
             superSimpleDb.checkDomain(getTableName(table));
-        }
+        }*/
     }
 
     @PreDestroy
@@ -341,30 +315,29 @@ public class Backplane2Config {
         }
     }
 
-    @Inject
+ //   @Inject
     @SuppressWarnings({"UnusedDeclaration"})
-    private SuperSimpleDB superSimpleDb;
+   // private SuperSimpleDB superSimpleDb;
 
     @Inject
-    private DaoFactory daoFactory;
+    private DAOFactory simpleDBDaoFactory;
 
-    private Pair<BpServerConfigMap,Long> bpServerConfigCache;
+    private String cachedGet(BpServerConfig.Field property) {
 
-    private String cachedGet(BpServerProperty property) throws SimpleDBException {
-        Pair<BpServerConfigMap,Long> result = bpServerConfigCache;
-        Long maxCacheAge = getMaxCacheAge();
-        if (result == null || result.left == null || result.right == null || maxCacheAge == null ||
-            result.right + maxCacheAge < System.currentTimeMillis() ) {
-            synchronized (this) {
-                result = bpServerConfigCache;
-                if (result == null || result.left == null || result.right == null ||  maxCacheAge == null ||
-                    result.right + maxCacheAge < System.currentTimeMillis() ) {
-                    result = new Pair<BpServerConfigMap, Long>(superSimpleDb.retrieve(getBpServerConfigTableName(), BpServerConfigMap.class, BP_CONFIG_ENTRY_NAME), System.currentTimeMillis());
-                    bpServerConfigCache = result;
-                }
+        BpServerConfig bpServerConfigCache = (BpServerConfig) CachedL1.getInstance().getObject(BpServerConfig.BPSERVER_CONFIG_KEY);
+        if (bpServerConfigCache == null) {
+            // pull from db if not found in cache
+            bpServerConfigCache = simpleDBDaoFactory.getConfigDAO().get(null);
+            if (bpServerConfigCache == null) {
+                // no instance found in cache or the db, so let's use the default record
+                bpServerConfigCache = new BpServerConfig();
             }
+            // add it to the L1 cache
+            CachedL1.getInstance().setObject(BpServerConfig.BPSERVER_CONFIG_KEY, -1, bpServerConfigCache);
         }
-        return result.left == null ? null : result.left.get(property.name());
+
+        return bpServerConfigCache.get(property);
+
     }
 
     private String getBpServerConfigTableName() {
@@ -380,41 +353,21 @@ public class Backplane2Config {
     }
 
     private Long getMaxCacheAge() {
-        return bpServerConfigCache != null && bpServerConfigCache.left != null ?
-            Long.valueOf(bpServerConfigCache.left.get(BpServerProperty.CONFIG_CACHE_AGE_SECONDS.name())) :
-            null;
+        return Long.valueOf(cachedGet(BpServerConfig.Field.CONFIG_CACHE_AGE_SECONDS));
     }
 
-    public void checkAuth(String authTable, String user, String password) throws AuthException {
+    public void checkAdminAuth(String authTable, String user, String password) throws AuthException {
         try {
-            User userEntry = superSimpleDb.retrieve(authTable, User.class, user);
+            //User userEntry = superSimpleDb.retrieve(authTable, User.class, user);
+            User userEntry = simpleDBDaoFactory.getAdminDAO().get(user);
             String authKey = userEntry == null ? null : userEntry.get(User.Field.PWDHASH);
             if ( ! HmacHashUtils.checkHmacHash(password, authKey) ) {
                 throw new AuthException("User " + user + " not authorized in " + authTable);
             }
-        } catch (SimpleDBException e) {
+        } catch (BackplaneServerException e) {
             throw new AuthException("User " + user + " not authorized in " + authTable + " , " + e.getMessage(), e);
         }
     }
-    public static class BpServerConfigMap extends AbstractNamedMap {
 
-        @SuppressWarnings({"UnusedDeclaration"}) // instantiation through reflection
-        public BpServerConfigMap() { }
 
-        @Override
-        public void setName(String name) { }
-
-        @Override
-        public String getName() { return BP_CONFIG_ENTRY_NAME; }
-    }
-
-    private static class Pair<L,R> {
-        public Pair(L left, R right) {
-            this.left = left;
-            this.right = right;
-        }
-
-        public final L left;
-        public final R right;
-    }
 }

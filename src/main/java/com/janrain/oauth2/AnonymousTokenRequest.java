@@ -1,10 +1,11 @@
 package com.janrain.oauth2;
 
+import com.janrain.backplane2.server.BackplaneServerException;
 import com.janrain.backplane2.server.BackplaneMessage;
 import com.janrain.backplane2.server.GrantType;
 import com.janrain.backplane2.server.Scope;
 import com.janrain.backplane2.server.Token;
-import com.janrain.backplane2.server.dao.DaoFactory;
+import com.janrain.backplane2.server.dao.DAOFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.crypto.ChannelUtil;
 import org.apache.commons.lang.StringUtils;
@@ -22,7 +23,7 @@ public class AnonymousTokenRequest implements TokenRequest {
     // - PUBLIC
 
     public AnonymousTokenRequest( String callback, String bus, String scope, String refreshToken,
-                                  DaoFactory daoFactory, HttpServletRequest request, String authHeader) throws TokenException {
+                                  DAOFactory daoFactory, HttpServletRequest request, String authHeader) throws TokenException {
 
         this.daoFactory = daoFactory;
 
@@ -42,10 +43,10 @@ public class AnonymousTokenRequest implements TokenRequest {
         }
 
         try {
-            if ( StringUtils.isNotEmpty(this.bus) && daoFactory.getBusDao().retrieveBus(this.bus) == null) {
+            if ( StringUtils.isNotEmpty(this.bus) && daoFactory.getBusDao().get(this.bus) == null) {
                 throw new TokenException("Invalid bus: " + bus);
             }
-        } catch (SimpleDBException e) {
+        } catch (BackplaneServerException e) {
             logger.error("error processing anonymous token request: " + e.getMessage(), e);
             throw new TokenException(OAuth2.OAUTH2_TOKEN_SERVER_ERROR, "error processing anonymous token request", HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         }
@@ -77,15 +78,16 @@ public class AnonymousTokenRequest implements TokenRequest {
             accessToken = new Token.Builder(grantType, processedScope.toString()).expires(expires).buildToken();
             daoFactory.getTokenDao().persist(accessToken);
             return accessToken.response(generateRefreshToken(grantType.getRefreshType(), processedScope, daoFactory));
-        } catch (SimpleDBException e) {
+        } catch (Exception e) {
             logger.error("error processing anonymous access token request: " + e.getMessage(), e);
             throw new TokenException(OAuth2.OAUTH2_TOKEN_SERVER_ERROR, "error processing anonymous token request", HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         } finally {
+            logger.info("exiting anonymous token request");
             try {
                 if (this.refreshToken != null) {
                     daoFactory.getTokenDao().delete(this.refreshToken.getIdValue());
                 }
-            } catch (SimpleDBException e) {
+            } catch (BackplaneServerException e) {
                 logger.error("error deleting used refresh token: " + refreshToken.getIdValue(), e);
             }
         }
@@ -97,13 +99,13 @@ public class AnonymousTokenRequest implements TokenRequest {
 
     private static final int CHANNEL_NAME_LENGTH = 32;
 
-    private DaoFactory daoFactory;
+    private DAOFactory daoFactory;
     private final GrantType grantType;
     private final String bus;
     private final Scope requestScope;
     private Token refreshToken;
 
-    private static String generateRefreshToken(GrantType refreshType, Scope scope, DaoFactory daoFactory) throws SimpleDBException {
+    private static String generateRefreshToken(GrantType refreshType, Scope scope, DAOFactory daoFactory) throws SimpleDBException, BackplaneServerException {
         if (refreshType == null || ! refreshType.isRefresh()) return null;
         Token refreshToken = new Token.Builder(refreshType, scope.toString()).buildToken();
         daoFactory.getTokenDao().persist(refreshToken);

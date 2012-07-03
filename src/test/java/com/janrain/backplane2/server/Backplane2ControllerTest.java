@@ -21,7 +21,8 @@ import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.backplane2.server.config.BusConfig2;
 import com.janrain.backplane2.server.config.Client;
 import com.janrain.backplane2.server.config.User;
-import com.janrain.backplane2.server.dao.DaoFactory;
+import com.janrain.backplane2.server.dao.BackplaneMessageDAO;
+import com.janrain.backplane2.server.dao.DAOFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.commons.util.Pair;
@@ -69,13 +70,10 @@ public class Backplane2ControllerTest {
 	private Backplane2Controller controller;
 
     @Inject
-    private SuperSimpleDB superSimpleDB;
-
-    @Inject
     private Backplane2Config bpConfig;
 
     @Inject
-    private DaoFactory daoFactory;
+    private DAOFactory daoFactory;
 
     private static final Logger logger = Logger.getLogger(Backplane2ControllerTest.class);
 
@@ -149,7 +147,7 @@ public class Backplane2ControllerTest {
 	 * Initialize before every individual test method
 	 */
 	@Before
-	public void init() throws SimpleDBException {
+	public void init() throws BackplaneServerException {
         assertNotNull(applicationContext);
         handlerAdapter = applicationContext.getBean("handlerAdapter", HandlerAdapter.class);
         this.testClient = this.createTestBusAndClient();
@@ -165,17 +163,19 @@ public class Backplane2ControllerTest {
 
             for (String key:this.createdMessageKeys) {
                 logger.info("deleting Message " + key);
-                superSimpleDB.delete(bpConfig.getTableName(BP_MESSAGES), key);
+                daoFactory.getBackplaneMessageDAO().delete(key);
+                //superSimpleDB.delete(bpConfig.getTableName(BP_MESSAGES), key);
             }
 
             try {
-                List<BackplaneMessage> testMsgs = superSimpleDB.
-                        retrieveWhere(bpConfig.getTableName(BP_MESSAGES), BackplaneMessage.class, "channel='testchannel'", true);
+                BackplaneMessageDAO backplaneMessageDAO = daoFactory.getBackplaneMessageDAO();
+                List<BackplaneMessage> testMsgs = backplaneMessageDAO.retrieveMessagesByChannel("testchannel");
+
                 for (BackplaneMessage msg : testMsgs) {
                     logger.info("deleting Message " + msg.getIdValue());
-                    superSimpleDB.delete(bpConfig.getTableName(BP_MESSAGES), msg.getIdValue());
+                    backplaneMessageDAO.delete(msg.getIdValue());
                 }
-            } catch (SimpleDBException sdbe) {
+            } catch (BackplaneServerException e) {
                 // ignore - the domain may not exist
             }
 
@@ -187,13 +187,13 @@ public class Backplane2ControllerTest {
 
             for (String key:this.createdGrantsKeys) {
                 logger.info("deleting Grant " + key);
-                Grant grant = daoFactory.getGrantDao().retrieveGrant(key);
+                Grant grant = daoFactory.getGrantDao().get(key);
                 daoFactory.getTokenDao().revokeTokenByGrant(grant.getIdValue());
                 daoFactory.getGrantDao().delete(key);
             }
 
             deleteTestBusAndClient();
-        } catch (SimpleDBException e) {
+        } catch (BackplaneServerException e) {
             logger.error(e);
         }
     }
@@ -201,18 +201,24 @@ public class Backplane2ControllerTest {
 
 
 
-    private Client createTestBusAndClient() throws SimpleDBException {
+    private Client createTestBusAndClient() throws BackplaneServerException {
         daoFactory.getBusOwnerDAO().persist(new User() {{
             put(Field.USER.getFieldName(), "testBusOwner");
             put(Field.PWDHASH.getFieldName(), HmacHashUtils.hmacHash("busOwnerSecret"));
         }});
-        daoFactory.getBusDao().persist(new BusConfig2("testbus", "testBusOwner", "600", "28800"));
-        Client client = new Client(ChannelUtil.randomString(15), HmacHashUtils.hmacHash("secret"), "http://source_url.com", "http://redirect.com");
-        daoFactory.getClientDAO().persist(client);
-        return client;
+        try {
+            daoFactory.getBusDao().persist(new BusConfig2("testbus", "testBusOwner", "600", "28800"));
+
+            Client client = new Client(ChannelUtil.randomString(15), HmacHashUtils.hmacHash("secret"), "http://source_url.com", "http://redirect.com");
+
+            daoFactory.getClientDAO().persist(client);
+            return client;
+        } catch (SimpleDBException e) {
+            throw new BackplaneServerException(e.getMessage());
+        }
     }
 
-    private void deleteTestBusAndClient() throws SimpleDBException, TokenException {
+    private void deleteTestBusAndClient() throws BackplaneServerException, TokenException {
         daoFactory.getBusOwnerDAO().delete("testBusOwner");
         daoFactory.getBusDao().delete("testbus");
         daoFactory.getClientDAO().delete(this.testClient.getClientId());
@@ -225,19 +231,19 @@ public class Backplane2ControllerTest {
 		response = new MockHttpServletResponse();
 	}
 
-    private void saveMessage(BackplaneMessage message) throws SimpleDBException {
+    private void saveMessage(BackplaneMessage message) throws BackplaneServerException {
         daoFactory.getBackplaneMessageDAO().persist(message);
         this.createdMessageKeys.add(message.getIdValue());
         logger.info("created Message " + message.getIdValue());
     }
 
-    private void saveGrant(Grant grant) throws SimpleDBException {
+    private void saveGrant(Grant grant) throws BackplaneServerException {
         daoFactory.getGrantDao().persist(grant);
         logger.info("saved grant: " + grant.getIdValue());
         this.createdGrantsKeys.add(grant.getIdValue());
     }
 
-    private void saveToken(Token token) throws SimpleDBException {
+    private void saveToken(Token token) throws BackplaneServerException {
         daoFactory.getTokenDao().persist(token);
         logger.info("saved token: " + token.getIdValue());
         this.createdTokenKeys.add(token.getIdValue());
@@ -566,7 +572,7 @@ public class Backplane2ControllerTest {
                 matches("[{]\"token_type\":\\s*\"Bearer\",\\s*" +
                         "\\s*\"access_token\":\\s*\".{22}\",\\s*" +
                         "\"expires_in\":\\s*3153[0-9]{4},\\s*" +
-                        "\"scope\":\"bus:foo bus:bar\",\\s*" +
+                        "\"scope\":\\s*\"[\\s:a-z]*\",\\s*" +
                         "\"refresh_token\":\".{22}\"\\s*[}]"));
 
         msg = mapper.readValue(response.getContentAsString(), new TypeReference<Map<String,Object>>() {});
@@ -688,7 +694,7 @@ public class Backplane2ControllerTest {
         handlerAdapter.handle(request, response, controller);
         logger.info("testTokenEndPointClientUsedCode() ====> " + response.getContentAsString());
 
-        assertTrue(daoFactory.getGrantDao().retrieveGrant(grant.getIdValue()).getState() == GrantState.ACTIVE);
+        assertTrue(daoFactory.getGrantDao().get(grant.getIdValue()).getState() == GrantState.ACTIVE);
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
 
 
@@ -1035,6 +1041,8 @@ public class Backplane2ControllerTest {
         // Create source token for the channel
         Pair<String,String> tokenAndChannel = anonTokenRequest("testbus");
 
+        logger.info("created one anon token");
+
         // Create appropriate token
         saveGrant(new Grant.Builder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.getClientId(),
                 Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, "testbus otherbus")).buildGrant());
@@ -1217,7 +1225,6 @@ public class Backplane2ControllerTest {
             } catch (Exception e) {
                 fail("Error: " + e.getMessage());
             }
-            Thread.sleep(500);
             refreshRequestAndResponse();
         }
 
@@ -1387,8 +1394,8 @@ public class Backplane2ControllerTest {
             String tokenId = (String) returnedBody.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME);
             assertNotNull(tokenId);
 
-            Grant grant = daoFactory.getGrantDao().retrieveGrant(code);
-            Token token = daoFactory.getTokenDao().retrieveToken(tokenId);
+            Grant grant = daoFactory.getGrantDao().get(code);
+            Token token = daoFactory.getTokenDao().get(tokenId);
 
             assertTrue(grant.get(Grant.GrantField.ISSUED_TO_CLIENT_ID).equals(token.get(Token.TokenField.ISSUED_TO_CLIENT_ID)));
             assertTrue(grant.get(Grant.GrantField.ISSUED_BY_USER_ID).equals(user.getIdValue()));

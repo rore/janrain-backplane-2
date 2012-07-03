@@ -16,6 +16,7 @@
 
 package com.janrain.backplane2.server.dao;
 
+import com.janrain.backplane2.server.BackplaneServerException;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.backplane2.server.config.BusConfig2;
 import com.janrain.commons.supersimpledb.SimpleDBException;
@@ -32,56 +33,10 @@ import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTabl
 /**
  * @author Johnny Bufu
  */
-public class BusDAO extends DAO<BusConfig2> {
+public interface BusDAO extends DAO<BusConfig2> {
 
-    BusDAO(SuperSimpleDB superSimpleDB, Backplane2Config bpConfig, DaoFactory daoFactory) {
-        super(superSimpleDB, bpConfig);
-        this.daoFactory = daoFactory;
-    }
-
-    @Override
-    public void persist(BusConfig2 bus) throws SimpleDBException {
-        superSimpleDB.store(bpConfig.getTableName(BP_BUS_CONFIG), BusConfig2.class, bus);
-    }
-
-    @Override
-    public void delete(String id) throws SimpleDBException {
-        superSimpleDB.delete(bpConfig.getTableName(BP_BUS_CONFIG), id);
-    }
-
-    public List<BusConfig2> retrieveBuses() throws SimpleDBException {
-        return superSimpleDB.retrieveAll(bpConfig.getTableName(BP_BUS_CONFIG), BusConfig2.class);
-    }
-
-    public BusConfig2 retrieveBus(String busId) throws SimpleDBException {
-        Object obj = null;
-        if (obj == null) {
-            BusConfig2 busConfig2 = superSimpleDB.retrieve(bpConfig.getTableName(BP_BUS_CONFIG), BusConfig2.class, busId);
-            return busConfig2;
-        } else {
-            return (BusConfig2)obj;
-        }
-    }
-
-    public List<BusConfig2> retrieveByOwner(String busOwner) throws SimpleDBException {
-        return superSimpleDB.retrieveWhere(
-                bpConfig.getTableName(BP_BUS_CONFIG), BusConfig2.class,
-                BusConfig2.Field.OWNER.getFieldName() + "='" + busOwner +"'", true);
-    }
-
+    public List<BusConfig2> retrieveByOwner(String busOwner) throws BackplaneServerException;
     /** Associated grants and tokens are deleted/revoked. */
-    public void deleteByOwner(String busOwner) throws SimpleDBException, TokenException {
-        List<BusConfig2> busConfigs = retrieveByOwner(busOwner);
-        List<String> buses = new ArrayList<String>();
-        for (BusConfig2 busConfig : busConfigs) {
-            buses.add(busConfig.getIdValue());
-        }
-        superSimpleDB.deleteWhere(bpConfig.getTableName(BP_BUS_CONFIG), BusConfig2.Field.OWNER.getFieldName() + "='" + busOwner +"'");
-        daoFactory.getGrantDao().deleteByBuses(buses);
-    }
-
-    // - PRIVATE
-
-    private final DaoFactory daoFactory;
+    public void deleteByOwner(String busOwner) throws BackplaneServerException, TokenException;
 
 }

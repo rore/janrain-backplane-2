@@ -16,6 +16,7 @@
 
 package com.janrain.backplane2.server.dao;
 
+import com.janrain.backplane2.server.BackplaneServerException;
 import com.janrain.oauth2.AuthorizationDecisionKey;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
@@ -29,42 +30,8 @@ import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTabl
 /**
  * @author Johnny Bufu
  */
-public class AuthorizationDecisionKeyDAO extends DAO<AuthorizationDecisionKey> {
+public interface AuthorizationDecisionKeyDAO extends DAO<AuthorizationDecisionKey> {
 
-    AuthorizationDecisionKeyDAO(SuperSimpleDB superSimpleDB, Backplane2Config bpConfig) {
-        super(superSimpleDB, bpConfig);
-    }
-
-    @Override
-    public void persist(AuthorizationDecisionKey authorizationDecisionKey) throws SimpleDBException {
-        superSimpleDB.store(bpConfig.getTableName(BP_AUTHORIZATION_DECISION_KEY), AuthorizationDecisionKey.class, authorizationDecisionKey);
-    }
-
-    @Override
-    public void delete(String id) throws SimpleDBException {
-        superSimpleDB.delete(bpConfig.getTableName(BP_AUTHORIZATION_DECISION_KEY), id);
-    }
-
-    public AuthorizationDecisionKey retrieveAuthorizationRequest(String key) throws SimpleDBException {
-        return superSimpleDB.retrieve(bpConfig.getTableName(BP_AUTHORIZATION_DECISION_KEY), AuthorizationDecisionKey.class, key);
-    }
-
-    public void deleteExpiredAuthorizationDecisionKeys() {
-        try {
-            logger.info("Backplane authorization decision keys cleanup task started.");
-            String expiredClause = AuthorizationDecisionKey.Field.EXPIRES.getFieldName() + " < '" + Backplane2Config.ISO8601.get().format(new Date(System.currentTimeMillis())) + "'";
-            superSimpleDB.deleteWhere(bpConfig.getTableName(BP_AUTHORIZATION_DECISION_KEY), expiredClause);
-        } catch (Exception e) {
-            // catch-all, else cleanup thread stops
-            logger.error("Backplane authorization decision keys cleanup task error: " + e.getMessage(), e);
-        } finally {
-            logger.info("Backplane authorization decision keys cleanup task finished.");
-        }
-    }
-
-    // - PRIVATE
-
-    private static final Logger logger = Logger.getLogger(AuthorizationRequestDAO.class);
-
+    void deleteExpiredAuthorizationDecisionKeys();
 
 }

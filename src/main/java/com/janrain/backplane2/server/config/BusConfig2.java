@@ -17,21 +17,18 @@
 package com.janrain.backplane2.server.config;
 
 import com.janrain.backplane2.server.InvalidRequestException;
-import com.janrain.backplane2.server.dao.DaoFactory;
+import com.janrain.backplane2.server.dao.DAOFactory;
 import com.janrain.backplane2.server.provision.ProvisioningConfig;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.MessageField;
 
-import java.io.Serializable;
-import java.util.EnumSet;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Set;
+import java.io.*;
+import java.util.*;
 
 /**
  * @author Johnny Bufu
  */
-public class BusConfig2 extends ProvisioningConfig implements Serializable {
+public class BusConfig2 extends ProvisioningConfig implements Externalizable {
 
     // - PUBLIC
 
@@ -51,18 +48,44 @@ public class BusConfig2 extends ProvisioningConfig implements Serializable {
         return get(Field.BUS_NAME);
     }
 
+    public int getRetentionTimeSeconds() {
+        return Integer.valueOf(get(Field.RETENTION_TIME_SECONDS));
+    }
+
+    public int getRetentionTimeStickySeconds() {
+        return Integer.valueOf(get(Field.RETENTION_STICKY_TIME_SECONDS));
+    }
+
     @Override
     public Set<? extends MessageField> getFields() {
         return EnumSet.allOf(Field.class);
     }
 
     @Override
-    public void validate(DaoFactory daoFactory) throws Exception {
-        User user = daoFactory.getBusOwnerDAO().retrieveBusOwner(get(Field.OWNER.getFieldName()));
+    public void validate(DAOFactory daoFactory) throws Exception {
+        User user = daoFactory.getBusOwnerDAO().get(get(Field.OWNER.getFieldName()));
         if (user == null) {
             throw new InvalidRequestException("Invalid bus owner: " + get(Field.OWNER.getFieldName()));
         }
         validate();
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput objectOutput) throws IOException {
+        HashMap<String, String> map = new HashMap<String, String>();
+        Set<String> keys = this.keySet();
+        Iterator it = keys.iterator();
+        while (it.hasNext()) {
+            String key = (String) it.next();
+            map.put(key, this.get(key));
+        }
+
+        objectOutput.writeObject(map);
+    }
+
+    @Override
+    public void readExternal(ObjectInput objectInput) throws IOException, ClassNotFoundException {
+        this.putAll((Map<? extends String, ? extends String>) objectInput.readObject());
     }
 
     public static enum Field implements MessageField {
@@ -115,6 +138,8 @@ public class BusConfig2 extends ProvisioningConfig implements Serializable {
         }
 
         // - PRIVATE
+
+        private static final long serialVersionUID = -1095282266519118441L;
 
         private static final int RETENTION_MIN_SECONDS = 60;
         private static final int RETENTION_MAX_VALUE = 604800; // one week

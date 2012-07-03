@@ -18,7 +18,7 @@ package com.janrain.backplane.server;
 
 import com.janrain.backplane.server.dao.BackplaneMessageDAO;
 import com.janrain.backplane.server.dao.DaoFactory;
-import com.janrain.backplane.server.redis.Redis;
+import com.janrain.redis.Redis;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Histogram;
 import org.apache.commons.lang.SerializationUtils;

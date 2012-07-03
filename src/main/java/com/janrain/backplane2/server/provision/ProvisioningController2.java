@@ -18,9 +18,8 @@ package com.janrain.backplane2.server.provision;
 
 import com.janrain.backplane2.server.*;
 import com.janrain.backplane2.server.config.*;
-import com.janrain.backplane2.server.dao.DaoFactory;
+import com.janrain.backplane2.server.dao.DAOFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import com.janrain.crypto.HmacHashUtils;
@@ -130,14 +129,14 @@ public class ProvisioningController2 {
         for(String clientId : listRequest.getEntities()) {
             try {
                 Map<String,String> grantsList = new HashMap<String, String>();
-                Map<Scope, Set<Grant>> scopeGrants = daoFactory.getGrantDao().retrieveClientGrants(clientId, null);
+                Map<Scope, Set<Grant>> scopeGrants = new GrantLogic(daoFactory).retrieveClientGrants(clientId, null);
                 for (Set<Grant> grantSets : scopeGrants.values()) {
                     for(Grant grant : grantSets) {
                         grantsList.put(grant.getIdValue(), grant.getAuthorizedScope().toString());
                     }
                     result.put(clientId, grantsList);
                 }
-            } catch (final SimpleDBException e) {
+            } catch (final BackplaneServerException e) {
                 logger.error("Error looking up grants for client " + clientId, e);
                 result.put(clientId, new HashMap<String, String>() {{put("error", e.getMessage());}});
             } catch (final TokenException te) {
@@ -207,11 +206,7 @@ public class ProvisioningController2 {
     private Backplane2Config bpConfig;
 
     @Inject
-    private SuperSimpleDB superSimpleDb;
-    
-    @Inject
-    private DaoFactory daoFactory;
-            
+    private DAOFactory daoFactory;
 
     private <T extends AbstractMessage> Map<String, Map<String, String>> doList(String tableName, Class<T> entityType, List<String> entityNames, MessageField orderField) {
 
@@ -222,7 +217,8 @@ public class ProvisioningController2 {
             T config = null;
             Exception thrown = null;
             try {
-                config = superSimpleDb.retrieve(tableName, entityType, entityName);
+                //config = superSimpleDb.retrieve(tableName, entityType, entityName);
+                config = (T) daoFactory.getDaoByObjectType(entityType).get(entityName);
             } catch (Exception e) {
                 thrown = e;
             }
@@ -238,7 +234,8 @@ public class ProvisioningController2 {
     private <T extends AbstractMessage> Map<String, Map<String, String>> doListAll(String tableName, Class<T> entityType) {
         Map<String,Map<String,String>> result = new LinkedHashMap<String, Map<String, String>>();
         try {
-            for(T config :  superSimpleDb.retrieveAll(tableName, entityType)) {
+            List<T> items = daoFactory.getDaoByObjectType(entityType).getAll();
+            for(T config :  items) {
                 result.put(config.getIdValue(), config);
             }
         } catch (final Exception e) {
@@ -252,7 +249,7 @@ public class ProvisioningController2 {
         for(String entityName : entityNames) {
             String deleteStatus = BACKPLANE_DELETE_SUCCESS;
             try {
-                if (superSimpleDb.retrieve(tableName, entityType, entityName) == null) {
+                if (daoFactory.getDaoByObjectType(entityType).get(entityName) == null) {
                     deleteStatus = BACKPLANE_ENTRY_NOT_FOUND;
                 } else {
                     daoFactory.getDaoByObjectType(entityType).delete(entityName);
@@ -281,7 +278,8 @@ public class ProvisioningController2 {
             String updateStatus = BACKPLANE_UPDATE_SUCCESS;
             try {
                 config.validate(daoFactory);
-                superSimpleDb.store(tableName, customerConfigType, config);
+                //superSimpleDb.store(tableName, customerConfigType, config);
+                daoFactory.getDaoByObjectType(customerConfigType).persist(config);
             } catch (Exception e) {
                 updateStatus = e.getMessage();
             }
@@ -297,7 +295,7 @@ public class ProvisioningController2 {
             String clientId = newGrantEntry.getKey();
             String buses = newGrantEntry.getValue();
             try {
-                if (null == daoFactory.getClientDAO().retrieveClient(clientId)) {
+                if (null == daoFactory.getClientDAO().get(clientId)) {
                     result.put(clientId, "invalid client_id");
                 } else {
                     if (addRevoke) {
@@ -305,7 +303,7 @@ public class ProvisioningController2 {
                         result.put(clientId, "GRANT_UPDATE_SUCCESS");
                     } else {
                         Scope busesToRevoke = new Scope(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, buses));
-                        for(Set<Grant> grants : daoFactory.getGrantDao().retrieveClientGrants(clientId, busesToRevoke).values()) {
+                        for(Set<Grant> grants : new GrantLogic(daoFactory).retrieveClientGrants(clientId, busesToRevoke).values()) {
                             daoFactory.getGrantDao().revokeBuses(grants, buses);
                         }
                         result.put(clientId, "GRANT_UPDATE_SUCCESS");
@@ -318,7 +316,7 @@ public class ProvisioningController2 {
         return result;
     }
 
-    private void addGrant(String issuer, String clientId, String buses) throws SimpleDBException {
+    private void addGrant(String issuer, String clientId, String buses) throws SimpleDBException, BackplaneServerException {
         Grant grant = new Grant.Builder(
                 GrantType.CLIENT_CREDENTIALS,
                 GrantState.ACTIVE,

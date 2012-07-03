@@ -234,25 +234,4 @@ public class BackplaneMessage extends AbstractMessage implements Externalizable 
         }
     }
 
-    private void writeObject(ObjectOutputStream oos)
-            throws IOException {
-
-        Map<String, String> map = new HashMap<String,String>();
-        for (Map.Entry<String,String> entry : this.entrySet()) {
-            map.put(entry.getKey(), entry.getValue());
-        }
-        oos.writeObject(map);
-
-    }
-
-    private void readObject(ObjectInputStream ois)
-            throws ClassNotFoundException, IOException {
-
-        Map<String,String> map = (Map<String, String>) ois.readObject();
-        try {
-            init(map.get(Field.ID.getFieldName()), map);
-        } catch (SimpleDBException e) {
-            logger.error(e);
-        }
-    }
 }

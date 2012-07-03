@@ -1,13 +1,14 @@
 package com.janrain.backplane.server.dao;
 
+import com.janrain.backplane.server.BackplaneServerException;
 import com.janrain.backplane.server.User;
-import com.janrain.backplane.server.config.Backplane1Config;
-import com.janrain.backplane.server.redis.Redis;
+import com.janrain.redis.Redis;
 import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.log4j.Logger;
+
+import java.util.List;
 
 /**
  * @author Tom Raney
@@ -29,7 +30,7 @@ public class UserDAO extends DAO<User> {
     }
 
     @Override
-    public void delete(String id) throws SimpleDBException {
+    public void delete(String id) throws BackplaneServerException {
         throw new NotImplementedException();
     }
 
@@ -40,6 +41,11 @@ public class UserDAO extends DAO<User> {
         } else {
             return null;
         }
+    }
+
+    @Override
+    public List<User> getAll() throws BackplaneServerException {
+        throw new NotImplementedException();
     }
 
     private static final Logger logger = Logger.getLogger(UserDAO.class);

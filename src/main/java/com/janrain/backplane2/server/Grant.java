@@ -22,9 +22,14 @@ import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import com.janrain.crypto.ChannelUtil;
 import com.janrain.oauth2.TokenException;
+import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 import java.text.ParseException;
 import java.util.*;
 
@@ -33,7 +38,7 @@ import java.util.*;
  *
  * @author Tom Raney, Johnny Bufu
  */
-public class Grant extends AbstractMessage {
+public class Grant extends AbstractMessage implements Externalizable {
 
     /**
      * Empty default constructor for AWS to use.
@@ -97,6 +102,24 @@ public class Grant extends AbstractMessage {
     public boolean isExpired() {
         Date expires = getExpirationDate();
         return expires != null && new Date().getTime() > expires.getTime();
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput objectOutput) throws IOException {
+        HashMap<String, String> map = new HashMap<String, String>();
+        Set<String> keys = this.keySet();
+        Iterator it = keys.iterator();
+        while (it.hasNext()) {
+            String key = (String) it.next();
+            map.put(key, this.get(key));
+        }
+
+        objectOutput.writeObject(map);
+    }
+
+    @Override
+    public void readExternal(ObjectInput objectInput) throws IOException, ClassNotFoundException {
+        this.putAll((Map<? extends String, ? extends String>) objectInput.readObject());
     }
 
     public static enum GrantField implements MessageField {

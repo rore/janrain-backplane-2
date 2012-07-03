@@ -17,14 +17,12 @@
 package com.janrain.backplane2.server;
 
 import com.janrain.backplane2.server.config.*;
-import com.janrain.backplane2.server.dao.DaoFactory;
+import com.janrain.backplane2.server.dao.DAOFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.crypto.ChannelUtil;
 import com.janrain.crypto.HmacHashUtils;
 import com.janrain.oauth2.*;
 import com.janrain.servlet.ServletUtil;
-import com.yammer.metrics.Metrics;
-import com.yammer.metrics.core.Meter;
 import com.yammer.metrics.core.TimerContext;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.StringUtils;
@@ -101,7 +99,7 @@ public class Backplane2Controller {
                                 "[" + authzRequest.get(AuthorizationRequest.Field.COOKIE)+"]");
                     daoFactory.getAuthorizationRequestDAO().persist(authzRequest);
                     response.addCookie(new Cookie(AUTHORIZATION_REQUEST_COOKIE, authzRequest.get(AuthorizationRequest.Field.COOKIE)));
-                } catch (SimpleDBException e) {
+                } catch (BackplaneServerException e) {
                     throw new AuthorizationException(OAuth2.OAUTH2_AUTHZ_SERVER_ERROR, e.getMessage(), request, e);
                 }
             }
@@ -118,7 +116,7 @@ public class Backplane2Controller {
                     authzRequest = daoFactory.getAuthorizationRequestDAO().retrieveAuthorizationRequest(authorizationRequestCookie);
                     logger.info("Retrieved authorization request for client:" + authzRequest.get(AuthorizationRequest.Field.CLIENT_ID) +
                                 "[" + authzRequest.get(AuthorizationRequest.Field.COOKIE)+"]");
-                } catch (SimpleDBException e) {
+                } catch (BackplaneServerException e) {
                     throw new AuthorizationException(OAuth2.OAUTH2_AUTHZ_SERVER_ERROR, e.getMessage(), request, e);
                 }
             }
@@ -143,7 +141,7 @@ public class Backplane2Controller {
                           HttpServletRequest request,
                           HttpServletResponse response,
                           @RequestParam(required = false) String busOwner,
-                          @RequestParam(required = false) String password) throws AuthException, SimpleDBException {
+                          @RequestParam(required = false) String password) throws AuthException, BackplaneServerException {
 
         ServletUtil.checkSecure(request);
 
@@ -303,8 +301,6 @@ public class Backplane2Controller {
 
         } catch (TokenException te) {
             return handleTokenException(te, response);
-        } catch (SimpleDBException sdbe) {
-            throw sdbe;
         } catch (BackplaneServerException bse) {
             throw bse;
         } catch (InvalidRequestException ire) {
@@ -383,8 +379,6 @@ public class Backplane2Controller {
 
         } catch (TokenException te) {
             return handleTokenException(te, response);
-        } catch (SimpleDBException sdbe) {
-            throw sdbe;
         } catch (InvalidRequestException ire) {
             throw ire;
         } catch (Exception e) {
@@ -449,11 +443,7 @@ public class Backplane2Controller {
         logger.error("Error handling backplane request", bpConfig.getDebugException(e));
         response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         return new HashMap<String,String>() {{
-            try {
                 put(ERR_MSG_FIELD, bpConfig.isDebugMode() ? e.getMessage() : "Error processing request.");
-            } catch (SimpleDBException e1) {
-                put(ERR_MSG_FIELD, "Error processing request.");
-            }
         }};
     }
 
@@ -501,18 +491,18 @@ public class Backplane2Controller {
     public static final String AUTHZ_DECISION_KEY = "auth_key";
 
     @Inject
-    private Backplane2Config bpConfig;
+    private DAOFactory daoFactory;
 
     @Inject
-    private DaoFactory daoFactory;
+    private Backplane2Config bpConfig;
 
     //private static final Random random = new SecureRandom();
 
     private void checkBusOwnerAuth(String busOwner, String password) throws AuthException {
         User busOwnerEntry = null;
         try {
-            busOwnerEntry = daoFactory.getBusOwnerDAO().retrieveBusOwner(busOwner);
-        } catch (SimpleDBException e) {
+            busOwnerEntry = daoFactory.getBusOwnerDAO().get(busOwner);
+        } catch (BackplaneServerException e) {
             logger.error("Error looking up bus owner user: " + busOwner, e);
             authError("Error looking up bus owner user: " + busOwner);
         }
@@ -525,20 +515,24 @@ public class Backplane2Controller {
         logger.info("Authenticated bus owner: " + busOwner);
     }
 
-    private void persistAuthenticatedSession(HttpServletResponse response, String busOwner) throws SimpleDBException {
-        String authCookie = ChannelUtil.randomString(AUTH_SESSION_COOKIE_LENGTH);
-        daoFactory.getAuthSessionDAO().persist(new AuthSession(busOwner, authCookie));
-        response.addCookie(new Cookie(AUTH_SESSION_COOKIE, authCookie));
+    private void persistAuthenticatedSession(HttpServletResponse response, String busOwner) throws BackplaneServerException {
+        try {
+            String authCookie = ChannelUtil.randomString(AUTH_SESSION_COOKIE_LENGTH);
+            daoFactory.getAuthSessionDAO().persist(new AuthSession(busOwner, authCookie));
+            response.addCookie(new Cookie(AUTH_SESSION_COOKIE, authCookie));
+        } catch (SimpleDBException e) {
+            throw new BackplaneServerException(e.getMessage());
+        }
     }
 
     private String getAuthenticatedBusOwner(HttpServletRequest request, String authSessionCookie) {
         if (authSessionCookie == null) return null;
         try {
-            AuthSession authSession = daoFactory.getAuthSessionDAO().retrieveAuthSession(authSessionCookie);
+            AuthSession authSession = daoFactory.getAuthSessionDAO().get(authSessionCookie);
             String authenticatedOwner = authSession.get(AuthSession.Field.AUTH_USER);
             logger.info("Session found for previously authenticated bus owner: " + authenticatedOwner);
             return authenticatedOwner;
-        } catch (SimpleDBException e) {
+        } catch (BackplaneServerException e) {
             logger.error("Error looking up session for cookie: " + authSessionCookie, e);
             return null;
         }
@@ -599,8 +593,8 @@ public class Backplane2Controller {
 
         Client clientEntry = null;
         try {
-            clientEntry = daoFactory.getClientDAO().retrieveClient(client);
-        } catch (SimpleDBException e) {
+            clientEntry = daoFactory.getClientDAO().get(client);
+        } catch (BackplaneServerException e) {
             logger.error("Error looking up client: " + client, e);
             authError("Error looking up client: " + client);
         }
@@ -637,12 +631,12 @@ public class Backplane2Controller {
                     "[" + authzRequest.get(AuthorizationRequest.Field.COOKIE)+"]");
             return new ModelAndView(CLIENT_AUTHORIZATION_FORM_JSP, model);
 
-        } catch (SimpleDBException e) {
+        } catch (Exception e) {
             throw new AuthorizationException(OAuth2.OAUTH2_AUTHZ_SERVER_ERROR, e.getMessage(), authzRequest, e);
         }
     }
 
-    private String checkScope(String scope, String authenticatedBusOwner) throws SimpleDBException {
+    private String checkScope(String scope, String authenticatedBusOwner) throws BackplaneServerException {
         StringBuilder result = new StringBuilder();
         List<BusConfig2> ownedBuses = daoFactory.getBusDao().retrieveByOwner(authenticatedBusOwner);
         if(StringUtils.isEmpty(scope)) {
@@ -689,7 +683,7 @@ public class Backplane2Controller {
             authorizationRequest = daoFactory.getAuthorizationRequestDAO().retrieveAuthorizationRequest(authorizationRequestCookie);
 
             // check authZdecisionKey
-            AuthorizationDecisionKey authZdecisionKeyEntry = daoFactory.getAuthorizationDecisionKeyDAO().retrieveAuthorizationRequest(authZdecisionKey);
+            AuthorizationDecisionKey authZdecisionKeyEntry = daoFactory.getAuthorizationDecisionKeyDAO().get(authZdecisionKey);
             if (null == authZdecisionKeyEntry || ! authSessionCookie.equals(authZdecisionKeyEntry.get(AuthorizationDecisionKey.Field.AUTH_COOKIE))) {
                 throw new AuthorizationException(OAuth2.OAUTH2_AUTHZ_ACCESS_DENIED, "Presented authorization key was issued to a different authenticated bus owner.", authorizationRequest);
             }
@@ -730,7 +724,7 @@ public class Backplane2Controller {
                             authorizationRequest.get(AuthorizationRequest.Field.STATE));
                 }
             }
-        } catch (SimpleDBException e) {
+        } catch (Exception e) {
             throw new AuthorizationException(OAuth2.OAUTH2_AUTHZ_SERVER_ERROR, e.getMessage(), authorizationRequest, e);
         }
     }
@@ -789,7 +783,7 @@ public class Backplane2Controller {
         }
     }
 
-    private BackplaneMessage parsePostedMessage(Map<String, Map<String, Object>> messagePostBody, Token token) throws SimpleDBException {
+    private BackplaneMessage parsePostedMessage(Map<String, Map<String, Object>> messagePostBody, Token token) throws BackplaneServerException {
         List<BackplaneMessage> result = new ArrayList<BackplaneMessage>();
 
         Map<String,Object> msg = messagePostBody.get("message");

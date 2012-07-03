@@ -21,14 +21,13 @@ import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import com.janrain.crypto.ChannelUtil;
+import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
+import java.io.*;
+import java.text.ParseException;
 import java.util.*;
 
 import static com.janrain.backplane2.server.Scope.ScopeType.*;
@@ -36,7 +35,7 @@ import static com.janrain.backplane2.server.Scope.ScopeType.*;
 /**
  * @author Johnny Bufu
  */
-public class BackplaneMessage extends AbstractMessage implements Serializable {
+public class BackplaneMessage extends AbstractMessage implements Externalizable {
 
     // - PUBLIC
 
@@ -70,7 +69,7 @@ public class BackplaneMessage extends AbstractMessage implements Serializable {
      * @return a time-based, lexicographically comparable message ID.
      */
     public static String generateMessageId() {
-        return (Backplane2Config.ISO8601.get().format(new Date()) + ChannelUtil.randomString(10)).replaceAll("[^\\w]","");
+        return (Backplane2Config.ISO8601.get().format(new Date()) + ChannelUtil.randomString(10));
     }
 
     @Override
@@ -78,17 +77,29 @@ public class BackplaneMessage extends AbstractMessage implements Serializable {
         return get(Field.ID);
     }
 
+    public void setIdValue(String id) {
+        this.put(Field.ID.getFieldName(), id);
+        try {
+            this.setName(id);
+        } catch (SimpleDBException ignore) {
+        }
+    }
+
     @Override
     public Set<? extends MessageField> getFields() {
         return EnumSet.allOf(Field.class);
     }
 
-    public String getMessageBus() {
-        return get(Field.BUS);
+    public String getBus() {
+        return this.get(Field.BUS);
     }
 
-    public String getMessageChannel() {
-        return get(Field.CHANNEL);
+    public String getChannel() {
+        return this.get(Field.CHANNEL);
+    }
+
+    public boolean isSticky() {
+        return "true".equalsIgnoreCase(get(Field.STICKY));
     }
 
     public Map<String, Object> asFrame(String serverDomain, boolean includePayload) throws BackplaneServerException {
@@ -114,6 +125,24 @@ public class BackplaneMessage extends AbstractMessage implements Serializable {
         }
 
         return frame;
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput objectOutput) throws IOException {
+        HashMap<String, String> map = new HashMap<String, String>();
+        Set<String> keys = this.keySet();
+        Iterator it = keys.iterator();
+        while (it.hasNext()) {
+            String key = (String) it.next();
+            map.put(key, this.get(key));
+        }
+
+        objectOutput.writeObject(map);
+    }
+
+    @Override
+    public void readExternal(ObjectInput objectInput) throws IOException, ClassNotFoundException {
+        this.putAll((Map<? extends String, ? extends String>) objectInput.readObject());
     }
 
     public static enum Field implements MessageField {
@@ -190,6 +219,26 @@ public class BackplaneMessage extends AbstractMessage implements Serializable {
         }
     }
 
+    public static Date getDateFromId(String backplaneMessageId) {
+        if (backplaneMessageId == null) {
+            return null;
+        }
+
+        try {
+            return Backplane2Config.ISO8601.get().parse(backplaneMessageId.substring(0, backplaneMessageId.indexOf("Z") + 1));
+        } catch (ParseException e) {
+            logger.warn(e);
+        }
+        return null;
+    }
+
+    /**
+     * @return a time-based, lexicographically comparable message ID.
+     */
+    public static String generateMessageId(Date date) {
+        return Backplane2Config.ISO8601.get().format(date) + "-" + ChannelUtil.randomString(10);
+    }
+
     // - PRIVATE
 
     private static final Logger logger = Logger.getLogger(BackplaneMessage.class);
@@ -205,25 +254,4 @@ public class BackplaneMessage extends AbstractMessage implements Serializable {
         }
     }
 
-    private void writeObject(ObjectOutputStream oos)
-            throws IOException {
-
-        Map<String, String> map = new HashMap<String,String>();
-        for (Map.Entry<String,String> entry : this.entrySet()) {
-            map.put(entry.getKey(), entry.getValue());
-        }
-        oos.writeObject(map);
-
-    }
-
-    private void readObject(ObjectInputStream ois)
-            throws ClassNotFoundException, IOException {
-
-        Map<String,String> map = (Map<String, String>) ois.readObject();
-        try {
-            init(map.get(Field.ID.getFieldName()), map);
-        } catch (SimpleDBException e) {
-            logger.error(e);
-        }
-    }
 }

@@ -17,7 +17,7 @@
 package com.janrain.backplane2.server;
 
 import com.janrain.backplane2.server.config.Backplane2Config;
-import com.janrain.backplane2.server.dao.DaoFactory;
+import com.janrain.backplane2.server.dao.DAOFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
@@ -31,6 +31,10 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 import java.text.ParseException;
 import java.util.*;
 
@@ -42,7 +46,7 @@ import static com.janrain.oauth2.OAuth2.OAUTH2_SCOPE_PARAM_NAME;
  * @author Tom Raney, Johnny Bufu
  */
 
-public class Token extends AbstractMessage {
+public class Token extends AbstractMessage implements Externalizable {
 
     /**
      * Empty default constructor for AWS to use.
@@ -124,7 +128,7 @@ public class Token extends AbstractMessage {
         return tokenNoPrefix.length() == TOKEN_LENGTH;
     }
 
-    public static @NotNull Token fromRequest(DaoFactory daoFactory, HttpServletRequest request, String tokenString, String authorizationHeader) throws TokenException {
+    public static @NotNull Token fromRequest(DAOFactory daoFactory, HttpServletRequest request, String tokenString, String authorizationHeader) throws TokenException {
         
         Pair<String, EnumSet<TokenSource>> tokenAndSource = extractToken(request.getQueryString(), tokenString, authorizationHeader);
 
@@ -134,8 +138,8 @@ public class Token extends AbstractMessage {
 
         Token token;
         try {
-            token = daoFactory.getTokenDao().retrieveToken(tokenAndSource.getLeft());
-        } catch (SimpleDBException e) {
+            token = daoFactory.getTokenDao().get(tokenAndSource.getLeft());
+        } catch (BackplaneServerException e) {
             logger.error("Error looking up token: " + tokenAndSource.getLeft() , e);
             throw new TokenException(OAuth2.OAUTH2_TOKEN_SERVER_ERROR, "error loading token", HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         }
@@ -168,6 +172,24 @@ public class Token extends AbstractMessage {
     public @NotNull List<String> getBackingGrants() {
         String grants = get(TokenField.BACKING_GRANTS);
         return StringUtils.isNotEmpty(grants) ? Arrays.asList(grants.split(GRANTS_SEPARATOR)) : new ArrayList<String>();
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput objectOutput) throws IOException {
+        HashMap<String, String> map = new HashMap<String, String>();
+        Set<String> keys = this.keySet();
+        Iterator it = keys.iterator();
+        while (it.hasNext()) {
+            String key = (String) it.next();
+            map.put(key, this.get(key));
+        }
+
+        objectOutput.writeObject(map);
+    }
+
+    @Override
+    public void readExternal(ObjectInput objectInput) throws IOException, ClassNotFoundException {
+        this.putAll((Map<? extends String, ? extends String>) objectInput.readObject());
     }
 
     public static enum TokenField implements MessageField {

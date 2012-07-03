@@ -51,9 +51,6 @@ public class Backplane1ControllerTest extends TestCase {
     @Inject
 	private ApplicationContext applicationContext;
 
-    @Inject
-    private SuperSimpleDB superSimpleDB;
-
     private MockHttpServletRequest request;
     private MockHttpServletResponse response;
     private HandlerAdapter handlerAdapter;

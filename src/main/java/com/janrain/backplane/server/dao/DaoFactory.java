@@ -16,7 +16,10 @@
 
 package com.janrain.backplane.server.dao;
 
+import com.janrain.backplane.server.BusConfig1;
+import com.janrain.backplane.server.User;
 import com.janrain.backplane.server.config.Backplane1Config;
+import com.janrain.backplane2.server.dao.*;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import org.springframework.context.annotation.Scope;
 import javax.inject.Inject;
@@ -56,6 +59,16 @@ public class DaoFactory {
 
     public ConfigDAO getConfigDAO() {
         return new ConfigDAO();
+    }
+
+    public DAO getDaoByObjectType(Class<?> obj) {
+        if (User.class.isAssignableFrom(obj)) {
+            return getUserDAO();
+        } else if (BusConfig1.class.isAssignableFrom(obj)) {
+            return getBusDAO();
+        }
+
+        return null;
     }
 
 
