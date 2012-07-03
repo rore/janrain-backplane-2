@@ -34,7 +34,7 @@ import java.util.*;
 /**
  * @author Johnny Bufu
  */
-public class BackplaneMessage extends AbstractMessage implements Externalizable {
+public class BackplaneMessage extends ExternalizableCore {
 
     // - PUBLIC
 
@@ -194,24 +194,6 @@ public class BackplaneMessage extends AbstractMessage implements Externalizable 
      */
     public static String generateMessageId(Date date) {
         return Backplane1Config.ISO8601.format(date) + "-" + ChannelUtil.randomString(10);
-    }
-
-    @Override
-    public void writeExternal(ObjectOutput objectOutput) throws IOException {
-        HashMap<String, String> map = new HashMap<String, String>();
-        Set<String> keys = this.keySet();
-        Iterator it = keys.iterator();
-        while (it.hasNext()) {
-            String key = (String) it.next();
-            map.put(key, this.get(key));
-        }
-
-        objectOutput.writeObject(map);
-    }
-
-    @Override
-    public void readExternal(ObjectInput objectInput) throws IOException, ClassNotFoundException {
-        this.putAll((Map<? extends String, ? extends String>) objectInput.readObject());
     }
 
     public BackplaneMessage() {

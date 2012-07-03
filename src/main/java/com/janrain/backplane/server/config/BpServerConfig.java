@@ -1,5 +1,6 @@
 package com.janrain.backplane.server.config;
 
+import com.janrain.backplane.server.ExternalizableCore;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
@@ -14,7 +15,7 @@ import java.util.Set;
 /**
  * @author Tom Raney
  */
-public class BpServerConfig extends AbstractMessage implements Externalizable {
+public class BpServerConfig extends ExternalizableCore {
 
     public final static String BPSERVER_CONFIG_KEY = "bpserverconfig";
 
@@ -46,16 +47,6 @@ public class BpServerConfig extends AbstractMessage implements Externalizable {
     @Override
     public Set<? extends MessageField> getFields() {
         return EnumSet.allOf(Field.class);
-    }
-
-    @Override
-    public void writeExternal(ObjectOutput objectOutput) throws IOException {
-
-    }
-
-    @Override
-    public void readExternal(ObjectInput objectInput) throws IOException, ClassNotFoundException {
-
     }
 
     public byte[] toBytes() {

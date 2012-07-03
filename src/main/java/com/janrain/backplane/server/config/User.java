@@ -16,6 +16,7 @@
 
 package com.janrain.backplane.server.config;
 
+import com.janrain.backplane.server.ExternalizableCore;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
@@ -30,7 +31,7 @@ import java.util.*;
 /**
  * @author Johnny Bufu
  */
-public final class User extends AbstractMessage implements Serializable {
+public final class User extends ExternalizableCore {
 
     // - PUBLIC
 
@@ -77,38 +78,10 @@ public final class User extends AbstractMessage implements Serializable {
 
     // - PRIVATE
 
+    private static final long serialVersionUID = 5437572571979441366L;
+
     private static final Logger logger = Logger.getLogger(User.class);
 
-    private Object writeReplace() {
-        return new SerializationProxy(this);
-    }
 
-    private void readObject(ObjectInputStream stream) throws InvalidObjectException {
-        throw new InvalidObjectException("Proxy required");
-    }
-
-    /** Class representing the logical serialization format for a backplane v1 user */
-    private static class SerializationProxy implements Serializable {
-
-        public SerializationProxy(User user) {
-            data.putAll(user);
-        }
-
-        private static final long serialVersionUID = 6026489226237987114L;
-
-        // data HashMap is all we need
-        // todo: consider a custom string serialization format, for easy editing directly in the DB
-        private final HashMap<String,Object> data = new HashMap<String, Object>();
-
-        private Object readResolve() throws ObjectStreamException {
-            // use public constructor
-            try {
-                return new User(data);
-            } catch (Exception e) {
-                logger.error("Error deserializign message", e);
-                throw new InvalidObjectException(e.getMessage());
-            }
-        }
-    }
 
 }

@@ -262,12 +262,12 @@ public class ProvisioningController2 {
         return result;
     }
 
-    private <T extends ProvisioningConfig> Map<String, String> doUpdate(String tableName, Class<T> entityType, UpdateRequest<T> updateRequest) throws AuthException {
+    private <T extends AbstractMessage> Map<String, String> doUpdate(String tableName, Class<T> entityType, UpdateRequest<T> updateRequest) throws AuthException {
         bpConfig.checkAdminAuth(updateRequest.getAdmin(), updateRequest.getSecret());
         return updateConfigs(tableName, entityType, updateRequest.getConfigs());
     }
 
-    private <T extends ProvisioningConfig> Map<String, String> updateConfigs(String tableName, Class<T> customerConfigType, List<T> bpConfigs) {
+    private <T extends AbstractMessage> Map<String, String> updateConfigs(String tableName, Class<T> customerConfigType, List<T> bpConfigs) {
         Map<String,String> result = new LinkedHashMap<String, String>();
         for(T config : bpConfigs) {
             if (config instanceof User) {
@@ -277,7 +277,7 @@ public class ProvisioningController2 {
             }
             String updateStatus = BACKPLANE_UPDATE_SUCCESS;
             try {
-                config.validate(daoFactory);
+                //config.validate(daoFactory);
                 //superSimpleDb.store(tableName, customerConfigType, config);
                 daoFactory.getDaoByObjectType(customerConfigType).persist(config);
             } catch (Exception e) {

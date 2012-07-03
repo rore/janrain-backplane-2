@@ -16,6 +16,7 @@
 
 package com.janrain.oauth2;
 
+import com.janrain.backplane.server.ExternalizableCore;
 import com.janrain.backplane2.server.BackplaneServerException;
 import com.janrain.backplane2.server.InvalidRequestException;
 import com.janrain.backplane2.server.config.Backplane2Config;
@@ -36,7 +37,7 @@ import java.util.*;
 /**
  * @author Johnny Bufu
  */
-public class AuthorizationRequest extends AbstractMessage implements Externalizable {
+public class AuthorizationRequest extends ExternalizableCore {
 
     // - PUBLIC
 
@@ -92,24 +93,6 @@ public class AuthorizationRequest extends AbstractMessage implements Externaliza
         } else {
             return client.get(Client.ClientField.REDIRECT_URI);
         }
-    }
-
-    @Override
-    public void writeExternal(ObjectOutput objectOutput) throws IOException {
-        HashMap<String, String> map = new HashMap<String, String>();
-        Set<String> keys = this.keySet();
-        Iterator it = keys.iterator();
-        while (it.hasNext()) {
-            String key = (String) it.next();
-            map.put(key, this.get(key));
-        }
-
-        objectOutput.writeObject(map);
-    }
-
-    @Override
-    public void readExternal(ObjectInput objectInput) throws IOException, ClassNotFoundException {
-        this.putAll((Map<? extends String, ? extends String>) objectInput.readObject());
     }
 
     public static enum Field implements MessageField {
@@ -171,6 +154,8 @@ public class AuthorizationRequest extends AbstractMessage implements Externaliza
     }
 
     // - PRIVATE
+
+    private static final long serialVersionUID = 5105927572907870325L;
 
     private static final long AUTH_REQUEST_TIMEOUT_SECONDS = 1200l;
 }

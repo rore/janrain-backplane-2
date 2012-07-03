@@ -16,6 +16,7 @@
 
 package com.janrain.backplane2.server;
 
+import com.janrain.backplane.server.ExternalizableCore;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
@@ -38,7 +39,7 @@ import java.util.*;
  *
  * @author Tom Raney, Johnny Bufu
  */
-public class Grant extends AbstractMessage implements Externalizable {
+public class Grant extends ExternalizableCore {
 
     /**
      * Empty default constructor for AWS to use.
@@ -102,24 +103,6 @@ public class Grant extends AbstractMessage implements Externalizable {
     public boolean isExpired() {
         Date expires = getExpirationDate();
         return expires != null && new Date().getTime() > expires.getTime();
-    }
-
-    @Override
-    public void writeExternal(ObjectOutput objectOutput) throws IOException {
-        HashMap<String, String> map = new HashMap<String, String>();
-        Set<String> keys = this.keySet();
-        Iterator it = keys.iterator();
-        while (it.hasNext()) {
-            String key = (String) it.next();
-            map.put(key, this.get(key));
-        }
-
-        objectOutput.writeObject(map);
-    }
-
-    @Override
-    public void readExternal(ObjectInput objectInput) throws IOException, ClassNotFoundException {
-        this.putAll((Map<? extends String, ? extends String>) objectInput.readObject());
     }
 
     public static enum GrantField implements MessageField {
@@ -280,6 +263,8 @@ public class Grant extends AbstractMessage implements Externalizable {
     }
 
     // - PRIVATE
+
+    private static final long serialVersionUID = -968555655007824298L;
     
     private static final Logger logger = Logger.getLogger(Grant.class);
 

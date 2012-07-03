@@ -16,6 +16,7 @@
 
 package com.janrain.backplane2.server.config;
 
+import com.janrain.backplane.server.ExternalizableCore;
 import com.janrain.backplane2.server.InvalidRequestException;
 import com.janrain.backplane2.server.dao.DAOFactory;
 import com.janrain.backplane2.server.provision.ProvisioningConfig;
@@ -28,7 +29,7 @@ import java.util.*;
 /**
  * @author Johnny Bufu
  */
-public class BusConfig2 extends ProvisioningConfig implements Externalizable {
+public class BusConfig2 extends ExternalizableCore implements ProvisioningConfig {
 
     // - PUBLIC
 
@@ -68,24 +69,6 @@ public class BusConfig2 extends ProvisioningConfig implements Externalizable {
             throw new InvalidRequestException("Invalid bus owner: " + get(Field.OWNER.getFieldName()));
         }
         validate();
-    }
-
-    @Override
-    public void writeExternal(ObjectOutput objectOutput) throws IOException {
-        HashMap<String, String> map = new HashMap<String, String>();
-        Set<String> keys = this.keySet();
-        Iterator it = keys.iterator();
-        while (it.hasNext()) {
-            String key = (String) it.next();
-            map.put(key, this.get(key));
-        }
-
-        objectOutput.writeObject(map);
-    }
-
-    @Override
-    public void readExternal(ObjectInput objectInput) throws IOException, ClassNotFoundException {
-        this.putAll((Map<? extends String, ? extends String>) objectInput.readObject());
     }
 
     public static enum Field implements MessageField {
@@ -139,12 +122,15 @@ public class BusConfig2 extends ProvisioningConfig implements Externalizable {
 
         // - PRIVATE
 
-        private static final long serialVersionUID = -1095282266519118441L;
-
         private static final int RETENTION_MIN_SECONDS = 60;
         private static final int RETENTION_MAX_VALUE = 604800; // one week
         private static final int RETENTION_STICKY_MIN_SECONDS = 28800; // eight hours
         private static final int RETENTION_STICKY_MAX_VALUE = 604800; // one week
 
     }
+
+    // PRIVATE
+
+    private static final long serialVersionUID = 6373001975596811972L;
+
 }

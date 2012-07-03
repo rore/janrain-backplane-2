@@ -28,7 +28,7 @@ import java.util.*;
 /**
  * @author Johnny Bufu
  */
-public class BusConfig1 extends AbstractMessage implements Externalizable {
+public class BusConfig1 extends ExternalizableCore {
 
     // - PUBLIC
 
@@ -69,24 +69,6 @@ public class BusConfig1 extends AbstractMessage implements Externalizable {
             }
         }
         return result;
-    }
-
-    @Override
-    public void writeExternal(ObjectOutput objectOutput) throws IOException {
-        HashMap<String, String> map = new HashMap<String, String>();
-        Set<String> keys = this.keySet();
-        Iterator it = keys.iterator();
-        while (it.hasNext()) {
-            String key = (String) it.next();
-            map.put(key, this.get(key));
-        }
-
-        objectOutput.writeObject(map);
-    }
-
-    @Override
-    public void readExternal(ObjectInput objectInput) throws IOException, ClassNotFoundException {
-        this.putAll((Map<? extends String, ? extends String>) objectInput.readObject());
     }
 
     public static enum Field implements MessageField {

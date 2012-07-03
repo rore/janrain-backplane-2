@@ -16,6 +16,7 @@
 
 package com.janrain.backplane2.server.config;
 
+import com.janrain.backplane.server.ExternalizableCore;
 import com.janrain.backplane2.server.dao.DAOFactory;
 import com.janrain.backplane2.server.provision.ProvisioningConfig;
 import com.janrain.commons.supersimpledb.SimpleDBException;
@@ -31,7 +32,7 @@ import java.util.*;
 /**
  * @author Johnny Bufu
  */
-public class User extends ProvisioningConfig implements Externalizable {
+public class User extends ExternalizableCore implements ProvisioningConfig {
 
     // - PUBLIC
 
@@ -48,24 +49,6 @@ public class User extends ProvisioningConfig implements Externalizable {
     @Override
     public void validate(DAOFactory daoFactory) throws Exception {
         validate();
-    }
-
-    @Override
-    public void writeExternal(ObjectOutput objectOutput) throws IOException {
-        HashMap<String, String> map = new HashMap<String, String>();
-        Set<String> keys = this.keySet();
-        Iterator it = keys.iterator();
-        while (it.hasNext()) {
-            String key = (String) it.next();
-            map.put(key, this.get(key));
-        }
-
-        objectOutput.writeObject(map);
-    }
-
-    @Override
-    public void readExternal(ObjectInput objectInput) throws IOException, ClassNotFoundException {
-        this.putAll((Map<? extends String, ? extends String>) objectInput.readObject());
     }
 
     public static enum Field implements MessageField {
@@ -90,4 +73,8 @@ public class User extends ProvisioningConfig implements Externalizable {
             if (isRequired()) validateNotBlank(name(), value);
         }
     }
+
+    // PRIVATE
+
+    private static final long serialVersionUID = -366817690860670465L;
 }

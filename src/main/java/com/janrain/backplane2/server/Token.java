@@ -16,6 +16,7 @@
 
 package com.janrain.backplane2.server;
 
+import com.janrain.backplane.server.ExternalizableCore;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.backplane2.server.dao.DAOFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
@@ -46,7 +47,7 @@ import static com.janrain.oauth2.OAuth2.OAUTH2_SCOPE_PARAM_NAME;
  * @author Tom Raney, Johnny Bufu
  */
 
-public class Token extends AbstractMessage implements Externalizable {
+public class Token extends ExternalizableCore {
 
     /**
      * Empty default constructor for AWS to use.
@@ -174,24 +175,6 @@ public class Token extends AbstractMessage implements Externalizable {
         return StringUtils.isNotEmpty(grants) ? Arrays.asList(grants.split(GRANTS_SEPARATOR)) : new ArrayList<String>();
     }
 
-    @Override
-    public void writeExternal(ObjectOutput objectOutput) throws IOException {
-        HashMap<String, String> map = new HashMap<String, String>();
-        Set<String> keys = this.keySet();
-        Iterator it = keys.iterator();
-        while (it.hasNext()) {
-            String key = (String) it.next();
-            map.put(key, this.get(key));
-        }
-
-        objectOutput.writeObject(map);
-    }
-
-    @Override
-    public void readExternal(ObjectInput objectInput) throws IOException, ClassNotFoundException {
-        this.putAll((Map<? extends String, ? extends String>) objectInput.readObject());
-    }
-
     public static enum TokenField implements MessageField {
 
         ID("id", true),
@@ -316,6 +299,8 @@ public class Token extends AbstractMessage implements Externalizable {
     }
     
     // - PRIVATE
+
+    private static final long serialVersionUID = -5883124096459804032L;
     
     private static final Logger logger = Logger.getLogger(Token.class);
 

@@ -6,9 +6,9 @@ import com.janrain.commons.supersimpledb.message.AbstractMessage;
 /**
  * @author Johnny Bufu
  */
-public abstract class ProvisioningConfig extends AbstractMessage {
+public interface ProvisioningConfig {
 
     /** enforce DB-related constraints on fields */
-    public abstract void validate(DAOFactory daoFactory) throws Exception;
+    void validate(DAOFactory daoFactory) throws Exception;
 
 }

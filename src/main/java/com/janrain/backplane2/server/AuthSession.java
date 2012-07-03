@@ -16,6 +16,7 @@
 
 package com.janrain.backplane2.server;
 
+import com.janrain.backplane.server.ExternalizableCore;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
@@ -31,7 +32,7 @@ import java.util.*;
 /**
  * @author Johnny Bufu
  */
-public class AuthSession extends AbstractMessage implements Externalizable {
+public class AuthSession extends ExternalizableCore {
 
     // - PUBLIC
 
@@ -56,24 +57,6 @@ public class AuthSession extends AbstractMessage implements Externalizable {
     @Override
     public Set<? extends MessageField> getFields() {
         return EnumSet.allOf(Field.class);
-    }
-
-    @Override
-    public void writeExternal(ObjectOutput objectOutput) throws IOException {
-        HashMap<String, String> map = new HashMap<String, String>();
-        Set<String> keys = this.keySet();
-        Iterator it = keys.iterator();
-        while (it.hasNext()) {
-            String key = (String) it.next();
-            map.put(key, this.get(key));
-        }
-
-        objectOutput.writeObject(map);
-    }
-
-    @Override
-    public void readExternal(ObjectInput objectInput) throws IOException, ClassNotFoundException {
-        this.putAll((Map<? extends String, ? extends String>) objectInput.readObject());
     }
 
     public static enum Field implements MessageField {
@@ -101,6 +84,8 @@ public class AuthSession extends AbstractMessage implements Externalizable {
     }
 
     // - PRIVATE
+
+    private static final long serialVersionUID = -8416685362228294237L;
 
     private static final long AUTH_SESSION_TIMEOUT_SECONDS = 3600l;
 }
