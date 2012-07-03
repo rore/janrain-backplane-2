@@ -32,8 +32,6 @@ import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTabl
  */
 public interface AuthorizationRequestDAO extends DAO<AuthorizationRequest> {
 
-    void persist(AuthorizationRequest authorizationRequest) throws BackplaneServerException;
-    void delete(String id) throws BackplaneServerException;
     AuthorizationRequest retrieveAuthorizationRequest(String cookie) throws BackplaneServerException;
     void deleteExpiredAuthorizationRequests();
 }

@@ -206,9 +206,9 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
 
     @Override
     public void persist(BackplaneMessage obj) throws BackplaneServerException {
+        // the messages will not be immediately available for reading until they
+        // are inserted by the message processing thread.
         Redis.getInstance().rpush(V2_MESSAGE_QUEUE.getBytes(), SerializationUtils.serialize(obj));
-
-        new V2MessageProcessor().insertMessages(false);
     }
 
     @Override

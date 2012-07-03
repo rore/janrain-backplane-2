@@ -31,8 +31,6 @@ import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTabl
  */
 public interface AuthSessionDAO extends DAO<AuthSession> {
 
-    void persist(AuthSession authSession) throws BackplaneServerException;
-    void delete(String id) throws BackplaneServerException;
     void deleteExpiredAuthSessions();
 
 }

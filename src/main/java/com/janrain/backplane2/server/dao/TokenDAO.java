@@ -40,8 +40,6 @@ import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTabl
 
 public interface TokenDAO extends DAO<Token> {
 
-    void persist(final Token token) throws BackplaneServerException;
-    void delete(final String tokenId) throws BackplaneServerException;
     void deleteExpiredTokens() throws BackplaneServerException;
     List<Token> retrieveTokensByGrant(String grantId) throws BackplaneServerException;
     void revokeTokenByGrant(String grantId) throws BackplaneServerException;
