@@ -66,7 +66,11 @@ public class SimpleDBBackplaneMessageDAO implements BackplaneMessageDAO {
 
     @Override
     public List<BackplaneMessage> getAll() throws BackplaneServerException {
-        throw new NotImplementedException();
+        try {
+            return superSimpleDB.retrieveAll(getTableName(), BackplaneMessage.class);
+        } catch (SimpleDBException e) {
+            throw new BackplaneServerException(e.getMessage());
+        }
     }
 
     @Override

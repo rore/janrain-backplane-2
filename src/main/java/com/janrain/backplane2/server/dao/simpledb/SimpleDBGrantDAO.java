@@ -57,7 +57,11 @@ public class SimpleDBGrantDAO implements GrantDAO {
 
     @Override
     public List<Grant> getAll() throws BackplaneServerException {
-        throw new NotImplementedException();
+        try {
+            return superSimpleDB.retrieveAll(bpConfig.getTableName(BP_GRANT), Grant.class);
+        } catch (SimpleDBException e) {
+            throw new BackplaneServerException(e.getMessage());
+        }
     }
 
     @Override

@@ -37,7 +37,11 @@ public class SimpleDBBusOwnerDAO implements BusOwnerDAO {
 
     @Override
     public List<User> getAll() throws BackplaneServerException {
-        throw new NotImplementedException();
+        try {
+            return superSimpleDB.retrieveAll(bpConfig.getTableName(BP_BUS_OWNERS), User.class);
+        } catch (SimpleDBException e) {
+            throw new BackplaneServerException(e.getMessage());
+        }
     }
 
     @Override

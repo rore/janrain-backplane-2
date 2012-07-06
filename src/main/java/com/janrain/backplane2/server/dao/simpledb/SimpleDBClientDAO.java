@@ -58,7 +58,11 @@ public class SimpleDBClientDAO implements ClientDAO {
 
     @Override
     public List<Client> getAll() throws BackplaneServerException {
-        throw new NotImplementedException();
+        try {
+            return superSimpleDB.retrieveAll(bpConfig.getTableName(BP_CLIENTS), Client.class);
+        } catch (SimpleDBException e) {
+            throw new BackplaneServerException(e.getMessage());
+        }
     }
 
     @Override

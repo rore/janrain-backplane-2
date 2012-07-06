@@ -67,7 +67,11 @@ public class SimpleDBTokenDAO implements TokenDAO {
 
     @Override
     public List<Token> getAll() throws BackplaneServerException {
-        throw new NotImplementedException();
+        try {
+            return superSimpleDB.retrieveAll(bpConfig.getTableName(BP_ACCESS_TOKEN), Token.class);
+        } catch (SimpleDBException e) {
+            throw new BackplaneServerException(e.getMessage());
+        }
     }
 
     @Override
