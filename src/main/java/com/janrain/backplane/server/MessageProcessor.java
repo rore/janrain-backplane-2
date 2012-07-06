@@ -64,7 +64,7 @@ public class MessageProcessor extends JedisPubSub {
 
     }
 
-    public synchronized void subscribe() {
+    public void subscribe() {
 
         Jedis jedis = null;
 
@@ -123,6 +123,7 @@ public class MessageProcessor extends JedisPubSub {
     public void insertMessages() {
 
         String uuid = UUID.randomUUID().toString();
+        Jedis jedis = null;
 
         try {
             logger.info("message processor waiting for exclusive write lock");
@@ -140,145 +141,142 @@ public class MessageProcessor extends JedisPubSub {
                 return;
             }
 
-            while(true) {
-
-                Jedis jedis = null;
+            List<String> insertionTimes = new ArrayList<String>();
+            while (true) {
 
                 try {
 
-                    jedis = Redis.getInstance().getJedis();
+                jedis = Redis.getInstance().getJedis();
 
-                    // retrieve the latest 'live' message ID
-                    String latestMessageId = "";
-                    Set<String> latestMessageMetaSet = jedis.zrange(BackplaneMessageDAO.V1_MESSAGES, -1, -1);
-                    if (latestMessageMetaSet != null && !latestMessageMetaSet.isEmpty()) {
-                        String[] segs = latestMessageMetaSet.iterator().next().split(" ");
-                        latestMessageId = segs[2];
-                    }
+                // retrieve the latest 'live' message ID
+                String latestMessageId = "";
+                Set<String> latestMessageMetaSet = jedis.zrange(BackplaneMessageDAO.V1_MESSAGES, -1, -1);
+                if (latestMessageMetaSet != null && !latestMessageMetaSet.isEmpty()) {
+                    String[] segs = latestMessageMetaSet.iterator().next().split(" ");
+                    latestMessageId = segs[2];
+                }
 
-                    // retrieve a handful of messages (ten) off the queue for processing
-                    List<byte[]> messagesToProcess = jedis.lrange(BackplaneMessageDAO.V1_MESSAGE_QUEUE.getBytes(), 0, 9);
+                // retrieve a handful of messages (ten) off the queue for processing
+                List<byte[]> messagesToProcess = jedis.lrange(BackplaneMessageDAO.V1_MESSAGE_QUEUE.getBytes(), 0, 9);
 
-                    // only enter the next block if we have messages to process
-                    if (messagesToProcess.size() > 0) {
+                // only enter the next block if we have messages to process
+                if (messagesToProcess.size() > 0) {
 
-                        // set watch on the lock key - this will allow the transaction to abort if
-                        // the lock is reset by another process
-                        jedis.watch(V1_WRITE_LOCK);
+                    // set watch on the lock key - this will allow the transaction to abort if
+                    // the lock is reset by another process
+                    jedis.watch(V1_WRITE_LOCK);
 
-                        Transaction transaction = jedis.multi();
+                    Transaction transaction = jedis.multi();
 
-                        int inserts = 0;
+                    insertionTimes.clear();
 
-                        for (byte[] messageBytes : messagesToProcess) {
+                    for (byte[] messageBytes : messagesToProcess) {
 
-                            if (messageBytes != null) {
-                                BackplaneMessage backplaneMessage = (BackplaneMessage) SerializationUtils.deserialize(messageBytes);
+                        if (messageBytes != null) {
+                            BackplaneMessage backplaneMessage = (BackplaneMessage) SerializationUtils.deserialize(messageBytes);
 
-                                if (backplaneMessage != null) {
+                            if (backplaneMessage != null) {
 
-                                    // retrieve the expiration config per the bus
-                                    BusConfig1 busConfig1 = DaoFactory.getInstance().getBusDAO().get(backplaneMessage.getBus());
-                                    int retentionTimeSeconds = 60;
-                                    int retentionTimeStickySeconds = 3600;
-                                    if (busConfig1 != null) {
-                                        // should be here in normal flow
-                                        retentionTimeSeconds = busConfig1.getRetentionTimeSeconds();
-                                        retentionTimeStickySeconds = busConfig1.getRetentionTimeStickySeconds();
-                                    }
-
-                                    // the id is set by the node that queued the message - record
-                                    // how long the message was in the queue - we assume here that the time
-                                    // to post and make the message available is minimal
-
-                                    {
-                                        long insertTime = BackplaneMessage.getDateFromId(backplaneMessage.getIdValue()).getTime();
-                                        long now = System.currentTimeMillis();
-                                        long diff = now - insertTime;
-                                        if (diff >= 0 && diff < 2880000) {
-                                            timeInQueue.update(diff);
-                                        } else {
-                                            logger.warn("time diff is bizarre at: " + diff);
-                                        }
-                                    }
-
-                                    // TOTAL ORDER GUARANTEE
-                                    // verify that the new message ID is greater than all existing message IDs
-                                    // if not, uptick id by 1 ms and insert
-                                    // this means that all message ids have unique time stamps, even if they
-                                    // arrived at the same time.
-
-                                    if (backplaneMessage.getIdValue().compareTo(latestMessageId) <= 0) {
-                                        logger.warn("new message has an id " + backplaneMessage.getIdValue() + " that is not > the latest id of " + latestMessageId);
-                                        Date lastMessageDate = BackplaneMessage.getDateFromId(latestMessageId);
-                                        if (lastMessageDate != null) {
-                                            backplaneMessage.setIdValue(BackplaneMessage.generateMessageId(new Date(lastMessageDate.getTime()+1)));
-                                            logger.warn("fixed");
-                                        } else {
-                                            logger.warn("could not modify id of new message");
-                                        }
-                                    }
-
-                                    // messageTime is guaranteed to be a unique identifier of the message
-                                    // because of the TOTAL ORDER mechanism above
-                                    long messageTime = BackplaneMessage.getDateFromId(backplaneMessage.getIdValue()).getTime();
-
-                                    // <ATOMIC>
-                                    // save the individual message by key
-                                    transaction.set(backplaneMessage.getIdValue().getBytes(), SerializationUtils.serialize(backplaneMessage));
-                                    // set the message TTL
-                                    if (backplaneMessage.isSticky()) {
-                                        transaction.expire(backplaneMessage.getIdValue().getBytes(), retentionTimeStickySeconds);
-                                    } else {
-                                        transaction.expire(backplaneMessage.getIdValue().getBytes(), retentionTimeSeconds);
-                                    }
-
-                                    // append entire message to list of messages in a channel for retrieval efficiency
-                                    transaction.rpush(BackplaneMessageDAO.getChannelKey(backplaneMessage.getBus(),
-                                            backplaneMessage.getChannel()), SerializationUtils.serialize(backplaneMessage));
-
-                                    // add message id to sorted set of all message ids as an index
-                                    String metaData = backplaneMessage.getBus() + " " + backplaneMessage.getChannel() + " " + backplaneMessage.getIdValue();
-                                    transaction.zadd(BackplaneMessageDAO.V1_MESSAGES.getBytes(), messageTime, metaData.getBytes());
-
-                                    // add message id to sorted set keyed by bus as an index
-                                    transaction.zadd(BackplaneMessageDAO.getBusKey(backplaneMessage.getBus()), messageTime, backplaneMessage.getIdValue().getBytes());
-
-                                    // make sure all subscribers get the update
-                                    transaction.publish("alerts", backplaneMessage.getIdValue());
-
-                                    // pop one message off the queue - which will only happen if this transaction is successful
-                                    transaction.lpop(BackplaneMessageDAO.V1_MESSAGE_QUEUE);
-                                    // </ATOMIC>
-
-                                    logger.info("message " + backplaneMessage.getIdValue() + " pushed");
-                                    inserts++;
-
-                                    // update the 'latest' message id with the one just inserted
-                                    latestMessageId = backplaneMessage.getIdValue();
-
+                                // retrieve the expiration config per the bus
+                                BusConfig1 busConfig1 = DaoFactory.getInstance().getBusDAO().get(backplaneMessage.getBus());
+                                int retentionTimeSeconds = 60;
+                                int retentionTimeStickySeconds = 3600;
+                                if (busConfig1 != null) {
+                                    // should be here in normal flow
+                                    retentionTimeSeconds = busConfig1.getRetentionTimeSeconds();
+                                    retentionTimeStickySeconds = busConfig1.getRetentionTimeStickySeconds();
                                 }
+
+                                String oldId = backplaneMessage.getIdValue();
+                                insertionTimes.add(oldId);
+
+                                // TOTAL ORDER GUARANTEE
+                                // verify that the new message ID is greater than all existing message IDs
+                                // if not, uptick id by 1 ms and insert
+                                // this means that all message ids have unique time stamps, even if they
+                                // arrived at the same time.
+
+                                if (oldId.compareTo(latestMessageId) <= 0) {
+                                    logger.warn("new message has an id " + oldId + " that is not > the latest id of " + latestMessageId);
+                                    Date lastMessageDate = BackplaneMessage.getDateFromId(latestMessageId);
+                                    if (lastMessageDate != null) {
+                                        backplaneMessage.setIdValue(BackplaneMessage.generateMessageId(new Date(lastMessageDate.getTime() + 1)));
+                                        logger.warn("fixed");
+                                    } else {
+                                        logger.warn("could not modify id of new message");
+                                    }
+                                }
+                                String newId = backplaneMessage.getIdValue();
+
+                                // messageTime is guaranteed to be a unique identifier of the message
+                                // because of the TOTAL ORDER mechanism above
+                                long messageTime = BackplaneMessage.getDateFromId(newId).getTime();
+
+                                // <ATOMIC>
+                                // save the individual message by key
+                                transaction.set(newId.getBytes(), SerializationUtils.serialize(backplaneMessage));
+                                // set the message TTL
+                                if (backplaneMessage.isSticky()) {
+                                    transaction.expire(newId.getBytes(), retentionTimeStickySeconds);
+                                } else {
+                                    transaction.expire(newId.getBytes(), retentionTimeSeconds);
+                                }
+
+                                // append entire message to list of messages in a channel for retrieval efficiency
+                                transaction.rpush(BackplaneMessageDAO.getChannelKey(backplaneMessage.getBus(),
+                                        backplaneMessage.getChannel()), SerializationUtils.serialize(backplaneMessage));
+
+                                // add message id to sorted set of all message ids as an index
+                                String metaData = backplaneMessage.getBus() + " " + backplaneMessage.getChannel() + " " + newId;
+                                transaction.zadd(BackplaneMessageDAO.V1_MESSAGES.getBytes(), messageTime, metaData.getBytes());
+
+                                // add message id to sorted set keyed by bus as an index
+                                transaction.zadd(BackplaneMessageDAO.getBusKey(backplaneMessage.getBus()), messageTime, newId.getBytes());
+
+                                // make sure all subscribers get the update
+                                transaction.publish("alerts", newId);
+
+                                // pop one message off the queue - which will only happen if this transaction is successful
+                                transaction.lpop(BackplaneMessageDAO.V1_MESSAGE_QUEUE);
+                                // </ATOMIC>
+
+                                logger.info("pipelined message " + oldId + " -> " + newId);
+
+                                // update the 'latest' message id with the one just inserted
+                                latestMessageId = newId;
+
                             }
                         }
+                    } // for messages
 
-                        logger.info("processing transaction with " + inserts + " message(s)");
-                        if (transaction.exec() == null) {
-                            // the transaction failed, which likely means the lock was lost
-                            logger.warn("transaction failed! - halting work for now");
-                            return;
-                        }
-                    }
-
-                    if (!Redis.getInstance().refreshLock(V1_WRITE_LOCK, uuid, LOCK_SECONDS)) {
-                        logger.warn("lost lock! - halting work for now");
+                    logger.info("processing transaction with " + insertionTimes.size() + " message(s)");
+                    if (transaction.exec() == null) {
+                        // the transaction failed, which likely means the lock was lost
+                        logger.warn("transaction failed! - halting work for now");
                         return;
                     }
+
+                    logger.info("flushed " + insertionTimes.size() + " messages");
+                    long now = System.currentTimeMillis();
+                    for (String insertionId : insertionTimes) {
+                        long diff = now - BackplaneMessage.getDateFromId(insertionId).getTime();
+                        timeInQueue.update(diff);
+                        if (diff >= 0 && diff < 2880000) {
+                            logger.warn("time diff is bizarre at: " + diff);
+                        }
+                    }
+                } // messagesToProcess > 0
+
+                if (!Redis.getInstance().refreshLock(V1_WRITE_LOCK, uuid, LOCK_SECONDS)) {
+                    logger.warn("lost lock! - halting work for now");
+                    return;
+                }
 
                 } finally {
                     Redis.getInstance().releaseToPool(jedis);
                 }
 
-            }
+            } // while(true)
 
         } catch (Exception e) {
             logger.warn("exception thrown in message processor thread", e);
@@ -287,7 +285,6 @@ public class MessageProcessor extends JedisPubSub {
             // we may have already lost the lock, but if we exit for any other reason, good to release it
             Redis.getInstance().releaseLock(V1_WRITE_LOCK, uuid);
         }
-
     }
 
     private static final String V1_WRITE_LOCK = "v1_write_lock";
