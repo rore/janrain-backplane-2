@@ -19,33 +19,34 @@ package com.janrain.locking;
 import org.apache.zookeeper.*;
 import org.apache.zookeeper.data.Stat;
 
-import javax.print.DocFlavor;
 import java.io.IOException;
 import java.util.List;
 
 /**
  * @author Tom Raney
  */
-public class DistributedLockingManager implements Watcher {
+public class ZooKeeper implements Watcher {
 
-    private ZooKeeper zooKeeper;
-    private static DistributedLockingManager instance;
+    private org.apache.zookeeper.ZooKeeper zooKeeper;
+    private static ZooKeeper instance;
 
-    private DistributedLockingManager() {
+    private ZooKeeper() {
         try {
-            zooKeeper = new ZooKeeper("localhost:2181", 3000, this);
+            zooKeeper = new org.apache.zookeeper.ZooKeeper("localhost:2181", 3000, this);
             this.addNode("/messages", null);
             this.addNode("/channels", null);
             this.addNode("/buses", null);
+
+
         } catch (IOException e) {
             System.out.println("ZooKeeper failed! " + e.getMessage());
         }
 
     }
 
-    public static synchronized DistributedLockingManager getInstance() {
+    public static synchronized ZooKeeper getInstance() {
         if (instance == null) {
-            instance = new DistributedLockingManager();
+            instance = new ZooKeeper();
         }
         return instance;
     }
