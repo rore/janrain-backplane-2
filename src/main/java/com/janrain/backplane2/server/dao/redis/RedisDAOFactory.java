@@ -5,7 +5,6 @@ import com.janrain.backplane2.server.config.BusConfig2;
 import com.janrain.backplane2.server.config.Client;
 import com.janrain.backplane2.server.config.User;
 import com.janrain.backplane2.server.dao.*;
-import org.apache.commons.lang.NotImplementedException;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
 

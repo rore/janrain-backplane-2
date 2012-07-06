@@ -16,7 +16,7 @@ import java.util.List;
 public class AdminDAO extends DAO<User> {
 
     public static byte[] getAdminUserKey(String userId) {
-        return new String("v1_admin_" + userId).getBytes();
+        return ("v1_admin_" + userId).getBytes();
     }
 
     AdminDAO() {
@@ -36,6 +36,7 @@ public class AdminDAO extends DAO<User> {
         Redis.getInstance().del(key);
     }
 
+    @Override
     public User get(String key) {
         byte[] bytes = Redis.getInstance().get(getAdminUserKey(key));
         if (bytes != null) {

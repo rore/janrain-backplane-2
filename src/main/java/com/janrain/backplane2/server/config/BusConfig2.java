@@ -21,7 +21,6 @@ import com.janrain.backplane2.server.InvalidRequestException;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.MessageField;
 
-import java.io.*;
 import java.util.*;
 
 /**

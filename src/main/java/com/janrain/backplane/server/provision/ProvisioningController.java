@@ -16,13 +16,11 @@
 
 package com.janrain.backplane.server.provision;
 
-import com.janrain.backplane.server.BackplaneServerException;
 import com.janrain.backplane.server.BusConfig1;
 import com.janrain.backplane.server.User;
 import com.janrain.backplane.server.config.AuthException;
 import com.janrain.backplane.server.config.Backplane1Config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.crypto.HmacHashUtils;
 import org.apache.log4j.Logger;

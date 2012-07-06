@@ -7,15 +7,11 @@ import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.util.Pair;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.util.*;
-import java.util.concurrent.Callable;
 
-import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_GRANT;
 import static com.janrain.oauth2.OAuth2.OAUTH2_TOKEN_INVALID_CLIENT;
 import static com.janrain.oauth2.OAuth2.OAUTH2_TOKEN_UNSUPPORTED_GRANT;
 import static javax.servlet.http.HttpServletResponse.SC_UNAUTHORIZED;

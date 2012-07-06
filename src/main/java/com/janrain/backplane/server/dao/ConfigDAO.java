@@ -2,9 +2,8 @@ package com.janrain.backplane.server.dao;
 
 import com.janrain.backplane.server.BackplaneServerException;
 import com.janrain.backplane.server.config.BpServerConfig;
-import com.janrain.commons.supersimpledb.message.NamedMap;
+import com.janrain.commons.util.SerializationUtils;
 import com.janrain.redis.Redis;
-import com.janrain.commons.supersimpledb.SimpleDBException;
 import org.apache.commons.lang.NotImplementedException;
 
 import java.util.List;
@@ -20,9 +19,8 @@ public class ConfigDAO extends DAO<BpServerConfig> {
 
     @Override
     public BpServerConfig get(String id)  {
-        byte[] bytes = Redis.getInstance().get(BpServerConfig.BPSERVER_CONFIG_KEY.getBytes());
-        if (bytes != null) {
-            return BpServerConfig.fromBytes(bytes);
+        if (id != null) {
+            return SerializationUtils.fromBytes(Redis.getInstance().get(id.getBytes()));
         } else {
             return null;
         }

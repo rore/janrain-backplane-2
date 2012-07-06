@@ -84,10 +84,10 @@ public class SimpleDBBackplaneMessageDAO implements BackplaneMessageDAO {
         }
     }
 
+    @Override
     public BackplaneMessage getLatestMessage() throws BackplaneServerException {
         String query = "id IS NOT NULL ORDER BY id DESC LIMIT 1";
-        Pair<List<BackplaneMessage>, Boolean> messages=
-                null;
+        Pair<List<BackplaneMessage>, Boolean> messages;
         try {
             messages = superSimpleDB.retrieveSomeWhere(getTableName(), BackplaneMessage.class, query);
         } catch (SimpleDBException e) {
@@ -109,6 +109,7 @@ public class SimpleDBBackplaneMessageDAO implements BackplaneMessageDAO {
         }
     }
 
+    @Override
     public @NotNull BackplaneMessage retrieveBackplaneMessage(@NotNull final String messageId, @NotNull Token token) throws BackplaneServerException, TokenException {
         MessageCache<BackplaneMessage> cache = messageCache;
         BackplaneMessage firstCached = cache.getFirstMessage();
@@ -139,10 +140,12 @@ public class SimpleDBBackplaneMessageDAO implements BackplaneMessageDAO {
         }
     }
 
+    @Override
     public boolean isChannelFull(String channel) throws BackplaneServerException {
         return ! canTake(channel, 0);
     }
 
+    @Override
     public boolean canTake(String channel, int msgPostCount) throws BackplaneServerException {
         final String whereClause = " channel='" + channel + "'";
         try {
@@ -159,6 +162,7 @@ public class SimpleDBBackplaneMessageDAO implements BackplaneMessageDAO {
         }
     }
 
+    @Override
     public long countMessages() throws BackplaneServerException {
         try {
             Long messageCount = superSimpleDB.retrieveCount(getTableName(), null);
@@ -176,7 +180,8 @@ public class SimpleDBBackplaneMessageDAO implements BackplaneMessageDAO {
      * @param bpResponse backplane message response
      * @param token access token to be used for message retrieval
      */
-    public void retrieveMesssagesPerScope(@NotNull final MessagesResponse bpResponse, @NotNull final Token token) throws BackplaneServerException {
+    @Override
+    public void retrieveMessagesPerScope(@NotNull final MessagesResponse bpResponse, @NotNull final Token token) throws BackplaneServerException {
         final Scope scope = token.getScope();
         filterMessagesPerScope(messageCache.getMessagesSince(bpResponse.getLastMessageId()), scope, bpResponse);
 
@@ -210,6 +215,7 @@ public class SimpleDBBackplaneMessageDAO implements BackplaneMessageDAO {
         }
     }
 
+    @Override
     public List<BackplaneMessage> retrieveMessagesNoScope(String sinceIso8601timestamp) throws BackplaneServerException {
 
         try {
@@ -266,6 +272,7 @@ public class SimpleDBBackplaneMessageDAO implements BackplaneMessageDAO {
         bpResponse.addMessages(filteredMessages);
     }
 
+    @Override
     public void deleteExpiredMessages() {
         try {
             logger.info("Backplane message cleanup task started.");

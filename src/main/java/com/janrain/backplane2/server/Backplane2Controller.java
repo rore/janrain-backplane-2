@@ -285,10 +285,10 @@ public class Backplane2Controller {
             MessagesResponse bpResponse = new MessagesResponse(messageRequest.getSince());
             boolean exit = false;
             do {
-                daoFactory.getBackplaneMessageDAO().retrieveMesssagesPerScope(bpResponse, token);
+                daoFactory.getBackplaneMessageDAO().retrieveMessagesPerScope(bpResponse, token);
                 if (!bpResponse.hasMessages() && new Date().before(messageRequest.getReturnBefore())) {
                     try {
-                        Thread.sleep(3000);
+                        Thread.sleep(MESSAGES_POLL_SLEEP_MILLIS);
                     } catch (InterruptedException e) {
                         //ignore
                     }
@@ -489,6 +489,8 @@ public class Backplane2Controller {
     private static final String AUTHORIZATION_REQUEST_COOKIE = "bp2.authorization.request";
 
     public static final String AUTHZ_DECISION_KEY = "auth_key";
+
+    private static final int MESSAGES_POLL_SLEEP_MILLIS = 3000;
 
     @Inject
     private DAOFactory daoFactory;

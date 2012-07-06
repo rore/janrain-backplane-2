@@ -72,6 +72,7 @@ public class SimpleDBAuthSessionDAO implements AuthSessionDAO {
         }
     }
 
+    @Override
     public void deleteExpiredAuthSessions() {
         try {
             logger.info("Backplane auth sessions cleanup task started.");

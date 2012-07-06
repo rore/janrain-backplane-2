@@ -154,7 +154,7 @@ public class Backplane1Controller {
     @ExceptionHandler
     @ResponseBody
     public Map<String, String> handle(final AuthException e, HttpServletResponse response) {
-        logger.error("Backplane authentication error: " + bpConfig.getDebugException(e));
+        logger.error("Backplane authentication error: " + e.getMessage(), bpConfig.getDebugException(e));
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         return new HashMap<String,String>() {{
             put(ERR_MSG_FIELD, e.getMessage());
@@ -248,7 +248,7 @@ public class Backplane1Controller {
         String user = userPass.substring(0, delim);
         String pass = userPass.substring(delim + 1);
 
-        User userEntry = null;
+        User userEntry;
 
         //userEntry = superSimpleDb.retrieve(bpConfig.getTableName(Backplane1Config.SimpleDBTables.BP1_USERS), User.class, user);
         userEntry = daoFactory.getUserDAO().get(user);
@@ -260,7 +260,7 @@ public class Backplane1Controller {
         }
 
         // authZ
-        BusConfig1 busConfig = null;
+        BusConfig1 busConfig;
 
         //busConfig = superSimpleDb.retrieve(bpConfig.getTableName(BP1_BUS_CONFIG), BusConfig1.class, bus);
         busConfig = daoFactory.getBusDAO().get(bus);

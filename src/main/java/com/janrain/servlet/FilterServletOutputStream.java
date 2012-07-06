@@ -1,8 +1,9 @@
 package com.janrain.servlet;
 
-import javax.servlet.*;
-import javax.servlet.http.*;
-import java.io.*;
+import javax.servlet.ServletOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 
 public class FilterServletOutputStream extends ServletOutputStream {
 
@@ -12,14 +13,17 @@ public class FilterServletOutputStream extends ServletOutputStream {
     stream = new DataOutputStream(output);
   }
 
+  @Override
   public void write(int b) throws IOException  {
     stream.write(b);
   }
 
+  @Override
   public void write(byte[] b) throws IOException  {
     stream.write(b);
   }
 
+  @Override
   public void write(byte[] b, int off, int len) throws IOException  {
     stream.write(b,off,len);
   }

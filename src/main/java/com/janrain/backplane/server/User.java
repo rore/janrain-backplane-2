@@ -17,11 +17,9 @@
 package com.janrain.backplane.server;
 
 import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import org.apache.log4j.Logger;
 
-import java.io.*;
 import java.util.*;
 
 /**

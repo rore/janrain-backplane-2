@@ -17,21 +17,15 @@
 package com.janrain.backplane2.server.dao.redis;
 
 import com.janrain.backplane2.server.*;
-import com.janrain.backplane2.server.config.Backplane2Config;
-import com.janrain.backplane2.server.config.BusConfig2;
 import com.janrain.backplane2.server.dao.BackplaneMessageDAO;
-import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.commons.supersimpledb.SuperSimpleDB;
-import com.janrain.commons.util.Pair;
 import com.janrain.oauth2.TokenException;
 import com.janrain.redis.Redis;
-import com.yammer.metrics.Metrics;
-import com.yammer.metrics.core.Histogram;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.Response;
@@ -39,12 +33,6 @@ import redis.clients.jedis.Transaction;
 
 import javax.servlet.http.HttpServletResponse;
 import java.util.*;
-import java.util.concurrent.Callable;
-import java.util.concurrent.TimeUnit;
-
-import static com.janrain.backplane2.server.BackplaneMessage.Field.*;
-import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_MESSAGES;
-import static com.janrain.backplane2.server.config.BusConfig2.Field.*;
 
 /**
  * @author Tom Raney, Johnny Bufu
@@ -55,15 +43,15 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
     final public static String V2_MESSAGES = "v2_messages";
 
     public static byte[] getBusKey(String bus) {
-        return new String("v2_bus_message_ids_" + bus).getBytes();
+        return ("v2_bus_message_ids_" + bus).getBytes();
     }
 
     public static byte[] getChannelKey(String channel) {
-        return new String("v2_channel_" + channel).getBytes();
+        return ("v2_channel_" + channel).getBytes();
     }
 
     public static byte[] getKey(String key) {
-        return new String("v2_" + key).getBytes();
+        return ("v2_" + key).getBytes();
     }
 
 
@@ -112,7 +100,7 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
     }
 
     @Override
-    public void retrieveMesssagesPerScope(@NotNull MessagesResponse bpResponse, @NotNull Token token) throws BackplaneServerException {
+    public void retrieveMessagesPerScope(@NotNull MessagesResponse bpResponse, @NotNull Token token) throws BackplaneServerException {
         final Scope scope = token.getScope();
 
         List<BackplaneMessage> messages = retrieveMessagesNoScope(bpResponse.getLastMessageId());
@@ -120,7 +108,7 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
     }
 
     @Override
-    public List<BackplaneMessage> retrieveMessagesNoScope(String sinceIso8601timestamp) throws BackplaneServerException {
+    public List<BackplaneMessage> retrieveMessagesNoScope(@Nullable String sinceIso8601timestamp) throws BackplaneServerException {
         Jedis jedis = null;
 
         try {
@@ -138,15 +126,15 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
             List<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
 
             Pipeline pipeline = jedis.pipelined();
-            List<Response> responses = new ArrayList<Response>();
+            List<Response<byte[]>> responses = new ArrayList<Response<byte[]>>();
 
             if (messageIdBytes != null) {
                 for (byte[] b: messageIdBytes) {
                     String[] args = new String(b).split(" ");
-                    responses.add(pipeline.get(getKey(new String(args[2]))));
+                    responses.add(pipeline.get(getKey(args[2])));
                 }
                 pipeline.sync();
-                for (Response<byte[]> response: responses) {
+                for (Response<byte[]> response : responses) {
                     if (response.get() != null) {
                         BackplaneMessage backplaneMessage = (BackplaneMessage) SerializationUtils.deserialize(response.get());
                         messages.add(backplaneMessage);
@@ -240,10 +228,10 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
                     logger.warn("could not remove message " + id + " from " + V2_MESSAGES);
                 }
                 if (del2.get() == 0) {
-                    logger.warn("could not remove message " + id + " from " + getChannelKey(args[1]));
+                    logger.warn("could not remove message " + id + " from " + new String(getChannelKey(args[1])));
                 }
                 if (del3.get() == 0) {
-                    logger.warn("could not remove message " + id + " from " + getBusKey(args[0]));
+                    logger.warn("could not remove message " + id + " from " + new String(getBusKey(args[0])));
                 }
             }
         } finally {

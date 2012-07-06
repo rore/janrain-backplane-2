@@ -16,7 +16,6 @@
 
 package com.janrain.backplane2.server.dao;
 
-import com.janrain.backplane2.server.BackplaneServerException;
 import com.janrain.backplane2.server.config.Client;
 
 

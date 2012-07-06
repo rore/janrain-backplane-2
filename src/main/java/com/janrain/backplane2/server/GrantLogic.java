@@ -107,7 +107,7 @@ public class GrantLogic {
               updatedState = GrantState.REVOKED;
           }
 
-          Grant updated = null; // no expiration
+          Grant updated; // no expiration
           try {
               updated = new Grant.Builder(existing, updatedState).buildGrant();
           } catch (SimpleDBException e) {

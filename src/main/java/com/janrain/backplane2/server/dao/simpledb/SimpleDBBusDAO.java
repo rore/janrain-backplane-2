@@ -44,13 +44,7 @@ public class SimpleDBBusDAO implements BusDAO {
     @Override
     public BusConfig2 get(String id) throws BackplaneServerException {
         try {
-            Object obj = null;
-            if (obj == null) {
-                BusConfig2 busConfig2 = superSimpleDB.retrieve(bpConfig.getTableName(BP_BUS_CONFIG), BusConfig2.class, id);
-                return busConfig2;
-            } else {
-                return (BusConfig2)obj;
-            }
+            return superSimpleDB.retrieve(bpConfig.getTableName(BP_BUS_CONFIG), BusConfig2.class, id);
         } catch (SimpleDBException e) {
             throw new BackplaneServerException(e.getMessage());
         }
@@ -83,6 +77,7 @@ public class SimpleDBBusDAO implements BusDAO {
         }
     }
 
+    @Override
     public List<BusConfig2> retrieveByOwner(String busOwner) throws BackplaneServerException {
         try {
             return superSimpleDB.retrieveWhere(
@@ -94,6 +89,7 @@ public class SimpleDBBusDAO implements BusDAO {
     }
 
     /** Associated grants and tokens are deleted/revoked. */
+    @Override
     public void deleteByOwner(String busOwner) throws BackplaneServerException, TokenException {
         try {
             List<BusConfig2> busConfigs = retrieveByOwner(busOwner);

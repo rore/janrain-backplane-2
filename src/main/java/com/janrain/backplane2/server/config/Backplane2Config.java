@@ -17,22 +17,13 @@
 package com.janrain.backplane2.server.config;
 
 import com.janrain.backplane.server.config.BpServerConfig;
-import com.janrain.backplane.server.dao.DAO;
-import com.janrain.backplane2.server.BackplaneMessage;
 import com.janrain.backplane2.server.BackplaneServerException;
 import com.janrain.backplane2.server.dao.DAOFactory;
-import com.janrain.backplane2.server.dao.MessageCache;
 import com.janrain.cache.CachedL1;
 import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.commons.supersimpledb.SuperSimpleDB;
-import com.janrain.commons.supersimpledb.message.AbstractNamedMap;
 import com.janrain.commons.util.AwsUtility;
 import com.janrain.commons.util.InitSystemProps;
 import com.janrain.crypto.HmacHashUtils;
-import com.janrain.metrics.MetricMessage;
-import com.yammer.metrics.Metrics;
-import com.yammer.metrics.core.Timer;
-import com.yammer.metrics.core.TimerContext;
 import com.yammer.metrics.reporting.ConsoleReporter;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -43,11 +34,12 @@ import javax.annotation.PreDestroy;
 import javax.inject.Inject;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.EnumSet;
 import java.util.Properties;
 import java.util.TimeZone;
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 
 /**
@@ -193,7 +185,7 @@ public class Backplane2Config {
 
 
     // Amazon specific instance-id value
-    private static String EC2InstanceId = "n/a";
+    private static String EC2InstanceId = AwsUtility.retrieveEC2InstanceId();
 
     private final com.yammer.metrics.core.Timer v2CleanupTimer =
         com.yammer.metrics.Metrics.newTimer(Backplane2Config.class, "cleanup_messages_time", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
@@ -202,7 +194,6 @@ public class Backplane2Config {
     @SuppressWarnings({"UnusedDeclaration"})
     private Backplane2Config() {
         this.bpInstanceId = getAwsProp(InitSystemProps.AWS_INSTANCE_ID);
-        this.EC2InstanceId = new AwsUtility().retrieveEC2InstanceId();
 
         //TODO: remove at some point...
         ConsoleReporter.enable(5, TimeUnit.MINUTES);
@@ -327,7 +318,7 @@ public class Backplane2Config {
         BpServerConfig bpServerConfigCache = (BpServerConfig) CachedL1.getInstance().getObject(BpServerConfig.BPSERVER_CONFIG_KEY);
         if (bpServerConfigCache == null) {
             // pull from db if not found in cache
-            bpServerConfigCache = simpleDBDaoFactory.getConfigDAO().get(null);
+            bpServerConfigCache = simpleDBDaoFactory.getConfigDAO().get(BpServerConfig.BPSERVER_CONFIG_KEY);
             if (bpServerConfigCache == null) {
                 // no instance found in cache or the db, so let's use the default record
                 bpServerConfigCache = new BpServerConfig();

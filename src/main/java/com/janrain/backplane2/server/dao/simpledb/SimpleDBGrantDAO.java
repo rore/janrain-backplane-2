@@ -25,13 +25,11 @@ import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.oauth2.TokenException;
 import com.yammer.metrics.Metrics;
 import org.apache.commons.lang.NotImplementedException;
-import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
-import java.util.concurrent.Callable;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_GRANT;
@@ -102,6 +100,7 @@ public class SimpleDBGrantDAO implements GrantDAO {
         }
     }
 
+    @Override
     public void deleteByBuses(@NotNull List<String> busesToDelete) throws BackplaneServerException, TokenException {
         try {
             // todo: consider multiple 'select .. like .. ' queries/clauses
@@ -126,6 +125,7 @@ public class SimpleDBGrantDAO implements GrantDAO {
      *  Not atomic, best effort.
      *  Stops on first error and reports error, even though some grants may have been updated.
      */
+    @Override
     public void revokeBuses(Set<Grant> grants, String buses) throws BackplaneServerException, TokenException {
         Scope busesToRevoke = new Scope(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, buses));
         boolean changes = false;

@@ -2,11 +2,9 @@ package com.janrain.backplane.server.config;
 
 import com.janrain.backplane.server.ExternalizableCore;
 import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import org.apache.log4j.Logger;
 
-import java.io.*;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -48,55 +46,6 @@ public class BpServerConfig extends ExternalizableCore {
     public Set<? extends MessageField> getFields() {
         return EnumSet.allOf(Field.class);
     }
-
-    public byte[] toBytes() {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        ObjectOutputStream oos = null;
-        byte[] bytes = null;
-        try {
-            oos = new ObjectOutputStream(bos);
-            oos.writeObject(this);
-            oos.flush();
-            bytes = bos.toByteArray();
-        } catch (IOException e) {
-            logger.error(e);
-        } finally {
-            try {
-                if (oos != null) {
-                    oos.close();
-                }
-                bos.close();
-            } catch (IOException e) {
-                logger.error(e);
-            }
-        }
-        return bytes;
-    }
-
-    public static BpServerConfig fromBytes(byte[] bytes) {
-
-        if (bytes == null) {
-            return null;
-        }
-
-        ObjectInputStream in = null;
-        try {
-            in = new ObjectInputStream(new ByteArrayInputStream(bytes));
-            return (BpServerConfig) in.readObject();
-        } catch (Exception e1) {
-            logger.error(e1);
-        } finally {
-            try {
-                if (in != null) {
-                    in.close();
-                }
-            } catch (IOException e) {
-                logger.error(e);
-            }
-        }
-        return null;
-    }
-
 
     public static enum Field implements MessageField {
 

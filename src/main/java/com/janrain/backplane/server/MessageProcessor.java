@@ -93,10 +93,7 @@ public class MessageProcessor extends JedisPubSub {
 
             Set<byte[]> messageMetaBytes = jedis.zrangeByScore(BackplaneMessageDAO.V1_MESSAGES.getBytes(), 0, Double.MAX_VALUE);
             if (messageMetaBytes != null) {
-                Iterator it = messageMetaBytes.iterator();
-                while (it.hasNext()) {
-                    byte[] b = (byte[]) it.next();
-
+                for (byte[] b : messageMetaBytes) {
                     String metaData = new String(b);
                     String[] segs = metaData.split(" ");
                     if (jedis.get(segs[2]) == null) {
@@ -131,7 +128,7 @@ public class MessageProcessor extends JedisPubSub {
             logger.info("message processor waiting for exclusive write lock");
 
             // TRY forever to get lock to do work
-            String lock = Redis.getInstance().getLock(V1_WRITE_LOCK, uuid, -1, 30);
+            String lock = Redis.getInstance().getLock(V1_WRITE_LOCK, uuid, -1, LOCK_SECONDS);
 
             // if we lose our lock sometime between this point and the lock refresh, the
             // transaction will fail
@@ -272,7 +269,7 @@ public class MessageProcessor extends JedisPubSub {
                         }
                     }
 
-                    if (!Redis.getInstance().refreshLock(V1_WRITE_LOCK, uuid, 30)) {
+                    if (!Redis.getInstance().refreshLock(V1_WRITE_LOCK, uuid, LOCK_SECONDS)) {
                         logger.warn("lost lock! - halting work for now");
                         return;
                     }
@@ -294,6 +291,7 @@ public class MessageProcessor extends JedisPubSub {
     }
 
     private static final String V1_WRITE_LOCK = "v1_write_lock";
+    private static final int LOCK_SECONDS = 30;
 
     private static final Logger logger = Logger.getLogger(MessageProcessor.class);
 

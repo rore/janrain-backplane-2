@@ -18,14 +18,8 @@ package com.janrain.backplane.server.config;
 
 import com.janrain.backplane.server.ExternalizableCore;
 import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
-import org.apache.log4j.Logger;
 
-import java.io.InvalidObjectException;
-import java.io.ObjectInputStream;
-import java.io.ObjectStreamException;
-import java.io.Serializable;
 import java.util.*;
 
 /**
@@ -79,9 +73,5 @@ public final class User extends ExternalizableCore {
     // - PRIVATE
 
     private static final long serialVersionUID = 5437572571979441366L;
-
-    private static final Logger logger = Logger.getLogger(User.class);
-
-
 
 }

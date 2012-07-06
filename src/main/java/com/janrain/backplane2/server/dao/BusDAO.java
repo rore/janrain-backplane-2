@@ -17,18 +17,10 @@
 package com.janrain.backplane2.server.dao;
 
 import com.janrain.backplane2.server.BackplaneServerException;
-import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.backplane2.server.config.BusConfig2;
-import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.oauth2.TokenException;
-import com.yammer.metrics.Metrics;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.TimeUnit;
 
-import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_BUS_CONFIG;
+import java.util.List;
 
 /**
  * @author Johnny Bufu
@@ -36,6 +28,7 @@ import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTabl
 public interface BusDAO extends DAO<BusConfig2> {
 
     public List<BusConfig2> retrieveByOwner(String busOwner) throws BackplaneServerException;
+
     /** Associated grants and tokens are deleted/revoked. */
     public void deleteByOwner(String busOwner) throws BackplaneServerException, TokenException;
 

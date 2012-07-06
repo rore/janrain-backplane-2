@@ -31,11 +31,11 @@ import javax.annotation.PreDestroy;
 import javax.inject.Inject;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.util.*;
-import java.util.concurrent.Callable;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Properties;
+import java.util.TimeZone;
+import java.util.concurrent.*;
 
 import static com.janrain.backplane.server.config.Backplane1Config.SimpleDBTables.*;
 
@@ -163,11 +163,10 @@ public class Backplane1Config {
     private static final Properties buildProperties = new Properties();
 
     private final String bpInstanceId;
-    private ScheduledExecutorService cleanup;
-    private ScheduledExecutorService messageProcessor;
+    private final List<ExecutorService> backgroundServices = new ArrayList<ExecutorService>();
 
     // Amazon specific instance-id value
-    private static String EC2InstanceId = "n/a";
+    private static String EC2InstanceId = AwsUtility.retrieveEC2InstanceId();
 
     private final com.yammer.metrics.core.Timer getMessagesTime =
             Metrics.newTimer(Backplane1Config.class, "cleanup_messages_time", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
@@ -175,7 +174,6 @@ public class Backplane1Config {
     @SuppressWarnings({"UnusedDeclaration"})
     private Backplane1Config() {
         this.bpInstanceId = getAwsProp(InitSystemProps.AWS_INSTANCE_ID);
-        this.EC2InstanceId = new AwsUtility().retrieveEC2InstanceId();
         try {
             buildProperties.load(Backplane1Config.class.getResourceAsStream(BUILD_PROPERTIES));
         } catch (IOException e) {
@@ -189,7 +187,6 @@ public class Backplane1Config {
 
     private ScheduledExecutorService createMessageWorker() {
 
-        long cleanupIntervalMinutes;
         logger.info("calling createMessageWorker()");
 
         final MessageProcessor messageProcessor = new MessageProcessor();
@@ -255,27 +252,28 @@ public class Backplane1Config {
 
     @PostConstruct
     private void init() {
-        this.cleanup = createCleanupTask();
-        this.messageProcessor = createMessageWorker();
+        backgroundServices.add(createCleanupTask());
+        backgroundServices.add(createMessageWorker());
     }
 
     @PreDestroy
     private void cleanup() {
-        try {
-            this.cleanup.shutdown();
-            if (this.cleanup.awaitTermination(10, TimeUnit.SECONDS)) {
-                logger.info("Background thread shutdown properly");
-            } else {
-                this.cleanup.shutdownNow();
-                if (!this.cleanup.awaitTermination(10, TimeUnit.SECONDS)) {
-                    logger.error("Background thread did not terminate");
+        for (ExecutorService executor : backgroundServices) {
+            try {
+                executor.shutdown();
+                if (executor.awaitTermination(10, TimeUnit.SECONDS)) {
+                    logger.info("Background thread shutdown properly");
+                } else {
+                    executor.shutdownNow();
+                    if (!executor.awaitTermination(10, TimeUnit.SECONDS)) {
+                        logger.error("Background thread did not terminate");
+                    }
                 }
+            } catch (InterruptedException e) {
+                logger.error("error shutting down background service", e);
+                executor.shutdownNow();
+                Thread.currentThread().interrupt();
             }
-        } catch (InterruptedException e) {
-            logger.error("cleanup() threw an exception", e);
-            this.cleanup.shutdownNow();
-            Thread.currentThread().interrupt();
-
         }
     }
 

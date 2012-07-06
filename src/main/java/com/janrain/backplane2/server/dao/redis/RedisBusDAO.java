@@ -16,26 +16,19 @@
 
 package com.janrain.backplane2.server.dao.redis;
 
-import com.janrain.backplane.server.User;
 import com.janrain.backplane2.server.BackplaneServerException;
-import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.backplane2.server.config.BusConfig2;
 import com.janrain.backplane2.server.dao.BusDAO;
-import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.commons.supersimpledb.SuperSimpleDB;
-import com.janrain.commons.supersimpledb.message.MessageField;
 import com.janrain.oauth2.TokenException;
 import com.janrain.redis.Redis;
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.log4j.Logger;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Response;
 import redis.clients.jedis.Transaction;
+
 import java.util.ArrayList;
 import java.util.List;
-
-import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_BUS_CONFIG;
 
 /**
  * @author Johnny Bufu
@@ -43,7 +36,7 @@ import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTabl
 public class RedisBusDAO implements BusDAO {
 
     public static byte[] getKey(String id) {
-        return new String("v2_bus_" + id).getBytes();
+        return ("v2_bus_" + id).getBytes();
     }
 
     @Override
@@ -110,10 +103,10 @@ public class RedisBusDAO implements BusDAO {
                 t.exec();
 
                 if (del1.get() == 0) {
-                    logger.warn("could not delete bus " + getKey(id) + " from list " + getKey("list"));
+                    logger.warn("could not delete bus " + new String(getKey(id)) + " from list " + new String(getKey("list")));
                 }
                 if (del2.get() == 0) {
-                    logger.warn("could not delete bus key " + getKey(id));
+                    logger.warn("could not delete bus key " + new String(getKey(id)));
                 }
             }
         } finally {

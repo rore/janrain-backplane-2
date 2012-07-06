@@ -5,12 +5,12 @@ import com.janrain.backplane2.server.config.User;
 import com.janrain.backplane2.server.dao.BusOwnerDAO;
 import com.janrain.oauth2.TokenException;
 import com.janrain.redis.Redis;
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.log4j.Logger;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Response;
 import redis.clients.jedis.Transaction;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -20,7 +20,7 @@ import java.util.List;
 public class RedisBusOwnerDAO implements BusOwnerDAO {
 
     public static byte[] getKey(String id) {
-        return new String("v2_bus_owner_" + id).getBytes();
+        return ("v2_bus_owner_" + id).getBytes();
     }
 
     @Override
@@ -78,13 +78,13 @@ public class RedisBusOwnerDAO implements BusOwnerDAO {
                 t.exec();
 
                 if (del1.get() == 0) {
-                    logger.warn("failed to remove " + getKey(id));
+                    logger.warn("failed to remove " + new String(getKey(id)));
                 }
                 if (del2.get() == 0) {
-                    logger.warn("failed to remove " + getKey(id) + " from list " + getKey("list"));
+                    logger.warn("failed to remove " + new String(getKey(id)) + " from list " + new String(getKey("list")));
                 }
             } else {
-                logger.warn("could not locate value for key " + getKey(id));
+                logger.warn("could not locate value for key " + new String(getKey(id)));
             }
         } finally {
             Redis.getInstance().releaseToPool(jedis);

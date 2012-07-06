@@ -90,6 +90,7 @@ public class SimpleDBTokenDAO implements TokenDAO {
         }
     }
 
+    @Override
     public void deleteExpiredTokens() throws BackplaneServerException {
         try {
             logger.info("Backplane token cleanup task started.");
@@ -103,6 +104,7 @@ public class SimpleDBTokenDAO implements TokenDAO {
         }
     }
 
+    @Override
     public List<Token> retrieveTokensByGrant(String grantId) throws BackplaneServerException {
         try {
             ArrayList<Token> tokens = new ArrayList<Token>();
@@ -118,6 +120,7 @@ public class SimpleDBTokenDAO implements TokenDAO {
         }
     }
 
+    @Override
     public void revokeTokenByGrant(String grantId) throws BackplaneServerException {
         List<Token> tokens = retrieveTokensByGrant(grantId);
         for (Token token : tokens) {
@@ -135,6 +138,7 @@ public class SimpleDBTokenDAO implements TokenDAO {
      * @throws com.janrain.commons.supersimpledb.SimpleDBException
      * @throws com.janrain.oauth2.TokenException if the channel is invalid and was bound to more than one bus
      */
+    @Override
     public String getBusForChannel(String channel) throws BackplaneServerException, TokenException {
         if (StringUtils.isEmpty(channel)) return null;
         final Scope singleChannelScope = new Scope(BackplaneMessage.Field.CHANNEL, channel);
@@ -173,6 +177,7 @@ public class SimpleDBTokenDAO implements TokenDAO {
         }
     }
 
+    @Override
     public boolean isValidBinding(String channel, String bus) throws BackplaneServerException {
         try {
             return bus != null && channel != null && bus.equals(getBusForChannel(channel));

@@ -16,6 +16,8 @@
 
 package com.janrain.oauth2;
 
+import org.jetbrains.annotations.Nullable;
+
 import javax.servlet.http.HttpServletRequest;
 
 /**
@@ -27,7 +29,7 @@ public class AuthorizationException extends OAuth2Exception {
         this(oauthErrorCode, message, request, null);
     }
 
-    public AuthorizationException(String oauthErrorCode, String message, HttpServletRequest request, Throwable cause) {
+    public AuthorizationException(String oauthErrorCode, String message, HttpServletRequest request, @Nullable Throwable cause) {
         super(oauthErrorCode, message, cause);
         this.redirectUri = request.getParameter(AuthorizationRequest.Field.REDIRECT_URI.getFieldName().toLowerCase());
         this.state = request.getParameter(AuthorizationRequest.Field.STATE.getFieldName().toLowerCase());
@@ -37,7 +39,7 @@ public class AuthorizationException extends OAuth2Exception {
         this(oauthErrorCode, message, request, null);
     }
 
-    public AuthorizationException(String oauthErrorCode, String message, AuthorizationRequest request, Throwable cause) {
+    public AuthorizationException(String oauthErrorCode, String message, AuthorizationRequest request, @Nullable Throwable cause) {
         super(oauthErrorCode, message, cause);
         this.redirectUri = request.get(AuthorizationRequest.Field.REDIRECT_URI);
         this.state = request.get(AuthorizationRequest.Field.STATE);

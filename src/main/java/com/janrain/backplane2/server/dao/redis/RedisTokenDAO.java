@@ -1,13 +1,15 @@
 package com.janrain.backplane2.server.dao.redis;
 
-import com.janrain.backplane2.server.*;
+import com.janrain.backplane2.server.BackplaneMessage;
+import com.janrain.backplane2.server.BackplaneServerException;
+import com.janrain.backplane2.server.Scope;
+import com.janrain.backplane2.server.Token;
 import com.janrain.backplane2.server.dao.TokenDAO;
 import com.janrain.oauth2.TokenException;
 import com.janrain.redis.Redis;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.commons.lang.StringUtils;
-import org.apache.http.client.RedirectStrategy;
 import org.apache.log4j.Logger;
 import redis.clients.jedis.Jedis;
 
@@ -15,15 +17,13 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 
-import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_ACCESS_TOKEN;
-
 /**
  * @author Tom Raney
  */
 public class RedisTokenDAO implements TokenDAO {
 
     public static byte[] getKey(String id) {
-        return new String("v2_token_" + id).getBytes();
+        return ("v2_token_" + id).getBytes();
     }
 
     @Override

@@ -16,7 +16,7 @@ import java.util.List;
 public class RedisAdminDAO implements AdminDAO {
 
     public static byte[] getAdminUserKey(String userId) {
-        return new String("v2_admin_" + userId).getBytes();
+        return ("v2_admin_" + userId).getBytes();
     }
 
     @Override
@@ -32,6 +32,7 @@ public class RedisAdminDAO implements AdminDAO {
         Redis.getInstance().del(key);
     }
 
+    @Override
     public User get(String key) {
         byte[] bytes = Redis.getInstance().get(getAdminUserKey(key));
         if (bytes != null) {

@@ -72,6 +72,7 @@ public class SimpleDBAuthorizationRequestDAO implements AuthorizationRequestDAO 
         }
     }
 
+    @Override
     public void deleteExpiredAuthorizationRequests() {
         try {
             logger.info("Backplane authorization requests cleanup task started.");

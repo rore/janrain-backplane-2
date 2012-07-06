@@ -73,6 +73,7 @@ public class SimpleDBAuthorizationDecisionKeyDAO implements AuthorizationDecisio
         }
     }
 
+    @Override
     public void deleteExpiredAuthorizationDecisionKeys() {
         try {
             logger.info("Backplane authorization decision keys cleanup task started.");

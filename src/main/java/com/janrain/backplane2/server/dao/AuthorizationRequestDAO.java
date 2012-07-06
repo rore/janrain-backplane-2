@@ -16,16 +16,7 @@
 
 package com.janrain.backplane2.server.dao;
 
-import com.janrain.backplane2.server.BackplaneServerException;
 import com.janrain.oauth2.AuthorizationRequest;
-import com.janrain.backplane2.server.config.Backplane2Config;
-import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.commons.supersimpledb.SuperSimpleDB;
-import org.apache.log4j.Logger;
-
-import java.util.Date;
-
-import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_AUTHORIZATION_REQUEST;
 
 /**
  * @author Johnny Bufu

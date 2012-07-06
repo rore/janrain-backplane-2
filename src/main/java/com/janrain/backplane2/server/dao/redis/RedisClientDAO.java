@@ -5,12 +5,12 @@ import com.janrain.backplane2.server.config.Client;
 import com.janrain.backplane2.server.dao.ClientDAO;
 import com.janrain.oauth2.TokenException;
 import com.janrain.redis.Redis;
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.log4j.Logger;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Response;
 import redis.clients.jedis.Transaction;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -20,7 +20,7 @@ import java.util.List;
 public class RedisClientDAO implements ClientDAO {
 
     public static byte[] getKey(String id) {
-        return new String("v2_client_" + id).getBytes();
+        return ("v2_client_" + id).getBytes();
     }
 
     @Override
@@ -76,13 +76,13 @@ public class RedisClientDAO implements ClientDAO {
                 t.exec();
 
                 if (del1.get() == 0) {
-                    logger.warn("could not delete client " + getKey(id) + " from list " + getKey("list"));
+                    logger.warn("could not delete client " + new String(getKey(id)) + " from list " + new String(getKey("list")));
                 }
                 if (del2.get() == 0) {
-                    logger.warn("could not delete client key " + getKey(id));
+                    logger.warn("could not delete client key " + new String(getKey(id)));
                 }
             } else {
-                logger.warn("could not locate value for key " + getKey(id));
+                logger.warn("could not locate value for key " + new String(getKey(id)));
             }
         } finally {
             Redis.getInstance().releaseToPool(jedis);

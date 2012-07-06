@@ -41,15 +41,15 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
     final public static String V1_MESSAGES = "v1_messages";
 
     public static byte[] getBusKey(String bus) {
-        return new String("v1_" + bus).getBytes();
+        return ("v1_" + bus).getBytes();
     }
 
     public static byte[] getChannelKey(String bus, String channel) {
-        return new String("v1_" + bus + "_" + channel).getBytes();
+        return ("v1_" + bus + "_" + channel).getBytes();
     }
 
     public static byte[] getMessageIdKey(String bus, String channel, String id) {
-        return new String( new String(getChannelKey(bus, channel)) + "_" + id).getBytes();
+        return (new String(getChannelKey(bus, channel)) + "_" + id).getBytes();
     }
 
     /**
@@ -68,6 +68,7 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
         throw new NotImplementedException();
     }
 
+    @Override
     public BackplaneMessage get(String key) {
         byte[] messageBytes = Redis.getInstance().get(key.getBytes());
         if (messageBytes != null) {
@@ -112,8 +113,8 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
             }
         }
 
-        return filterAndSort(messages, since, sticky);
-
+        filterAndSort(messages, since, sticky);
+        return messages;
     }
 
     public List<String> getMessageIds(List<BackplaneMessage> messages) {
@@ -143,7 +144,7 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
             List<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
 
             Pipeline pipeline = jedis.pipelined();
-            List<Response> responses = new ArrayList<Response>();
+            List<Response<byte[]>> responses = new ArrayList<Response<byte[]>>();
 
             if (messageIdBytes != null) {
                 for (byte[] b: messageIdBytes) {
@@ -158,7 +159,8 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
                 }
             }
 
-            return filterAndSort(messages, since, sticky);
+            filterAndSort(messages, since, sticky);
+            return messages;
 
         } finally {
             Redis.getInstance().releaseToPool(jedis);
@@ -178,26 +180,28 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
 
     private final Histogram messagesPerChannel = Metrics.newHistogram(BackplaneMessageDAO.class, "v1_messages_per_channel");
 
-    private List<BackplaneMessage> filterAndSort(List<BackplaneMessage> messages, String since, String sticky) {
+    private void filterAndSort(List<BackplaneMessage> messages, String since, String sticky) {
 
         // filter per sticky flag
         if (StringUtils.isNotBlank(sticky)) {
-            for (BackplaneMessage message: messages) {
+            Iterator<BackplaneMessage> iterator = messages.iterator();
+            while(iterator.hasNext()) {
+                BackplaneMessage message = iterator.next();
                 if (!message.get(BackplaneMessage.Field.STICKY.getFieldName()).equals(sticky)) {
-                    messages.remove(message);
+                    iterator.remove();
                 }
             }
         }
 
         // filter per since flag
         if (StringUtils.isNotBlank(since)) {
-            List<BackplaneMessage> newList = new ArrayList<BackplaneMessage>();
-            for (BackplaneMessage msg: messages) {
-                if (msg.getIdValue().compareTo(since) > 0) {
-                    newList.add(msg);
+            Iterator<BackplaneMessage> iterator = messages.iterator();
+            while(iterator.hasNext()) {
+                BackplaneMessage message = iterator.next();
+                if (message.getIdValue().compareTo(since) <= 0) {
+                    iterator.remove();
                 }
             }
-            messages = newList;
         }
 
         Collections.sort(messages, new Comparator<BackplaneMessage>() {
@@ -206,9 +210,6 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
                 return backplaneMessage.getIdValue().compareTo(backplaneMessage1.getIdValue());
             }
         });
-
-        return messages;
-
     }
 
     private String genBusKey(String key) {

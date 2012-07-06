@@ -49,7 +49,7 @@ public class InvalidRequestException extends RuntimeException {
         }
 	}
 	
-	public <T> InvalidRequestException(Set<ConstraintViolation<T>> failures, Class<?> T) {
+	public <T> InvalidRequestException(Set<ConstraintViolation<T>> failures) {
 		for (ConstraintViolation<T> failure : failures) {
 			fieldErrors.put(failure.getPropertyPath().toString(), failure.getMessage());
 		}

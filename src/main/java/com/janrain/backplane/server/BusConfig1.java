@@ -17,13 +17,13 @@
 package com.janrain.backplane.server;
 
 import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
-import java.io.*;
-import java.util.*;
+import java.util.Collection;
+import java.util.EnumSet;
+import java.util.Set;
 
 /**
  * @author Johnny Bufu
@@ -56,7 +56,7 @@ public class BusConfig1 extends ExternalizableCore {
         return Integer.valueOf(get(Field.RETENTION_STICKY_TIME_SECONDS));
     }
 
-    public EnumSet<BUS_PERMISSION> getPermissions(String user) {
+    public Collection<BUS_PERMISSION> getPermissions(String user) {
         if (isBusConfigField(user)) {
             throw new IllegalArgumentException("Invalid user name: " + user);
         }

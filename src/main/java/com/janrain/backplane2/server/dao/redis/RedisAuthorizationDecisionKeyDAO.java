@@ -15,7 +15,7 @@ import java.util.List;
 public class RedisAuthorizationDecisionKeyDAO implements AuthorizationDecisionKeyDAO {
 
     public static byte[] getKey(String id) {
-        return new String("v2_auth_decision_" + id).getBytes();
+        return ("v2_auth_decision_" + id).getBytes();
     }
 
     @Override

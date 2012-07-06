@@ -8,7 +8,6 @@ import com.janrain.backplane2.server.config.User;
 import com.janrain.backplane2.server.dao.*;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import org.springframework.context.annotation.Scope;
-import org.springframework.stereotype.Service;
 
 import javax.inject.Inject;
 
@@ -84,7 +83,7 @@ public class SimpleDBDAOFactory extends DAOFactory {
 
     @Override
     public AdminDAO getAdminDAO() {
-        return new SimpleDBAdminDAO(superSimpleDB, bpConfig, this);
+        return new SimpleDBAdminDAO(superSimpleDB, bpConfig);
     }
 
 

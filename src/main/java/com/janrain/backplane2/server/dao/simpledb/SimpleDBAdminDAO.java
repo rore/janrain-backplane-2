@@ -4,7 +4,6 @@ import com.janrain.backplane2.server.BackplaneServerException;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.backplane2.server.config.User;
 import com.janrain.backplane2.server.dao.AdminDAO;
-import com.janrain.backplane2.server.dao.DAOFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.oauth2.TokenException;
@@ -16,8 +15,7 @@ import java.util.List;
  */
 public class SimpleDBAdminDAO implements AdminDAO {
 
-    public SimpleDBAdminDAO(SuperSimpleDB superSimpleDB, Backplane2Config bpConfig, DAOFactory daoFactory) {
-        this.daoFactory = daoFactory;
+    public SimpleDBAdminDAO(SuperSimpleDB superSimpleDB, Backplane2Config bpConfig) {
         this.bpConfig = bpConfig;
         this.superSimpleDB = superSimpleDB;
     }
@@ -60,6 +58,5 @@ public class SimpleDBAdminDAO implements AdminDAO {
 
     private final SuperSimpleDB superSimpleDB;
     private final Backplane2Config bpConfig;
-    private final DAOFactory daoFactory;
 
 }

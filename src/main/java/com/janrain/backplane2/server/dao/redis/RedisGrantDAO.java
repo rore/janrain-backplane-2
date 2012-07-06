@@ -6,21 +6,16 @@ import com.janrain.backplane2.server.Grant;
 import com.janrain.backplane2.server.Scope;
 import com.janrain.backplane2.server.dao.GrantDAO;
 import com.janrain.backplane2.server.dao.TokenDAO;
-import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.oauth2.TokenException;
 import com.janrain.redis.Redis;
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.log4j.Logger;
-import org.apache.zookeeper.server.util.SerializeUtils;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Transaction;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 /**
@@ -33,7 +28,7 @@ public class RedisGrantDAO implements GrantDAO {
     }
 
     public static byte[] getKey(String id) {
-        return new String("v2_grant_" + id).getBytes();
+        return ("v2_grant_" + id).getBytes();
     }
 
     @Override
@@ -164,7 +159,7 @@ public class RedisGrantDAO implements GrantDAO {
             byte[] bytes = jedis.get(getKey(id));
             if (bytes != null) {
                 if (jedis.lrem(getKey("list"), 0, bytes) == 0) {
-                    logger.warn("failed to remove grant " + id + " from list " + getKey("list"));
+                    logger.warn("failed to remove grant " + id + " from list " + new String(getKey("list")));
                 }
                 jedis.del(getKey(id));
             }

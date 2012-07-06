@@ -16,22 +16,13 @@
 
 package com.janrain.backplane2.server.dao;
 
-import com.janrain.backplane2.server.*;
-import com.janrain.backplane2.server.config.Backplane2Config;
-import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.commons.supersimpledb.SuperSimpleDB;
+import com.janrain.backplane2.server.BackplaneServerException;
+import com.janrain.backplane2.server.Grant;
 import com.janrain.oauth2.TokenException;
-import com.yammer.metrics.Metrics;
-import org.apache.commons.lang.StringUtils;
-import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
-import java.util.concurrent.Callable;
-import java.util.concurrent.TimeUnit;
-
-import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.BP_GRANT;
+import java.util.List;
+import java.util.Set;
 
 /**
  * @author Tom Raney
