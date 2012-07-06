@@ -6,7 +6,7 @@ Backplane API
 -------------
 
 The Backplane Server exposes the following Backplane API endpoints, as defined by the
-[Backplane v2.0 Section 13] [5].
+[Backplane v2.0 Section 13] [6].
 
 All endpoints are available at paths starting with the `/v2/`.
 
@@ -28,8 +28,9 @@ All endpoints are available at paths starting with the `/v2/`.
 
 ```json
 {
-  "access_token": "465203f03680f59b7ddd5e1e5d851461",
-  "token_type": "Bearer"
+  "access_token": "54BBThPAHwI5mBzmSE0Y",
+  "token_type": "Bearer",
+  "refresh_token": "DntMlWjISKzwNojGETpM"
 }
 ```
 
@@ -50,17 +51,50 @@ Per OAuth2, the `scope` parameter will be returned if the granted scope differs 
 ```json
 callback(
     {
-        "access_token": "465203f03680f59b7ddd5e1e5d851461",
+        "access_token": "w6LBpOjnulFBuqN8T5gB",
         "token_type": "Bearer",
         "expires_in": 604800,
-        "scope": "channel:0a92d76f54f7877a68abe19c5b3ffcf8",
-        "bus":"customer.example.com"
+        "scope": "bus:customer.example.com channel:0a92d76f54f7877a68abe19c5b3ffcf8",
+        "refresh_token": "7fx74eIC1EwYE5BzeyAD",
     }
 )
 ```
 
 `bus` parameter and response field: the bus to which the (anonymous/browser/javascript) client requests the newly generated channel to be bound (and the server echoes-back the bound bus).
 Authenticated clients wishing to post to this channel must have obtained authorization for this bus before posting.
+
+### Refresh Tokens
+
+Refresh tokens are issued with all token requests (privileged and anonymous) and are sent to the client in the JSON response field "refresh_token".
+
+Refresh tokens are bound to the scope of the access tokens with which they were issued, and (for authenticated token requests) also to the client that issued the request.
+
+Refresh tokens are invalidated on the first use, and a new refresh token is issued with each refresh token response.
+
+#### Authenticated Refresh Token Request
+
+* Endpoint:  `/v2/token`
+
+* Security: HTTPS POST, OAuth2 client credentials (accepted in request header only)
+
+* Request header: Basic authorization `client_id` : `client_secret`
+
+* Request parameters ([OAuth2 Refreshing an Access Token] [3]):
+  Authorization: Basic header: `client_id`, `client_secret`
+  POST body, www-form-urlencoded: `refresh_token`, `grant_type` = `refresh_token`, `scope` (optional)
+
+* Response body (OAuth2 Access Token Response): same as the Authenticated Token Response
+
+#### Anonymous Refresh Token Request
+
+* Endpoint:  `/v2/token`
+
+* Security: HTTPS GET
+
+* Request parameters: `callback`, `refresh_token`, `scope` (optional)
+
+* Response body: same as the Anonymous Token Response
+
 
 ### Get Messages
 
@@ -320,7 +354,7 @@ Example curl command for the above HTTP API request:
 Backplane Clients Provisioning API
 ----------------------------------
 
-In addition to the automated OAuth2-based client registration mechanism described in [Backplane v2.0 Section 6.2] [3],
+In addition to the automated OAuth2-based client registration mechanism described in [Backplane v2.0 Section 6.2] [4],
 this API is provided for manual backplane clients registration.
 
 #### Create or Update Backplane Client Entry
@@ -539,7 +573,7 @@ Response / success:
 Grant Provisioning API
 ----------------------
 
-In addition to the OAuth2 authorization mechanism described in [Backplane v2.0 Section 6.3] [4],
+In addition to the OAuth2 authorization mechanism described in [Backplane v2.0 Section 6.3] [5],
 this API is provided for manual client_credentials grant type authorization.
 
 #### Add Authorization Grant
@@ -756,9 +790,10 @@ Each error response body will contain an error message in the following format:
 ```
 
 
-[1]: http://tools.ietf.org/html/draft-ietf-oauth-v2-23#section-4.1.3 "OAuth2 Section 4.1.3"
-[2]: http://tools.ietf.org/html/draft-ietf-oauth-v2-23#section-4.1
-[3]: https://sites.google.com/site/backplanespec/documentation/backplane2-0-draft08#client.registration "Backplane v2.0 Section 6.2"
-[4]: https://sites.google.com/site/backplanespec/documentation/backplane2-0-draft08#authorization "Backplane v2.0 Section 6.3"
-[5]: https://sites.google.com/site/backplanespec/documentation/backplane2-0-draft08#server.api "Backplane v2.0 Section 13"
+[1]: http://tools.ietf.org/html/draft-ietf-oauth-v2#section-4.1.3 "Access Token Request"
+[2]: http://tools.ietf.org/html/draft-ietf-oauth-v2#section-4.1 "Authorization Code Grant"
+[3]: http://tools.ietf.org/html/draft-ietf-oauth-v2#section-6 "Refreshing an Access Token"
+[4]: https://sites.google.com/site/backplanespec/documentation/backplane2-0-draft08#client.registration "Backplane v2.0 Section 6.2"
+[5]: https://sites.google.com/site/backplanespec/documentation/backplane2-0-draft08#authorization "Backplane v2.0 Section 6.3"
+[6]: https://sites.google.com/site/backplanespec/documentation/backplane2-0-draft08#server.api "Backplane v2.0 Section 13"
 
