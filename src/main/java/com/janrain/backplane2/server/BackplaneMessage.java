@@ -20,6 +20,7 @@ import com.janrain.backplane.server.ExternalizableCore;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.MessageField;
+import com.janrain.commons.util.Pair;
 import com.janrain.crypto.ChannelUtil;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -46,7 +47,7 @@ public class BackplaneMessage extends ExternalizableCore {
             throw new InvalidRequestException("Upstream messages must not include the 'source' field.");
         }
         Map<String,String> d = new LinkedHashMap<String, String>(toStringMap(data));
-        String id = generateMessageId();
+        String id = generateMessageId(new Date());
         d.put(Field.ID.getFieldName(), id);
         d.put(Field.TYPE.getFieldName(), data.get(Field.TYPE.getFieldName()).toString());
         d.put(Field.SOURCE.getFieldName(), clientSourceUrl);
@@ -64,29 +65,28 @@ public class BackplaneMessage extends ExternalizableCore {
         super.init(id, d);
     }
 
-    /**
-     * @return a time-based, lexicographically comparable message ID.
-     */
-    public static String generateMessageId() {
-        return (Backplane2Config.ISO8601.get().format(new Date()) + ChannelUtil.randomString(10));
-    }
-
     @Override
     public String getIdValue() {
         return get(Field.ID);
     }
 
-    public void setIdValue(String id) {
-        this.put(Field.ID.getFieldName(), id);
-        try {
-            this.setName(id);
-        } catch (SimpleDBException ignore) {
-        }
-    }
-
     @Override
     public Set<? extends MessageField> getFields() {
         return EnumSet.allOf(Field.class);
+    }
+
+    public Pair<String, Date> updateId(Pair<String, Date> lastIdAndDate) {
+        String id = getIdValue();
+        if (id.compareTo(lastIdAndDate.getLeft()) <= 0) {
+            logger.warn("message has an id " + id + " that is not > the latest id of " + lastIdAndDate.getLeft());
+            Date newDate = new Date(lastIdAndDate.getRight().getTime() + 1);
+            id = generateMessageId(newDate);
+            put(Field.ID.getFieldName(), id);
+            logger.warn("fixed");
+            return new Pair<String, Date>(id, newDate);
+        } else {
+            return lastIdAndDate;
+        }
     }
 
     public String getBus() {
@@ -213,18 +213,18 @@ public class BackplaneMessage extends ExternalizableCore {
         return null;
     }
 
-    /**
-     * @return a time-based, lexicographically comparable message ID.
-     */
-    public static String generateMessageId(Date date) {
-        return Backplane2Config.ISO8601.get().format(date) + "-" + ChannelUtil.randomString(10);
-    }
-
     // - PRIVATE
 
     private static final long serialVersionUID = -6609794896611874473L;
 
     private static final Logger logger = Logger.getLogger(BackplaneMessage.class);
+
+    /**
+     * @return a time-based, lexicographically comparable message ID.
+     */
+    private static String generateMessageId(Date date) {
+        return Backplane2Config.ISO8601.get().format(date) + "-" + ChannelUtil.randomString(10);
+    }
 
     private String extractFieldValueAsJsonString(Field field, Map<String,Object> data) throws BackplaneServerException {
         try {

@@ -137,7 +137,7 @@ public class Backplane1Controller {
             }*/
 
             for(Map<String,Object> messageData : messages) {
-                BackplaneMessage message = new BackplaneMessage(generateMessageId(), bus, channel, messageData);
+                BackplaneMessage message = new BackplaneMessage(bus, channel, messageData);
                 backplaneMessageDAO.persist(message);
             }
 
@@ -172,13 +172,6 @@ public class Backplane1Controller {
         return new HashMap<String,String>() {{
             put(ERR_MSG_FIELD, bpConfig.isDebugMode() ? e.getMessage() : "Error processing request.");
         }};
-    }
-
-    /**
-     * @return a time-based, lexicographically comparable message ID.
-     */
-    public static String generateMessageId() {
-        return Backplane1Config.ISO8601.get().format(new Date()) + "-" + randomString(10);
     }
 
     public static String randomString(int length) {

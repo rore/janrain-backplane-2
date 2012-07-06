@@ -16,14 +16,19 @@
 
 package com.janrain.backplane.server;
 
+import com.janrain.backplane.server.config.Backplane1Config;
 import com.janrain.backplane.server.dao.BackplaneMessageDAO;
 import com.janrain.backplane.server.dao.DaoFactory;
+import com.janrain.commons.util.Pair;
 import com.janrain.redis.Redis;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Histogram;
 import org.apache.commons.lang.SerializationUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import redis.clients.jedis.*;
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisPubSub;
+import redis.clients.jedis.Transaction;
 
 import java.util.*;
 
@@ -149,12 +154,16 @@ public class MessageProcessor extends JedisPubSub {
                 jedis = Redis.getInstance().getJedis();
 
                 // retrieve the latest 'live' message ID
-                String latestMessageId = "";
+                String latestMessageId = null;
                 Set<String> latestMessageMetaSet = jedis.zrange(BackplaneMessageDAO.V1_MESSAGES, -1, -1);
                 if (latestMessageMetaSet != null && !latestMessageMetaSet.isEmpty()) {
                     String[] segs = latestMessageMetaSet.iterator().next().split(" ");
                     latestMessageId = segs[2];
                 }
+
+                Pair<String, Date> lastIdAndDate = StringUtils.isEmpty(latestMessageId) ?
+                        new Pair<String, Date>("", new Date(0)) :
+                        new Pair<String, Date>(latestMessageId, Backplane1Config.ISO8601.get().parse(latestMessageId.substring(0, latestMessageId.indexOf("Z") + 1)));
 
                 // retrieve a handful of messages (ten) off the queue for processing
                 List<byte[]> messagesToProcess = jedis.lrange(BackplaneMessageDAO.V1_MESSAGE_QUEUE.getBytes(), 0, 9);
@@ -196,16 +205,7 @@ public class MessageProcessor extends JedisPubSub {
                                 // this means that all message ids have unique time stamps, even if they
                                 // arrived at the same time.
 
-                                if (oldId.compareTo(latestMessageId) <= 0) {
-                                    logger.warn("new message has an id " + oldId + " that is not > the latest id of " + latestMessageId);
-                                    Date lastMessageDate = BackplaneMessage.getDateFromId(latestMessageId);
-                                    if (lastMessageDate != null) {
-                                        backplaneMessage.setIdValue(BackplaneMessage.generateMessageId(new Date(lastMessageDate.getTime() + 1)));
-                                        logger.warn("fixed");
-                                    } else {
-                                        logger.warn("could not modify id of new message");
-                                    }
-                                }
+                                lastIdAndDate = backplaneMessage.updateId(lastIdAndDate);
                                 String newId = backplaneMessage.getIdValue();
 
                                 // messageTime is guaranteed to be a unique identifier of the message
@@ -241,10 +241,6 @@ public class MessageProcessor extends JedisPubSub {
                                 // </ATOMIC>
 
                                 logger.info("pipelined message " + oldId + " -> " + newId);
-
-                                // update the 'latest' message id with the one just inserted
-                                latestMessageId = newId;
-
                             }
                         }
                     } // for messages

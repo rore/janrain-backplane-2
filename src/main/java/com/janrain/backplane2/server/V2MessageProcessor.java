@@ -16,12 +16,15 @@
 
 package com.janrain.backplane2.server;
 
+import com.janrain.backplane.server.config.Backplane1Config;
 import com.janrain.backplane2.server.config.BusConfig2;
 import com.janrain.backplane2.server.dao.redis.RedisBackplaneMessageDAO;
+import com.janrain.commons.util.Pair;
 import com.janrain.redis.Redis;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Histogram;
 import org.apache.commons.lang.SerializationUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPubSub;
@@ -151,12 +154,16 @@ public class V2MessageProcessor extends JedisPubSub {
                     jedis = Redis.getInstance().getJedis();
 
                     // retrieve the latest 'live' message ID
-                    String latestMessageId = "";
+                    String latestMessageId = null;
                     Set<String> latestMessageMetaSet = jedis.zrange(RedisBackplaneMessageDAO.V2_MESSAGES, -1, -1);
                     if (latestMessageMetaSet != null && !latestMessageMetaSet.isEmpty()) {
                         String[] segs = latestMessageMetaSet.iterator().next().split(" ");
                         latestMessageId = segs[2];
                     }
+
+                    Pair<String, Date> lastIdAndDate = StringUtils.isEmpty(latestMessageId) ?
+                            new Pair<String, Date>("", new Date(0)) :
+                            new Pair<String, Date>(latestMessageId, Backplane1Config.ISO8601.get().parse(latestMessageId.substring(0, latestMessageId.indexOf("Z") + 1)));
 
                     // retrieve a handful of messages (ten) off the queue for processing
                     List<byte[]> messagesToProcess = jedis.lrange(RedisBackplaneMessageDAO.V2_MESSAGE_QUEUE.getBytes(), 0, 9);
@@ -210,29 +217,21 @@ public class V2MessageProcessor extends JedisPubSub {
                                     // this means that all message ids have unique time stamps, even if they
                                     // arrived at the same time.
 
-                                    if (backplaneMessage.getIdValue().compareTo(latestMessageId) <= 0) {
-                                        logger.warn("new message has an id " + backplaneMessage.getIdValue() + " that is not > the latest id of " + latestMessageId);
-                                        Date lastMessageDate = BackplaneMessage.getDateFromId(latestMessageId);
-                                        if (lastMessageDate != null) {
-                                            backplaneMessage.setIdValue(com.janrain.backplane.server.BackplaneMessage.generateMessageId(new Date(lastMessageDate.getTime() + 1)));
-                                            logger.warn("fixed");
-                                        } else {
-                                            logger.warn("could not modify id of new message");
-                                        }
-                                    }
+                                    lastIdAndDate = backplaneMessage.updateId(lastIdAndDate);
+                                    String newId = backplaneMessage.getIdValue();
 
                                     // messageTime is guaranteed to be a unique identifier of the message
                                     // because of the TOTAL ORDER mechanism above
-                                    long messageTime = BackplaneMessage.getDateFromId(backplaneMessage.getIdValue()).getTime();
+                                    long messageTime = BackplaneMessage.getDateFromId(newId).getTime();
 
                                     // <ATOMIC>
                                     // save the individual message by key
-                                    transaction.set(RedisBackplaneMessageDAO.getKey(backplaneMessage.getIdValue()), SerializationUtils.serialize(backplaneMessage));
+                                    transaction.set(RedisBackplaneMessageDAO.getKey(newId), SerializationUtils.serialize(backplaneMessage));
                                     // set the message TTL
                                     if (backplaneMessage.isSticky()) {
-                                        transaction.expire(backplaneMessage.getIdValue().getBytes(), retentionTimeStickySeconds);
+                                        transaction.expire(newId.getBytes(), retentionTimeStickySeconds);
                                     } else {
-                                        transaction.expire(backplaneMessage.getIdValue().getBytes(), retentionTimeSeconds);
+                                        transaction.expire(newId.getBytes(), retentionTimeSeconds);
                                     }
 
                                     // append entire message to list of messages in a channel for retrieval efficiency
@@ -240,25 +239,21 @@ public class V2MessageProcessor extends JedisPubSub {
                                             SerializationUtils.serialize(backplaneMessage));
 
                                     // add message id to sorted set of all message ids as an index
-                                    String metaData = backplaneMessage.getBus() + " " + backplaneMessage.getChannel() + " " + backplaneMessage.getIdValue();
+                                    String metaData = backplaneMessage.getBus() + " " + backplaneMessage.getChannel() + " " + newId;
                                     transaction.zadd(RedisBackplaneMessageDAO.V2_MESSAGES.getBytes(), messageTime, metaData.getBytes());
 
                                     // add message id to sorted set keyed by bus as an index
-                                    transaction.zadd(RedisBackplaneMessageDAO.getBusKey(backplaneMessage.getBus()), messageTime, backplaneMessage.getIdValue().getBytes());
+                                    transaction.zadd(RedisBackplaneMessageDAO.getBusKey(backplaneMessage.getBus()), messageTime, newId.getBytes());
 
                                     // make sure all subscribers get the update
-                                    transaction.publish("alerts", backplaneMessage.getIdValue());
+                                    transaction.publish("alerts", newId);
 
                                     // pop one message off the queue - which will only happen if this transaction is successful
                                     transaction.lpop(RedisBackplaneMessageDAO.V2_MESSAGE_QUEUE);
                                     // </ATOMIC>
 
-                                    logger.info("v2 message " + backplaneMessage.getIdValue() + " pushed");
+                                    logger.info("v2 message " + newId + " pushed");
                                     inserts++;
-
-                                    // update the 'latest' message id with the one just inserted
-                                    latestMessageId = backplaneMessage.getIdValue();
-
                                 }
                             }
                         }
