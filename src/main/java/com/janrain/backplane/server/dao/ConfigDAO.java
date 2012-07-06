@@ -5,6 +5,7 @@ import com.janrain.backplane.server.config.BpServerConfig;
 import com.janrain.commons.util.SerializationUtils;
 import com.janrain.redis.Redis;
 import org.apache.commons.lang.NotImplementedException;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -18,7 +19,7 @@ public class ConfigDAO extends DAO<BpServerConfig> {
     }
 
     @Override
-    public BpServerConfig get(String id)  {
+    public BpServerConfig get(@Nullable String id)  {
         if (id != null) {
             return SerializationUtils.fromBytes(Redis.getInstance().get(id.getBytes()));
         } else {
