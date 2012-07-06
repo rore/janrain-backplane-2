@@ -39,6 +39,7 @@ import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTabl
 
 public interface GrantDAO extends DAO<Grant> {
 
+    void update(Grant grant) throws BackplaneServerException, TokenException;
     List<Grant> getByClientId(String clientId) throws BackplaneServerException;
     void deleteByBuses(@NotNull List<String> busesToDelete) throws BackplaneServerException, TokenException;
     void revokeBuses(Set<Grant> grants, String buses) throws BackplaneServerException, TokenException;

@@ -44,11 +44,6 @@ public class RedisAuthorizationRequestDAO implements AuthorizationRequestDAO {
     }
 
     @Override
-    public AuthorizationRequest retrieveAuthorizationRequest(String cookie) throws BackplaneServerException {
-        throw new NotImplementedException();
-    }
-
-    @Override
     public void deleteExpiredAuthorizationRequests() {
         throw new NotImplementedException();
     }

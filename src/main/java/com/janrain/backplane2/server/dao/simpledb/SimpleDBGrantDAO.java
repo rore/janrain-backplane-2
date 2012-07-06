@@ -85,6 +85,13 @@ public class SimpleDBGrantDAO implements GrantDAO {
 
 
     @Override
+    public void update(Grant grant) throws BackplaneServerException, TokenException {
+        //can't make atomic - hope for the best
+        delete(grant.getIdValue());
+        persist(grant);
+    }
+
+    @Override
     public List<Grant> getByClientId(String clientId) throws BackplaneServerException {
         try {
             return superSimpleDB.retrieveWhere(bpConfig.getTableName(BP_GRANT), Grant.class,

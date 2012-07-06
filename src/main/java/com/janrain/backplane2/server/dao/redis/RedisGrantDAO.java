@@ -9,10 +9,12 @@ import com.janrain.oauth2.TokenException;
 import com.janrain.redis.Redis;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.SerializationUtils;
+import org.apache.log4j.Logger;
 import org.apache.zookeeper.server.util.SerializeUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import redis.clients.jedis.Jedis;
+import redis.clients.jedis.Transaction;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,7 +29,6 @@ public class RedisGrantDAO implements GrantDAO {
     public static byte[] getKey(String id) {
         return new String("v2_grant_" + id).getBytes();
     }
-
 
     @Override
     public List<Grant> getByClientId(String clientId) throws BackplaneServerException {
@@ -77,8 +78,28 @@ public class RedisGrantDAO implements GrantDAO {
     @Override
     public void persist(Grant obj) throws BackplaneServerException {
         byte[] bytes = SerializationUtils.serialize(obj);
+        logger.info("adding grant " + obj.getIdValue() + " to redis");
         Redis.getInstance().rpush(getKey("list"), bytes);
         Redis.getInstance().set(getKey(obj.getIdValue()), bytes);
+    }
+
+    @Override
+    public void update(Grant grant) throws BackplaneServerException, TokenException {
+        Jedis jedis = null;
+        try {
+            jedis = Redis.getInstance().getJedis();
+            byte[] newBytes = SerializationUtils.serialize(grant);
+            byte[] oldBytes = jedis.get(getKey(grant.getIdValue()));
+            Transaction t = jedis.multi();
+            t.lrem(getKey("list"), 0, oldBytes);
+            t.rpush(getKey("list"), newBytes);
+            t.set(getKey(grant.getIdValue()), newBytes);
+            t.exec();
+        } finally {
+            Redis.getInstance().releaseToPool(jedis);
+        }
+        delete(grant.getIdValue());
+        persist(grant);
     }
 
     @Override
@@ -88,11 +109,17 @@ public class RedisGrantDAO implements GrantDAO {
             jedis = Redis.getInstance().getJedis();
             byte[] bytes = jedis.get(getKey(id));
             if (bytes != null) {
-                jedis.lrem(getKey("list"), 0, bytes);
+                if (jedis.lrem(getKey("list"), 0, bytes) == 0) {
+                    logger.warn("failed to remove grant " + id + " from list " + getKey("list"));
+                }
                 jedis.del(getKey(id));
             }
         } finally {
             Redis.getInstance().releaseToPool(jedis);
         }
     }
+
+    // PRIVATE
+
+    private static final Logger logger = Logger.getLogger(RedisGrantDAO.class);
 }

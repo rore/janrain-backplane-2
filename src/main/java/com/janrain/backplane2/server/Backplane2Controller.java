@@ -113,7 +113,7 @@ public class Backplane2Controller {
                 // return from /authenticate
                 try {
                     logger.debug("bp2.authorization.request cookie = " + authorizationRequestCookie);
-                    authzRequest = daoFactory.getAuthorizationRequestDAO().retrieveAuthorizationRequest(authorizationRequestCookie);
+                    authzRequest = daoFactory.getAuthorizationRequestDAO().get(authorizationRequestCookie);
                     logger.info("Retrieved authorization request for client:" + authzRequest.get(AuthorizationRequest.Field.CLIENT_ID) +
                                 "[" + authzRequest.get(AuthorizationRequest.Field.COOKIE)+"]");
                 } catch (BackplaneServerException e) {
@@ -680,7 +680,7 @@ public class Backplane2Controller {
 
         try {
             // retrieve authorization request
-            authorizationRequest = daoFactory.getAuthorizationRequestDAO().retrieveAuthorizationRequest(authorizationRequestCookie);
+            authorizationRequest = daoFactory.getAuthorizationRequestDAO().get(authorizationRequestCookie);
 
             // check authZdecisionKey
             AuthorizationDecisionKey authZdecisionKeyEntry = daoFactory.getAuthorizationDecisionKeyDAO().get(authZdecisionKey);

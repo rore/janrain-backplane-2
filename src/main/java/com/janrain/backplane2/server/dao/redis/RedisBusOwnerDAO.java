@@ -7,7 +7,11 @@ import com.janrain.oauth2.TokenException;
 import com.janrain.redis.Redis;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.SerializationUtils;
-
+import org.apache.log4j.Logger;
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.Response;
+import redis.clients.jedis.Transaction;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -31,16 +35,64 @@ public class RedisBusOwnerDAO implements BusOwnerDAO {
 
     @Override
     public List<User> getAll() throws BackplaneServerException {
-        throw new NotImplementedException();
+        List<User> users = new ArrayList<User>();
+        List<byte[]> bytesList = Redis.getInstance().lrange(getKey("list"), 0, -1);
+        for (byte [] bytes : bytesList) {
+            if (bytes != null) {
+                users.add((User) SerializationUtils.deserialize(bytes));
+            }
+        }
+        return users;
+
     }
 
     @Override
     public void persist(User obj) throws BackplaneServerException {
-        Redis.getInstance().set(getKey(obj.getIdValue()), SerializationUtils.serialize(obj));
+        Jedis jedis = null;
+
+        try {
+            jedis = Redis.getInstance().getJedis();
+            byte[] bytes = SerializationUtils.serialize(obj);
+            Transaction t = jedis.multi();
+
+            t.set(getKey(obj.getIdValue()), bytes);
+            t.rpush(getKey("list"), bytes);
+            t.exec();
+
+        } finally {
+            Redis.getInstance().releaseToPool(jedis);
+        }
     }
 
     @Override
     public void delete(String id) throws BackplaneServerException, TokenException {
-        Redis.getInstance().del(getKey(id));
+        Jedis jedis = null;
+
+        try {
+            jedis = Redis.getInstance().getJedis();
+            byte[] bytes = jedis.get(getKey(id));
+            if (bytes != null) {
+                Transaction t= jedis.multi();
+                Response<Long> del1 = t.del(getKey(id));
+                Response<Long> del2 = t.lrem(getKey("list"), 0, bytes);
+                t.exec();
+
+                if (del1.get() == 0) {
+                    logger.warn("failed to remove " + getKey(id));
+                }
+                if (del2.get() == 0) {
+                    logger.warn("failed to remove " + getKey(id) + " from list " + getKey("list"));
+                }
+            } else {
+                logger.warn("could not locate value for key " + getKey(id));
+            }
+        } finally {
+            Redis.getInstance().releaseToPool(jedis);
+        }
     }
+
+    // {RIVATE
+
+   private static final Logger logger = Logger.getLogger(RedisBusOwnerDAO.class);
+
 }

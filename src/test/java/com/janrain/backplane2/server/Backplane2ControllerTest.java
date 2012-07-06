@@ -23,6 +23,7 @@ import com.janrain.backplane2.server.config.Client;
 import com.janrain.backplane2.server.config.User;
 import com.janrain.backplane2.server.dao.BackplaneMessageDAO;
 import com.janrain.backplane2.server.dao.DAOFactory;
+import com.janrain.backplane2.server.dao.TokenDAO;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.commons.util.Pair;
@@ -321,10 +322,12 @@ public class Backplane2ControllerTest {
                         "\"scope\":\"bus:\\s*testbus\\s*channel:.{32}\",\\s*" +
                         "\"refresh_token\":\".{22}\"\\s*[}]"));
 
-        // cleanup test token
+        // cleanup test tokens
         String result = response.getContentAsString();
         Map<String,Object> returnedBody = new ObjectMapper().readValue(result, new TypeReference<Map<String,Object>>() {});
         daoFactory.getTokenDao().delete((String)returnedBody.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME));
+        daoFactory.getTokenDao().delete((String)returnedBody.get(OAUTH2_REFRESH_TOKEN_PARAM_NAME));
+
 
     }
 
@@ -437,6 +440,10 @@ public class Backplane2ControllerTest {
         assertTrue(scope.contains("sticky:false"));
         assertTrue(scope.contains("source:http://test.com"));
         assertTrue(scope.contains("channel:"));
+
+        // remove test tokens
+        daoFactory.getTokenDao().delete((String)msg.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME));
+        daoFactory.getTokenDao().delete((String)msg.get(OAUTH2_REFRESH_TOKEN_PARAM_NAME));
     }
 
 
@@ -459,14 +466,7 @@ public class Backplane2ControllerTest {
     }
 
     @Test
-    public void testTokenEndPointClientTokenRequest() throws Exception {
-
-        //  should return the form:
-        //  {
-        //      "access_token":"l5feG0KjdXTpgDAfOvN6pU6YWxNb7qyn",
-        //      "token_type":"Bearer",
-        //      "scope":"bus:???"
-        //  }
+    public void testTokenEnflushadPointClientTokenRequest() throws Exception {
 
         refreshRequestAndResponse();
 
@@ -624,7 +624,6 @@ public class Backplane2ControllerTest {
                         "\"scope\":\\s*\".*\",\\s*" +
                         "\"refresh_token\":\".{22}\"\\s*[}]"));
 
-
         // attempt to read a message on one of the buses
 
         ObjectMapper mapper = new ObjectMapper();
@@ -638,6 +637,9 @@ public class Backplane2ControllerTest {
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), "randomchannel");
         BackplaneMessage message1 = new BackplaneMessage(testClient.getSourceUrl(), msg);
         this.saveMessage(message1);
+
+        // make sure the processor runs
+        new V2MessageProcessor().insertMessages(false);
 
          // Make the call
         refreshRequestAndResponse();
@@ -849,21 +851,23 @@ public class Backplane2ControllerTest {
 
         // Create appropriate token
         String tokenBus = "testbus";
-        Pair<String,String> tokenAndChannel = anonTokenRequest(tokenBus);
+        TokensAndChannel tokensAndChannel = anonTokenRequest(tokenBus);
 
         // Seed message
         ObjectMapper mapper = new ObjectMapper();
         Map<String,Object> msg = mapper.readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {});
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), tokenBus);
-        msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokenAndChannel.getRight());
+        msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokensAndChannel.channel);
         BackplaneMessage message = new BackplaneMessage(testClient.getSourceUrl(), msg);
         this.saveMessage(message);
+
+        new V2MessageProcessor().insertMessages(false);
 
         // Make the call
         refreshRequestAndResponse();
         request.setRequestURI("/v2/message/" + message.getIdValue());
         request.setMethod("GET");
-        request.setParameter(OAUTH2_ACCESS_TOKEN_PARAM_NAME, tokenAndChannel.getLeft());
+        request.setParameter(OAUTH2_ACCESS_TOKEN_PARAM_NAME, tokensAndChannel.bearerToken);
         handlerAdapter.handle(request, response, controller);
         logger.info("testMessageEndPoint()  => " + response.getContentAsString());
        // assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
@@ -886,6 +890,10 @@ public class Backplane2ControllerTest {
                         "[}]"));
 
         assertTrue("Expected " + HttpServletResponse.SC_OK + " but received: " + response.getStatus(), response.getStatus() == HttpServletResponse.SC_OK);
+
+        TokenDAO tokenDAO = daoFactory.getTokenDao();
+        tokenDAO.delete(tokensAndChannel.bearerToken);
+        tokenDAO.delete(tokensAndChannel.refreshToken);
     }
 
     @Test
@@ -903,6 +911,8 @@ public class Backplane2ControllerTest {
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), "randomchannel");
         BackplaneMessage message = new BackplaneMessage(testClient.getSourceUrl(), msg);
         this.saveMessage(message);
+
+        new V2MessageProcessor().insertMessages(false);
 
         // Make the call
         refreshRequestAndResponse();
@@ -961,6 +971,8 @@ public class Backplane2ControllerTest {
         BackplaneMessage message2 = new BackplaneMessage(testClient.getSourceUrl(), msg);
         this.saveMessage(message2);
 
+        new V2MessageProcessor().insertMessages(false);
+
          // Make the call
         refreshRequestAndResponse();
         request.setRequestURI("/v2/messages");
@@ -981,29 +993,31 @@ public class Backplane2ControllerTest {
 
         // Create appropriate token
         String testBus = "testbus";
-        Pair<String,String> tokenAndchannel = anonTokenRequest(testBus);
+        TokensAndChannel tokensAndchannel = anonTokenRequest(testBus);
 
         // Seed 2 messages
         ObjectMapper mapper = new ObjectMapper();
         Map<String,Object> msg = mapper.readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {});
 
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), "otherbus");
-        msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokenAndchannel.getRight());
+        msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokensAndchannel.channel);
         BackplaneMessage message1 = new BackplaneMessage(testClient.getSourceUrl(), msg);
         this.saveMessage(message1);
 
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), "testbus");
         // same channel / different bus should never happen in production with true random, server-generated channel name
-        msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokenAndchannel.getRight());
+        msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokensAndchannel.channel);
         BackplaneMessage message2 = new BackplaneMessage(testClient.getSourceUrl(), msg);
         this.saveMessage(message2);
+
+        new V2MessageProcessor().insertMessages(false);
 
          // Make the call
         refreshRequestAndResponse();
         request.setRequestURI("/v2/messages");
         request.setMethod("GET");
         request.setParameter("block", "15");
-        request.setParameter(OAUTH2_ACCESS_TOKEN_PARAM_NAME, tokenAndchannel.getLeft());
+        request.setParameter(OAUTH2_ACCESS_TOKEN_PARAM_NAME, tokensAndchannel.bearerToken);
         //request.setParameter("since", message1.getIdValue());
         handlerAdapter.handle(request, response, controller);
         logger.info("testMessagesEndPointRegular() => " + response.getContentAsString());
@@ -1014,6 +1028,10 @@ public class Backplane2ControllerTest {
         Map<String,Object> returnedBody = mapper.readValue(response.getContentAsString(), new TypeReference<Map<String,Object>>() {});
         List<Map<String,Object>> returnedMsgs = (List<Map<String, Object>>) returnedBody.get("messages");
         assertTrue(returnedMsgs.size() == 1);
+
+        TokenDAO tokenDAO = daoFactory.getTokenDao();
+        tokenDAO.delete(tokensAndchannel.bearerToken);
+        tokenDAO.delete(tokensAndchannel.refreshToken);
 
         logger.info("========================================================");
 
@@ -1039,7 +1057,7 @@ public class Backplane2ControllerTest {
     public void testMessagesPostEndPointPAL() throws Exception {
 
         // Create source token for the channel
-        Pair<String,String> tokenAndChannel = anonTokenRequest("testbus");
+        TokensAndChannel tokensAndChannel = anonTokenRequest("testbus");
 
         logger.info("created one anon token");
 
@@ -1057,7 +1075,7 @@ public class Backplane2ControllerTest {
         HashMap<String, Object> msg = new HashMap<String, Object>();
         Map<String,Object> postMessage = new ObjectMapper().readValue(TEST_MSG_1, new TypeReference<Map<String, Object>>(){});
         postMessage.put(BackplaneMessage.Field.BUS.getFieldName(), "testbus");
-        postMessage.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokenAndChannel.getRight());
+        postMessage.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokensAndChannel.channel);
         msg.put("message", postMessage);
         String msgsString = new ObjectMapper().writeValueAsString(msg);
         logger.info(msgsString);
@@ -1067,6 +1085,16 @@ public class Backplane2ControllerTest {
         logger.info(response.getContentAsString());
 
         assertTrue(response.getStatus() == HttpServletResponse.SC_CREATED);
+
+        new V2MessageProcessor().insertMessages(false);
+        List<BackplaneMessage> messages = daoFactory.getBackplaneMessageDAO().retrieveMessagesByChannel(tokensAndChannel.channel);
+        for (BackplaneMessage message: messages) {
+            daoFactory.getBackplaneMessageDAO().delete(message.getIdValue());
+        }
+
+        TokenDAO tokenDAO = daoFactory.getTokenDao();
+        tokenDAO.delete(tokensAndChannel.bearerToken);
+        tokenDAO.delete(tokensAndChannel.refreshToken);
 
     }
 
@@ -1079,7 +1107,7 @@ public class Backplane2ControllerTest {
     public void testMessagePost() throws Exception {
 
         // Create source token for the channel
-        Pair<String,String> tokenAndChannel = anonTokenRequest("testbus");
+        TokensAndChannel tokensAndChannelAndChannel = anonTokenRequest("testbus");
 
         // Create appropriate token
         saveGrant(new Grant.Builder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.getClientId(),
@@ -1097,7 +1125,7 @@ public class Backplane2ControllerTest {
         HashMap<String, Object> msg = new HashMap<String, Object>();
         Map<String,Object> postMessage1 = new ObjectMapper().readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>(){});
         postMessage1.put(BackplaneMessage.Field.BUS.getFieldName(), "testbus");
-        postMessage1.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokenAndChannel.getRight());
+        postMessage1.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokensAndChannelAndChannel.channel);
         msg.put("message", postMessage1);
         String msgString = new ObjectMapper().writeValueAsString(msg);
         logger.info(msgString);
@@ -1123,7 +1151,7 @@ public class Backplane2ControllerTest {
         msg = new HashMap<String, Object>();
         Map<String,Object> postMessage2 = new ObjectMapper().readValue(TEST_MSG_2, new TypeReference<Map<String,Object>>(){});
         postMessage2.put(BackplaneMessage.Field.BUS.getFieldName(), "otherbus");
-        postMessage2.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokenAndChannel.getRight());
+        postMessage2.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokensAndChannelAndChannel.channel);
         msg.put("message", postMessage2);
         msgString = new ObjectMapper().writeValueAsString(msg);
         logger.info(msgString);
@@ -1137,6 +1165,10 @@ public class Backplane2ControllerTest {
             // should fail
             assertTrue(expected.getMessage().contains("Invalid bus - channel binding"));
         }
+
+        TokenDAO tokenDAO = daoFactory.getTokenDao();
+        tokenDAO.delete(tokensAndChannelAndChannel.bearerToken);
+        tokenDAO.delete(tokensAndChannelAndChannel.refreshToken);
     }
 
     /**
@@ -1149,7 +1181,7 @@ public class Backplane2ControllerTest {
 
         // Create source token for the channel
         String testBus = "testbus";
-        Pair<String,String> tokenAndChannel = anonTokenRequest(testBus);
+        TokensAndChannel tokensAndChannel = anonTokenRequest(testBus);
 
         // Create appropriate token
         saveGrant(new Grant.Builder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.getClientId(),
@@ -1160,9 +1192,11 @@ public class Backplane2ControllerTest {
         ObjectMapper mapper = new ObjectMapper();
         Map<String,Object> msg = mapper.readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {});
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), testBus);
-        msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokenAndChannel.getRight());
+        msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokensAndChannel.channel);
         BackplaneMessage message1 = new BackplaneMessage(testClient.getSourceUrl(), msg);
         this.saveMessage(message1);
+
+        new V2MessageProcessor().insertMessages(false);
 
         // Make the call
         refreshRequestAndResponse();
@@ -1174,6 +1208,10 @@ public class Backplane2ControllerTest {
         logger.info(response.getContentAsString());
         assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
 
+        TokenDAO tokenDAO = daoFactory.getTokenDao();
+        tokenDAO.delete(tokensAndChannel.bearerToken);
+        tokenDAO.delete(tokensAndChannel.refreshToken);
+
     }
 
     @Test
@@ -1181,7 +1219,7 @@ public class Backplane2ControllerTest {
 
         // Create source token for the channel
         String testBus = "testbus";
-        Pair<String,String> tokenAndChannel = anonTokenRequest(testBus);
+        TokensAndChannel tokensAndChannel = anonTokenRequest(testBus);
 
         // Create appropriate token
         saveGrant(new Grant.Builder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.getClientId(),
@@ -1192,7 +1230,7 @@ public class Backplane2ControllerTest {
         int numberOfPostedMessages = 0;
 
         refreshRequestAndResponse();
-        for (int i=0; i < bpConfig.getDefaultMaxMessageLimit() + 1; i++) {
+        for (int i=0; i < bpConfig.getDefaultMaxMessageLimit()+1; i++) {
             // Make the call
             request.setRequestURI("/v2/message");
             request.setMethod("POST");
@@ -1203,7 +1241,7 @@ public class Backplane2ControllerTest {
             HashMap<String, Object> msg = new HashMap<String, Object>();
             Map<String,Object>postMesssage = new ObjectMapper().readValue(TEST_MSG_1, new TypeReference<Map<String, Object>>(){});
             postMesssage.put(BackplaneMessage.Field.BUS.getFieldName(), testBus);
-            postMesssage.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokenAndChannel.getRight());
+            postMesssage.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokensAndChannel.channel);
             msg.put("message", postMesssage);
             String msgsString = new ObjectMapper().writeValueAsString(msg);
             logger.info(msgsString);
@@ -1225,10 +1263,15 @@ public class Backplane2ControllerTest {
             } catch (Exception e) {
                 fail("Error: " + e.getMessage());
             }
+            new V2MessageProcessor().insertMessages(false);
             refreshRequestAndResponse();
         }
 
         assertTrue("Limit should have been reached, but " + numberOfPostedMessages + "<=" + bpConfig.getDefaultMaxMessageLimit(), success);
+
+        TokenDAO tokenDAO = daoFactory.getTokenDao();
+        tokenDAO.delete(tokensAndChannel.bearerToken);
+        tokenDAO.delete(tokensAndChannel.refreshToken);
 
     }
 
@@ -1414,7 +1457,7 @@ public class Backplane2ControllerTest {
 
         // Create source token for the channel
         String testBus = "testbus";
-        Pair<String,String> tokenAndChannel = anonTokenRequest(testBus);
+        TokensAndChannel tokensAndChannel = anonTokenRequest(testBus);
 
         // Create appropriate token
         saveGrant(new Grant.Builder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.getClientId(),
@@ -1425,7 +1468,7 @@ public class Backplane2ControllerTest {
         ObjectMapper mapper = new ObjectMapper();
         Map<String,Object> msg = mapper.readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {});
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), testBus);
-        msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokenAndChannel.getRight());
+        msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokensAndChannel.channel);
 
         // seed messages
         long numMessages = bpConfig.getDefaultMaxMessageLimit();
@@ -1439,10 +1482,11 @@ public class Backplane2ControllerTest {
         String since = messages.iterator().next().get(BackplaneMessage.Field.ID);
 
         // reverse the list
-        Collections.reverse(messages);
+        //Collections.reverse(messages);
 
         for (BackplaneMessage message : messages) {
             this.saveMessage(message);
+            new V2MessageProcessor().insertMessages(false);
         }
 
         // Make the call
@@ -1472,13 +1516,17 @@ public class Backplane2ControllerTest {
 
         } while (moreMessages);
 
-        assertTrue(allMsgs.size() == numMessages);
+        assertTrue(allMsgs.size() + " != " + numMessages,  allMsgs.size() == numMessages);
         // they should be returned in lexicographic order by ID
         String prev = "";
         for (Map<String,Object> m : allMsgs) {
-            assertTrue(m.get("messageURL").toString().compareTo(prev) > 0);
+            assertTrue(m.get("messageURL").toString() + " <= " + prev, m.get("messageURL").toString().compareTo(prev) > 0);
             prev = (String)m.get("messageURL");
         }
+
+        TokenDAO tokenDAO = daoFactory.getTokenDao();
+        tokenDAO.delete(tokensAndChannel.bearerToken);
+        tokenDAO.delete(tokensAndChannel.refreshToken);
 
     }
 
@@ -1544,12 +1592,18 @@ public class Backplane2ControllerTest {
         request.addHeader("Authorization", "Bearer " + accessToken);
     }
 
-    private Pair<String, String> anonTokenRequest(String tokenBus) throws TokenException {
+    private TokensAndChannel anonTokenRequest(String tokenBus) throws TokenException {
         refreshRequestAndResponse();
         TokenRequest req = new AnonymousTokenRequest("bla", tokenBus, null, null, daoFactory, request, null);
         Map<String, Object> tokenResponse = req.tokenResponse();
         Scope scope = new Scope(tokenResponse.get(OAUTH2_SCOPE_PARAM_NAME).toString());
-        return new Pair<String, String>(tokenResponse.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME).toString(), scope.getScopeFieldValues(BackplaneMessage.Field.CHANNEL).iterator().next());
+
+        //return new Pair<String, String>(tokenResponse.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME).toString(), scope.getScopeFieldValues(BackplaneMessage.Field.CHANNEL).iterator().next());
+        TokensAndChannel tokensAndChannel = new TokensAndChannel();
+        tokensAndChannel.bearerToken = tokenResponse.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME).toString();
+        tokensAndChannel.refreshToken = tokenResponse.get(OAUTH2_REFRESH_TOKEN_PARAM_NAME).toString();
+        tokensAndChannel.channel = scope.getScopeFieldValues(BackplaneMessage.Field.CHANNEL).iterator().next();
+        return tokensAndChannel;
     }
 
     private String privTokenRequest(String buses) throws UnsupportedEncodingException, TokenException {
@@ -1559,6 +1613,12 @@ public class Backplane2ControllerTest {
         TokenRequest req = new AuthenticatedTokenRequest(OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS, testClient,
                 null, null, null, scope.toString(), daoFactory, request, request.getHeader("Authorization"));
         return req.tokenResponse().get(OAUTH2_ACCESS_TOKEN_PARAM_NAME).toString();
+    }
+
+    private class TokensAndChannel {
+        String bearerToken;
+        String refreshToken;
+        String channel;
     }
 
 }

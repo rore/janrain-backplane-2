@@ -50,6 +50,7 @@ public class BackplaneMessage extends ExternalizableCore {
         Map<String,String> d = new LinkedHashMap<String, String>(toStringMap(data));
         String id = generateMessageId();
         d.put(Field.ID.getFieldName(), id);
+        d.put(Field.UUID.getFieldName(), UUID.randomUUID().toString());
         d.put(Field.TYPE.getFieldName(), data.get(Field.TYPE.getFieldName()).toString());
         d.put(Field.SOURCE.getFieldName(), clientSourceUrl);
         d.put(Field.BUS.getFieldName(), data.get(Field.BUS.getFieldName()).toString());
@@ -131,6 +132,8 @@ public class BackplaneMessage extends ExternalizableCore {
     public static enum Field implements MessageField {
 
         ID("id", NONE),
+
+        UUID("uuid", NONE),
 
         CHANNEL("channel", FILTER),
 

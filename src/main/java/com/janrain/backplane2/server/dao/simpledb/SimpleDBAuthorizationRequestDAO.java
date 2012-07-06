@@ -42,7 +42,11 @@ public class SimpleDBAuthorizationRequestDAO implements AuthorizationRequestDAO 
 
     @Override
     public AuthorizationRequest get(String id) throws BackplaneServerException {
-        throw new NotImplementedException();
+        try {
+            return superSimpleDB.retrieve(bpConfig.getTableName(BP_AUTHORIZATION_REQUEST), AuthorizationRequest.class, id);
+        } catch (SimpleDBException e) {
+            throw new BackplaneServerException(e.getMessage());
+        }
     }
 
     @Override
@@ -63,14 +67,6 @@ public class SimpleDBAuthorizationRequestDAO implements AuthorizationRequestDAO 
     public void delete(String id) throws BackplaneServerException {
         try {
             superSimpleDB.delete(bpConfig.getTableName(BP_AUTHORIZATION_REQUEST), id);
-        } catch (SimpleDBException e) {
-            throw new BackplaneServerException(e.getMessage());
-        }
-    }
-
-    public AuthorizationRequest retrieveAuthorizationRequest(String cookie) throws BackplaneServerException {
-        try {
-            return superSimpleDB.retrieve(bpConfig.getTableName(BP_AUTHORIZATION_REQUEST), AuthorizationRequest.class, cookie);
         } catch (SimpleDBException e) {
             throw new BackplaneServerException(e.getMessage());
         }

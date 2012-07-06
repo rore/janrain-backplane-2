@@ -35,6 +35,7 @@ import org.jetbrains.annotations.NotNull;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.Response;
+import redis.clients.jedis.Transaction;
 
 import javax.servlet.http.HttpServletResponse;
 import java.util.*;
@@ -54,7 +55,7 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
     final public static String V2_MESSAGES = "v2_messages";
 
     public static byte[] getBusKey(String bus) {
-        return new String("v2_bus_" + bus).getBytes();
+        return new String("v2_bus_message_ids_" + bus).getBytes();
     }
 
     public static byte[] getChannelKey(String channel) {
@@ -94,13 +95,15 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
     @Override
     public boolean isChannelFull(String channel) throws BackplaneServerException {
         //todo: don't leave hardcoded
-        return Redis.getInstance().llen(getChannelKey(channel)) > 100;
+        long count = Redis.getInstance().llen(getChannelKey(channel));
+
+        return count >= 50;
     }
 
     @Override
     public boolean canTake(String channel, int msgPostCount) throws BackplaneServerException {
         //todo: don't leave hardcoded
-        return (Redis.getInstance().llen(getChannelKey(channel)) + msgPostCount) < 100;
+        return (Redis.getInstance().llen(getChannelKey(channel)) + msgPostCount) < 50;
     }
 
     @Override
@@ -130,7 +133,7 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
             }
 
             // every message has a unique timestamp - which serves as a key for indexing
-            Set<byte[]> messageIdBytes = Redis.getInstance().zrangebyscore(V2_MESSAGES.getBytes(), sinceInMs, Double.POSITIVE_INFINITY);
+            Set<byte[]> messageIdBytes = Redis.getInstance().zrangebyscore(V2_MESSAGES.getBytes(), sinceInMs+1, Double.POSITIVE_INFINITY);
 
             List<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
 
@@ -216,11 +219,32 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
         Jedis jedis = null;
         try {
             jedis = Redis.getInstance().getJedis();
+            Date d = BackplaneMessage.getDateFromId(id);
+            Set<String> sortedSetBytes = jedis.zrangeByScore(V2_MESSAGES, d.getTime(), d.getTime());
             byte[] bytes = jedis.get(getKey(id));
-            if (bytes != null) {
-                //todo: fix
-                //jedis.lrem(, 0, bytes);
-                jedis.del(getKey(id));
+
+            if (!sortedSetBytes.isEmpty()) {
+                Iterator it = sortedSetBytes.iterator();
+                String key = (String) it.next();
+                Transaction t = jedis.multi();
+
+                Response<Long> del1 = t.zrem(V2_MESSAGES, key);
+                String[] args = key.split(" ");
+                Response<Long> del2 = t.lrem(getChannelKey(args[1]), 0, bytes);
+                Response<Long> del3 = t.zrem(getBusKey(args[0]), args[2].getBytes());
+                t.del(getKey(id));
+
+                t.exec();
+
+                if (del1.get() == 0) {
+                    logger.warn("could not remove message " + id + " from " + V2_MESSAGES);
+                }
+                if (del2.get() == 0) {
+                    logger.warn("could not remove message " + id + " from " + getChannelKey(args[1]));
+                }
+                if (del3.get() == 0) {
+                    logger.warn("could not remove message " + id + " from " + getBusKey(args[0]));
+                }
             }
         } finally {
             Redis.getInstance().releaseToPool(jedis);

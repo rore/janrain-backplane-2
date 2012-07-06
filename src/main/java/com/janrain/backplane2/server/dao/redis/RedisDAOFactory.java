@@ -1,6 +1,9 @@
 package com.janrain.backplane2.server.dao.redis;
 
 import com.janrain.backplane.server.dao.ConfigDAO;
+import com.janrain.backplane2.server.config.BusConfig2;
+import com.janrain.backplane2.server.config.Client;
+import com.janrain.backplane2.server.config.User;
 import com.janrain.backplane2.server.dao.*;
 import org.apache.commons.lang.NotImplementedException;
 import org.springframework.context.annotation.Scope;
@@ -66,7 +69,15 @@ public class RedisDAOFactory extends DAOFactory {
 
     @Override
     public DAO getDaoByObjectType(Class<?> obj) {
-        throw new NotImplementedException();
+        if (Client.class.isAssignableFrom(obj)) {
+            return getClientDAO();
+        } else if (User.class.isAssignableFrom(obj)) {
+            return getBusOwnerDAO();
+        } else if (BusConfig2.class.isAssignableFrom(obj)) {
+            return getBusDao();
+        }
+
+        return null;
     }
 
     @Override

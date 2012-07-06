@@ -149,6 +149,10 @@ public class ProvisioningController2Test {
     public void testClientCRUD() throws Exception {
 
         refreshRequestAndResponse();
+
+        // delete the default client
+        daoFactory.getClientDAO().delete(client.getClientId());
+
         // create client
         String jsonUpdateClient = "{ \"admin\": \"" + user.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\"," +
                 " \"configs\": [ { \"USER\":\"" + client.getClientId() + "\", \"PWDHASH\":\"" + pw + "\"," +

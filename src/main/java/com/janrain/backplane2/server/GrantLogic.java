@@ -114,7 +114,7 @@ public class GrantLogic {
               throw new BackplaneServerException(e.getMessage());
           }
 
-          daoFactory.getGrantDao().persist(updated);
+          daoFactory.getGrantDao().update(updated);
 
           //superSimpleDB.update(bpConfig.getTableName(BP_GRANT), Grant.class, existing, updated);
 
