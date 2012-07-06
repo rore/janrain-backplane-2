@@ -91,7 +91,7 @@ public class RedisBusOwnerDAO implements BusOwnerDAO {
         }
     }
 
-    // {RIVATE
+    // PRIVATE
 
    private static final Logger logger = Logger.getLogger(RedisBusOwnerDAO.class);
 
