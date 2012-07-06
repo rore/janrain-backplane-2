@@ -18,11 +18,6 @@ package com.janrain.backplane.server.dao;
 
 import com.janrain.backplane.server.BusConfig1;
 import com.janrain.backplane.server.User;
-import com.janrain.backplane.server.config.Backplane1Config;
-import com.janrain.backplane2.server.dao.*;
-import com.janrain.commons.supersimpledb.SuperSimpleDB;
-import org.springframework.context.annotation.Scope;
-import javax.inject.Inject;
 
 /**
  * @author Tom Raney
@@ -30,38 +25,31 @@ import javax.inject.Inject;
 
 public class DaoFactory {
 
-    private static DaoFactory instance;
-
-    private DaoFactory() {}
-
-    public synchronized static DaoFactory getInstance() {
-        if (instance == null) {
-            instance = new DaoFactory();
-        }
+    public static DaoFactory getInstance() {
         return instance;
     }
 
-    public BackplaneMessageDAO getBackplaneMessageDAO() {
-        return new BackplaneMessageDAO();
+    public static BackplaneMessageDAO getBackplaneMessageDAO() {
+        return messageDao;
     }
 
-    public UserDAO getUserDAO() {
-        return new UserDAO();
+    public static UserDAO getUserDAO() {
+        return userDao;
     }
 
-    public AdminDAO getAdminDAO() {
-        return new AdminDAO();
+    public static AdminDAO getAdminDAO() {
+        return adminDao;
     }
 
-    public BusConfig1DAO getBusDAO() {
-        return new BusConfig1DAO();
+    public static BusConfig1DAO getBusDAO() {
+        return busDao;
     }
 
-    public ConfigDAO getConfigDAO() {
-        return new ConfigDAO();
+    public static ConfigDAO getConfigDAO() {
+        return configDao;
     }
 
-    public DAO getDaoByObjectType(Class<?> obj) {
+    public static DAO getDaoByObjectType(Class<?> obj) {
         if (User.class.isAssignableFrom(obj)) {
             return getUserDAO();
         } else if (BusConfig1.class.isAssignableFrom(obj)) {
@@ -71,5 +59,15 @@ public class DaoFactory {
         return null;
     }
 
+    // - PRIVATE
 
+    private DaoFactory() {}
+
+    private static DaoFactory instance = new DaoFactory();
+
+    private static BackplaneMessageDAO messageDao = new BackplaneMessageDAO();
+    private static UserDAO userDao = new UserDAO();
+    private static AdminDAO adminDao = new AdminDAO();
+    private static BusConfig1DAO busDao = new BusConfig1DAO();
+    private static ConfigDAO configDao = new ConfigDAO();
 }
