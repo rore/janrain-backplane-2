@@ -311,14 +311,15 @@ public class Backplane2Config {
    // private SuperSimpleDB superSimpleDb;
 
     @Inject
-    private DAOFactory simpleDBDaoFactory;
+    private DAOFactory daoFactory;
 
     private String cachedGet(BpServerConfig.Field property) {
 
         BpServerConfig bpServerConfigCache = (BpServerConfig) CachedL1.getInstance().getObject(BpServerConfig.BPSERVER_CONFIG_KEY);
         if (bpServerConfigCache == null) {
             // pull from db if not found in cache
-            bpServerConfigCache = simpleDBDaoFactory.getConfigDAO().get(BpServerConfig.BPSERVER_CONFIG_KEY);
+            bpServerConfigCache = daoFactory.getConfigDAO().get(BpServerConfig.BPSERVER_CONFIG_KEY);
+
             if (bpServerConfigCache == null) {
                 // no instance found in cache or the db, so let's use the default record
                 bpServerConfigCache = new BpServerConfig();
@@ -350,7 +351,7 @@ public class Backplane2Config {
     public void checkAdminAuth(String authTable, String user, String password) throws AuthException {
         try {
             //User userEntry = superSimpleDb.retrieve(authTable, User.class, user);
-            User userEntry = simpleDBDaoFactory.getAdminDAO().get(user);
+            User userEntry = daoFactory.getAdminDAO().get(user);
             String authKey = userEntry == null ? null : userEntry.get(User.Field.PWDHASH);
             if ( ! HmacHashUtils.checkHmacHash(password, authKey) ) {
                 throw new AuthException("User " + user + " not authorized in " + authTable);
