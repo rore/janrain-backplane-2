@@ -187,7 +187,7 @@ public class MessageProcessor extends JedisPubSub {
                             if (backplaneMessage != null) {
 
                                 // retrieve the expiration config per the bus
-                                BusConfig1 busConfig1 = DaoFactory.getInstance().getBusDAO().get(backplaneMessage.getBus());
+                                BusConfig1 busConfig1 = DaoFactory.getBusDAO().get(backplaneMessage.getBus());
                                 int retentionTimeSeconds = 60;
                                 int retentionTimeStickySeconds = 3600;
                                 if (busConfig1 != null) {

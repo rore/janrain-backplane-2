@@ -25,10 +25,6 @@ import com.janrain.backplane.server.User;
 
 public class DaoFactory {
 
-    public static DaoFactory getInstance() {
-        return instance;
-    }
-
     public static BackplaneMessageDAO getBackplaneMessageDAO() {
         return messageDao;
     }
@@ -62,8 +58,6 @@ public class DaoFactory {
     // - PRIVATE
 
     private DaoFactory() {}
-
-    private static DaoFactory instance = new DaoFactory();
 
     private static BackplaneMessageDAO messageDao = new BackplaneMessageDAO();
     private static UserDAO userDao = new UserDAO();
