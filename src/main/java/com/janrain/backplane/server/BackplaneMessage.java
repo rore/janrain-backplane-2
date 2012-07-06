@@ -18,14 +18,12 @@ package com.janrain.backplane.server;
 
 import com.janrain.backplane.server.config.Backplane1Config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import com.janrain.crypto.ChannelUtil;
-import org.apache.commons.lang.SerializationUtils;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
 
-import java.io.*;
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.text.ParseException;
@@ -175,7 +173,7 @@ public class BackplaneMessage extends ExternalizableCore {
         }
 
         try {
-            return Backplane1Config.ISO8601.parse(backplaneMessageId.substring(0, backplaneMessageId.indexOf("Z")+1));
+            return Backplane1Config.ISO8601.get().parse(backplaneMessageId.substring(0, backplaneMessageId.indexOf("Z")+1));
         } catch (ParseException e) {
             logger.warn(e);
         }
@@ -186,14 +184,14 @@ public class BackplaneMessage extends ExternalizableCore {
      * @return a time-based, lexicographically comparable message ID.
      */
     public static String generateMessageId() {
-        return Backplane1Config.ISO8601.format(new Date()) + "-" + ChannelUtil.randomString(10);
+        return Backplane1Config.ISO8601.get().format(new Date()) + "-" + ChannelUtil.randomString(10);
     }
 
     /**
      * @return a time-based, lexicographically comparable message ID.
      */
     public static String generateMessageId(Date date) {
-        return Backplane1Config.ISO8601.format(date) + "-" + ChannelUtil.randomString(10);
+        return Backplane1Config.ISO8601.get().format(date) + "-" + ChannelUtil.randomString(10);
     }
 
     public BackplaneMessage() {

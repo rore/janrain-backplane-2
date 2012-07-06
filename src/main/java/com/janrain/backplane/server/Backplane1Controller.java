@@ -178,7 +178,7 @@ public class Backplane1Controller {
      * @return a time-based, lexicographically comparable message ID.
      */
     public static String generateMessageId() {
-        return Backplane1Config.ISO8601.format(new Date()) + "-" + randomString(10);
+        return Backplane1Config.ISO8601.get().format(new Date()) + "-" + randomString(10);
     }
 
     public static String randomString(int length) {

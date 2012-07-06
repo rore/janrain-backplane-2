@@ -30,6 +30,7 @@ import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.inject.Inject;
 import java.io.IOException;
+import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
@@ -50,9 +51,15 @@ public class Backplane1Config {
 
     // - PUBLIC
 
-    public static final SimpleDateFormat ISO8601 = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'") {{
-        setTimeZone(TimeZone.getTimeZone("GMT"));
-    }};
+    // http://fahdshariff.blogspot.ca/2010/08/dateformat-with-multiple-threads.html
+    public static final ThreadLocal<DateFormat> ISO8601 = new ThreadLocal<DateFormat>() {
+        @Override
+        protected DateFormat initialValue() {
+            return new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'") {{
+                setTimeZone(TimeZone.getTimeZone("GMT"));
+            }};
+        }
+    };
 
     public String getTableName(SimpleDBTables table) {
         return Backplane1Config.this.bpInstanceId + table.getTableSuffix();
