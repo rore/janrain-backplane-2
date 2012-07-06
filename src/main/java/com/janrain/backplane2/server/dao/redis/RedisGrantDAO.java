@@ -5,6 +5,8 @@ import com.janrain.backplane2.server.BackplaneServerException;
 import com.janrain.backplane2.server.Grant;
 import com.janrain.backplane2.server.Scope;
 import com.janrain.backplane2.server.dao.GrantDAO;
+import com.janrain.backplane2.server.dao.TokenDAO;
+import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.oauth2.TokenException;
 import com.janrain.redis.Redis;
 import org.apache.commons.lang.NotImplementedException;
@@ -26,6 +28,10 @@ import java.util.Set;
  */
 public class RedisGrantDAO implements GrantDAO {
 
+    public RedisGrantDAO(TokenDAO tokenDAO) {
+        this.tokenDAO = tokenDAO;
+    }
+
     public static byte[] getKey(String id) {
         return new String("v2_grant_" + id).getBytes();
     }
@@ -45,12 +51,62 @@ public class RedisGrantDAO implements GrantDAO {
 
     @Override
     public void deleteByBuses(@NotNull List<String> busesToDelete) throws BackplaneServerException, TokenException {
-        throw new NotImplementedException();
+
+        Scope deleteBusesScope = new Scope(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, busesToDelete));
+            for(Grant grant : getAll()) {
+                Set<String> grantBuses = grant.getAuthorizedScope().getScopeFieldValues(BackplaneMessage.Field.BUS);
+                if (grantBuses == null) continue;
+                for(String bus : grantBuses) {
+                    if (busesToDelete.contains(bus)) {
+                        revokeBuses(grant, deleteBusesScope);
+                    }
+                }
+            }
+    }
+
+    private boolean revokeBuses(Grant grant, Scope busesToRevoke) throws BackplaneServerException {
+
+        try {
+            Scope grantScope = grant.getAuthorizedScope();
+            Scope updatedScope = Scope.revoke(grantScope, busesToRevoke);
+            if (updatedScope.equals(grantScope)) return false;
+            if (!updatedScope.isAuthorizationRequired()) {
+                logger.info("Revoked all buses from grant: " + grant.getIdValue());
+                delete(grant.getIdValue());
+            } else {
+                Grant updated = new Grant.Builder(grant, grant.getState()).scope(updatedScope).buildGrant();
+                update(grant, updated);
+                logger.info("Buses updated updated for grant: " + updated.getIdValue() + " remaining scope: '" + updated.getAuthorizedScope() + "'");
+            }
+            return true;
+        } catch (Exception e) {
+            throw new BackplaneServerException(e.getMessage());
+        }
+
+    }
+
+    private void update(Grant grant, Grant updated) throws BackplaneServerException {
+        try {
+            tokenDAO.revokeTokenByGrant(updated.getIdValue());
+            update(updated);
+            //daoFactory.getTokenDao().revokeTokenByGrant(updated.getIdValue());
+            //superSimpleDB.update(bpConfig.getTableName(BP_GRANT), Grant.class, grant, updated);
+            logger.info("Updated grant (and revoked tokens): " + updated.getIdValue());
+        } catch (TokenException e) {
+            throw new BackplaneServerException(e.getMessage());
+        }
     }
 
     @Override
     public void revokeBuses(Set<Grant> grants, String buses) throws BackplaneServerException, TokenException {
-        throw new NotImplementedException();
+        Scope busesToRevoke = new Scope(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, buses));
+        boolean changes = false;
+        for (Grant grant : grants) {
+            changes = changes || revokeBuses(grant, busesToRevoke);
+        }
+        if (!changes) {
+            throw new BackplaneServerException("No grants found to revoke for buses: " + buses);
+        }
     }
 
     @Override
@@ -98,8 +154,6 @@ public class RedisGrantDAO implements GrantDAO {
         } finally {
             Redis.getInstance().releaseToPool(jedis);
         }
-        delete(grant.getIdValue());
-        persist(grant);
     }
 
     @Override
@@ -122,4 +176,7 @@ public class RedisGrantDAO implements GrantDAO {
     // PRIVATE
 
     private static final Logger logger = Logger.getLogger(RedisGrantDAO.class);
+
+    private TokenDAO tokenDAO;
+
 }

@@ -270,15 +270,22 @@ public class ProvisioningController2 {
     private <T extends AbstractMessage> Map<String, String> updateConfigs(String tableName, Class<T> customerConfigType, List<T> bpConfigs) {
         Map<String,String> result = new LinkedHashMap<String, String>();
         for(T config : bpConfigs) {
-            if (config instanceof User) {
-                // hash the new user password
-                User user = (User) config;
-                user.put(User.Field.PWDHASH.getFieldName(), HmacHashUtils.hmacHash(user.get(User.Field.PWDHASH)));
-            }
             String updateStatus = BACKPLANE_UPDATE_SUCCESS;
             try {
-                //config.validate(daoFactory);
-                //superSimpleDb.store(tableName, customerConfigType, config);
+                if (config instanceof User) {
+                    // hash the new user password
+                    User user = (User) config;
+                    user.put(User.Field.PWDHASH.getFieldName(), HmacHashUtils.hmacHash(user.get(User.Field.PWDHASH)));
+                } else if (config instanceof BusConfig2) {
+                    User user = null;
+                    user = daoFactory.getBusOwnerDAO().get(config.get(BusConfig2.Field.OWNER.getFieldName()));
+
+                    if (user == null) {
+                        updateStatus = "Invalid bus owner: " + config.get(BusConfig2.Field.OWNER.getFieldName());
+                    }
+                }
+
+                config.validate();
                 daoFactory.getDaoByObjectType(customerConfigType).persist(config);
             } catch (Exception e) {
                 updateStatus = e.getMessage();

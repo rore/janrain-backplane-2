@@ -213,7 +213,7 @@ public class ProvisioningController2Test {
                 " \"configs\": [ {\n" +
                 "            \"BUS_NAME\": \"customer1\",\n" +
                 "            \"OWNER\": \"busowner1\",\n" +
-                "            \"RETENTION_TIME_SECONDS\": \"600\",\n" +
+                "            \"RETENTION_TIME_SECONDS\": \"60\",\n" +
                 "            \"RETENTION_STICKY_TIME_SECONDS\": \"28800\"\n" +
                 "        } ] }";
         logger.info("passing in json " + jsonUpdateBus);
@@ -225,6 +225,8 @@ public class ProvisioningController2Test {
         logger.info("testBusUpdate -> " + response.getContentAsString());
         assertTrue(response.getStatus() == HttpServletResponse.SC_OK);
         assertTrue(response.getContentAsString().contains("Invalid bus owner: busowner1"));
+
+        daoFactory.getBusDao().delete("customer1");
     }
 
     @Test
@@ -232,6 +234,7 @@ public class ProvisioningController2Test {
 
         // create bus owner
         refreshRequestAndResponse();
+
         String jsonUpdateBusOwner = "{ \"admin\": \"" + user.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\"," +
                 " \"configs\": [ { \"USER\":\"" + busOwner.get(User.Field.USER) + "\", \"PWDHASH\":\"" + busOwner.get(User.Field.PWDHASH) + "\"} ] }";
         logger.info("passing in json " + jsonUpdateBusOwner);
@@ -284,7 +287,7 @@ public class ProvisioningController2Test {
         request.setRequestURI("/v2/provision/bus/delete");
         request.setMethod("POST");
         handlerAdapter.handle(request, response, controller);
-        logger.info("testClientList() => " + response.getContentAsString());
+        logger.info("testBusCRUD() => " + response.getContentAsString());
         assertTrue(response.getContentAsString().contains("customer1"));
 
         refreshRequestAndResponse();
@@ -294,8 +297,12 @@ public class ProvisioningController2Test {
         request.setRequestURI("/v2/provision/bus/list");
         request.setMethod("POST");
         handlerAdapter.handle(request, response, controller);
-        logger.info("testClientList() => " + response.getContentAsString());
+        logger.info("testBusCRUD() => " + response.getContentAsString());
         assertFalse(response.getContentAsString().contains("customer1"));
+
+        daoFactory.getBusOwnerDAO().delete(busOwner.get(User.Field.USER));
+
+
     }
 
     @Test

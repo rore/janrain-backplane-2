@@ -17,8 +17,6 @@
 package com.janrain.backplane2.server.config;
 
 import com.janrain.backplane.server.ExternalizableCore;
-import com.janrain.backplane2.server.dao.DAOFactory;
-import com.janrain.backplane2.server.provision.ProvisioningConfig;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import org.apache.commons.lang.NotImplementedException;
@@ -32,7 +30,7 @@ import java.util.*;
 /**
  * @author Johnny Bufu
  */
-public class User extends ExternalizableCore implements ProvisioningConfig {
+public class User extends ExternalizableCore {
 
     // - PUBLIC
 
@@ -44,11 +42,6 @@ public class User extends ExternalizableCore implements ProvisioningConfig {
     @Override
     public Set<? extends MessageField> getFields() {
         return EnumSet.allOf(Field.class);
-    }
-
-    @Override
-    public void validate(DAOFactory daoFactory) throws Exception {
-        validate();
     }
 
     public static enum Field implements MessageField {

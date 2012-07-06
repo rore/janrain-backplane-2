@@ -29,7 +29,7 @@ public class RedisDAOFactory extends DAOFactory {
 
     @Override
     public GrantDAO getGrantDao() {
-        return new RedisGrantDAO();
+        return new RedisGrantDAO(new RedisTokenDAO());
     }
 
     @Override

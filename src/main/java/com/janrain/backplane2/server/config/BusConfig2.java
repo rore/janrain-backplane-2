@@ -18,8 +18,6 @@ package com.janrain.backplane2.server.config;
 
 import com.janrain.backplane.server.ExternalizableCore;
 import com.janrain.backplane2.server.InvalidRequestException;
-import com.janrain.backplane2.server.dao.DAOFactory;
-import com.janrain.backplane2.server.provision.ProvisioningConfig;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.MessageField;
 
@@ -29,7 +27,7 @@ import java.util.*;
 /**
  * @author Johnny Bufu
  */
-public class BusConfig2 extends ExternalizableCore implements ProvisioningConfig {
+public class BusConfig2 extends ExternalizableCore {
 
     // - PUBLIC
 
@@ -60,15 +58,6 @@ public class BusConfig2 extends ExternalizableCore implements ProvisioningConfig
     @Override
     public Set<? extends MessageField> getFields() {
         return EnumSet.allOf(Field.class);
-    }
-
-    @Override
-    public void validate(DAOFactory daoFactory) throws Exception {
-        User user = daoFactory.getBusOwnerDAO().get(get(Field.OWNER.getFieldName()));
-        if (user == null) {
-            throw new InvalidRequestException("Invalid bus owner: " + get(Field.OWNER.getFieldName()));
-        }
-        validate();
     }
 
     public static enum Field implements MessageField {
