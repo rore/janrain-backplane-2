@@ -128,6 +128,7 @@ public class V2MessageProcessor extends JedisPubSub {
     public void insertMessages(boolean loop) {
 
         String uuid = UUID.randomUUID().toString();
+        Jedis jedis = null;
 
         try {
             logger.info("v2 message processor waiting for exclusive write lock");
@@ -145,9 +146,8 @@ public class V2MessageProcessor extends JedisPubSub {
                 return;
             }
 
+            List<String> insertionTimes = new ArrayList<String>();
             do {
-
-                Jedis jedis = null;
 
                 try {
 
@@ -177,7 +177,7 @@ public class V2MessageProcessor extends JedisPubSub {
 
                         Transaction transaction = jedis.multi();
 
-                        int inserts = 0;
+                        insertionTimes.clear();
 
                         for (byte[] messageBytes : messagesToProcess) {
 
@@ -196,20 +196,8 @@ public class V2MessageProcessor extends JedisPubSub {
                                         retentionTimeStickySeconds = busConfig2.getRetentionTimeStickySeconds();
                                     }
 
-                                    // the id is set by the node that queued the message - record
-                                    // how long the message was in the queue - we assume here that the time
-                                    // to post and make the message available is minimal
-
-                                    {
-                                        long insertTime = BackplaneMessage.getDateFromId(backplaneMessage.getIdValue()).getTime();
-                                        long now = System.currentTimeMillis();
-                                        long diff = now - insertTime;
-                                        if (diff >= 0 && diff < 2880000) {
-                                            timeInQueue.update(diff);
-                                        } else {
-                                            logger.warn("time diff is bizarre at: " + diff);
-                                        }
-                                    }
+                                    String oldId = backplaneMessage.getIdValue();
+                                    insertionTimes.add(oldId);
 
                                     // TOTAL ORDER GUARANTEE
                                     // verify that the new message ID is greater than all existing message IDs
@@ -252,17 +240,26 @@ public class V2MessageProcessor extends JedisPubSub {
                                     transaction.lpop(RedisBackplaneMessageDAO.V2_MESSAGE_QUEUE);
                                     // </ATOMIC>
 
-                                    logger.info("v2 message " + newId + " pushed");
-                                    inserts++;
+                                    logger.info("pipelined v2 message " + oldId + " -> " + newId);
                                 }
                             }
                         }
 
-                        logger.info("processing transaction with " + inserts + " message(s)");
+                        logger.info("processing transaction with " + insertionTimes.size() + " v2 message(s)");
                         if (transaction.exec() == null) {
                             // the transaction failed, which likely means the lock was lost
                             logger.warn("transaction failed! - halting work for now");
                             return;
+                        }
+
+                        logger.info("flushed " + insertionTimes.size() + " v2 messages");
+                        long now = System.currentTimeMillis();
+                        for (String insertionId : insertionTimes) {
+                            long diff = now - com.janrain.backplane.server.BackplaneMessage.getDateFromId(insertionId).getTime();
+                            timeInQueue.update(diff);
+                            if (diff >= 0 && diff < 2880000) {
+                                logger.warn("time diff is bizarre at: " + diff);
+                            }
                         }
                     }
 
