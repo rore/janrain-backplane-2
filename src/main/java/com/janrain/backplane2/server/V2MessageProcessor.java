@@ -155,7 +155,9 @@ public class V2MessageProcessor extends JedisPubSub {
                     Set<String> latestMessageMetaSet = jedis.zrange(RedisBackplaneMessageDAO.V2_MESSAGES, -1, -1);
                     if (latestMessageMetaSet != null && !latestMessageMetaSet.isEmpty()) {
                         String[] segs = latestMessageMetaSet.iterator().next().split(" ");
-                        latestMessageId = segs[2];
+                        if (segs.length == 3) {
+                            latestMessageId = segs[2];
+                        }
                     }
 
                     // retrieve a handful of messages (ten) off the queue for processing

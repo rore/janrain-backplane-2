@@ -18,6 +18,7 @@ package com.janrain.backplane2.server.config;
 
 import com.janrain.backplane.server.config.BpServerConfig;
 import com.janrain.backplane2.server.BackplaneServerException;
+import com.janrain.backplane2.server.V2MessageProcessor;
 import com.janrain.backplane2.server.dao.DAOFactory;
 import com.janrain.cache.CachedL1;
 import com.janrain.commons.supersimpledb.SimpleDBException;
@@ -210,13 +211,15 @@ public class Backplane2Config {
         logger.info("Configured Backplane Server instance: " + bpInstanceId);
     }
 
-    private ScheduledExecutorService createCleanupTask() {
+    private ScheduledExecutorService createMaintenanceTask() {
         long cleanupIntervalMinutes;
-        logger.info("calling createCleanupTask()");
+        logger.info("calling v2 createMaintenanceTask()");
         cleanupIntervalMinutes = Long.valueOf(cachedGet(BpServerConfig.Field.CLEANUP_INTERVAL_MINUTES));
 
-        ScheduledExecutorService cleanupTask = Executors.newScheduledThreadPool(1);
-        cleanupTask.scheduleAtFixedRate(new Runnable() {
+        final V2MessageProcessor messageProcessor = new V2MessageProcessor();
+
+        ScheduledExecutorService maintenanceTask = Executors.newScheduledThreadPool(2);
+        maintenanceTask.scheduleAtFixedRate(new Runnable() {
             @Override
             public void run() {
 
@@ -230,7 +233,15 @@ public class Backplane2Config {
 
         }, cleanupIntervalMinutes, cleanupIntervalMinutes, TimeUnit.MINUTES);
 
-        return cleanupTask;
+        maintenanceTask.scheduleAtFixedRate(new Runnable() {
+            @Override
+            public void run() {
+                logger.info("creating v2 message processor thread");
+                messageProcessor.insertMessages(true);
+            }
+        }, 0, 1, TimeUnit.MINUTES);
+
+        return maintenanceTask;
     }
 
     private void deleteExpiredMessages() {
@@ -274,7 +285,7 @@ public class Backplane2Config {
 
     @PostConstruct
     private void init() {
-        this.cleanup = createCleanupTask();
+        this.cleanup = createMaintenanceTask();
         //this.cacheUpdater = createCacheUpdaterTask();
 
         /*for(SimpleDBTables table : EnumSet.allOf(SimpleDBTables.class)) {
