@@ -8,7 +8,6 @@ import com.janrain.backplane2.server.dao.DAOFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.oauth2.TokenException;
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.log4j.Logger;
 
 import java.util.List;

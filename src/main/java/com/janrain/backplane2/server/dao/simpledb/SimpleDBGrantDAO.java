@@ -24,7 +24,6 @@ import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.oauth2.TokenException;
 import com.yammer.metrics.Metrics;
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 

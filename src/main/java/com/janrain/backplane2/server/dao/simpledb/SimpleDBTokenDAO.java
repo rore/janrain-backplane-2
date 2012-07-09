@@ -19,12 +19,10 @@ package com.janrain.backplane2.server.dao.simpledb;
 import com.janrain.backplane2.server.*;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.backplane2.server.dao.ConfigLRUCache;
-import com.janrain.backplane2.server.dao.DAOFactory;
 import com.janrain.backplane2.server.dao.TokenDAO;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.oauth2.TokenException;
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
@@ -41,10 +39,9 @@ import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTabl
 
 public class SimpleDBTokenDAO implements TokenDAO {
 
-    SimpleDBTokenDAO(SuperSimpleDB superSimpleDB, Backplane2Config bpConfig, DAOFactory daoFactory) {
+    SimpleDBTokenDAO(SuperSimpleDB superSimpleDB, Backplane2Config bpConfig) {
         this.superSimpleDB = superSimpleDB;
         this.bpConfig = bpConfig;
-        this.daoFactory = daoFactory;
     }
 
     @Override
@@ -197,9 +194,6 @@ public class SimpleDBTokenDAO implements TokenDAO {
 
     private final SuperSimpleDB superSimpleDB;
     private final Backplane2Config bpConfig;
-    private final DAOFactory daoFactory;
 
     private final ConfigLRUCache<Token> tokenCache = new ConfigLRUCache<Token>(0L);
-
-
 }
