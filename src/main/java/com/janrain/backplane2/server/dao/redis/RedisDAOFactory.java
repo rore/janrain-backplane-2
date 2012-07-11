@@ -18,47 +18,47 @@ public class RedisDAOFactory extends DAOFactory {
 
     @Override
     public BusDAO getBusDao() {
-        return new RedisBusDAO();
+        return busDao;
     }
 
     @Override
     public TokenDAO getTokenDao() {
-        return new RedisTokenDAO();
+        return tokenDao;
     }
 
     @Override
     public GrantDAO getGrantDao() {
-        return new RedisGrantDAO(new RedisTokenDAO());
+        return grantDao;
     }
 
     @Override
     public BusOwnerDAO getBusOwnerDAO() {
-        return new RedisBusOwnerDAO();
+        return busOwnerDao;
     }
 
     @Override
     public ClientDAO getClientDAO() {
-        return new RedisClientDAO();
+        return clientDao;
     }
 
     @Override
     public BackplaneMessageDAO getBackplaneMessageDAO() {
-        return new RedisBackplaneMessageDAO();
+        return messageDao;
     }
 
     @Override
     public AuthSessionDAO getAuthSessionDAO() {
-        return new RedisAuthSessionDAO();
+        return authSessionDao;
     }
 
     @Override
     public AuthorizationRequestDAO getAuthorizationRequestDAO() {
-        return new RedisAuthorizationRequestDAO();
+        return authorizationRequestDao;
     }
 
     @Override
     public AuthorizationDecisionKeyDAO getAuthorizationDecisionKeyDAO() {
-        return new RedisAuthorizationDecisionKeyDAO();
+        return authorizationDecisionKeyDao;
     }
 
     @Override
@@ -83,4 +83,17 @@ public class RedisDAOFactory extends DAOFactory {
     public AdminDAO getAdminDAO() {
         return new RedisAdminDAO();
     }
+
+    // - PRIVATE
+
+    private static BusDAO busDao = new RedisBusDAO();
+    private static TokenDAO tokenDao = new RedisTokenDAO();
+    private static GrantDAO grantDao = new RedisGrantDAO(new RedisTokenDAO());
+    private static BusOwnerDAO busOwnerDao = new RedisBusOwnerDAO();
+    private static ClientDAO clientDao = new RedisClientDAO();
+    private static BackplaneMessageDAO messageDao = new RedisBackplaneMessageDAO();
+    private static AuthSessionDAO authSessionDao = new RedisAuthSessionDAO();
+    private static AuthorizationRequestDAO authorizationRequestDao = new RedisAuthorizationRequestDAO();
+    private static AuthorizationDecisionKeyDAO authorizationDecisionKeyDao = new RedisAuthorizationDecisionKeyDAO();
+
 }

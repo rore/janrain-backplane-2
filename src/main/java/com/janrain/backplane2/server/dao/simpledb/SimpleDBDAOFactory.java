@@ -7,8 +7,10 @@ import com.janrain.backplane2.server.config.Client;
 import com.janrain.backplane2.server.config.User;
 import com.janrain.backplane2.server.dao.*;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
+import org.apache.log4j.Logger;
 import org.springframework.context.annotation.Scope;
 
+import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 
 /**
@@ -20,47 +22,47 @@ public class SimpleDBDAOFactory extends DAOFactory {
 
     @Override
     public BusDAO getBusDao() {
-        return new SimpleDBBusDAO(superSimpleDB, bpConfig, this);
+        return busDao;
     }
 
     @Override
     public TokenDAO getTokenDao() {
-        return new SimpleDBTokenDAO(superSimpleDB, bpConfig, this);
+        return tokenDao;
     }
 
     @Override
     public GrantDAO getGrantDao() {
-        return new SimpleDBGrantDAO(superSimpleDB, bpConfig, this);
+        return grantDao;
     }
 
     @Override
     public BusOwnerDAO getBusOwnerDAO() {
-        return new SimpleDBBusOwnerDAO(superSimpleDB, bpConfig, this);
+        return busOwnerDao;
     }
 
     @Override
     public ClientDAO getClientDAO() {
-        return new SimpleDBClientDAO(superSimpleDB, bpConfig, this);
+        return clientDao;
     }
 
     @Override
     public BackplaneMessageDAO getBackplaneMessageDAO() {
-        return new SimpleDBBackplaneMessageDAO(superSimpleDB, bpConfig, this);
+        return messageDao;
     }
 
     @Override
     public AuthSessionDAO getAuthSessionDAO() {
-        return new SimpleDBAuthSessionDAO(superSimpleDB, bpConfig);
+        return authSessionDao;
     }
 
     @Override
     public AuthorizationRequestDAO getAuthorizationRequestDAO() {
-        return new SimpleDBAuthorizationRequestDAO(superSimpleDB, bpConfig);
+        return authorizationRequestDao;
     }
 
     @Override
     public AuthorizationDecisionKeyDAO getAuthorizationDecisionKeyDAO() {
-        return new SimpleDBAuthorizationDecisionKeyDAO(superSimpleDB, bpConfig);
+        return authorizationDecisionKeyDao;
     }
 
     @Override
@@ -86,12 +88,47 @@ public class SimpleDBDAOFactory extends DAOFactory {
         return new SimpleDBAdminDAO(superSimpleDB, bpConfig);
     }
 
-
     // PRIVATE
+
+    private static final Logger logger = Logger.getLogger(SimpleDBDAOFactory.class);
 
     @Inject
     private SuperSimpleDB superSimpleDB;
 
     @Inject
     private Backplane2Config bpConfig;
+
+    private static final Object initLock = new Object();
+    private static boolean initialized = false;
+
+    private static BusDAO busDao;
+    private static TokenDAO tokenDao;
+    private static GrantDAO grantDao;
+    private static BusOwnerDAO busOwnerDao;
+    private static ClientDAO clientDao;
+    private static BackplaneMessageDAO messageDao;
+    private static AuthSessionDAO authSessionDao;
+    private static AuthorizationRequestDAO authorizationRequestDao;
+    private static AuthorizationDecisionKeyDAO authorizationDecisionKeyDao;
+
+    @SuppressWarnings({"AssignmentToStaticFieldFromInstanceMethod", "UnusedDeclaration"})
+    @PostConstruct
+    private void init() {
+        synchronized (initLock) {
+            if (initialized) {
+                logger.warn("attempt to initialize singleton more than once");
+                return;
+            }
+            busDao = new SimpleDBBusDAO(superSimpleDB, bpConfig, this);
+            tokenDao = new SimpleDBTokenDAO(superSimpleDB, bpConfig);
+            grantDao = new SimpleDBGrantDAO(superSimpleDB, bpConfig, this);
+            busOwnerDao = new SimpleDBBusOwnerDAO(superSimpleDB, bpConfig, this);
+            clientDao = new SimpleDBClientDAO(superSimpleDB, bpConfig, this);
+            messageDao = new SimpleDBBackplaneMessageDAO(superSimpleDB, bpConfig, this);
+            authSessionDao = new SimpleDBAuthSessionDAO(superSimpleDB, bpConfig);
+            authorizationRequestDao = new SimpleDBAuthorizationRequestDAO(superSimpleDB, bpConfig);
+            authorizationDecisionKeyDao = new SimpleDBAuthorizationDecisionKeyDAO(superSimpleDB, bpConfig);
+            initialized = true;
+        }
+    }
 }

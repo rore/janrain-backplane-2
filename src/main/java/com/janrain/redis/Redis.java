@@ -119,18 +119,14 @@ public class Redis {
         try {
             while (true) {
                 jedis.watch(lockName);
-                if (identifier.equals(jedis.get(lockName))) {
+                String lockHolder = jedis.get(lockName);
+                if (identifier.equals(lockHolder)) {
                     Transaction t = jedis.multi();
                     t.del(lockName);
-
-                    if (t.exec() == null) {
-                        jedis.unwatch();
-                        continue;
-                    } else {
-                        return true;
-                    }
+                    if (t.exec() != null) return true;
                 } else {
-                    // lost lock
+                    logger.warn(identifier + " lost lock to " + lockHolder);
+                    jedis.unwatch();
                     return false;
                 }
             }

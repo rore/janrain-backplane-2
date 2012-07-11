@@ -17,6 +17,7 @@
 package com.janrain.backplane.server.config;
 
 import com.janrain.backplane.server.MessageProcessor;
+import com.janrain.backplane.server.dao.DaoFactory;
 import com.janrain.cache.CachedL1;
 import com.janrain.commons.supersimpledb.message.AbstractNamedMap;
 import com.janrain.commons.util.AwsUtility;
@@ -28,7 +29,6 @@ import org.springframework.context.annotation.Scope;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
-import javax.inject.Inject;
 import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -299,15 +299,12 @@ public class Backplane1Config {
     }
 
 
-    @Inject
-    private com.janrain.backplane.server.dao.DaoFactory daoFactory;
-
     private String cachedGet(BpServerConfig.Field property) {
 
         BpServerConfig bpServerConfigCache = (BpServerConfig) CachedL1.getInstance().getObject(BpServerConfig.BPSERVER_CONFIG_KEY);
         if (bpServerConfigCache == null) {
             // pull from db if not found in cache
-            bpServerConfigCache = daoFactory.getConfigDAO().get(null);
+            bpServerConfigCache = DaoFactory.getConfigDAO().get(null);
             if (bpServerConfigCache == null) {
                 // no instance found in cache or the db, so let's use the default record
                 bpServerConfigCache = new BpServerConfig();
@@ -331,7 +328,6 @@ public class Backplane1Config {
     private Long getMaxCacheAge() {
         return Long.valueOf(cachedGet(BpServerConfig.Field.CONFIG_CACHE_AGE_SECONDS));
     }
-
 
     public static class BpServerConfigMap extends AbstractNamedMap {
 

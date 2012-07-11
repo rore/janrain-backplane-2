@@ -20,6 +20,7 @@ import com.janrain.backplane.server.BusConfig1;
 import com.janrain.backplane.server.User;
 import com.janrain.backplane.server.config.AuthException;
 import com.janrain.backplane.server.config.Backplane1Config;
+import com.janrain.backplane.server.dao.DaoFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.crypto.HmacHashUtils;
@@ -34,7 +35,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.janrain.backplane.server.config.Backplane1Config.SimpleDBTables.*;
+import static com.janrain.backplane.server.config.Backplane1Config.SimpleDBTables.BP1_BUS_CONFIG;
+import static com.janrain.backplane.server.config.Backplane1Config.SimpleDBTables.BP1_USERS;
 
 /**
  * Controller handling the API calls for backplane customer configuration provisioning.
@@ -139,16 +141,13 @@ public class ProvisioningController {
     @Inject
     private Backplane1Config bpConfig;
 
-    @Inject
-    private com.janrain.backplane.server.dao.DaoFactory daoFactory;
-
     private void checkAdminAuth(String user, String password) throws AuthException {
         checkAuth("v1_admin", user, password);
     }
 
     private void checkAuth(String authTable, String user, String password) throws AuthException {
         //User userEntry = superSimpleDb.retrieve(authTable, User.class, user);
-        User userEntry = daoFactory.getAdminDAO().get(user);
+        User userEntry = DaoFactory.getAdminDAO().get(user);
         String authKey = userEntry == null ? null : userEntry.get(User.Field.PWDHASH);
         if ( ! HmacHashUtils.checkHmacHash(password, authKey) ) {
             throw new AuthException("User " + user + " not authorized in " + authTable);
@@ -166,7 +165,7 @@ public class ProvisioningController {
             Exception thrown = null;
             try {
                 //config = superSimpleDb.retrieve(tableName, entityType, entityName);
-                config = (T) daoFactory.getDaoByObjectType(entityType).get(entityName);
+                config = (T) DaoFactory.getDaoByObjectType(entityType).get(entityName);
             } catch (Exception e) {
                 thrown = e;
             }
@@ -182,7 +181,7 @@ public class ProvisioningController {
     private <T extends AbstractMessage> Map<String, Map<String, String>> doListAll(String tableName, Class<T> entityType) {
         Map<String,Map<String,String>> result = new LinkedHashMap<String, Map<String, String>>();
         try {
-            List<T> items = daoFactory.getDaoByObjectType(entityType).getAll();
+            List<T> items = DaoFactory.getDaoByObjectType(entityType).getAll();
             for(T config : items) {
                 result.put(config.getIdValue(), config);
             }
@@ -198,7 +197,7 @@ public class ProvisioningController {
             String deleteStatus = BACKPLANE_DELETE_SUCCESS;
             try {
                 //superSimpleDb.delete(tableName, entityName);
-                daoFactory.getDaoByObjectType(entityType).delete(entityName);
+                DaoFactory.getDaoByObjectType(entityType).delete(entityName);
             } catch (Exception e) {
                 deleteStatus = e.getMessage();
             }
@@ -230,7 +229,7 @@ public class ProvisioningController {
             String updateStatus = BACKPLANE_UPDATE_SUCCESS;
             try {
                 //superSimpleDb.store(tableName, customerConfigType, config);
-                daoFactory.getDaoByObjectType(customerConfigType).persist(config);
+                DaoFactory.getDaoByObjectType(customerConfigType).persist(config);
             } catch (Exception e) {
                 updateStatus = e.getMessage();
             }

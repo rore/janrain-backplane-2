@@ -22,7 +22,6 @@ import com.janrain.oauth2.TokenException;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
-import java.util.Set;
 
 /**
  * @author Tom Raney
@@ -33,5 +32,13 @@ public interface GrantDAO extends DAO<Grant> {
     void update(Grant grant) throws BackplaneServerException, TokenException;
     List<Grant> getByClientId(String clientId) throws BackplaneServerException;
     void deleteByBuses(@NotNull List<String> busesToDelete) throws BackplaneServerException, TokenException;
-    void revokeBuses(Set<Grant> grants, String buses) throws BackplaneServerException, TokenException;
+
+    /**
+     *  Revokes buses across the provided grants.
+     *  Not atomic, best effort.
+     *  Stops on first error and reports error, even though some grants may have been updated.
+     *
+     *  @return true if any of the existing grants were updated, false if nothing was updated
+     */
+    boolean revokeBuses(List<Grant> grants, String buses) throws BackplaneServerException, TokenException;
 }

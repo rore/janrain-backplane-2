@@ -304,7 +304,7 @@ Backplane.fetchNewChannel = function() {
     }
 
     var script = document.createElement("script");
-    script.src =  this.config.serverBaseURL + "/token?callback=Backplane.finishInit&rnd=" + Math.random();;
+    script.src =  this.config.serverBaseURL + "/token?callback=Backplane.finishInit&bus=" + this.config.busName + "&rnd=" + Math.random();;
     script.type = "text/javascript";
     script.id = 'fetchChannelId';
     var firstScript = document.getElementsByTagName("script")[0];

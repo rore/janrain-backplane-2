@@ -19,6 +19,7 @@ package com.janrain.backplane.server;
 import com.janrain.backplane.server.config.Backplane1Config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.MessageField;
+import com.janrain.commons.util.Pair;
 import com.janrain.crypto.ChannelUtil;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -36,8 +37,11 @@ public class BackplaneMessage extends ExternalizableCore {
 
     // - PUBLIC
 
-    public BackplaneMessage(String id, String bus, String channel, Map<String, Object> data) throws BackplaneServerException, SimpleDBException {
+    public BackplaneMessage() { }
+
+    public BackplaneMessage(String bus, String channel, Map<String, Object> data) throws BackplaneServerException, SimpleDBException {
         Map<String,String> d = new LinkedHashMap<String, String>(toStringMap(data));
+        String id = generateMessageId(new Date());
         d.put(Field.ID.getFieldName(), id);
         d.put(Field.BUS.getFieldName(), bus);
         d.put(Field.CHANNEL_NAME.getFieldName(), channel);
@@ -53,11 +57,22 @@ public class BackplaneMessage extends ExternalizableCore {
         return get(Field.ID);
     }
 
-    public void setIdValue(String id) {
-        this.put(Field.ID.getFieldName(), id);
-        try {
-            this.setName(id);
-        } catch (SimpleDBException ignore) {
+    @Override
+    public Set<? extends MessageField> getFields() {
+        return EnumSet.allOf(Field.class);
+    }
+
+    public Pair<String, Date> updateId(Pair<String, Date> lastIdAndDate) {
+        String id = getIdValue();
+        if (id.compareTo(lastIdAndDate.getLeft()) <= 0) {
+            logger.warn("message has an id " + id + " that is not > the latest id of " + lastIdAndDate.getLeft());
+            Date newDate = new Date(lastIdAndDate.getRight().getTime() + 1);
+            id = generateMessageId(newDate);
+            put(Field.ID.getFieldName(), id);
+            logger.warn("fixed");
+            return new Pair<String, Date>(id, newDate);
+        } else {
+            return lastIdAndDate;
         }
     }
 
@@ -71,11 +86,6 @@ public class BackplaneMessage extends ExternalizableCore {
 
     public boolean isSticky() {
         return "true".equalsIgnoreCase(get(Field.STICKY));
-    }
-
-    @Override
-    public Set<? extends MessageField> getFields() {
-        return EnumSet.allOf(Field.class);
     }
 
     public HashMap<String, Object> asFrame() throws BackplaneServerException {
@@ -173,28 +183,11 @@ public class BackplaneMessage extends ExternalizableCore {
         }
 
         try {
-            return Backplane1Config.ISO8601.get().parse(backplaneMessageId.substring(0, backplaneMessageId.indexOf("Z")+1));
+            return Backplane1Config.ISO8601.get().parse(backplaneMessageId.substring(0, backplaneMessageId.indexOf("Z") + 1));
         } catch (ParseException e) {
             logger.warn(e);
         }
         return null;
-    }
-
-    /**
-     * @return a time-based, lexicographically comparable message ID.
-     */
-    public static String generateMessageId() {
-        return Backplane1Config.ISO8601.get().format(new Date()) + "-" + ChannelUtil.randomString(10);
-    }
-
-    /**
-     * @return a time-based, lexicographically comparable message ID.
-     */
-    public static String generateMessageId(Date date) {
-        return Backplane1Config.ISO8601.get().format(date) + "-" + ChannelUtil.randomString(10);
-    }
-
-    public BackplaneMessage() {
     }
 
     // - PRIVATE
@@ -202,6 +195,13 @@ public class BackplaneMessage extends ExternalizableCore {
     private static final long serialVersionUID = -4601517360705157923L;
 
     private static final Logger logger = Logger.getLogger(BackplaneMessage.class);
+
+    /**
+     * @return a time-based, lexicographically comparable message ID.
+     */
+    private static String generateMessageId(Date date) {
+        return Backplane1Config.ISO8601.get().format(date) + "-" + ChannelUtil.randomString(10);
+    }
 
     private String extractFieldValueAsJsonString(Field field, Map<String,Object> data) throws BackplaneServerException {
         try {

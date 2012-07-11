@@ -69,9 +69,10 @@ public class SimpleDBBusDAO implements BusDAO {
     }
 
     @Override
-    public void delete(String id) throws BackplaneServerException {
+    public void delete(final String id) throws BackplaneServerException, TokenException {
         try {
             superSimpleDB.delete(bpConfig.getTableName(BP_BUS_CONFIG), id);
+            daoFactory.getGrantDao().deleteByBuses(new ArrayList<String>() {{add(id);}});
         } catch (SimpleDBException e) {
             throw new BackplaneServerException(e.getMessage());
         }

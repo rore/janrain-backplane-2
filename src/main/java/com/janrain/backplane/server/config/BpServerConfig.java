@@ -53,7 +53,8 @@ public class BpServerConfig extends ExternalizableCore {
         DEBUG_MODE,
         CONFIG_CACHE_AGE_SECONDS,
         CLEANUP_INTERVAL_MINUTES,
-        DEFAULT_MESSAGES_MAX;
+        DEFAULT_MESSAGES_MAX,
+        TOKEN_CACHE_MAX_MB;
 
         @Override
         public String getFieldName() {
@@ -76,10 +77,7 @@ public class BpServerConfig extends ExternalizableCore {
         private static final long CONFIG_CACHE_AGE_SECONDS_DEFAULT = 10;
         private static final long CLEANUP_INTERVAL_MINUTES_DEFAULT = 2;
         private static final long MESSAGES_MAX_DEFAULT = 50;
-        private static final long MESSAGE_CACHE_MAX_MB_DEFAULT = 0;
         private static final long TOKEN_CACHE_MAX_MB_DEFAULT = 100;
-
-
     }
 
     // PRIVATE

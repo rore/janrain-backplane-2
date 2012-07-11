@@ -309,10 +309,7 @@ public class ProvisioningController2 {
                         addGrant(grantRequest.getAdmin(), clientId, buses);
                         result.put(clientId, "GRANT_UPDATE_SUCCESS");
                     } else {
-                        Scope busesToRevoke = new Scope(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, buses));
-                        for(Set<Grant> grants : new GrantLogic(daoFactory).retrieveClientGrants(clientId, busesToRevoke).values()) {
-                            daoFactory.getGrantDao().revokeBuses(grants, buses);
-                        }
+                        revokeBuses(clientId, buses);
                         result.put(clientId, "GRANT_UPDATE_SUCCESS");
                     }
                 }
@@ -332,6 +329,14 @@ public class ProvisioningController2 {
                 Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, buses))
                 .buildGrant();
         daoFactory.getGrantDao().persist(grant);
+    }
+
+    private void revokeBuses(String clientId, String buses) throws TokenException, SimpleDBException, BackplaneServerException {
+        boolean updated = false;
+        Scope busesToRevoke = new Scope(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, buses));
+        if ( ! daoFactory.getGrantDao().revokeBuses(daoFactory.getGrantDao().getByClientId(clientId), buses) ) {
+            throw new BackplaneServerException("No grants found to revoke for buses: " + buses);
+        }
     }
 
     // type helper classes for JSON mapper

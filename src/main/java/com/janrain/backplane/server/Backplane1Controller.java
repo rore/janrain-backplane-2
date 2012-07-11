@@ -16,12 +16,15 @@
 
 package com.janrain.backplane.server;
 
-import com.janrain.backplane.server.config.*;
+import com.janrain.backplane.server.config.AuthException;
+import com.janrain.backplane.server.config.Backplane1Config;
 import com.janrain.backplane.server.dao.BackplaneMessageDAO;
+import com.janrain.backplane.server.dao.DaoFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.crypto.HmacHashUtils;
 import com.yammer.metrics.Metrics;
-import com.yammer.metrics.core.*;
+import com.yammer.metrics.core.Histogram;
+import com.yammer.metrics.core.TimerContext;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -75,7 +78,7 @@ public class Backplane1Controller {
 
             checkAuth(basicAuth, bus, BusConfig1.BUS_PERMISSION.GETALL);
 
-            List<BackplaneMessage> messages = daoFactory.getBackplaneMessageDAO().getMessagesByBus(bus, since, sticky);
+            List<BackplaneMessage> messages = DaoFactory.getBackplaneMessageDAO().getMessagesByBus(bus, since, sticky);
 
             List<HashMap<String,Object>> frames = new ArrayList<HashMap<String, Object>>();
             for (BackplaneMessage message : messages) {
@@ -128,7 +131,7 @@ public class Backplane1Controller {
 
         try {
 
-            BackplaneMessageDAO backplaneMessageDAO = daoFactory.getBackplaneMessageDAO();
+            BackplaneMessageDAO backplaneMessageDAO = DaoFactory.getBackplaneMessageDAO();
 
             //Block post if the caller has exceeded the message post limit
 /*            if (!backplaneMessageDAO.canTake(channel, 1)) {
@@ -137,7 +140,7 @@ public class Backplane1Controller {
             }*/
 
             for(Map<String,Object> messageData : messages) {
-                BackplaneMessage message = new BackplaneMessage(generateMessageId(), bus, channel, messageData);
+                BackplaneMessage message = new BackplaneMessage(bus, channel, messageData);
                 backplaneMessageDAO.persist(message);
             }
 
@@ -172,13 +175,6 @@ public class Backplane1Controller {
         return new HashMap<String,String>() {{
             put(ERR_MSG_FIELD, bpConfig.isDebugMode() ? e.getMessage() : "Error processing request.");
         }};
-    }
-
-    /**
-     * @return a time-based, lexicographically comparable message ID.
-     */
-    public static String generateMessageId() {
-        return Backplane1Config.ISO8601.get().format(new Date()) + "-" + randomString(10);
     }
 
     public static String randomString(int length) {
@@ -222,9 +218,6 @@ public class Backplane1Controller {
     @Inject
     private Backplane1Config bpConfig;
 
-    @Inject
-    private com.janrain.backplane.server.dao.DaoFactory daoFactory;
-
     private static final Random random = new SecureRandom();
 
     private void checkAuth(String basicAuth, String bus, BusConfig1.BUS_PERMISSION permission) throws AuthException {
@@ -251,7 +244,7 @@ public class Backplane1Controller {
         User userEntry;
 
         //userEntry = superSimpleDb.retrieve(bpConfig.getTableName(Backplane1Config.SimpleDBTables.BP1_USERS), User.class, user);
-        userEntry = daoFactory.getUserDAO().get(user);
+        userEntry = DaoFactory.getUserDAO().get(user);
 
         if (userEntry == null) {
             authError("User not found: " + user);
@@ -263,13 +256,12 @@ public class Backplane1Controller {
         BusConfig1 busConfig;
 
         //busConfig = superSimpleDb.retrieve(bpConfig.getTableName(BP1_BUS_CONFIG), BusConfig1.class, bus);
-        busConfig = daoFactory.getBusDAO().get(bus);
+        busConfig = DaoFactory.getBusDAO().get(bus);
 
         if (busConfig == null) {
             authError("Bus configuration not found for " + bus);
         } else if (!busConfig.getPermissions(user).contains(permission)) {
-            logger.error("User " + user + " denied " + permission + " to " + bus);
-            throw new AuthException("Access denied.");
+            authError("User " + user + " denied " + permission + " to " + bus);
         }
     }
 
@@ -289,7 +281,7 @@ public class Backplane1Controller {
     private String getChannelMessages(final String bus, final String channel, final String since, final String sticky) throws SimpleDBException, BackplaneServerException {
 
         try {
-            List<BackplaneMessage> messages = daoFactory.getBackplaneMessageDAO().getMessagesByChannel(bus, channel, since, sticky);
+            List<BackplaneMessage> messages = DaoFactory.getBackplaneMessageDAO().getMessagesByChannel(bus, channel, since, sticky);
             List<Map<String,Object>> frames = new ArrayList<Map<String, Object>>();
 
             for (BackplaneMessage message : messages) {
