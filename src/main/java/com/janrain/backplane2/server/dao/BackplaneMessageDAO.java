@@ -50,6 +50,7 @@ public interface BackplaneMessageDAO extends DAO<BackplaneMessage> {
      */
     void retrieveMessagesPerScope(@NotNull final MessagesResponse bpResponse, @NotNull final Token token) throws BackplaneServerException;
 
+
     List<BackplaneMessage> retrieveMessagesNoScope(String sinceIso8601timestamp) throws BackplaneServerException;
 
     List<BackplaneMessage> retrieveMessagesByChannel(String channel) throws BackplaneServerException;

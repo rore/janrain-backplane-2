@@ -329,7 +329,6 @@ public class Backplane1Config {
         return Long.valueOf(cachedGet(BpServerConfig.Field.CONFIG_CACHE_AGE_SECONDS));
     }
 
-
     public static class BpServerConfigMap extends AbstractNamedMap {
 
         @SuppressWarnings({"UnusedDeclaration"}) // instantiation through reflection

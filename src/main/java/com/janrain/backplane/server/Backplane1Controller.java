@@ -261,8 +261,7 @@ public class Backplane1Controller {
         if (busConfig == null) {
             authError("Bus configuration not found for " + bus);
         } else if (!busConfig.getPermissions(user).contains(permission)) {
-            logger.error("User " + user + " denied " + permission + " to " + bus);
-            throw new AuthException("Access denied.");
+            authError("User " + user + " denied " + permission + " to " + bus);
         }
     }
 

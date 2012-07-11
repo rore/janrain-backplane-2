@@ -87,7 +87,7 @@ public class SimpleDBGrantDAO implements GrantDAO {
 
     @Override
     public void update(Grant grant) throws BackplaneServerException, TokenException {
-        //can't make atomic - hope for the best
+        //todo: can't make atomic - hope for the best -- superSimpleDB.update() is atomic/conditional
         delete(grant.getIdValue());
         persist(grant);
     }
@@ -122,22 +122,14 @@ public class SimpleDBGrantDAO implements GrantDAO {
         }
     }
 
-
-    /**
-     *  Revokes buses across the provided grants.
-     *  Not atomic, best effort.
-     *  Stops on first error and reports error, even though some grants may have been updated.
-     */
     @Override
-    public void revokeBuses(Set<Grant> grants, String buses) throws BackplaneServerException, TokenException {
+    public boolean revokeBuses(List<Grant> grants, String buses) throws BackplaneServerException, TokenException {
         Scope busesToRevoke = new Scope(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, buses));
         boolean changes = false;
         for (Grant grant : grants) {
-            changes = changes || revokeBuses(grant, busesToRevoke);
+            changes = revokeBuses(grant, busesToRevoke) || changes;
         }
-        if (!changes) {
-            throw new BackplaneServerException("No grants found to revoke for buses: " + buses);
-        }
+        return changes;
     }
 
     // - PRIVATE

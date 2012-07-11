@@ -5,6 +5,7 @@ import com.janrain.backplane2.server.BackplaneServerException;
 import com.janrain.backplane2.server.Scope;
 import com.janrain.backplane2.server.Token;
 import com.janrain.backplane2.server.dao.TokenDAO;
+import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.oauth2.TokenException;
 import com.janrain.redis.Redis;
 import org.apache.commons.lang.NotImplementedException;
@@ -75,11 +76,6 @@ public class RedisTokenDAO implements TokenDAO {
         } finally {
             Redis.getInstance().releaseToPool(jedis);
         }
-    }
-
-    @Override
-    public void deleteExpiredTokens() throws BackplaneServerException {
-        throw new NotImplementedException();
     }
 
     @Override
@@ -168,6 +164,18 @@ public class RedisTokenDAO implements TokenDAO {
             logger.error(e.getMessage(), e);
             return false;
         }
+    }
+
+    @Override
+    public void deleteExpiredTokens() throws BackplaneServerException {
+        // todo: add token cache
+        throw new NotImplementedException();
+    }
+
+    @Override
+    public void cacheRevokedCleanup() throws SimpleDBException {
+        // todo: add token cache
+        throw new NotImplementedException();
     }
 
     // PRIVATE

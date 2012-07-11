@@ -28,6 +28,7 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.ModelAndView;
 
@@ -319,7 +320,7 @@ public class Backplane2Controller {
      * @param response
      * @return
      */
-    @RequestMapping(value = "/message/{msg_id}", method = { RequestMethod.GET})
+    @RequestMapping(value = "/message/{msg_id:.*}", method = { RequestMethod.GET})
     public @ResponseBody Map<String,Object> message(HttpServletRequest request, HttpServletResponse response,
                                 @PathVariable final String msg_id,
                                 @RequestParam(value = OAUTH2_ACCESS_TOKEN_PARAM_NAME, required = false) String access_token,
@@ -410,7 +411,7 @@ public class Backplane2Controller {
     @ExceptionHandler
     @ResponseBody
     public Map<String, String> handle(final AuthException e, HttpServletResponse response) {
-        logger.error("Backplane authentication error: " + bpConfig.getDebugException(e));
+        logger.error("Backplane authentication error: " + e.getMessage(), bpConfig.getDebugException(e));
         response.setStatus(SC_UNAUTHORIZED);
         return new HashMap<String,String>() {{
             put(ERR_MSG_FIELD, e.getMessage());
@@ -431,6 +432,19 @@ public class Backplane2Controller {
             if (StringUtils.isNotEmpty(errorDescription)) {
                 put(ERR_MSG_DESCRIPTION, errorDescription);
             }
+        }};
+    }
+
+    /**
+     * Handle invalid HTTP request method exceptions
+     */
+    @ExceptionHandler
+    @ResponseBody
+    public Map<String, Object> handleInvalidRequest(final HttpRequestMethodNotSupportedException e, HttpServletResponse response) {
+        logger.warn("Error handling backplane request", bpConfig.getDebugException(e));
+        response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+        return new HashMap<String,Object>() {{
+            put(ERR_MSG_FIELD, e.getMessage());
         }};
     }
 
@@ -777,11 +791,11 @@ public class Backplane2Controller {
                 queryParamsMap.put(nameVal[0], nameVal.length >0 ? nameVal[1] : null);
             }
             if(queryParamsMap.containsKey("client_id") || queryParamsMap.containsKey("client_secret")) {
-                throw new AuthException("Client credentials MUST NOT be included in the request URI (OAuth2 2.3.1)");
+                authError("Client credentials MUST NOT be included in the request URI (OAuth2 2.3.1)");
             }
         }
         if (StringUtils.isNotEmpty(client_id) || StringUtils.isNotEmpty(client_secret)) {
-            throw new AuthException("Client credentials in request body are NOT RECOMMENDED (OAuth2 2.3.1)");
+            authError("Client credentials in request body are NOT RECOMMENDED (OAuth2 2.3.1)");
         }
     }
 
@@ -790,11 +804,11 @@ public class Backplane2Controller {
 
         Map<String,Object> msg = messagePostBody.get("message");
         if (msg == null) { // no message body?
-            throw new InvalidRequestException("Missing message payload", HttpServletResponse.SC_FORBIDDEN);
+            throw new InvalidRequestException("Missing message payload", HttpServletResponse.SC_BAD_REQUEST);
         }
 
         if (messagePostBody.keySet().size() != 1) { // other garbage in the payload
-            throw new InvalidRequestException("Invalid data in payload", HttpServletResponse.SC_FORBIDDEN);
+            throw new InvalidRequestException("Invalid data in payload", HttpServletResponse.SC_BAD_REQUEST);
         }
 
         String channel = msg.get(BackplaneMessage.Field.CHANNEL.getFieldName()) != null ? msg.get(BackplaneMessage.Field.CHANNEL.getFieldName()).toString() : null;
@@ -813,7 +827,7 @@ public class Backplane2Controller {
         try {
             message = new BackplaneMessage(token.get(Token.TokenField.CLIENT_SOURCE_URL), msg);
         } catch (Exception e) {
-            throw new InvalidRequestException("Invalid message data: " + e.getMessage(), HttpServletResponse.SC_FORBIDDEN);
+            throw new InvalidRequestException("Invalid message data: " + e.getMessage(), HttpServletResponse.SC_BAD_REQUEST);
         }
         if ( ! token.getScope().isMessageInScope(message) ) {
             throw new InvalidRequestException("Invalid bus in message", HttpServletResponse.SC_FORBIDDEN);

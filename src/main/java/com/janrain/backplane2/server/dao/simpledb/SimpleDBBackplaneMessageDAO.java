@@ -20,9 +20,7 @@ import com.janrain.backplane2.server.*;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.backplane2.server.config.BusConfig2;
 import com.janrain.backplane2.server.dao.BackplaneMessageDAO;
-import com.janrain.backplane2.server.dao.ConfigLRUCache;
 import com.janrain.backplane2.server.dao.DAOFactory;
-import com.janrain.backplane2.server.dao.MessageCache;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.commons.util.InitSystemProps;
@@ -79,7 +77,7 @@ public class SimpleDBBackplaneMessageDAO implements BackplaneMessageDAO {
             v2postTimer.time(new Callable<Object>() {
                 @Override
                 public Object call() throws Exception {
-                    superSimpleDB.store(getTableName(), BackplaneMessage.class, message);
+                    superSimpleDB.store(getTableName(), BackplaneMessage.class, message, true);
                     return null;
                 }
             });
@@ -115,15 +113,6 @@ public class SimpleDBBackplaneMessageDAO implements BackplaneMessageDAO {
 
     @Override
     public @NotNull BackplaneMessage retrieveBackplaneMessage(@NotNull final String messageId, @NotNull Token token) throws BackplaneServerException, TokenException {
-        MessageCache<BackplaneMessage> cache = messageCache;
-        BackplaneMessage firstCached = cache.getFirstMessage();
-        BackplaneMessage lastCached = cache.getLastMessage();
-        if ( firstCached != null && lastCached != null &&
-             firstCached.getIdValue().compareTo(messageId) <= 0 &&
-             lastCached.getIdValue().compareTo(messageId) >= 0) {
-            return cache.get(messageId);
-        }
-
         BackplaneMessage message;
         try {
             message = v2singleGetTimer.time(new Callable<BackplaneMessage>() {
@@ -187,14 +176,6 @@ public class SimpleDBBackplaneMessageDAO implements BackplaneMessageDAO {
     @Override
     public void retrieveMessagesPerScope(@NotNull final MessagesResponse bpResponse, @NotNull final Token token) throws BackplaneServerException {
         final Scope scope = token.getScope();
-        filterMessagesPerScope(messageCache.getMessagesSince(bpResponse.getLastMessageId()), scope, bpResponse);
-
-        long freshness = System.currentTimeMillis() - messageCache.getLastUpdated();
-        logger.info("Local cache hits for request: " + bpResponse.messageCount() + " messages, " +
-                freshness + " ms freshness");
-
-        if (freshness < MAX_CACHE_FRESHNESS_MS) return;
-
         try {
             v2multiGetTimer.time(new Callable<Object>() {
                 @Override
@@ -315,14 +296,10 @@ public class SimpleDBBackplaneMessageDAO implements BackplaneMessageDAO {
     private static final Logger logger = Logger.getLogger(SimpleDBBackplaneMessageDAO.class);
 
     private static final int MAX_MSGS_IN_FRAME = 25;
-    private static final long MAX_CACHE_FRESHNESS_MS = 700;
 
     private SuperSimpleDB superSimpleDB;
     private DAOFactory daoFactory;
     private Backplane2Config bpConfig;
-
-    private final MessageCache<BackplaneMessage> messageCache = new MessageCache<BackplaneMessage>(0L);
-    private final ConfigLRUCache<Token> tokenCache = new ConfigLRUCache<Token>(0L);
 
     private final com.yammer.metrics.core.Timer v2postTimer = Metrics.newTimer(SimpleDBBackplaneMessageDAO.class, "v2_sdb_post_message", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
     private final com.yammer.metrics.core.Timer v2singleGetTimer = Metrics.newTimer(SimpleDBBackplaneMessageDAO.class, "v2_sdb_get_message", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);

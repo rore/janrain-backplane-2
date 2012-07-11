@@ -83,6 +83,7 @@ public class Backplane2Config {
         BP_METRIC_AUTH("_bpMetricAuth"),
         BP_GRANT("_v2_grants"),
         BP_ACCESS_TOKEN("_v2_accessTokens"),
+        BP_REVOKED_TOKEN("_v2_revokedTokens"),
         BP_AUTH_SESSION("_v2_authSessions"),
         BP_AUTHORIZATION_REQUEST("_v2_authorizationRequests"),
         BP_AUTHORIZATION_DECISION_KEY("_v2_authorizationDecisions");
@@ -110,19 +111,22 @@ public class Backplane2Config {
 	}
 
     /**
-	 * @return the encryptionKey
-	 */
-	//public String getEncryptionKey() throws SimpleDBException {
-	//	return cachedGet(BpServerProperty.ENCRYPTION_KEY);
-	//}
-
-    /**
      * @return the server default max message value per channel
      * @throws SimpleDBException
      */
     public long getDefaultMaxMessageLimit() {
         Long max = Long.valueOf(cachedGet(BpServerConfig.Field.DEFAULT_MESSAGES_MAX));
         return max == null ? Backplane2Config.BP_MAX_MESSAGES_DEFAULT : max;
+    }
+
+    public long getMaxTokenCacheBytes() {
+        try {
+            Long max = Long.valueOf(cachedGet(BpServerConfig.Field.TOKEN_CACHE_MAX_MB));
+            return max == null ? 0L : max * 1024 * 1024;
+        } catch (NumberFormatException nfe) {
+            logger.error("Invalid message cache size value: " + nfe.getMessage(), nfe);
+            return 0L;
+        }
     }
 
     public Exception getDebugException(Exception e) {
@@ -177,11 +181,13 @@ public class Backplane2Config {
 
     private static final String BP_CONFIG_ENTRY_NAME = "bpserverconfig";
     private static final long BP_MAX_MESSAGES_DEFAULT = 100;
-    private static final long CACHE_UPDATER_INTERVAL_MILLISECONDS = 300;
+    //private static final long MESSAGE_CACHE_UPDATE_INTERVAL_MILLISECONDS = 300;
+    private static final long TOKEN_CACHE_REVOKE_CLEANUP_INTERVAL_SECONDS = 5;
 
     private final String bpInstanceId;
     private ScheduledExecutorService cleanup;
-    private ExecutorService cacheUpdater;
+    //private ExecutorService messageCacheUpdater;
+    private ExecutorService tokenCacheCleanup;
 
 
     // Amazon specific instance-id value
@@ -189,7 +195,6 @@ public class Backplane2Config {
 
     private final com.yammer.metrics.core.Timer v2CleanupTimer =
         com.yammer.metrics.Metrics.newTimer(Backplane2Config.class, "cleanup_messages_time", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
-
 
     @SuppressWarnings({"UnusedDeclaration"})
     private Backplane2Config() {
@@ -247,45 +252,31 @@ public class Backplane2Config {
         }
     }
 
-    /*
-    private ExecutorService createCacheUpdaterTask() {
-        ScheduledExecutorService cacheUpdater = Executors.newScheduledThreadPool(1);
-        cacheUpdater.scheduleWithFixedDelay(new Runnable() {
+    private ExecutorService createCacheCleanupTask() {
+        ScheduledExecutorService tokenCacheCleaner = Executors.newScheduledThreadPool(1);
+        tokenCacheCleaner.scheduleWithFixedDelay(new Runnable() {
             @Override
             public void run() {
-                long start = System.currentTimeMillis();
                 try {
-                    MessageCache<BackplaneMessage> cache = daoFactory.getMessageCache();
-                    long cacheMaxBytes = getMaxMessageCacheBytes();
-                    if (cacheMaxBytes <= 0) return;
-                    cache.setMaxCacheSizeBytes(cacheMaxBytes);
-                    BackplaneMessage lastCached = cache.getLastMessage();
-                    String lastCachedId = lastCached != null ? lastCached.getIdValue() : "";
-                    cache.add(daoFactory.getBackplaneMessageDAO().retrieveMessagesNoScope(lastCachedId));
+                    daoFactory.getTokenDao().cacheRevokedCleanup();
                 } catch (Exception e) {
-                    logger.error("Error updating message cache: " + e.getMessage(), e);
+                    logger.error("Error clearing revoked tokens from cache: " + e.getMessage(), e);
                 }
-                logger.info("Cache updated in " + (System.currentTimeMillis() - start) + " ms");
             }
-        }, CACHE_UPDATER_INTERVAL_MILLISECONDS, CACHE_UPDATER_INTERVAL_MILLISECONDS, TimeUnit.MILLISECONDS);
-        return cacheUpdater;
+        }, TOKEN_CACHE_REVOKE_CLEANUP_INTERVAL_SECONDS, TOKEN_CACHE_REVOKE_CLEANUP_INTERVAL_SECONDS, TimeUnit.SECONDS);
+        return tokenCacheCleaner;
     }
-    */
 
     @PostConstruct
     private void init() {
         this.cleanup = createCleanupTask();
-        //this.cacheUpdater = createCacheUpdaterTask();
-
-        /*for(SimpleDBTables table : EnumSet.allOf(SimpleDBTables.class)) {
-            superSimpleDb.checkDomain(getTableName(table));
-        }*/
+        this.tokenCacheCleanup = createCacheCleanupTask();
     }
 
     @PreDestroy
     private void cleanup() {
         shutdownExecutor(cleanup);
-        shutdownExecutor(cacheUpdater);
+        shutdownExecutor(tokenCacheCleanup);
     }
 
     private void shutdownExecutor(ExecutorService executor) {
@@ -354,12 +345,12 @@ public class Backplane2Config {
             User userEntry = daoFactory.getAdminDAO().get(user);
             String authKey = userEntry == null ? null : userEntry.get(User.Field.PWDHASH);
             if ( ! HmacHashUtils.checkHmacHash(password, authKey) ) {
-                throw new AuthException("User " + user + " not authorized in " + authTable);
+                logger.error("User " + user + " not authorized in " + authTable);
+                throw new AuthException("Access denied");
             }
         } catch (BackplaneServerException e) {
-            throw new AuthException("User " + user + " not authorized in " + authTable + " , " + e.getMessage(), e);
+            logger.error("Error authenticating user " + user + " : " + e.getMessage(), getDebugException(e));
+            throw new AuthException("User " + user + " not authorized in " + authTable + " , " + e.getMessage(), getDebugException(e));
         }
     }
-
-
 }

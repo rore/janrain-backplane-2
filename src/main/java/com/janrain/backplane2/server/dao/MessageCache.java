@@ -96,7 +96,9 @@ public class MessageCache<T extends Message> {
         T first = getFirstMessage();
         if (first != null && first.getIdValue().compareTo(sinceIso8601timestamp) <= 0) {
             for(Map.Entry<String,T> entry : cache.entrySet()) {
-                result.add(entry.getValue());
+                if (entry.getValue().getIdValue().compareTo(sinceIso8601timestamp) > 0) {
+                    result.add(entry.getValue());
+                }
             }
         }
         return result;
