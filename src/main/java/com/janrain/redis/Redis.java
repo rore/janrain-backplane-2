@@ -16,6 +16,7 @@
 
 package com.janrain.redis;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import redis.clients.jedis.*;
 import java.util.List;
@@ -35,7 +36,22 @@ public class Redis {
         config.setMaxIdle(100);
         config.setMinIdle(100);
 
-        pool = new JedisPool(config, "localhost");
+        String redisServerConfig = System.getProperty("REDIS_SERVER_PRIMARY");
+        if (StringUtils.isEmpty(redisServerConfig)) {
+            logger.error("Cannot find configuration entry for Redis server");
+            System.exit(1);
+        }
+        String[] args = redisServerConfig.split(":");
+        int port = 6379;
+        if (args.length == 2) {
+            try {
+                port = Integer.parseInt(args[1]);
+            } catch (NumberFormatException e) {
+                logger.error("port for Redis server is malformed: " + redisServerConfig);
+            }
+        }
+
+        pool = new JedisPool(config, args[0], port);
 
     }
 
