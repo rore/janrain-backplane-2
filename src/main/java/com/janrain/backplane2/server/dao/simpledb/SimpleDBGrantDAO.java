@@ -84,12 +84,15 @@ public class SimpleDBGrantDAO implements GrantDAO {
         }
     }
 
-
     @Override
-    public void update(Grant grant) throws BackplaneServerException, TokenException {
-        //todo: can't make atomic - hope for the best -- superSimpleDB.update() is atomic/conditional
-        delete(grant.getIdValue());
-        persist(grant);
+    public void update(Grant existing, Grant updated) throws BackplaneServerException {
+        try {
+            daoFactory.getTokenDao().revokeTokenByGrant(existing.getIdValue());
+            superSimpleDB.update(bpConfig.getTableName(BP_GRANT), Grant.class, existing, updated);
+            logger.info("Updated grant (and revoked tokens): " + updated.getIdValue());
+        } catch (SimpleDBException e) {
+            throw new BackplaneServerException(e.getMessage(), e);
+        }
     }
 
     @Override
@@ -160,11 +163,5 @@ public class SimpleDBGrantDAO implements GrantDAO {
         } catch (SimpleDBException e) {
             throw new BackplaneServerException(e.getMessage());
         }
-    }
-
-    private void update(Grant grant, Grant updated) throws SimpleDBException, BackplaneServerException {
-        daoFactory.getTokenDao().revokeTokenByGrant(updated.getIdValue());
-        superSimpleDB.update(bpConfig.getTableName(BP_GRANT), Grant.class, grant, updated);
-        logger.info("Updated grant (and revoked tokens): " + updated.getIdValue());
     }
 }
