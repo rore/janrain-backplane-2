@@ -1,6 +1,6 @@
 package com.janrain.backplane2.server.dao.simpledb;
 
-import com.janrain.backplane.server.dao.ConfigDAO;
+import com.janrain.backplane.server.dao.redis.RedisConfigDAO;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.backplane2.server.config.BusConfig2;
 import com.janrain.backplane2.server.config.Client;
@@ -66,8 +66,8 @@ public class SimpleDBDAOFactory extends DAOFactory {
     }
 
     @Override
-    public ConfigDAO getConfigDAO() {
-        return new ConfigDAO();
+    public RedisConfigDAO getConfigDAO() {
+        return new RedisConfigDAO();
     }
 
     @Override

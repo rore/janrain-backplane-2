@@ -1,6 +1,6 @@
 package com.janrain.backplane2.server.dao;
 
-import com.janrain.backplane.server.dao.ConfigDAO;
+import com.janrain.backplane.server.dao.redis.RedisConfigDAO;
 import com.janrain.backplane2.server.dao.redis.RedisDAOFactory;
 import com.janrain.backplane2.server.dao.simpledb.SimpleDBDAOFactory;
 
@@ -22,7 +22,7 @@ public abstract class DAOFactory {
     public abstract AuthSessionDAO getAuthSessionDAO();
     public abstract AuthorizationRequestDAO getAuthorizationRequestDAO();
     public abstract AuthorizationDecisionKeyDAO getAuthorizationDecisionKeyDAO();
-    public abstract ConfigDAO getConfigDAO();
+    public abstract RedisConfigDAO getConfigDAO();
     public abstract DAO getDaoByObjectType(Class<?> obj);
     public abstract AdminDAO getAdminDAO();
 

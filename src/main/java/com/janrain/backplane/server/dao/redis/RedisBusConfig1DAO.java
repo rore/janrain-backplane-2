@@ -1,7 +1,8 @@
-package com.janrain.backplane.server.dao;
+package com.janrain.backplane.server.dao.redis;
 
 import com.janrain.backplane.server.BackplaneServerException;
 import com.janrain.backplane.server.BusConfig1;
+import com.janrain.backplane.server.dao.DAO;
 import com.janrain.redis.Redis;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.SerializationUtils;
@@ -12,17 +13,13 @@ import java.util.List;
 /**
  * @author Tom Raney
  */
-public class BusConfig1DAO extends DAO<BusConfig1> {
+public class RedisBusConfig1DAO extends DAO<BusConfig1> {
 
     public static byte[] getBusKey(String busId) {
         return ("v1_bus_" + busId).getBytes();
     }
 
-    BusConfig1DAO() {
-        super();
-    }
-
-    private static final Logger logger = Logger.getLogger(BusConfig1DAO.class);
+    private static final Logger logger = Logger.getLogger(RedisBusConfig1DAO.class);
 
     @Override
     public void persist(BusConfig1 busConfig1) throws BackplaneServerException {

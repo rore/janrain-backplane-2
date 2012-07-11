@@ -1,7 +1,8 @@
-package com.janrain.backplane.server.dao;
+package com.janrain.backplane.server.dao.redis;
 
 import com.janrain.backplane.server.BackplaneServerException;
 import com.janrain.backplane.server.config.BpServerConfig;
+import com.janrain.backplane.server.dao.DAO;
 import com.janrain.commons.util.SerializationUtils;
 import com.janrain.redis.Redis;
 import org.apache.commons.lang.NotImplementedException;
@@ -12,11 +13,7 @@ import java.util.List;
 /**
  * @author Tom Raney
  */
-public class ConfigDAO extends DAO<BpServerConfig> {
-
-    public ConfigDAO() {
-        super();
-    }
+public class RedisConfigDAO extends DAO<BpServerConfig> {
 
     @Override
     public BpServerConfig get(@Nullable String id)  {

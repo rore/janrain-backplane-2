@@ -18,7 +18,7 @@ package com.janrain.backplane.server;
 
 import com.janrain.backplane.server.config.AuthException;
 import com.janrain.backplane.server.config.Backplane1Config;
-import com.janrain.backplane.server.dao.BackplaneMessageDAO;
+import com.janrain.backplane.server.dao.redis.RedisBackplaneMessageDAO;
 import com.janrain.backplane.server.dao.DaoFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.crypto.HmacHashUtils;
@@ -131,7 +131,7 @@ public class Backplane1Controller {
 
         try {
 
-            BackplaneMessageDAO backplaneMessageDAO = DaoFactory.getBackplaneMessageDAO();
+            RedisBackplaneMessageDAO backplaneMessageDAO = DaoFactory.getBackplaneMessageDAO();
 
             //Block post if the caller has exceeded the message post limit
 /*            if (!backplaneMessageDAO.canTake(channel, 1)) {

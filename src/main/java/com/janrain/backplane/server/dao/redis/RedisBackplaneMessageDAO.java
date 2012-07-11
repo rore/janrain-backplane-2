@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
-package com.janrain.backplane.server.dao;
+package com.janrain.backplane.server.dao.redis;
 
 import com.janrain.backplane.server.BackplaneMessage;
 import com.janrain.backplane.server.BackplaneServerException;
+import com.janrain.backplane.server.dao.DAO;
 import com.janrain.redis.Redis;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.yammer.metrics.Metrics;
@@ -35,7 +36,7 @@ import java.util.*;
 /**
  * @author Tom Raney
  */
-public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
+public class RedisBackplaneMessageDAO extends DAO<BackplaneMessage> {
 
     final public static String V1_MESSAGE_QUEUE = "v1_message_queue";
     final public static String V1_MESSAGES = "v1_messages";
@@ -139,7 +140,7 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
             }
 
             // every message has a unique timestamp - which serves as a key for indexing
-            Set<byte[]> messageIdBytes = Redis.getInstance().zrangebyscore(BackplaneMessageDAO.getBusKey(bus), sinceInMs, Double.POSITIVE_INFINITY);
+            Set<byte[]> messageIdBytes = Redis.getInstance().zrangebyscore(RedisBackplaneMessageDAO.getBusKey(bus), sinceInMs, Double.POSITIVE_INFINITY);
 
             List<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
 
@@ -168,17 +169,12 @@ public class BackplaneMessageDAO extends DAO<BackplaneMessage> {
 
     }
 
-    // - PACKAGE
-
-    BackplaneMessageDAO() {
-        super();
-    }
 
     // - PRIVATE
 
-    private static final Logger logger = Logger.getLogger(BackplaneMessageDAO.class);
+    private static final Logger logger = Logger.getLogger(RedisBackplaneMessageDAO.class);
 
-    private final Histogram messagesPerChannel = Metrics.newHistogram(BackplaneMessageDAO.class, "v1_messages_per_channel");
+    private final Histogram messagesPerChannel = Metrics.newHistogram(RedisBackplaneMessageDAO.class, "v1_messages_per_channel");
 
     private void filterAndSort(List<BackplaneMessage> messages, String since, String sticky) {
 

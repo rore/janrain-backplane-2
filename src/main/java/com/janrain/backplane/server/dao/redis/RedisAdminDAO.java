@@ -1,7 +1,9 @@
-package com.janrain.backplane.server.dao;
+package com.janrain.backplane.server.dao.redis;
+
 
 import com.janrain.backplane.server.BackplaneServerException;
 import com.janrain.backplane.server.User;
+import com.janrain.backplane.server.dao.DAO;
 import com.janrain.redis.Redis;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.SerializationUtils;
@@ -12,31 +14,28 @@ import java.util.List;
 /**
  * @author Tom Raney
  */
-public class UserDAO extends DAO<User> {
+public class RedisAdminDAO extends DAO<User> {
 
-    UserDAO() {
-        super();
-    }
-
-    public static byte[] getUserKey(String userId) {
-        return ("v1_user_" + userId).getBytes();
+    public static byte[] getAdminUserKey(String userId) {
+        return ("v1_admin_" + userId).getBytes();
     }
 
     @Override
-    public void persist(User user) {
-        byte[] key = getUserKey(user.getIdValue());
+    public void persist(User user) throws BackplaneServerException {
+        byte[] key = getAdminUserKey(user.getIdValue());
         logger.info("writing key to redis: " + new String(key));
-        Redis.getInstance().set(getUserKey(user.getIdValue()), SerializationUtils.serialize(user));
+        Redis.getInstance().set(getAdminUserKey(user.getIdValue()), SerializationUtils.serialize(user));
     }
 
     @Override
     public void delete(String id) throws BackplaneServerException {
-        throw new NotImplementedException();
+        byte[] key = getAdminUserKey(id);
+        Redis.getInstance().del(key);
     }
 
     @Override
     public User get(String key) {
-        byte[] bytes = Redis.getInstance().get(getUserKey(key));
+        byte[] bytes = Redis.getInstance().get(getAdminUserKey(key));
         if (bytes != null) {
             return (User) SerializationUtils.deserialize(bytes);
         } else {
@@ -49,5 +48,5 @@ public class UserDAO extends DAO<User> {
         throw new NotImplementedException();
     }
 
-    private static final Logger logger = Logger.getLogger(UserDAO.class);
+    private static final Logger logger = Logger.getLogger(RedisAdminDAO.class);
 }

@@ -18,6 +18,7 @@ package com.janrain.backplane.server.dao;
 
 import com.janrain.backplane.server.BusConfig1;
 import com.janrain.backplane.server.User;
+import com.janrain.backplane.server.dao.redis.*;
 
 /**
  * @author Tom Raney
@@ -25,23 +26,23 @@ import com.janrain.backplane.server.User;
 
 public class DaoFactory {
 
-    public static BackplaneMessageDAO getBackplaneMessageDAO() {
+    public static RedisBackplaneMessageDAO getBackplaneMessageDAO() {
         return messageDao;
     }
 
-    public static UserDAO getUserDAO() {
+    public static RedisUserDAO getUserDAO() {
         return userDao;
     }
 
-    public static AdminDAO getAdminDAO() {
+    public static RedisAdminDAO getAdminDAO() {
         return adminDao;
     }
 
-    public static BusConfig1DAO getBusDAO() {
+    public static RedisBusConfig1DAO getBusDAO() {
         return busDao;
     }
 
-    public static ConfigDAO getConfigDAO() {
+    public static RedisConfigDAO getConfigDAO() {
         return configDao;
     }
 
@@ -59,9 +60,9 @@ public class DaoFactory {
 
     private DaoFactory() {}
 
-    private static BackplaneMessageDAO messageDao = new BackplaneMessageDAO();
-    private static UserDAO userDao = new UserDAO();
-    private static AdminDAO adminDao = new AdminDAO();
-    private static BusConfig1DAO busDao = new BusConfig1DAO();
-    private static ConfigDAO configDao = new ConfigDAO();
+    private static RedisBackplaneMessageDAO messageDao = new RedisBackplaneMessageDAO();
+    private static RedisUserDAO userDao = new RedisUserDAO();
+    private static RedisAdminDAO adminDao = new RedisAdminDAO();
+    private static RedisBusConfig1DAO busDao = new RedisBusConfig1DAO();
+    private static RedisConfigDAO configDao = new RedisConfigDAO();
 }
