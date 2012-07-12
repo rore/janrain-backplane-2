@@ -29,7 +29,7 @@ import java.util.List;
 
 public interface GrantDAO extends DAO<Grant> {
 
-    void update(Grant grant) throws BackplaneServerException, TokenException;
+    void update(Grant existing, Grant grant) throws BackplaneServerException, TokenException;
     List<Grant> getByClientId(String clientId) throws BackplaneServerException;
     void deleteByBuses(@NotNull List<String> busesToDelete) throws BackplaneServerException, TokenException;
 

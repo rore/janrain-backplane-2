@@ -20,7 +20,7 @@ public class GrantLogic {
 
     }
 
-       /**
+   /**
      * Retrieve all active grants issued to the supplied clientId
      * that match any of the fields that require authorization in the supplied scope.
      *
@@ -90,7 +90,7 @@ public class GrantLogic {
      *          5) the grant's code had already been used (in this case the grant is also invalidated/revoked), or
      *
      * @throws
-       */
+     */
       public Grant getAndActivateCodeGrant(final String codeId, String authenticatedClientId) throws BackplaneServerException, TokenException {
 
           Grant existing = daoFactory.getGrantDao().get(codeId);
@@ -114,9 +114,7 @@ public class GrantLogic {
               throw new BackplaneServerException(e.getMessage());
           }
 
-          daoFactory.getGrantDao().update(updated);
-
-          //superSimpleDB.update(bpConfig.getTableName(BP_GRANT), Grant.class, existing, updated);
+          daoFactory.getGrantDao().update(existing, updated);
 
           logger.info( "Grant status: " + updatedState.toString().toLowerCase() + " for code: " + codeId + ", client_id: " + authenticatedClientId);
 
@@ -125,7 +123,6 @@ public class GrantLogic {
           } else {
               throw new TokenException("Invalid code: " + codeId);
           }
-
     }
 
     // PRIVATE

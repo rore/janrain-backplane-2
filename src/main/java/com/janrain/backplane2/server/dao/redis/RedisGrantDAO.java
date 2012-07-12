@@ -27,10 +27,6 @@ public class RedisGrantDAO implements GrantDAO {
         this.tokenDAO = tokenDAO;
     }
 
-    public static byte[] getKey(String id) {
-        return ("v2_grant_" + id).getBytes();
-    }
-
     @Override
     public List<Grant> getByClientId(String clientId) throws BackplaneServerException {
         List<Grant> grants = getAll();
@@ -57,39 +53,6 @@ public class RedisGrantDAO implements GrantDAO {
                     }
                 }
             }
-    }
-
-    private boolean revokeBuses(Grant grant, Scope busesToRevoke) throws BackplaneServerException {
-
-        try {
-            Scope grantScope = grant.getAuthorizedScope();
-            Scope updatedScope = Scope.revoke(grantScope, busesToRevoke);
-            if (updatedScope.equals(grantScope)) return false;
-            if (!updatedScope.isAuthorizationRequired()) {
-                logger.info("Revoked all buses from grant: " + grant.getIdValue());
-                delete(grant.getIdValue());
-            } else {
-                Grant updated = new Grant.Builder(grant, grant.getState()).scope(updatedScope).buildGrant();
-                update(grant, updated);
-                logger.info("Buses updated updated for grant: " + updated.getIdValue() + " remaining scope: '" + updated.getAuthorizedScope() + "'");
-            }
-            return true;
-        } catch (Exception e) {
-            throw new BackplaneServerException(e.getMessage());
-        }
-
-    }
-
-    private void update(Grant grant, Grant updated) throws BackplaneServerException {
-        try {
-            tokenDAO.revokeTokenByGrant(updated.getIdValue());
-            update(updated);
-            //daoFactory.getTokenDao().revokeTokenByGrant(updated.getIdValue());
-            //superSimpleDB.update(bpConfig.getTableName(BP_GRANT), Grant.class, grant, updated);
-            logger.info("Updated grant (and revoked tokens): " + updated.getIdValue());
-        } catch (TokenException e) {
-            throw new BackplaneServerException(e.getMessage());
-        }
     }
 
     @Override
@@ -128,22 +91,25 @@ public class RedisGrantDAO implements GrantDAO {
     public void persist(Grant obj) throws BackplaneServerException {
         byte[] bytes = SerializationUtils.serialize(obj);
         logger.info("adding grant " + obj.getIdValue() + " to redis");
+        // todo: one hash object instead of top level entries + a separate list?
         Redis.getInstance().rpush(getKey("list"), bytes);
         Redis.getInstance().set(getKey(obj.getIdValue()), bytes);
     }
 
     @Override
-    public void update(Grant grant) throws BackplaneServerException, TokenException {
+    public void update(Grant existing, Grant updated) throws BackplaneServerException, TokenException {
         Jedis jedis = null;
         try {
+            tokenDAO.revokeTokenByGrant(existing.getIdValue());
             jedis = Redis.getInstance().getJedis();
-            byte[] newBytes = SerializationUtils.serialize(grant);
-            byte[] oldBytes = jedis.get(getKey(grant.getIdValue()));
+            byte[] newBytes = SerializationUtils.serialize(updated);
+            byte[] oldBytes = jedis.get(getKey(existing.getIdValue()));
             Transaction t = jedis.multi();
             t.lrem(getKey("list"), 0, oldBytes);
             t.rpush(getKey("list"), newBytes);
-            t.set(getKey(grant.getIdValue()), newBytes);
+            t.set(getKey(updated.getIdValue()), newBytes);
             t.exec();
+            logger.info("Updated grant (and revoked tokens): " + updated.getIdValue());
         } finally {
             Redis.getInstance().releaseToPool(jedis);
         }
@@ -172,4 +138,28 @@ public class RedisGrantDAO implements GrantDAO {
 
     private TokenDAO tokenDAO;
 
+    private static byte[] getKey(String id) {
+        return ("v2_grant_" + id).getBytes();
+    }
+
+    private boolean revokeBuses(Grant grant, Scope busesToRevoke) throws BackplaneServerException {
+
+        try {
+            Scope grantScope = grant.getAuthorizedScope();
+            Scope updatedScope = Scope.revoke(grantScope, busesToRevoke);
+            if (updatedScope.equals(grantScope)) return false;
+            if (!updatedScope.isAuthorizationRequired()) {
+                logger.info("Revoked all buses from grant: " + grant.getIdValue());
+                delete(grant.getIdValue());
+            } else {
+                Grant updated = new Grant.Builder(grant, grant.getState()).scope(updatedScope).buildGrant();
+                update(grant, updated);
+                logger.info("Buses updated updated for grant: " + updated.getIdValue() + " remaining scope: '" + updated.getAuthorizedScope() + "'");
+            }
+            return true;
+        } catch (Exception e) {
+            throw new BackplaneServerException(e.getMessage());
+        }
+
+    }
 }
