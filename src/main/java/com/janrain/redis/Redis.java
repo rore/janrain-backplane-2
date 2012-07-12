@@ -27,39 +27,7 @@ import java.util.Set;
  */
 public class Redis {
 
-    JedisPool pool;
-    private static Redis instance;
-
-    private Redis() {
-        JedisPoolConfig config = new JedisPoolConfig();
-        config.setMaxActive(100);
-        config.setMaxIdle(100);
-        config.setMinIdle(100);
-
-        String redisServerConfig = System.getProperty("REDIS_SERVER_PRIMARY");
-        if (StringUtils.isEmpty(redisServerConfig)) {
-            logger.error("Cannot find configuration entry for Redis server");
-            System.exit(1);
-        }
-        String[] args = redisServerConfig.split(":");
-        int port = 6379;
-        if (args.length == 2) {
-            try {
-                port = Integer.parseInt(args[1]);
-            } catch (NumberFormatException e) {
-                logger.error("port for Redis server is malformed: " + redisServerConfig);
-            }
-        }
-
-        pool = new JedisPool(config, args[0], port);
-
-    }
-
-    public synchronized static Redis getInstance() {
-
-        if (instance == null) {
-            instance = new Redis();
-        }
+    public static Redis getInstance() {
         return instance;
     }
 
@@ -92,7 +60,7 @@ public class Redis {
         } catch (InterruptedException e) {
             logger.warn(e);
         } finally {
-            pool.returnResource(jedis);
+            if (jedis != null) pool.returnResource(jedis);
         }
         logger.warn("couldn't get lock '" + lockName + " with id " + identifier);
         return null;
@@ -227,8 +195,6 @@ public class Redis {
         }
     }
 
-
-
     public byte[] lpop(byte[] key) {
         Jedis jedis = pool.getResource();
         try {
@@ -260,5 +226,31 @@ public class Redis {
 
     private static final Logger logger = Logger.getLogger(Redis.class);
 
+    private final JedisPool pool;
 
+    private static Redis instance = new Redis();
+
+    private Redis() {
+        JedisPoolConfig config = new JedisPoolConfig();
+        config.setMaxActive(100);
+        config.setMaxIdle(100);
+        config.setMinIdle(100);
+
+        String redisServerConfig = System.getProperty("REDIS_SERVER_PRIMARY");
+        if (StringUtils.isEmpty(redisServerConfig)) {
+            logger.error("Cannot find configuration entry for Redis server");
+            System.exit(1);
+        }
+        String[] args = redisServerConfig.split(":");
+        int port = 6379;
+        if (args.length == 2) {
+            try {
+                port = Integer.parseInt(args[1]);
+            } catch (NumberFormatException e) {
+                logger.error("port for Redis server is malformed: " + redisServerConfig);
+            }
+        }
+
+        pool = new JedisPool(config, args[0], port);
+    }
 }
