@@ -49,8 +49,8 @@ public class RedisBackplaneMessageDAO extends DAO<BackplaneMessage> {
         return ("v1_" + bus + "_" + channel).getBytes();
     }
 
-    public static byte[] getMessageIdKey(String bus, String channel, String id) {
-        return (new String(getChannelKey(bus, channel)) + "_" + id).getBytes();
+    public static byte[] getKey(String key) {
+        return ("v1_" + key).getBytes();
     }
 
     /**
