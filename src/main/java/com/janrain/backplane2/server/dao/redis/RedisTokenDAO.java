@@ -57,6 +57,10 @@ public class RedisTokenDAO implements TokenDAO {
             byte[] bytes = SerializationUtils.serialize(token);
             jedis.rpush(getKey("list"), bytes);
             jedis.set(getKey(token.getIdValue()), bytes);
+            // set a TTL
+            if (token.getExpirationDate() != null) {
+                jedis.expireAt(getKey(token.getIdValue()), token.getExpirationDate().getTime()*1000);
+            }
         } finally {
             Redis.getInstance().releaseToPool(jedis);
         }
@@ -168,14 +172,35 @@ public class RedisTokenDAO implements TokenDAO {
 
     @Override
     public void deleteExpiredTokens() throws BackplaneServerException {
-        // todo: add token cache
-        throw new NotImplementedException();
+        // todo: add token cache?
+        Jedis jedis = null;
+
+        try {
+            jedis = Redis.getInstance().getJedis();
+            logger.info("Backplane token cleanup task started.");
+
+            List<Token> tokens = getAll();
+            if (tokens != null) {
+                for (Token token : tokens) {
+                    if (Redis.getInstance().get(getKey(token.getIdValue())) == null) {
+                        // remove from list
+                        jedis.lrem(getKey("list"), 0, SerializationUtils.serialize(token));
+                        logger.info("removed expired token " + token.getIdValue());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // catch-all, else cleanup thread stops
+            logger.error("Backplane token cleanup task error: " + e.getMessage(), e);
+        } finally {
+            logger.info("Backplane token cleanup task finished.");
+            Redis.getInstance().releaseToPool(jedis);
+        }
     }
 
     @Override
     public void cacheRevokedCleanup() throws SimpleDBException {
-        // todo: add token cache
-        throw new NotImplementedException();
+        // no-op
     }
 
     // PRIVATE

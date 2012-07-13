@@ -54,17 +54,6 @@
         <filter-name>jsonpFilter</filter-name>
         <url-pattern>/*</url-pattern>
     </filter-mapping>
-
-    <filter>
-        <description>Short circuit condition</description>
-        <filter-name>CircuitBreakerFilter</filter-name>
-        <filter-class>com.janrain.servlet.CircuitBreakerFilter</filter-class>
-    </filter>
-    <filter-mapping>
-        <filter-name>CircuitBreakerFilter</filter-name>
-        <url-pattern>/v2/messages</url-pattern>
-    </filter-mapping>
-
     <filter>
         <description>Logs processing time for each request</description>
         <filter-name>timer</filter-name>
