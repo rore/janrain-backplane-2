@@ -104,10 +104,13 @@ public class V2MessageProcessor extends JedisPubSub {
                     if (jedis.get(segs[2]) == null) {
                         // remove this key from indexes
                         logger.info("removing message " + segs[2]);
-                        jedis.zrem(RedisBackplaneMessageDAO.getBusKey(segs[0]), segs[2].getBytes());
-                        jedis.lrem(RedisBackplaneMessageDAO.getChannelKey(segs[1]), 0, segs[2].getBytes());
-                        jedis.zrem(RedisBackplaneMessageDAO.V2_MESSAGES.getBytes(), segs[2].getBytes());
-                        //todo: remove the empty set?
+                        long rem1= jedis.zrem(RedisBackplaneMessageDAO.getBusKey(segs[0]), segs[2].getBytes());
+                        long rem2= jedis.lrem(RedisBackplaneMessageDAO.getChannelKey(segs[1]), 0, segs[2].getBytes());
+                          if (rem1 != 1 || rem2 != 1) {
+                            logger.warn("failed to remove message " + segs[2].getBytes());
+                        } else {
+                            long rem3= jedis.zrem(RedisBackplaneMessageDAO.V2_MESSAGES.getBytes(), metaData.getBytes());
+                        }
                     }
                 }
             }
@@ -224,17 +227,19 @@ public class V2MessageProcessor extends JedisPubSub {
                                         transaction.expire(RedisBackplaneMessageDAO.getKey(newId), retentionTimeSeconds);
                                     }
 
-                                    // append entire message to list of messages in a channel for retrieval efficiency
+                                    // add message id to channel list
                                     transaction.rpush(RedisBackplaneMessageDAO.getChannelKey(backplaneMessage.getChannel()),
-                                            SerializationUtils.serialize(backplaneMessage));
+                                            RedisBackplaneMessageDAO.getKey(backplaneMessage.getIdValue()));
 
                                     // add message id to sorted set of all message ids as an index
-                                    String metaData = backplaneMessage.getBus() + " " + backplaneMessage.getChannel() + " " + new String(RedisBackplaneMessageDAO.getKey(backplaneMessage.getIdValue()));
+                                    String metaData = backplaneMessage.getBus() + " " + backplaneMessage.getChannel() + " " +
+                                            new String(RedisBackplaneMessageDAO.getKey(backplaneMessage.getIdValue()));
 
                                     transaction.zadd(RedisBackplaneMessageDAO.V2_MESSAGES.getBytes(), messageTime, metaData.getBytes());
 
                                     // add message id to sorted set keyed by bus as an index
-                                    transaction.zadd(RedisBackplaneMessageDAO.getBusKey(backplaneMessage.getBus()), messageTime, newId.getBytes());
+                                    transaction.zadd(RedisBackplaneMessageDAO.getBusKey(backplaneMessage.getBus()), messageTime,
+                                            RedisBackplaneMessageDAO.getKey(backplaneMessage.getIdValue()));
 
                                     // make sure all subscribers get the update
                                     transaction.publish("alerts", newId);

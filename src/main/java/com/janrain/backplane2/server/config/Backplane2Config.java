@@ -224,19 +224,6 @@ public class Backplane2Config {
         final V2MessageProcessor messageProcessor = new V2MessageProcessor();
 
         ScheduledExecutorService maintenanceTask = Executors.newScheduledThreadPool(2);
-        maintenanceTask.scheduleAtFixedRate(new Runnable() {
-            @Override
-            public void run() {
-
-                try {
-                    deleteExpiredMessages();
-                } catch (Exception e) {
-                    logger.error("Error while cleaning up expired messages, " + e.getMessage(), e);
-                }
-
-            }
-
-        }, cleanupIntervalMinutes, cleanupIntervalMinutes, TimeUnit.MINUTES);
 
         maintenanceTask.scheduleAtFixedRate(new Runnable() {
             @Override
@@ -246,21 +233,15 @@ public class Backplane2Config {
             }
         }, 0, 1, TimeUnit.MINUTES);
 
+        maintenanceTask.scheduleAtFixedRate(new Runnable() {
+            @Override
+            public void run() {
+                logger.info("creating v2 message cleanup thread");
+                messageProcessor.cleanupMessages();
+            }
+        }, 0, 1, TimeUnit.MINUTES);
+
         return maintenanceTask;
-    }
-
-    private void deleteExpiredMessages() {
-        try {
-            logger.info("Backplane message cleanup task started.");
-
-            //TODO: configure for redis
-
-        } catch (Exception e) {
-            // catch-all, else cleanup thread stops
-            logger.error("Backplane messages cleanup task error: " + e.getMessage(), e);
-        } finally {
-            logger.info("Backplane messages cleanup task finished.");
-        }
     }
 
     private ExecutorService createCacheCleanupTask() {
