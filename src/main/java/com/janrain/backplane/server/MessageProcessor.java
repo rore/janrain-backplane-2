@@ -19,6 +19,7 @@ package com.janrain.backplane.server;
 import com.janrain.backplane.server.config.Backplane1Config;
 import com.janrain.backplane.server.dao.redis.RedisBackplaneMessageDAO;
 import com.janrain.backplane.server.dao.DaoFactory;
+import com.janrain.backplane2.server.dao.BackplaneMessageDAO;
 import com.janrain.commons.util.Pair;
 import com.janrain.redis.Redis;
 import com.yammer.metrics.Metrics;
@@ -101,14 +102,13 @@ public class MessageProcessor extends JedisPubSub {
                 for (byte[] b : messageMetaBytes) {
                     String metaData = new String(b);
                     String[] segs = metaData.split(" ");
-                    if (jedis.get(segs[2]) == null) {
+                    String key = segs[2];
+                    if (jedis.get(key.getBytes()) == null) {
                         // remove this key from indexes
-                        logger.info("removing v1 message " + segs[2]);
-
-                        jedis.zrem(RedisBackplaneMessageDAO.getBusKey(segs[0]), segs[2].getBytes());
-                        jedis.lrem(RedisBackplaneMessageDAO.getChannelKey(segs[0], segs[1]), 0, segs[2].getBytes());
-                        jedis.zrem(RedisBackplaneMessageDAO.V1_MESSAGES.getBytes(), segs[2].getBytes());
-
+                        long rem1= jedis.zrem(RedisBackplaneMessageDAO.getBusKey(segs[0]), key.getBytes());
+                        long rem2= jedis.lrem(RedisBackplaneMessageDAO.getChannelKey(segs[0], segs[1]), 0, key.getBytes());
+                        long rem3= jedis.zrem(RedisBackplaneMessageDAO.V1_MESSAGES.getBytes(), key.getBytes());
+                        logger.info("removed v1 message " + key);
                         //todo: remove the empty set?
                     }
                 }
@@ -219,12 +219,12 @@ public class MessageProcessor extends JedisPubSub {
 
                                 // <ATOMIC>
                                 // save the individual message by key
-                                transaction.set(newId.getBytes(), SerializationUtils.serialize(backplaneMessage));
+                                transaction.set(RedisBackplaneMessageDAO.getKey(newId), SerializationUtils.serialize(backplaneMessage));
                                 // set the message TTL
                                 if (backplaneMessage.isSticky()) {
-                                    transaction.expire(newId.getBytes(), retentionTimeStickySeconds);
+                                    transaction.expire(RedisBackplaneMessageDAO.getKey(newId), retentionTimeStickySeconds);
                                 } else {
-                                    transaction.expire(newId.getBytes(), retentionTimeSeconds);
+                                    transaction.expire(RedisBackplaneMessageDAO.getKey(newId), retentionTimeSeconds);
                                 }
 
                                 // append entire message to list of messages in a channel for retrieval efficiency

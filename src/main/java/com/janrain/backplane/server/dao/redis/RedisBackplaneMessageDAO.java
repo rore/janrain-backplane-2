@@ -50,7 +50,7 @@ public class RedisBackplaneMessageDAO extends DAO<BackplaneMessage> {
     }
 
     public static byte[] getKey(String key) {
-        return ("v1_" + key).getBytes();
+        return ("v1_message_" + key).getBytes();
     }
 
     /**

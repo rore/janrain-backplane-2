@@ -219,9 +219,9 @@ public class V2MessageProcessor extends JedisPubSub {
                                     transaction.set(RedisBackplaneMessageDAO.getKey(newId), SerializationUtils.serialize(backplaneMessage));
                                     // set the message TTL
                                     if (backplaneMessage.isSticky()) {
-                                        transaction.expire(newId.getBytes(), retentionTimeStickySeconds);
+                                        transaction.expire(RedisBackplaneMessageDAO.getKey(newId), retentionTimeStickySeconds);
                                     } else {
-                                        transaction.expire(newId.getBytes(), retentionTimeSeconds);
+                                        transaction.expire(RedisBackplaneMessageDAO.getKey(newId), retentionTimeSeconds);
                                     }
 
                                     // append entire message to list of messages in a channel for retrieval efficiency

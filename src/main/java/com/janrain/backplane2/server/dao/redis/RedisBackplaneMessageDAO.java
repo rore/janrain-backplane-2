@@ -51,7 +51,7 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
     }
 
     public static byte[] getKey(String key) {
-        return ("v2_" + key).getBytes();
+        return ("v2_message_" + key).getBytes();
     }
 
 

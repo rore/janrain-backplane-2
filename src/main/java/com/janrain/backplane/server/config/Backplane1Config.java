@@ -222,7 +222,7 @@ public class Backplane1Config {
                 logger.info("creating message cleanup thread");
                 messageProcessor.cleanupMessages();
             }
-        }, 2, 1, TimeUnit.MINUTES);
+        }, 0, 1, TimeUnit.MINUTES);
 
         return messageWorkerTask;
 
