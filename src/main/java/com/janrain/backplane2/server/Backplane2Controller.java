@@ -280,7 +280,8 @@ public class Backplane2Controller {
 
             Token token = Token.fromRequest(daoFactory, request, access_token, authorizationHeader);
             if (token.getType().isRefresh()) {
-                throw new TokenException("Invalid token type: " + token.getType(), HttpServletResponse.SC_FORBIDDEN);
+                return returnMessage(OAuth2.OAUTH2_TOKEN_INVALID_REQUEST, "Invalid token type: " + token.getType(),
+                        HttpServletResponse.SC_FORBIDDEN, response);
             }
 
             MessagesResponse bpResponse = new MessagesResponse(messageRequest.getSince());
