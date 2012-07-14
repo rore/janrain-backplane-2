@@ -32,7 +32,7 @@ import java.util.Map;
  */
 public class CachedL1 implements Cached {
 
-    private static CachedL1 instance;
+    private static CachedL1 instance = new CachedL1();
     private boolean isEnabled = true;
 
     private CachedL1() {
@@ -53,18 +53,15 @@ public class CachedL1 implements Cached {
 
             CacheManager.getInstance().addCache(testCache);
             String[] cacheNames = CacheManager.getInstance().getCacheNames();
-            logger.info("created L1 cache");
+            System.out.println("created L1 cache");
         } catch (Exception e) {
             logger.warn("could not create L1 cache");
             isEnabled = false;
         }
     }
 
-    public synchronized static CachedL1 getInstance() {
-        if (instance == null) {
-            instance = new CachedL1();
-        }
-        return instance;
+    public static CachedL1 getInstance() {
+       return instance;
     }
 
     public Map<Object,Element> getAll(Collection<String> keys) {

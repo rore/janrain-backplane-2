@@ -330,6 +330,8 @@ public class Backplane2Controller {
 
         ServletUtil.checkSecure(request);
 
+        TimerContext context = v2GetSingleMessageTimer.time();
+
         try {
             new MessageRequest(callback, null, "0"); // validate callback only, if present
         } catch (InvalidRequestException e) {
@@ -342,11 +344,18 @@ public class Backplane2Controller {
                 throw new TokenException("Invalid token type: " + token.getType(), HttpServletResponse.SC_FORBIDDEN);
             }
 
-            return daoFactory.getBackplaneMessageDAO().retrieveBackplaneMessage(msg_id, token)
-                    .asFrame(request.getServerName(), token.getType().isPrivileged());
+            BackplaneMessage message = daoFactory.getBackplaneMessageDAO().retrieveBackplaneMessage(msg_id, token);
 
+            if (message != null) {
+                return message.asFrame(request.getServerName(), token.getType().isPrivileged());
+            } else {
+                return returnMessage(OAuth2.OAUTH2_TOKEN_INVALID_REQUEST, "Message id '" + msg_id + "' not found",
+                        HttpServletResponse.SC_NOT_FOUND, response);
+            }
         } catch (TokenException te) {
             return handleTokenException(te, response);
+        } finally {
+            context.stop();
         }
     }
 
@@ -387,6 +396,14 @@ public class Backplane2Controller {
         } finally {
             context.stop();
         }
+    }
+
+    public Map<String, Object> returnMessage(final String errorCode, final String errorMessage, int responseCode, HttpServletResponse response) {
+        response.setStatus(responseCode);
+        return new HashMap<String,Object>() {{
+            put(ERR_MSG_FIELD, errorCode);
+            put(ERR_MSG_DESCRIPTION, errorMessage);
+        }};
     }
 
     @ExceptionHandler
@@ -837,6 +854,8 @@ public class Backplane2Controller {
 
     private final com.yammer.metrics.core.Timer v2GetsTimer =
             com.yammer.metrics.Metrics.newTimer(Backplane2Controller.class, "v2_gets_time", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
+    private final com.yammer.metrics.core.Timer v2GetSingleMessageTimer =
+            com.yammer.metrics.Metrics.newTimer(Backplane2Controller.class, "v2_get_single_message_time", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
     private final com.yammer.metrics.core.Timer v2PostTimer =
             com.yammer.metrics.Metrics.newTimer(Backplane2Controller.class, "v2_posts_time", TimeUnit.MILLISECONDS, TimeUnit.SECONDS);
     private final com.yammer.metrics.core.Timer getRegularTokenTimer =
