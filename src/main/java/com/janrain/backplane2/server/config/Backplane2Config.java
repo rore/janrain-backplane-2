@@ -132,7 +132,7 @@ public class Backplane2Config {
 
     public Exception getDebugException(Exception e) {
         return isDebugMode() ? e: null;
-    }
+     }
 
     public String getInstanceId() {
         return bpInstanceId;

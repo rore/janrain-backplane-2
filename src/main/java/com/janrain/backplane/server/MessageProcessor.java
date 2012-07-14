@@ -103,10 +103,12 @@ public class MessageProcessor extends JedisPubSub {
                     String[] segs = metaData.split(" ");
                     if (jedis.get(segs[2]) == null) {
                         // remove this key from indexes
-                        logger.info("removing message " + segs[2]);
+                        logger.info("removing v1 message " + segs[2]);
+
                         jedis.zrem(RedisBackplaneMessageDAO.getBusKey(segs[0]), segs[2].getBytes());
                         jedis.lrem(RedisBackplaneMessageDAO.getChannelKey(segs[0], segs[1]), 0, segs[2].getBytes());
                         jedis.zrem(RedisBackplaneMessageDAO.V1_MESSAGES.getBytes(), segs[2].getBytes());
+
                         //todo: remove the empty set?
                     }
                 }

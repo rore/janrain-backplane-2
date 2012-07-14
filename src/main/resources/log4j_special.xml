@@ -97,7 +97,7 @@
 	<root>
 		<priority value="warn" />
 		<appender-ref ref="console" />
-        <appender-ref ref="mail" />
+<!--        <appender-ref ref="mail" />-->
         <appender-ref ref="syslog" />
         <appender-ref ref="metrics" />
 	</root>
