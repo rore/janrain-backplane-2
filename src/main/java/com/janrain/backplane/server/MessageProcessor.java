@@ -232,7 +232,7 @@ public class MessageProcessor extends JedisPubSub {
                                         backplaneMessage.getChannel()), SerializationUtils.serialize(backplaneMessage));
 
                                 // add message id to sorted set of all message ids as an index
-                                String metaData = backplaneMessage.getBus() + " " + backplaneMessage.getChannel() + " " + newId;
+                                String metaData = backplaneMessage.getBus() + " " + backplaneMessage.getChannel() + " " + new String(RedisBackplaneMessageDAO.getKey(newId));
                                 transaction.zadd(RedisBackplaneMessageDAO.V1_MESSAGES.getBytes(), messageTime, metaData.getBytes());
 
                                 // add message id to sorted set keyed by bus as an index
