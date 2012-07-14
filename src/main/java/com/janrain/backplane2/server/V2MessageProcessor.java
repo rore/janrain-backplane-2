@@ -101,7 +101,7 @@ public class V2MessageProcessor extends JedisPubSub {
                 for (byte[] b : messageMetaBytes) {
                     String metaData = new String(b);
                     String[] segs = metaData.split(" ");
-                    if (jedis.get(segs[2]) == null) {
+                    if (jedis.get(RedisBackplaneMessageDAO.getKey(segs[2])) == null) {
                         // remove this key from indexes
                         logger.info("removing message " + segs[2]);
                         long rem1= jedis.zrem(RedisBackplaneMessageDAO.getBusKey(segs[0]), segs[2].getBytes());
@@ -229,17 +229,17 @@ public class V2MessageProcessor extends JedisPubSub {
 
                                     // add message id to channel list
                                     transaction.rpush(RedisBackplaneMessageDAO.getChannelKey(backplaneMessage.getChannel()),
-                                            RedisBackplaneMessageDAO.getKey(backplaneMessage.getIdValue()));
+                                            backplaneMessage.getIdValue().getBytes());
 
                                     // add message id to sorted set of all message ids as an index
                                     String metaData = backplaneMessage.getBus() + " " + backplaneMessage.getChannel() + " " +
-                                            new String(RedisBackplaneMessageDAO.getKey(backplaneMessage.getIdValue()));
+                                            backplaneMessage.getIdValue();
 
                                     transaction.zadd(RedisBackplaneMessageDAO.V2_MESSAGES.getBytes(), messageTime, metaData.getBytes());
 
                                     // add message id to sorted set keyed by bus as an index
                                     transaction.zadd(RedisBackplaneMessageDAO.getBusKey(backplaneMessage.getBus()), messageTime,
-                                            RedisBackplaneMessageDAO.getKey(backplaneMessage.getIdValue()));
+                                            backplaneMessage.getIdValue().getBytes());
 
                                     // make sure all subscribers get the update
                                     transaction.publish("alerts", newId);

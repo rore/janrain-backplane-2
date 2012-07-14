@@ -103,7 +103,7 @@ public class MessageProcessor extends JedisPubSub {
                     String metaData = new String(b);
                     String[] segs = metaData.split(" ");
                     String key = segs[2];
-                    if (jedis.get(key.getBytes()) == null) {
+                    if (jedis.get(RedisBackplaneMessageDAO.getKey(key)) == null) {
                         // remove this key from indexes
                         long rem1= jedis.zrem(RedisBackplaneMessageDAO.getBusKey(segs[0]), key.getBytes());
                         long rem2= jedis.lrem(RedisBackplaneMessageDAO.getChannelKey(segs[0], segs[1]), 0, key.getBytes());
@@ -231,16 +231,16 @@ public class MessageProcessor extends JedisPubSub {
                                     transaction.expire(RedisBackplaneMessageDAO.getKey(newId), retentionTimeSeconds);
                                 }
 
-                                // create message index by channel - storing the message id
+                                // add message id to channel list
                                 transaction.rpush(RedisBackplaneMessageDAO.getChannelKey(backplaneMessage.getBus(),
-                                        backplaneMessage.getChannel()), RedisBackplaneMessageDAO.getKey(newId));
+                                        backplaneMessage.getChannel()), newId.getBytes());
 
                                 // add message id to sorted set of all message ids as an index
-                                String metaData = backplaneMessage.getBus() + " " + backplaneMessage.getChannel() + " " + new String(RedisBackplaneMessageDAO.getKey(newId));
+                                String metaData = backplaneMessage.getBus() + " " + backplaneMessage.getChannel() + " " + newId;
                                 transaction.zadd(RedisBackplaneMessageDAO.V1_MESSAGES.getBytes(), messageTime, metaData.getBytes());
 
                                 // add message id to sorted set keyed by bus as an index
-                                transaction.zadd(RedisBackplaneMessageDAO.getBusKey(backplaneMessage.getBus()), messageTime, RedisBackplaneMessageDAO.getKey(newId));
+                                transaction.zadd(RedisBackplaneMessageDAO.getBusKey(backplaneMessage.getBus()), messageTime, newId.getBytes());
 
                                 // make sure all subscribers get the update
                                 transaction.publish("alerts", newId);
