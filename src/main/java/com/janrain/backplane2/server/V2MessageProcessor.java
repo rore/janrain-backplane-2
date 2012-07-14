@@ -18,7 +18,9 @@ package com.janrain.backplane2.server;
 
 import com.janrain.backplane.server.config.Backplane1Config;
 import com.janrain.backplane2.server.config.BusConfig2;
+import com.janrain.backplane2.server.dao.DAOFactory;
 import com.janrain.backplane2.server.dao.redis.RedisBackplaneMessageDAO;
+import com.janrain.backplane2.server.dao.redis.RedisDAOFactory;
 import com.janrain.commons.util.Pair;
 import com.janrain.redis.Redis;
 import com.yammer.metrics.Metrics;
@@ -26,10 +28,12 @@ import com.yammer.metrics.core.Histogram;
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
+import org.springframework.beans.factory.annotation.Qualifier;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPubSub;
 import redis.clients.jedis.Transaction;
 
+import javax.inject.Inject;
 import java.util.*;
 
 /**
@@ -87,41 +91,11 @@ public class V2MessageProcessor extends JedisPubSub {
      * Processor to remove expired messages
      */
     public void cleanupMessages() {
-
-        Jedis jedis = null;
-
         try {
-
-            logger.info("preparing to cleanup v2 messages");
-
-            jedis = Redis.getInstance().getJedis();
-
-            Set<byte[]> messageMetaBytes = jedis.zrangeByScore(RedisBackplaneMessageDAO.V2_MESSAGES.getBytes(), 0, Double.MAX_VALUE);
-            if (messageMetaBytes != null) {
-                for (byte[] b : messageMetaBytes) {
-                    String metaData = new String(b);
-                    String[] segs = metaData.split(" ");
-                    if (jedis.get(RedisBackplaneMessageDAO.getKey(segs[2])) == null) {
-                        // remove this key from indexes
-                        logger.info("removing message " + segs[2]);
-                        long rem1= jedis.zrem(RedisBackplaneMessageDAO.getBusKey(segs[0]), segs[2].getBytes());
-                        long rem2= jedis.lrem(RedisBackplaneMessageDAO.getChannelKey(segs[1]), 0, segs[2].getBytes());
-                          if (rem1 != 1 || rem2 != 1) {
-                            logger.warn("failed to remove message " + segs[2].getBytes());
-                        } else {
-                            long rem3= jedis.zrem(RedisBackplaneMessageDAO.V2_MESSAGES.getBytes(), metaData.getBytes());
-                        }
-                    }
-                }
-            }
-        } catch (Exception e) {
+            daoFactory.getBackplaneMessageDAO().deleteExpiredMessages();
+        } catch (BackplaneServerException e) {
             logger.error(e);
-        } finally {
-            logger.info("exiting message cleanup");
-            Redis.getInstance().releaseToPool(jedis);
         }
-
-
     }
 
     /**
@@ -298,4 +272,7 @@ public class V2MessageProcessor extends JedisPubSub {
     private static final Logger logger = Logger.getLogger(V2MessageProcessor.class);
 
     private final Histogram timeInQueue = Metrics.newHistogram(V2MessageProcessor.class, "time_in_queue");
+
+    @Inject
+    DAOFactory daoFactory;
 }

@@ -120,7 +120,7 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
             }
 
             // every message has a unique timestamp - which serves as a key for indexing
-            Set<byte[]> messageIdBytes = Redis.getInstance().zrangebyscore(V2_MESSAGES.getBytes(), sinceInMs+1, Double.POSITIVE_INFINITY);
+            Set<byte[]> messageIdBytes = jedis.zrangeByScore(V2_MESSAGES.getBytes(), sinceInMs+1, Double.POSITIVE_INFINITY);
 
             List<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
 
@@ -159,25 +159,89 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
 
     @Override
     public List<BackplaneMessage> retrieveMessagesByChannel(String channel) throws BackplaneServerException {
-        List<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
-        List<byte[]> messageBytes = Redis.getInstance().lrange(getChannelKey(channel), 0, -1);
 
-        if (messageBytes != null) {
-            for (byte[] b: messageBytes) {
-                BackplaneMessage backplaneMessage = (BackplaneMessage) SerializationUtils.deserialize(b);
-                if (backplaneMessage != null) {
-                    messages.add(backplaneMessage);
+        Jedis jedis = null;
+
+        try {
+
+            jedis = Redis.getInstance().getJedis();
+
+            List<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
+            List<byte[]> messageIdBytes = jedis.lrange(getChannelKey(channel), 0, -1);
+
+            Pipeline pipeline = jedis.pipelined();
+            List<Response<byte[]>> responses = new ArrayList<Response<byte[]>>();
+
+            if (messageIdBytes != null) {
+                for (byte[] b: messageIdBytes) {
+                    String[] args = new String(b).split(" ");
+                    responses.add(pipeline.get(getKey(args[2])));
+                }
+                pipeline.sync();
+                for (Response<byte[]> response : responses) {
+                    if (response.get() != null) {
+                        BackplaneMessage backplaneMessage = (BackplaneMessage) SerializationUtils.deserialize(response.get());
+                        messages.add(backplaneMessage);
+                    } else {
+                        logger.warn("failed to retrieve a message");
+                    }
                 }
             }
-        }
 
-        return messages;
+            Collections.sort(messages, new Comparator<BackplaneMessage>() {
+                @Override
+                public int compare(BackplaneMessage backplaneMessage, BackplaneMessage backplaneMessage1) {
+                    return backplaneMessage.getIdValue().compareTo(backplaneMessage1.getIdValue());
+                }
+            });
+
+            return messages;
+
+        } finally {
+            Redis.getInstance().releaseToPool(jedis);
+        }
 
     }
 
     @Override
     public void deleteExpiredMessages() throws BackplaneServerException {
-        throw new NotImplementedException();
+
+        Jedis jedis = null;
+
+        try {
+
+            logger.info("preparing to cleanup v2 messages");
+
+            jedis = Redis.getInstance().getJedis();
+
+            Set<byte[]> messageMetaBytes = jedis.zrangeByScore(V2_MESSAGES.getBytes(), 0, Double.MAX_VALUE);
+            if (messageMetaBytes != null) {
+                for (byte[] b : messageMetaBytes) {
+                    String metaData = new String(b);
+                    String[] segs = metaData.split(" ");
+                    if (jedis.get(getKey(segs[2])) == null) {
+                        // remove this key from indexes
+                        logger.info("removing message " + segs[2]);
+                        if (jedis.zrem(getBusKey(segs[0]), segs[2].getBytes()) != 1) {
+                            logger.warn("could not remove message " + segs[2] + " from " + getBusKey(segs[0]));
+                        }
+
+                        if (jedis.lrem(getChannelKey(segs[1]), 0, segs[2].getBytes()) != 1) {
+                            logger.warn("could not remove message " + segs[2] + " from " + getChannelKey(segs[1]));
+                        }
+
+                        if (jedis.zrem(V2_MESSAGES.getBytes(), metaData.getBytes()) != 1) {
+                            logger.warn("could not remove message + " + segs[2] + " from " + V2_MESSAGES);
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logger.error(e);
+        } finally {
+            logger.info("exiting message cleanup");
+            Redis.getInstance().releaseToPool(jedis);
+        }
     }
 
     @Override

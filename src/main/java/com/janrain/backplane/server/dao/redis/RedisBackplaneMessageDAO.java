@@ -102,20 +102,45 @@ public class RedisBackplaneMessageDAO extends DAO<BackplaneMessage> {
 
     public List<BackplaneMessage> getMessagesByChannel(String bus, String channel, String since, String sticky) throws SimpleDBException, BackplaneServerException {
 
-        List<byte[]> messageBytes = Redis.getInstance().lrange(getChannelKey(bus, channel), 0, -1);
+        Jedis jedis = null;
 
-        List<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
-        if (messageBytes != null) {
-            for (byte[] b: messageBytes) {
-                BackplaneMessage backplaneMessage = (BackplaneMessage) SerializationUtils.deserialize(b);
-                if (backplaneMessage != null) {
-                    messages.add(backplaneMessage);
+        try {
+
+            jedis = Redis.getInstance().getJedis();
+
+            double sinceInMs = 0;
+            if (StringUtils.isNotBlank(since)) {
+                sinceInMs = BackplaneMessage.getDateFromId(since).getTime();
+            }
+
+            // every message has a unique timestamp - which serves as a key for indexing
+            List<byte[]> messageIdBytes = jedis.lrange(getChannelKey(bus, channel), 0, -1);
+
+            List<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
+
+            Pipeline pipeline = jedis.pipelined();
+            List<Response<byte[]>> responses = new ArrayList<Response<byte[]>>();
+
+            if (messageIdBytes != null) {
+                for (byte[] b: messageIdBytes) {
+                    responses.add(pipeline.get(b));
+                }
+                pipeline.sync();
+                for (Response<byte[]> response: responses) {
+                    BackplaneMessage backplaneMessage = (BackplaneMessage) SerializationUtils.deserialize(response.get());
+                    if (backplaneMessage != null) {
+                        messages.add(backplaneMessage);
+                    }
                 }
             }
+
+            filterAndSort(messages, since, sticky);
+            return messages;
+
+        } finally {
+            Redis.getInstance().releaseToPool(jedis);
         }
 
-        filterAndSort(messages, since, sticky);
-        return messages;
     }
 
     public List<String> getMessageIds(List<BackplaneMessage> messages) {
