@@ -123,13 +123,13 @@ public class RedisBackplaneMessageDAO extends DAO<BackplaneMessage> {
 
             if (messageIdBytes != null) {
                 for (byte[] b: messageIdBytes) {
-                    responses.add(pipeline.get(b));
+                    responses.add(pipeline.get(getKey(new String(b))));
                 }
                 pipeline.sync();
                 for (Response<byte[]> response: responses) {
-                    BackplaneMessage backplaneMessage = (BackplaneMessage) SerializationUtils.deserialize(response.get());
-                    if (backplaneMessage != null) {
-                        messages.add(backplaneMessage);
+                    byte[] bytes = response.get();
+                    if (bytes != null) {
+                        messages.add((BackplaneMessage) SerializationUtils.deserialize(bytes));
                     }
                 }
             }
@@ -137,6 +137,8 @@ public class RedisBackplaneMessageDAO extends DAO<BackplaneMessage> {
             filterAndSort(messages, since, sticky);
             return messages;
 
+        } catch (Exception e) {
+            throw new BackplaneServerException(e.getMessage());
         } finally {
             Redis.getInstance().releaseToPool(jedis);
         }
