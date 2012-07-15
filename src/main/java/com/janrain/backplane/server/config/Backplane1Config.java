@@ -228,38 +228,8 @@ public class Backplane1Config {
 
     }
 
-    private ScheduledExecutorService createCleanupTask() {
-        long cleanupIntervalMinutes;
-        logger.info("calling createCleanupTask()");
-        cleanupIntervalMinutes = Long.valueOf(cachedGet(BpServerConfig.Field.CLEANUP_INTERVAL_MINUTES));
-
-        ScheduledExecutorService cleanupTask = Executors.newScheduledThreadPool(1);
-        cleanupTask.scheduleAtFixedRate(new Runnable() {
-            @Override
-            public void run() {
-
-                try {
-                    getMessagesTime.time(new Callable<Object>() {
-                        @Override
-                        public Object call() throws Exception {
-                            deleteExpiredMessages();
-                            return null;
-                        }
-                    });
-                } catch (Exception e) {
-                    logger.error("Error while cleaning up expired messages, " + e.getMessage(), e);
-                }
-
-            }
-
-        }, cleanupIntervalMinutes, cleanupIntervalMinutes, TimeUnit.MINUTES);
-
-        return cleanupTask;
-    }
-
     @PostConstruct
     private void init() {
-        backgroundServices.add(createCleanupTask());
         backgroundServices.add(createMessageWorker());
     }
 
@@ -283,21 +253,6 @@ public class Backplane1Config {
             }
         }
     }
-
-    private void deleteExpiredMessages() {
-        try {
-            logger.info("Backplane message cleanup task started.");
-
-            //TODO: configure for redis
-
-        } catch (Exception e) {
-            // catch-all, else cleanup thread stops
-            logger.error("Backplane messages cleanup task error: " + e.getMessage(), e);
-        } finally {
-            logger.info("Backplane messages cleanup task finished.");
-        }
-    }
-
 
     private String cachedGet(BpServerConfig.Field property) {
 

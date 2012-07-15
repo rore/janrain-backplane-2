@@ -42,11 +42,11 @@ public class RedisBackplaneMessageDAO extends DAO<BackplaneMessage> {
     final public static String V1_MESSAGES = "v1_messages";
 
     public static byte[] getBusKey(String bus) {
-        return ("v1_" + bus).getBytes();
+        return ("v1_bus_idx_" + bus).getBytes();
     }
 
-    public static byte[] getChannelKey(String bus, String channel) {
-        return ("v1_" + bus + "_" + channel).getBytes();
+    public static byte[] getChannelKey(String channel) {
+        return ("v1_channel_idx_" + channel).getBytes();
     }
 
     public static byte[] getKey(String key) {
@@ -83,15 +83,9 @@ public class RedisBackplaneMessageDAO extends DAO<BackplaneMessage> {
         throw new NotImplementedException();
     }
 
-/*    public boolean canTake(String bus, String channel, int msgPostCount) throws SimpleDBException {
-
-        long count = Redis.getInstance().llen(getChannelKey(bus, channel));
-
-        logger.debug("channel: '" + channel + "' message count: " + count + ", limit: " + bpConfig.getDefaultMaxMessageLimit());
-
-        return count + msgPostCount < bpConfig.getDefaultMaxMessageLimit();
-
-    }*/
+    public int getMessageCount(String bus, String channel) {
+        return (int) Redis.getInstance().llen(getChannelKey(channel));
+    }
 
     /**
      * Fetch a list (possibly empty) of backplane messages that exist on the channel
@@ -114,7 +108,7 @@ public class RedisBackplaneMessageDAO extends DAO<BackplaneMessage> {
             }
 
             // every message has a unique timestamp - which serves as a key for indexing
-            List<byte[]> messageIdBytes = jedis.lrange(getChannelKey(bus, channel), 0, -1);
+            List<byte[]> messageIdBytes = jedis.lrange(getChannelKey(channel), 0, -1);
 
             List<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
 

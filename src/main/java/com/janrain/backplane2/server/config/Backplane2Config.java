@@ -221,7 +221,7 @@ public class Backplane2Config {
         logger.info("calling v2 createMaintenanceTask()");
         cleanupIntervalMinutes = Long.valueOf(cachedGet(BpServerConfig.Field.CLEANUP_INTERVAL_MINUTES));
 
-        final V2MessageProcessor messageProcessor = new V2MessageProcessor();
+        final V2MessageProcessor messageProcessor = new V2MessageProcessor(daoFactory);
 
         ScheduledExecutorService maintenanceTask = Executors.newScheduledThreadPool(2);
 
@@ -306,6 +306,8 @@ public class Backplane2Config {
 
     private String cachedGet(BpServerConfig.Field property) {
 
+        try {
+
         BpServerConfig bpServerConfigCache = (BpServerConfig) CachedL1.getInstance().getObject(BpServerConfig.BPSERVER_CONFIG_KEY);
         if (bpServerConfigCache == null) {
             // pull from db if not found in cache
@@ -320,6 +322,11 @@ public class Backplane2Config {
         }
 
         return bpServerConfigCache.get(property);
+
+        } catch (Exception e) {
+            logger.error(e);
+            return null;
+        }
 
     }
 

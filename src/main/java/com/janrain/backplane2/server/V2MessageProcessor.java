@@ -41,7 +41,9 @@ import java.util.*;
  */
 public class V2MessageProcessor extends JedisPubSub {
 
-    public V2MessageProcessor() {}
+    public V2MessageProcessor(DAOFactory daoFactory) {
+        this.daoFactory = daoFactory;
+    }
 
     @Override
     public void onMessage(String s, String s1) {
@@ -93,7 +95,7 @@ public class V2MessageProcessor extends JedisPubSub {
     public void cleanupMessages() {
         try {
             daoFactory.getBackplaneMessageDAO().deleteExpiredMessages();
-        } catch (BackplaneServerException e) {
+        } catch (Exception e) {
             logger.error(e);
         }
     }
@@ -166,7 +168,7 @@ public class V2MessageProcessor extends JedisPubSub {
                                 if (backplaneMessage != null) {
 
                                     // retrieve the expiration config per the bus
-                                    BusConfig2 busConfig2 = null;//DAOFactory.getInstance().getBusDAO().get(backplaneMessage.getBus());
+                                    BusConfig2 busConfig2 = daoFactory.getBusDao().get(backplaneMessage.getBus());
                                     int retentionTimeSeconds = 60;
                                     int retentionTimeStickySeconds = 3600;
                                     if (busConfig2 != null) {
@@ -239,7 +241,7 @@ public class V2MessageProcessor extends JedisPubSub {
                         for (String insertionId : insertionTimes) {
                             long diff = now - com.janrain.backplane.server.BackplaneMessage.getDateFromId(insertionId).getTime();
                             timeInQueue.update(diff);
-                            if (diff >= 0 && diff < 2880000) {
+                            if (diff < 0 || diff > 2880000) {
                                 logger.warn("time diff is bizarre at: " + diff);
                             }
                         }
@@ -273,6 +275,5 @@ public class V2MessageProcessor extends JedisPubSub {
 
     private final Histogram timeInQueue = Metrics.newHistogram(V2MessageProcessor.class, "time_in_queue");
 
-    @Inject
-    DAOFactory daoFactory;
+    private DAOFactory daoFactory;
 }

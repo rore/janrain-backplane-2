@@ -35,9 +35,7 @@ public interface BackplaneMessageDAO extends DAO<BackplaneMessage> {
 
     @NotNull BackplaneMessage retrieveBackplaneMessage(@NotNull final String messageId, @NotNull Token token) throws BackplaneServerException, TokenException;
 
-    boolean isChannelFull(String channel) throws BackplaneServerException;
-
-    boolean canTake(String channel, int msgPostCount) throws BackplaneServerException;
+    public long getMessageCount(String channel) throws BackplaneServerException;
 
     long countMessages() throws BackplaneServerException;
 

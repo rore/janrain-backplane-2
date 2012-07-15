@@ -43,11 +43,11 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
     final public static String V2_MESSAGES = "v2_messages";
 
     public static byte[] getBusKey(String bus) {
-        return ("v2_bus_message_ids_" + bus).getBytes();
+        return ("v2_bus_idx_" + bus).getBytes();
     }
 
     public static byte[] getChannelKey(String channel) {
-        return ("v2_channel_" + channel).getBytes();
+        return ("v2_channel_idx_" + channel).getBytes();
     }
 
     public static byte[] getKey(String key) {
@@ -80,17 +80,8 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
     }
 
     @Override
-    public boolean isChannelFull(String channel) throws BackplaneServerException {
-        //todo: don't leave hardcoded
-        long count = Redis.getInstance().llen(getChannelKey(channel));
-
-        return count >= 50;
-    }
-
-    @Override
-    public boolean canTake(String channel, int msgPostCount) throws BackplaneServerException {
-        //todo: don't leave hardcoded
-        return (Redis.getInstance().llen(getChannelKey(channel)) + msgPostCount) < 50;
+    public long getMessageCount(String channel) {
+        return (int) Redis.getInstance().llen(getChannelKey(channel));
     }
 
     @Override
@@ -130,7 +121,8 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
             if (messageIdBytes != null) {
                 for (byte[] b: messageIdBytes) {
                     String[] args = new String(b).split(" ");
-                    responses.add(pipeline.get(getKey(args[2])));
+                    byte[] key = getKey(args[2]);
+                    responses.add(pipeline.get(key));
                 }
                 pipeline.sync();
                 for (Response<byte[]> response : responses) {

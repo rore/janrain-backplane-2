@@ -134,10 +134,9 @@ public class Backplane1Controller {
             RedisBackplaneMessageDAO backplaneMessageDAO = DaoFactory.getBackplaneMessageDAO();
 
             //Block post if the caller has exceeded the message post limit
-/*            if (!backplaneMessageDAO.canTake(channel, 1)) {
-                                logger.error("Message limit of " + bpConfig.getDefaultMaxMessageLimit() + " exceeded for channel: " + channel + " on bus: " + bus);
+            if (backplaneMessageDAO.getMessageCount(bus, channel) >= bpConfig.getDefaultMaxMessageLimit()) {
                 throw new BackplaneServerException("Message limit exceeded for this channel");
-            }*/
+            }
 
             for(Map<String,Object> messageData : messages) {
                 BackplaneMessage message = new BackplaneMessage(bus, channel, messageData);

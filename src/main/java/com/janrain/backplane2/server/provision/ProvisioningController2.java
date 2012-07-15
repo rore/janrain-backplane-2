@@ -298,6 +298,8 @@ public class ProvisioningController2 {
     private Map<String, String> doGrant(GrantRequest grantRequest, boolean addRevoke) throws AuthException {
         Map<String,String> result = new LinkedHashMap<String, String>();
         bpConfig.checkAdminAuth(grantRequest.getAdmin(), grantRequest.getSecret());
+
+        //todo: validate bus
         for(Map.Entry<String,String> newGrantEntry : grantRequest.getGrants().entrySet()) {
             String clientId = newGrantEntry.getKey();
             String buses = newGrantEntry.getValue();

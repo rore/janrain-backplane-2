@@ -639,7 +639,7 @@ public class Backplane2ControllerTest {
         this.saveMessage(message1);
 
         // make sure the processor runs
-        new V2MessageProcessor().insertMessages(false);
+        new V2MessageProcessor(daoFactory).insertMessages(false);
 
          // Make the call
         refreshRequestAndResponse();
@@ -861,7 +861,7 @@ public class Backplane2ControllerTest {
         BackplaneMessage message = new BackplaneMessage(testClient.getSourceUrl(), msg);
         this.saveMessage(message);
 
-        new V2MessageProcessor().insertMessages(false);
+        new V2MessageProcessor(daoFactory).insertMessages(false);
 
         // Make the call
         refreshRequestAndResponse();
@@ -912,7 +912,7 @@ public class Backplane2ControllerTest {
         BackplaneMessage message = new BackplaneMessage(testClient.getSourceUrl(), msg);
         this.saveMessage(message);
 
-        new V2MessageProcessor().insertMessages(false);
+        new V2MessageProcessor(daoFactory).insertMessages(false);
 
         // Make the call
         refreshRequestAndResponse();
@@ -971,7 +971,7 @@ public class Backplane2ControllerTest {
         BackplaneMessage message2 = new BackplaneMessage(testClient.getSourceUrl(), msg);
         this.saveMessage(message2);
 
-        new V2MessageProcessor().insertMessages(false);
+        new V2MessageProcessor(daoFactory).insertMessages(false);
 
          // Make the call
         refreshRequestAndResponse();
@@ -1010,7 +1010,7 @@ public class Backplane2ControllerTest {
         BackplaneMessage message2 = new BackplaneMessage(testClient.getSourceUrl(), msg);
         this.saveMessage(message2);
 
-        new V2MessageProcessor().insertMessages(false);
+        new V2MessageProcessor(daoFactory).insertMessages(false);
 
          // Make the call
         refreshRequestAndResponse();
@@ -1086,7 +1086,7 @@ public class Backplane2ControllerTest {
 
         assertTrue(response.getStatus() == HttpServletResponse.SC_CREATED);
 
-        new V2MessageProcessor().insertMessages(false);
+        new V2MessageProcessor(daoFactory).insertMessages(false);
         List<BackplaneMessage> messages = daoFactory.getBackplaneMessageDAO().retrieveMessagesByChannel(tokensAndChannel.channel);
         for (BackplaneMessage message: messages) {
             daoFactory.getBackplaneMessageDAO().delete(message.getIdValue());
@@ -1196,7 +1196,7 @@ public class Backplane2ControllerTest {
         BackplaneMessage message1 = new BackplaneMessage(testClient.getSourceUrl(), msg);
         this.saveMessage(message1);
 
-        new V2MessageProcessor().insertMessages(false);
+        new V2MessageProcessor(daoFactory).insertMessages(false);
 
         // Make the call
         refreshRequestAndResponse();
@@ -1263,7 +1263,7 @@ public class Backplane2ControllerTest {
             } catch (Exception e) {
                 fail("Error: " + e.getMessage());
             }
-            new V2MessageProcessor().insertMessages(false);
+            new V2MessageProcessor(daoFactory).insertMessages(false);
             refreshRequestAndResponse();
         }
 
@@ -1486,7 +1486,7 @@ public class Backplane2ControllerTest {
 
         for (BackplaneMessage message : messages) {
             this.saveMessage(message);
-            new V2MessageProcessor().insertMessages(false);
+            new V2MessageProcessor(daoFactory).insertMessages(false);
         }
 
         // Make the call

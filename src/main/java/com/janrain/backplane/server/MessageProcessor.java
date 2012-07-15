@@ -106,14 +106,13 @@ public class MessageProcessor extends JedisPubSub {
                     if (jedis.get(RedisBackplaneMessageDAO.getKey(key)) == null) {
                         // remove this key from indexes
                         long rem1= jedis.zrem(RedisBackplaneMessageDAO.getBusKey(segs[0]), key.getBytes());
-                        long rem2= jedis.lrem(RedisBackplaneMessageDAO.getChannelKey(segs[0], segs[1]), 0, key.getBytes());
+                        long rem2= jedis.lrem(RedisBackplaneMessageDAO.getChannelKey(segs[1]), 0, key.getBytes());
                         if (rem1 != 1 || rem2 != 1) {
                             logger.warn("failed to remove message " + key);
                         } else {
                             long rem3= jedis.zrem(RedisBackplaneMessageDAO.V1_MESSAGES.getBytes(), metaData.getBytes());
                         }
                         logger.info("removed message " + key);
-                        //todo: remove the empty set?
                     }
                 }
             }
@@ -232,8 +231,7 @@ public class MessageProcessor extends JedisPubSub {
                                 }
 
                                 // add message id to channel list
-                                transaction.rpush(RedisBackplaneMessageDAO.getChannelKey(backplaneMessage.getBus(),
-                                        backplaneMessage.getChannel()), newId.getBytes());
+                                transaction.rpush(RedisBackplaneMessageDAO.getChannelKey(backplaneMessage.getChannel()), newId.getBytes());
 
                                 // add message id to sorted set of all message ids as an index
                                 String metaData = backplaneMessage.getBus() + " " + backplaneMessage.getChannel() + " " + newId;
@@ -266,7 +264,7 @@ public class MessageProcessor extends JedisPubSub {
                     for (String insertionId : insertionTimes) {
                         long diff = now - BackplaneMessage.getDateFromId(insertionId).getTime();
                         timeInQueue.update(diff);
-                        if (diff >= 0 && diff < 2880000) {
+                        if (diff < 0 || diff > 2880000) {
                             logger.warn("time diff is bizarre at: " + diff);
                         }
                     }

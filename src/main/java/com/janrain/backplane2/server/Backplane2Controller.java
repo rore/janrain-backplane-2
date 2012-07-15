@@ -836,7 +836,7 @@ public class Backplane2Controller {
         }
 
         // check to see if channel is already full
-        if (daoFactory.getBackplaneMessageDAO().isChannelFull(channel)) {
+        if (daoFactory.getBackplaneMessageDAO().getMessageCount(channel) >= bpConfig.getDefaultMaxMessageLimit()) {
             throw new InvalidRequestException("Message limit of " + bpConfig.getDefaultMaxMessageLimit() + " has been reached for channel '" + channel + "'",
                     HttpServletResponse.SC_FORBIDDEN);
         }

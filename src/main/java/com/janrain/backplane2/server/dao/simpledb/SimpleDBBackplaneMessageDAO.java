@@ -134,24 +134,11 @@ public class SimpleDBBackplaneMessageDAO implements BackplaneMessageDAO {
     }
 
     @Override
-    public boolean isChannelFull(String channel) throws BackplaneServerException {
-        return ! canTake(channel, 0);
-    }
-
-    @Override
-    public boolean canTake(String channel, int msgPostCount) throws BackplaneServerException {
-        final String whereClause = " channel='" + channel + "'";
+    public long getMessageCount(String channel) throws BackplaneServerException {
         try {
-            long count = v2channelCountTimer.time(new Callable<Long>() {
-                @Override
-                public Long call() throws Exception {
-                    return superSimpleDB.retrieveCount(getTableName(), whereClause);
-                }
-            });
-            logger.debug("channel: '" + channel + "' message count: " + count + ", limit: " + bpConfig.getDefaultMaxMessageLimit());
-            return count + msgPostCount < bpConfig.getDefaultMaxMessageLimit();
-        } catch (Exception e) {
-           throw new BackplaneServerException(e.getMessage());
+            return superSimpleDB.retrieveCount(getTableName(), " channel='" + channel + "'");
+        } catch (SimpleDBException e) {
+            throw new BackplaneServerException(e.getMessage());
         }
     }
 
