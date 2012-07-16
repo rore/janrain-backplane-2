@@ -415,7 +415,7 @@ public class Backplane2Controller {
     @ExceptionHandler
     @ResponseBody
     public Map<String,Object> handleTokenException(final TokenException e, HttpServletResponse response) {
-        logger.error("Error processing token request: " + e.getMessage(), bpConfig.getDebugException(e));
+        logger.warn("Error processing token request: " + e.getMessage(), bpConfig.getDebugException(e));
         response.setStatus(e.getHttpResponseCode());
         return new HashMap<String,Object>() {{
             put(ERR_MSG_FIELD, e.getOauthErrorCode());
@@ -429,7 +429,7 @@ public class Backplane2Controller {
     @ExceptionHandler
     @ResponseBody
     public Map<String, String> handle(final AuthException e, HttpServletResponse response) {
-        logger.error("Backplane authentication error: " + e.getMessage(), bpConfig.getDebugException(e));
+        logger.warn("Backplane authentication error: " + e.getMessage(), bpConfig.getDebugException(e));
         response.setStatus(SC_UNAUTHORIZED);
         return new HashMap<String,String>() {{
             put(ERR_MSG_FIELD, e.getMessage());

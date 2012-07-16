@@ -65,6 +65,7 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
         }
     }
 
+    @NotNull
     @Override
     public BackplaneMessage retrieveBackplaneMessage(@NotNull String messageId, @NotNull Token token)
             throws BackplaneServerException, TokenException {
@@ -73,7 +74,7 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
 
         if ( message == null || ! token.getScope().isMessageInScope(message)) {
             // don't disclose that the messageId exists if not in scope
-            return null;
+            throw new TokenException("Message id '" + messageId + "' not found", HttpServletResponse.SC_NOT_FOUND);
         } else {
             return message;
         }

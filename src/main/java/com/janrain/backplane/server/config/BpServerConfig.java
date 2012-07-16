@@ -73,7 +73,7 @@ public class BpServerConfig extends ExternalizableCore {
 
         // PRIVATE
 
-        private static final Boolean DEBUG_MODE_DEFAULT = true;
+        private static final Boolean DEBUG_MODE_DEFAULT = false;
         private static final long CONFIG_CACHE_AGE_SECONDS_DEFAULT = 10;
         private static final long CLEANUP_INTERVAL_MINUTES_DEFAULT = 2;
         private static final long MESSAGES_MAX_DEFAULT = 50;
