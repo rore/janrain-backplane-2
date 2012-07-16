@@ -21,9 +21,12 @@ import com.janrain.backplane.server.dao.DaoFactory;
 import com.janrain.backplane2.server.config.User;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.crypto.HmacHashUtils;
+import com.sun.org.apache.bcel.internal.generic.NEW;
 import junit.framework.TestCase;
 import org.apache.catalina.util.Base64;
 import org.apache.log4j.Logger;
+import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jackson.type.TypeReference;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -35,6 +38,8 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.web.servlet.HandlerAdapter;
 
 import javax.inject.Inject;
+
+import java.util.Map;
 
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -61,6 +66,16 @@ public class Backplane1ControllerTest extends TestCase {
 
     @Inject
 	private Backplane1Controller controller;
+
+    private static final String TEST_MSG = "{\n" +
+            "        \"source\": \"ftp://bla_source/\",\n" +
+            "        \"type\": \"bla_type\",\n" +
+            "        \"sticky\": \"false\",\n" +
+            "        \"payload\": {\n" +
+            "            \"payload1\": \"bla1\",\n" +
+            "            \"payload2\": \"bla2\"\n" +
+            "        }\n" +
+            "    }\n";
 
     /**
 	 * Initialize before every individual test method
@@ -102,6 +117,11 @@ public class Backplane1ControllerTest extends TestCase {
         // encode un:pw
         String credentials = "testBusOwner:busOwnerSecret";
 
+        Map<String,Object> msg = new ObjectMapper().readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
+        BackplaneMessage message = new BackplaneMessage("test", "test", msg);
+        DaoFactory.getBackplaneMessageDAO().persist(message);
+        new MessageProcessor().insertMessages(false);
+
         String encodedCredentials = new String(Base64.encode(credentials.getBytes()));
         request.setAuthType("BASIC");
         request.addHeader("Authorization", "Basic " + encodedCredentials);
@@ -109,9 +129,8 @@ public class Backplane1ControllerTest extends TestCase {
         request.setMethod("GET");
 
         handlerAdapter.handle(request, response, controller);
-        logger.debug("testGetBus() => " + response.getContentAsString());
-        assertTrue(response.getContentAsString().contains("[]"));
-
+        logger.info("testGetBus() => " + response.getContentAsString());
+        assertFalse("passed", response.getContentAsString().contains("[]"));
 
     }
 }

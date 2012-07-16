@@ -204,7 +204,7 @@ public class Backplane1Config {
             @Override
             public void run() {
                 logger.info("creating message processor thread");
-                messageProcessor.insertMessages();
+                messageProcessor.insertMessages(true);
             }
         }, 0, 1, TimeUnit.MINUTES);
 

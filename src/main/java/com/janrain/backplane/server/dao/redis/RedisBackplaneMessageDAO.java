@@ -174,8 +174,9 @@ public class RedisBackplaneMessageDAO extends DAO<BackplaneMessage> {
                 }
                 pipeline.sync();
                 for (Response<byte[]> response: responses) {
-                    BackplaneMessage backplaneMessage = (BackplaneMessage) SerializationUtils.deserialize(response.get());
-                    if (backplaneMessage != null) {
+                    byte[] bytes = response.get();
+                    if (bytes != null) {
+                        BackplaneMessage backplaneMessage = (BackplaneMessage) SerializationUtils.deserialize(bytes);
                         messages.add(backplaneMessage);
                     }
                 }
