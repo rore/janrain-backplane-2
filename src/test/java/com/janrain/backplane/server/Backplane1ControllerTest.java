@@ -21,7 +21,6 @@ import com.janrain.backplane.server.dao.DaoFactory;
 import com.janrain.backplane2.server.config.User;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
 import com.janrain.crypto.HmacHashUtils;
-import com.sun.org.apache.bcel.internal.generic.NEW;
 import junit.framework.TestCase;
 import org.apache.catalina.util.Base64;
 import org.apache.log4j.Logger;
