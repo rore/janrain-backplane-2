@@ -206,7 +206,7 @@ public class Backplane1Config {
                 logger.info("creating message processor thread");
                 messageProcessor.insertMessages(true);
             }
-        }, 0, 1, TimeUnit.MINUTES);
+        }, 1, 1, TimeUnit.MINUTES);
 
         messageWorkerTask.scheduleAtFixedRate(new Runnable() {
             @Override

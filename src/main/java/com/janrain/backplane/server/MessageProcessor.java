@@ -130,7 +130,7 @@ public class MessageProcessor extends JedisPubSub {
      * Processor to pull messages off queue and make them available
      *
      */
-    public void insertMessages(boolean loopAndHonorLock) {
+    public void insertMessages(boolean loop) {
 
         String uuid = UUID.randomUUID().toString();
         Jedis jedis = null;
@@ -139,10 +139,7 @@ public class MessageProcessor extends JedisPubSub {
             logger.info("message processor waiting for exclusive write lock");
 
             // TRY forever to get lock to do work
-            String lock = null;
-            if (loopAndHonorLock) {
-                lock = Redis.getInstance().getLock(V1_WRITE_LOCK, uuid, -1, LOCK_SECONDS);
-            }
+            String lock = Redis.getInstance().getLock(V1_WRITE_LOCK, uuid, -1, LOCK_SECONDS);
 
             // if we lose our lock sometime between this point and the lock refresh, the
             // transaction will fail
@@ -282,7 +279,7 @@ public class MessageProcessor extends JedisPubSub {
                     Redis.getInstance().releaseToPool(jedis);
                 }
 
-            } while (loopAndHonorLock);
+            } while (loop);
 
         } catch (Exception e) {
             logger.warn("exception thrown in message processor thread", e);

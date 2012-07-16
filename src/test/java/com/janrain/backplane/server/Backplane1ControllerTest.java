@@ -110,27 +110,38 @@ public class Backplane1ControllerTest extends TestCase {
     public void testGetBus() throws Exception {
 
         refreshRequestAndResponse();
+        BackplaneMessage message = null;
 
-        DaoFactory.getUserDAO().persist(new User("testBusOwner", "busOwnerSecret"));
-        DaoFactory.getBusDAO().persist(new BusConfig1("test", "testBusOwner", "60", "28800"));
+        try {
 
-        // encode un:pw
-        String credentials = "testBusOwner:busOwnerSecret";
+            DaoFactory.getUserDAO().persist(new User("testBusOwner", "busOwnerSecret"));
+            DaoFactory.getBusDAO().persist(new BusConfig1("test", "testBusOwner", "60", "28800"));
 
-        Map<String,Object> msg = new ObjectMapper().readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
-        BackplaneMessage message = new BackplaneMessage("test", "test", msg);
-        DaoFactory.getBackplaneMessageDAO().persist(message);
-        new MessageProcessor().insertMessages(false);
+            // encode un:pw
+            String credentials = "testBusOwner:busOwnerSecret";
 
-        String encodedCredentials = new String(Base64.encode(credentials.getBytes()));
-        request.setAuthType("BASIC");
-        request.addHeader("Authorization", "Basic " + encodedCredentials);
-        request.setRequestURI("/bus/test");
-        request.setMethod("GET");
+            Map<String,Object> msg = new ObjectMapper().readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
+            message = new BackplaneMessage("test", "test", msg);
+            DaoFactory.getBackplaneMessageDAO().persist(message);
+            new MessageProcessor().insertMessages(false);
 
-        handlerAdapter.handle(request, response, controller);
-        logger.info("testGetBus() => " + response.getContentAsString());
-        assertFalse("passed", response.getContentAsString().contains("[]"));
+            String encodedCredentials = new String(Base64.encode(credentials.getBytes()));
+            request.setAuthType("BASIC");
+            request.addHeader("Authorization", "Basic " + encodedCredentials);
+            request.setRequestURI("/bus/test");
+            request.setMethod("GET");
+
+            handlerAdapter.handle(request, response, controller);
+            logger.info("testGetBus() => " + response.getContentAsString());
+            assertFalse("passed", response.getContentAsString().contains("[]"));
+
+        } finally {
+            DaoFactory.getUserDAO().delete("testBusOwner");
+            DaoFactory.getBusDAO().delete("test");
+            if (message != null) {
+                DaoFactory.getBackplaneMessageDAO().delete(message.getIdValue());
+            }
+        }
 
     }
 }

@@ -273,7 +273,7 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
 
                 Response<Long> del1 = t.zrem(V2_MESSAGES, key);
                 String[] args = key.split(" ");
-                Response<Long> del2 = t.lrem(getChannelKey(args[1]), 0, bytes);
+                Response<Long> del2 = t.lrem(getChannelKey(args[1]), 0, args[2].getBytes());
                 Response<Long> del3 = t.zrem(getBusKey(args[0]), args[2].getBytes());
                 t.del(getKey(id));
 

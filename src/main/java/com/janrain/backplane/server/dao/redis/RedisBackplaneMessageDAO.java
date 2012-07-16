@@ -30,6 +30,7 @@ import org.apache.log4j.Logger;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.Response;
+import redis.clients.jedis.Transaction;
 
 import java.util.*;
 
@@ -66,7 +67,41 @@ public class RedisBackplaneMessageDAO extends DAO<BackplaneMessage> {
 
     @Override
     public void delete(String id) throws BackplaneServerException {
-        throw new NotImplementedException();
+        Jedis jedis = null;
+        try {
+            jedis = Redis.getInstance().getJedis();
+            Date d = BackplaneMessage.getDateFromId(id);
+            Set<String> sortedSetBytes = jedis.zrangeByScore(V1_MESSAGES, d.getTime(), d.getTime());
+            byte[] bytes = jedis.get(getKey(id));
+
+            if (!sortedSetBytes.isEmpty()) {
+                Iterator it = sortedSetBytes.iterator();
+                String key = (String) it.next();
+                Transaction t = jedis.multi();
+
+                Response<Long> del1 = t.zrem(V1_MESSAGES, key);
+                String[] args = key.split(" ");
+                Response<Long> del2 = t.lrem(getChannelKey(args[1]), 0, args[2].getBytes());
+                Response<Long> del3 = t.zrem(getBusKey(args[0]), args[2].getBytes());
+                t.del(getKey(id));
+
+                t.exec();
+
+                if (del1.get() == 0) {
+                    logger.warn("could not remove message " + id + " from " + V1_MESSAGES);
+                }
+                if (del2.get() == 0) {
+                    logger.warn("could not remove message " + id + " from " + new String(getChannelKey(args[1])));
+                }
+                if (del3.get() == 0) {
+                    logger.warn("could not remove message " + id + " from " + new String(getBusKey(args[0])));
+                }
+            }
+            logger.info("v1 message " + id + " deleted");
+
+        } finally {
+            Redis.getInstance().releaseToPool(jedis);
+        }
     }
 
     @Override
