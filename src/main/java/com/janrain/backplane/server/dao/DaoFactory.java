@@ -17,8 +17,9 @@
 package com.janrain.backplane.server.dao;
 
 import com.janrain.backplane.server.BusConfig1;
-import com.janrain.backplane.server.User;
 import com.janrain.backplane.server.dao.redis.*;
+import com.janrain.backplane2.server.config.User;
+import com.janrain.backplane2.server.dao.redis.RedisAdminDAO;
 
 /**
  * @author Tom Raney

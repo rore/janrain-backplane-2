@@ -167,8 +167,7 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
 
             if (messageIdBytes != null) {
                 for (byte[] b: messageIdBytes) {
-                    String[] args = new String(b).split(" ");
-                    responses.add(pipeline.get(getKey(args[2])));
+                    responses.add(pipeline.get(getKey(new String(b))));
                 }
                 pipeline.sync();
                 for (Response<byte[]> response : responses) {
