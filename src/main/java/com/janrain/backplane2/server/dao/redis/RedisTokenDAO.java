@@ -8,7 +8,6 @@ import com.janrain.backplane2.server.dao.TokenDAO;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.oauth2.TokenException;
 import com.janrain.redis.Redis;
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -59,7 +58,7 @@ public class RedisTokenDAO implements TokenDAO {
             jedis.set(getKey(token.getIdValue()), bytes);
             // set a TTL
             if (token.getExpirationDate() != null) {
-                jedis.expireAt(getKey(token.getIdValue()), token.getExpirationDate().getTime()*1000);
+                jedis.expireAt(getKey(token.getIdValue()), token.getExpirationDate().getTime() / 1000 +1);
             }
         } finally {
             Redis.getInstance().releaseToPool(jedis);
