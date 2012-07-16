@@ -20,7 +20,6 @@ import com.janrain.backplane.server.config.Backplane1Config;
 import com.janrain.backplane2.server.config.BusConfig2;
 import com.janrain.backplane2.server.dao.DAOFactory;
 import com.janrain.backplane2.server.dao.redis.RedisBackplaneMessageDAO;
-import com.janrain.backplane2.server.dao.redis.RedisDAOFactory;
 import com.janrain.commons.util.Pair;
 import com.janrain.redis.Redis;
 import com.yammer.metrics.Metrics;
@@ -28,12 +27,10 @@ import com.yammer.metrics.core.Histogram;
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import org.springframework.beans.factory.annotation.Qualifier;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPubSub;
 import redis.clients.jedis.Transaction;
 
-import javax.inject.Inject;
 import java.util.*;
 
 /**
@@ -203,8 +200,10 @@ public class V2MessageProcessor extends JedisPubSub {
                                         transaction.expire(RedisBackplaneMessageDAO.getKey(newId), retentionTimeSeconds);
                                     }
 
-                                    // add message id to channel list
-                                    transaction.rpush(RedisBackplaneMessageDAO.getChannelKey(backplaneMessage.getChannel()),
+                                    // channel and bus sorted set index
+                                    transaction.zadd(RedisBackplaneMessageDAO.getChannelKey(backplaneMessage.getChannel()), messageTime,
+                                            backplaneMessage.getIdValue().getBytes());
+                                    transaction.zadd(RedisBackplaneMessageDAO.getBusKey(backplaneMessage.getBus()), messageTime,
                                             backplaneMessage.getIdValue().getBytes());
 
                                     // add message id to sorted set of all message ids as an index
@@ -214,8 +213,6 @@ public class V2MessageProcessor extends JedisPubSub {
                                     transaction.zadd(RedisBackplaneMessageDAO.V2_MESSAGES.getBytes(), messageTime, metaData.getBytes());
 
                                     // add message id to sorted set keyed by bus as an index
-                                    transaction.zadd(RedisBackplaneMessageDAO.getBusKey(backplaneMessage.getBus()), messageTime,
-                                            backplaneMessage.getIdValue().getBytes());
 
                                     // make sure all subscribers get the update
                                     transaction.publish("alerts", newId);

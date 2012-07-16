@@ -18,18 +18,16 @@ package com.janrain.backplane2.server.dao.redis;
 
 import com.janrain.backplane2.server.*;
 import com.janrain.backplane2.server.dao.BackplaneMessageDAO;
+import com.janrain.commons.supersimpledb.message.Message;
+import com.janrain.crypto.ChannelUtil;
 import com.janrain.oauth2.TokenException;
 import com.janrain.redis.Redis;
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import redis.clients.jedis.Jedis;
-import redis.clients.jedis.Pipeline;
-import redis.clients.jedis.Response;
-import redis.clients.jedis.Transaction;
+import redis.clients.jedis.*;
 
 import javax.servlet.http.HttpServletResponse;
 import java.util.*;
@@ -82,7 +80,7 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
 
     @Override
     public long getMessageCount(String channel) {
-        return (int) Redis.getInstance().llen(getChannelKey(channel));
+        return (int) Redis.getInstance().zcard(getChannelKey(channel));
     }
 
     @Override
@@ -93,9 +91,60 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
     @Override
     public void retrieveMessagesPerScope(@NotNull MessagesResponse bpResponse, @NotNull Token token) throws BackplaneServerException {
         final Scope scope = token.getScope();
+        Jedis jedis = null;
+        try {
+            jedis = Redis.getInstance().getJedis();
+            Transaction t = jedis.multi();
+            List<String> unions = new ArrayList<String>();
+            for(String channel : scope.getScopeFieldValues(BackplaneMessage.Field.CHANNEL)) {
+                String channelUnion = "scope_req_" + ChannelUtil.randomString(10);
+                unions.add(channelUnion);
+                t.zunionstore( channelUnion.getBytes(), new ZParams() {{aggregate(Aggregate.MAX);}},
+                               channelUnion.getBytes(), getChannelKey(channel) );
+            }
+            for(String channel : scope.getScopeFieldValues(BackplaneMessage.Field.BUS)) {
+                String busUnion = "scope_req_" + ChannelUtil.randomString(10);
+                unions.add(busUnion);
+                t.zunionstore( busUnion.getBytes(), new ZParams() {{aggregate(Aggregate.MAX);}},
+                               busUnion.getBytes(), getBusKey(channel));
+            }
+            String channelBusIntersection = null;
+            for(String union : unions) {
+                if (channelBusIntersection == null) {
+                    channelBusIntersection = union;
+                } else {
+                    t.zinterstore( channelBusIntersection.getBytes(), new ZParams() {{aggregate(Aggregate.MAX);}},
+                                   channelBusIntersection.getBytes(), union.getBytes());
+                }
+            }
 
-        List<BackplaneMessage> messages = retrieveMessagesNoScope(bpResponse.getLastMessageId());
-        filterMessagesPerScope(messages, scope, bpResponse);
+            Response<Set<byte[]>> lastResponse = t.zrange(V2_MESSAGES.getBytes(), -1, -1);
+            List<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
+
+            if (channelBusIntersection != null) {
+                Response<Set<String>> busChannelMessageIds = t.zrangeByScore(channelBusIntersection, BackplaneMessage.getDateFromId(bpResponse.getLastMessageId()).getTime(), Double.POSITIVE_INFINITY);
+                for(String union : unions) t.del(union);
+                t.exec();
+                List<byte[]> idBytes = new ArrayList<byte[]>();
+                for(String msgId : busChannelMessageIds.get()) {
+                    idBytes.add(getKey(msgId));
+                }
+                for(byte[] messageBytes : jedis.mget(idBytes.toArray(new byte[idBytes.size()][]))) {
+                    if (messageBytes != null) messages.add((BackplaneMessage) SerializationUtils.deserialize(messageBytes));
+                }
+            } else {
+                t.exec();
+            }
+
+            if ( ! messages.isEmpty()) {
+                filterMessagesPerScope(messages, scope, bpResponse);
+            } else {
+                Set<byte[]> lastBytes = lastResponse.get();
+                bpResponse.setLastMessageId(((Message) SerializationUtils.deserialize(lastBytes.iterator().next())).getIdValue());
+            }
+        } finally {
+            Redis.getInstance().releaseToPool(jedis);
+        }
     }
 
     @Override
@@ -215,11 +264,11 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
                         // remove this key from indexes
                         logger.info("removing message " + segs[2]);
                         if (jedis.zrem(getBusKey(segs[0]), segs[2].getBytes()) != 1) {
-                            logger.warn("could not remove message " + segs[2] + " from " + getBusKey(segs[0]));
+                            logger.warn("could not remove message " + segs[2] + " from " + new String(getBusKey(segs[0])));
                         }
 
-                        if (jedis.lrem(getChannelKey(segs[1]), 0, segs[2].getBytes()) != 1) {
-                            logger.warn("could not remove message " + segs[2] + " from " + getChannelKey(segs[1]));
+                        if (jedis.zrem(getChannelKey(segs[1]), segs[2].getBytes()) != 1) {
+                            logger.warn("could not remove message " + segs[2] + " from " + new String(getChannelKey(segs[1])));
                         }
 
                         if (jedis.zrem(V2_MESSAGES.getBytes(), metaData.getBytes()) != 1) {
@@ -273,7 +322,7 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
 
                 Response<Long> del1 = t.zrem(V2_MESSAGES, key);
                 String[] args = key.split(" ");
-                Response<Long> del2 = t.lrem(getChannelKey(args[1]), 0, args[2].getBytes());
+                Response<Long> del2 = t.zrem(getChannelKey(args[1]), args[2].getBytes());
                 Response<Long> del3 = t.zrem(getBusKey(args[0]), args[2].getBytes());
                 t.del(getKey(id));
 
@@ -321,6 +370,4 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
 
         bpResponse.addMessages(filteredMessages);
     }
-
-
 }

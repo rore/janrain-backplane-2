@@ -222,6 +222,15 @@ public class Redis {
         }
     }
 
+    public long zcard(final byte[] key) {
+        Jedis jedis = pool.getResource();
+        try {
+            return jedis.zcard(key);
+        } finally {
+            pool.returnResource(jedis);
+        }
+    }
+
     // PRIVATE
 
     private static final Logger logger = Logger.getLogger(Redis.class);
