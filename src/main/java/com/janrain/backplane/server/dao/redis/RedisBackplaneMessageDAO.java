@@ -170,7 +170,7 @@ public class RedisBackplaneMessageDAO extends DAO<BackplaneMessage> {
 
             if (messageIdBytes != null) {
                 for (byte[] b: messageIdBytes) {
-                    responses.add(pipeline.get(b));
+                    responses.add(pipeline.get(getKey(new String(b))));
                 }
                 pipeline.sync();
                 for (Response<byte[]> response: responses) {

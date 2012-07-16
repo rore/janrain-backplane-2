@@ -19,6 +19,8 @@ package com.janrain.backplane2.server.config;
 import com.janrain.backplane.server.ExternalizableCore;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.MessageField;
+import com.janrain.crypto.HmacHashUtils;
+
 import java.util.*;
 
 /**
@@ -27,6 +29,13 @@ import java.util.*;
 public class User extends ExternalizableCore {
 
     // - PUBLIC
+
+    public User(String userName, String password) {
+        put(Field.USER.getFieldName(), "testBusOwner");
+        put(Field.PWDHASH.getFieldName(), HmacHashUtils.hmacHash("busOwnerSecret"));
+    }
+
+    public User() {}
 
     @Override
     public String getIdValue() {

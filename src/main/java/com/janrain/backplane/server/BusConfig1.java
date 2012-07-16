@@ -21,9 +21,7 @@ import com.janrain.commons.supersimpledb.message.MessageField;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
-import java.util.Collection;
-import java.util.EnumSet;
-import java.util.Set;
+import java.util.*;
 
 /**
  * @author Johnny Bufu
@@ -31,6 +29,21 @@ import java.util.Set;
 public class BusConfig1 extends ExternalizableCore {
 
     // - PUBLIC
+
+    public BusConfig1() {}
+
+    public BusConfig1(String busName, String owner, String retentionTimeSeconds, String retentionTimeStickySeconds) throws BackplaneServerException {
+        Map<String,String> d = new LinkedHashMap<String, String>();
+        d.put(Field.BUS_NAME.getFieldName(), busName);
+        d.put(Field.RETENTION_TIME_SECONDS.getFieldName(), retentionTimeSeconds);
+        d.put(Field.RETENTION_STICKY_TIME_SECONDS.getFieldName(), retentionTimeStickySeconds);
+        d.put(owner, BUS_PERMISSION.GETALL.name());
+        try {
+            init(busName, d);
+        } catch (SimpleDBException e) {
+            throw new BackplaneServerException(e.getMessage());
+        }
+    }
 
     public enum BUS_PERMISSION { GETALL, POST, GETPAYLOAD, IDENTITY }
 

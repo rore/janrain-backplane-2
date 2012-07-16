@@ -17,8 +17,12 @@
 package com.janrain.backplane.server;
 
 import com.janrain.backplane.server.config.Backplane1Config;
+import com.janrain.backplane.server.dao.DaoFactory;
+import com.janrain.backplane2.server.config.User;
 import com.janrain.commons.supersimpledb.SuperSimpleDB;
+import com.janrain.crypto.HmacHashUtils;
 import junit.framework.TestCase;
+import org.apache.catalina.util.Base64;
 import org.apache.log4j.Logger;
 import org.junit.Before;
 import org.junit.Test;
@@ -84,6 +88,30 @@ public class Backplane1ControllerTest extends TestCase {
         handlerAdapter.handle(request, response, controller);
         logger.debug("testGetChannel() => " + response.getContentAsString());
         assertTrue(response.getContentAsString().contains("[]"));
+
+    }
+
+    @Test
+    public void testGetBus() throws Exception {
+
+        refreshRequestAndResponse();
+
+        DaoFactory.getUserDAO().persist(new User("testBusOwner", "busOwnerSecret"));
+        DaoFactory.getBusDAO().persist(new BusConfig1("test", "testBusOwner", "60", "28800"));
+
+        // encode un:pw
+        String credentials = "testBusOwner:busOwnerSecret";
+
+        String encodedCredentials = new String(Base64.encode(credentials.getBytes()));
+        request.setAuthType("BASIC");
+        request.addHeader("Authorization", "Basic " + encodedCredentials);
+        request.setRequestURI("/bus/test");
+        request.setMethod("GET");
+
+        handlerAdapter.handle(request, response, controller);
+        logger.debug("testGetBus() => " + response.getContentAsString());
+        assertTrue(response.getContentAsString().contains("[]"));
+
 
     }
 }

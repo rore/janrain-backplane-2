@@ -204,10 +204,7 @@ public class Backplane2ControllerTest {
 
 
     private Client createTestBusAndClient() throws BackplaneServerException {
-        daoFactory.getBusOwnerDAO().persist(new User() {{
-            put(Field.USER.getFieldName(), "testBusOwner");
-            put(Field.PWDHASH.getFieldName(), HmacHashUtils.hmacHash("busOwnerSecret"));
-        }});
+        daoFactory.getBusOwnerDAO().persist(new User("testBusOwner", "busOwnerSecret"));
         try {
             daoFactory.getBusDao().persist(new BusConfig2("testbus", "testBusOwner", "600", "28800"));
 
