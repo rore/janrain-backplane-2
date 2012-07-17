@@ -192,6 +192,11 @@ public class SimpleDBTokenDAO implements TokenDAO {
     }
 
     @Override
+    public void bindChannel(String channel, String bus, Integer expireSeconds) {
+        // noop
+    }
+
+    @Override
     public boolean isValidBinding(String channel, String bus) throws BackplaneServerException {
         try {
             return bus != null && channel != null && bus.equals(getBusForChannel(channel));
