@@ -25,6 +25,7 @@ import com.janrain.redis.Redis;
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
+import org.jboss.netty.util.internal.StringUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import redis.clients.jedis.*;
@@ -139,9 +140,10 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
             List<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
 
             if (channelBusIntersection != null) {
-                String lastMessageId = bpResponse.getLastMessageId();
+                Date lastMessageDate = BackplaneMessage.getDateFromId(bpResponse.getLastMessageId());
+                long lastMessageTime = lastMessageDate == null ? 0 : lastMessageDate.getTime();
                 Response<Set<String>> busChannelMessageIds = t.zrangeByScore(channelBusIntersection,
-                        StringUtils.isEmpty(lastMessageId) ? 0 : BackplaneMessage.getDateFromId(lastMessageId).getTime()+1, Double.MAX_VALUE);
+                        lastMessageTime+1, Double.MAX_VALUE);
                 for(String union : unions) t.del(union);
                 t.exec();
                 if (! busChannelMessageIds.get().isEmpty()) {
@@ -165,9 +167,13 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
                 if (lastBytes.isEmpty()) {
                     bpResponse.setLastMessageId("");
                 } else {
-                    bpResponse.setLastMessageId(new String(lastBytes.iterator().next()));
+                    String lastMessageId = new String(lastBytes.iterator().next()).split(" ")[2];
+                    bpResponse.setLastMessageId(lastMessageId);
                 }
             }
+        } catch (Exception e) {
+            logger.error(e);
+            throw new BackplaneServerException(e.getMessage());
         } finally {
             Redis.getInstance().releaseToPool(jedis);
         }
