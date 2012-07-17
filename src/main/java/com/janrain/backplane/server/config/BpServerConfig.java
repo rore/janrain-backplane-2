@@ -20,10 +20,12 @@ public class BpServerConfig extends ExternalizableCore {
     public BpServerConfig() {
         Map<String,String> d = new LinkedHashMap<String, String>();
 
+        d.put(Field.ID.getFieldName(), "foo");
         d.put(Field.DEBUG_MODE.getFieldName(), Field.DEBUG_MODE_DEFAULT.toString() );
         d.put(Field.CLEANUP_INTERVAL_MINUTES.getFieldName(), Long.toString(Field.CLEANUP_INTERVAL_MINUTES_DEFAULT));
         d.put(Field.DEFAULT_MESSAGES_MAX.getFieldName(), Long.toString(Field.MESSAGES_MAX_DEFAULT));
         d.put(Field.CONFIG_CACHE_AGE_SECONDS.getFieldName(), Long.toString(Field.CONFIG_CACHE_AGE_SECONDS_DEFAULT));
+        d.put(Field.TOKEN_CACHE_MAX_MB.getFieldName(), Long.toString(Field.TOKEN_CACHE_MAX_MB_DEFAULT));
 
         try {
             super.init("foo", d);
