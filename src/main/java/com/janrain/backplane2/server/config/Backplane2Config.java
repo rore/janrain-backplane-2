@@ -25,6 +25,8 @@ import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.util.AwsUtility;
 import com.janrain.commons.util.InitSystemProps;
 import com.janrain.crypto.HmacHashUtils;
+import com.yammer.metrics.Metrics;
+import com.yammer.metrics.core.MetricsRegistry;
 import com.yammer.metrics.reporting.ConsoleReporter;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -275,6 +277,7 @@ public class Backplane2Config {
 
     @PreDestroy
     private void cleanup() {
+        Metrics.shutdown();
         shutdownExecutor(cleanup);
         shutdownExecutor(tokenCacheCleanup);
     }
