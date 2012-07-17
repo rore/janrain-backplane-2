@@ -46,6 +46,7 @@ import org.springframework.web.servlet.HandlerAdapter;
 import org.springframework.web.servlet.ModelAndView;
 
 import javax.inject.Inject;
+import javax.mail.Message;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletResponse;
 import java.io.UnsupportedEncodingException;
@@ -1578,6 +1579,26 @@ public class Backplane2ControllerTest {
         assertNotNull("expected refresh_token, got null", responseBody.get(OAUTH2_REFRESH_TOKEN_PARAM_NAME));
         Scope scope2 = new Scope(responseBody.get(OAUTH2_SCOPE_PARAM_NAME).toString());
         assertEquals("initial and refresh token response scopes are not equal", scope1, scope2);
+    }
+
+    @Test
+    public void testLatestMessageRetrieval() throws Exception {
+
+        // Seed message
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String,Object> msg = mapper.readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {});
+        msg.put(BackplaneMessage.Field.BUS.getFieldName(), "foo");
+        msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), "bar");
+        BackplaneMessage message = new BackplaneMessage(testClient.getSourceUrl(), msg);
+        this.saveMessage(message);
+
+        new V2MessageProcessor(daoFactory).insertMessages(false);
+
+        BackplaneMessage lastMessage = daoFactory.getBackplaneMessageDAO().getLatestMessage();
+
+        assertTrue("messages not equal", lastMessage.getIdValue().equals(message.getIdValue()));
+
+
     }
 
     // - PRIVATE

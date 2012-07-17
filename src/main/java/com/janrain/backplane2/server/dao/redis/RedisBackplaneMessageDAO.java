@@ -55,11 +55,21 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
 
     @Override
     public BackplaneMessage getLatestMessage() throws BackplaneServerException {
-        List<byte[]> bytesList = Redis.getInstance().lrange(V2_MESSAGES.getBytes(), -1, -1);
-        if (! bytesList.isEmpty()) {
-            return (BackplaneMessage) SerializationUtils.deserialize(bytesList.get(0));
-        } else {
+        Jedis jedis = null;
+        try {
+            jedis = Redis.getInstance().getJedis();
+
+            Set<byte[]> bytesList = jedis.zrange(V2_MESSAGES.getBytes(), -1, -1);
+            if (! bytesList.isEmpty()) {
+                String args[] = new String(bytesList.iterator().next()).split(" ");
+                byte[] bytes = jedis.get(getKey(args[2]));
+                if (bytes != null) {
+                    return (BackplaneMessage) SerializationUtils.deserialize(bytes);
+                }
+            }
             return null;
+        } finally {
+            Redis.getInstance().releaseToPool(jedis);
         }
     }
 
@@ -152,7 +162,11 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
                 filterMessagesPerScope(messages, scope, bpResponse);
             } else {
                 Set<byte[]> lastBytes = lastResponse.get();
-                bpResponse.setLastMessageId(((Message) SerializationUtils.deserialize(lastBytes.iterator().next())).getIdValue());
+                if (lastBytes.isEmpty()) {
+                    bpResponse.setLastMessageId("");
+                } else {
+                    bpResponse.setLastMessageId(new String(lastBytes.iterator().next()));
+                }
             }
         } finally {
             Redis.getInstance().releaseToPool(jedis);
