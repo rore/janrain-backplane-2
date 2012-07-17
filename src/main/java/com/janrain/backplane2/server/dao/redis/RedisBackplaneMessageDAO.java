@@ -96,17 +96,24 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
             jedis = Redis.getInstance().getJedis();
             Transaction t = jedis.multi();
             List<String> unions = new ArrayList<String>();
-            for(String channel : scope.getScopeFieldValues(BackplaneMessage.Field.CHANNEL)) {
+
+            Set<String> channelScopes = scope.getScopeFieldValues(BackplaneMessage.Field.CHANNEL);
+            if (channelScopes != null) {
                 String channelUnion = "scope_req_" + ChannelUtil.randomString(10);
                 unions.add(channelUnion);
-                t.zunionstore( channelUnion.getBytes(), new ZParams() {{aggregate(Aggregate.MAX);}},
-                               channelUnion.getBytes(), getChannelKey(channel) );
+                for(String channel : channelScopes) {
+                    t.zunionstore( channelUnion.getBytes(), new ZParams() {{aggregate(Aggregate.MAX);}},
+                            channelUnion.getBytes(), getChannelKey(channel) );
+                }
             }
-            for(String channel : scope.getScopeFieldValues(BackplaneMessage.Field.BUS)) {
+            Set<String> busScopes = scope.getScopeFieldValues(BackplaneMessage.Field.BUS);
+            if (busScopes != null) {
                 String busUnion = "scope_req_" + ChannelUtil.randomString(10);
                 unions.add(busUnion);
-                t.zunionstore( busUnion.getBytes(), new ZParams() {{aggregate(Aggregate.MAX);}},
-                               busUnion.getBytes(), getBusKey(channel));
+                for(String bus : busScopes) {
+                    t.zunionstore( busUnion.getBytes(), new ZParams() {{aggregate(Aggregate.MAX);}},
+                            busUnion.getBytes(), getBusKey(bus));
+                }
             }
             String channelBusIntersection = null;
             for(String union : unions) {
@@ -122,15 +129,20 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
             List<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
 
             if (channelBusIntersection != null) {
-                Response<Set<String>> busChannelMessageIds = t.zrangeByScore(channelBusIntersection, BackplaneMessage.getDateFromId(bpResponse.getLastMessageId()).getTime(), Double.POSITIVE_INFINITY);
+                String lastMessageId = bpResponse.getLastMessageId();
+                Response<Set<String>> busChannelMessageIds = t.zrangeByScore(channelBusIntersection,
+                        StringUtils.isEmpty(lastMessageId) ? 0 : BackplaneMessage.getDateFromId(lastMessageId).getTime()+1, Double.MAX_VALUE);
                 for(String union : unions) t.del(union);
                 t.exec();
-                List<byte[]> idBytes = new ArrayList<byte[]>();
-                for(String msgId : busChannelMessageIds.get()) {
-                    idBytes.add(getKey(msgId));
-                }
-                for(byte[] messageBytes : jedis.mget(idBytes.toArray(new byte[idBytes.size()][]))) {
-                    if (messageBytes != null) messages.add((BackplaneMessage) SerializationUtils.deserialize(messageBytes));
+                if (! busChannelMessageIds.get().isEmpty()) {
+                    List<byte[]> idBytes = new ArrayList<byte[]>();
+                    for(String msgId : busChannelMessageIds.get()) {
+                        idBytes.add(getKey(msgId));
+                    }
+                    for(byte[] messageBytes : jedis.mget(idBytes.toArray(new byte[idBytes.size()][]))) {
+                        if (messageBytes != null) messages.add((BackplaneMessage) SerializationUtils.deserialize(messageBytes));
+                    }
+
                 }
             } else {
                 t.exec();
@@ -209,7 +221,7 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
             jedis = Redis.getInstance().getJedis();
 
             List<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
-            List<byte[]> messageIdBytes = jedis.lrange(getChannelKey(channel), 0, -1);
+            Set<byte[]> messageIdBytes = jedis.zrange(getChannelKey(channel), 0, -1);
 
             Pipeline pipeline = jedis.pipelined();
             List<Response<byte[]>> responses = new ArrayList<Response<byte[]>>();
