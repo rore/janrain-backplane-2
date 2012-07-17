@@ -268,15 +268,8 @@ public class Backplane2Controller {
 
         TimerContext context = v2GetsTimer.time();
 
-        MessageRequest messageRequest;
-
         try {
-            messageRequest = new MessageRequest(callback, since, block);
-        } catch (InvalidRequestException e) {
-            return handleInvalidRequest(e, response);
-        }
-
-        try {
+            MessageRequest messageRequest = new MessageRequest(callback, since, block);
 
             Token token = Token.fromRequest(daoFactory, request, access_token, authorizationHeader);
             if (token.getType().isRefresh()) {
