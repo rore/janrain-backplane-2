@@ -18,7 +18,12 @@ package com.janrain.redis;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import redis.clients.jedis.*;
+import org.jetbrains.annotations.Nullable;
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisPool;
+import redis.clients.jedis.JedisPoolConfig;
+import redis.clients.jedis.Transaction;
+
 import java.util.List;
 import java.util.Set;
 
@@ -143,8 +148,24 @@ public class Redis {
     public void set(byte[] key, byte[] value, int seconds) {
         Jedis jedis = pool.getResource();
         try {
-            jedis.set(key,value);
-            jedis.expire(key, seconds);
+            jedis.setex(key, seconds, value);
+        } finally {
+            pool.returnResource(jedis);
+        }
+    }
+
+    public void set(String key, String value) {
+        set(key, value, null);
+    }
+
+    public void set(String key, String value, @Nullable Integer seconds) {
+        Jedis jedis = pool.getResource();
+        try {
+            if (seconds == null) {
+                jedis.set(key, value);
+            } else {
+                jedis.setex(key, seconds, value);
+            }
         } finally {
             pool.returnResource(jedis);
         }
@@ -178,6 +199,15 @@ public class Redis {
     }
 
     public byte[] get(byte[] key) {
+        Jedis jedis = pool.getResource();
+        try {
+            return jedis.get(key);
+        } finally {
+            pool.returnResource(jedis);
+        }
+    }
+
+    public String get(String key) {
         Jedis jedis = pool.getResource();
         try {
             return jedis.get(key);

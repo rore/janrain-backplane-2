@@ -37,4 +37,6 @@ public interface TokenDAO extends DAO<Token> {
 
     void deleteExpiredTokens() throws BackplaneServerException;
     void cacheRevokedCleanup() throws SimpleDBException;
+
+    void bindChannel(String channel, String bus, Integer expireSeconds);
 }

@@ -1,8 +1,6 @@
 package com.janrain.backplane2.server.dao.redis;
 
-import com.janrain.backplane2.server.BackplaneMessage;
 import com.janrain.backplane2.server.BackplaneServerException;
-import com.janrain.backplane2.server.Scope;
 import com.janrain.backplane2.server.Token;
 import com.janrain.backplane2.server.dao.TokenDAO;
 import com.janrain.commons.supersimpledb.SimpleDBException;
@@ -11,10 +9,10 @@ import com.janrain.redis.Redis;
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
 import redis.clients.jedis.Jedis;
 
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
 
 /**
@@ -107,53 +105,14 @@ public class RedisTokenDAO implements TokenDAO {
     }
 
     @Override
+    public void bindChannel(String channel, String bus, Integer expireSeconds) {
+        Redis.getInstance().set(getChannelBindingKey(channel), bus, expireSeconds);
+    }
+
+
+    @Override
     public String getBusForChannel(String channel) throws BackplaneServerException, TokenException {
-
-        if (StringUtils.isEmpty(channel)) return null;
-
-        final Scope singleChannelScope = new Scope(BackplaneMessage.Field.CHANNEL, channel);
-        try {
-            //todo: this method is ripe for optimization
-            List<Token> tokens = getAll();
-
-            List<Token> filtered = new ArrayList<Token>();
-            for (Token token : tokens) {
-                if (!token.getType().isPrivileged() && !token.getType().isRefresh() && token.getScopeString().contains(channel)) {
-                    filtered.add(token);
-                }
-            }
-
-            tokens = filtered;
-
-            if (tokens == null || tokens.isEmpty()) {
-                logger.warn("No anonymous tokens found to bind channel " + channel + " to a bus");
-                throw new TokenException("invalid channel: " + channel);
-            }
-
-            String bus = null;
-            for (Token token : tokens) {
-                if (token.getType().isPrivileged() || token.getType().isRefresh()) continue;
-                Scope tokenScope = token.getScope();
-                if ( tokenScope.containsScope(singleChannelScope)) {
-                    LinkedHashSet<String> buses = tokenScope.getScopeMap().get(BackplaneMessage.Field.BUS);
-                    if (buses == null || buses.isEmpty()) continue;
-                    if ( (bus != null && buses.size() == 1) || (buses.size() > 1) )  {
-                        throw new TokenException("invalid channel, bound to more than one bus");
-                    }
-                    bus = buses.iterator().next();
-                }
-            }
-            if (bus == null) {
-                throw new TokenException("invalid channel: " + channel);
-            } else {
-                return bus;
-            }
-
-        } catch (TokenException te) {
-            throw te;
-        } catch (Exception e) {
-            throw new BackplaneServerException(e.getMessage());
-        }
+        return StringUtils.isEmpty(channel) ? null : Redis.getInstance().get(getChannelBindingKey(channel));
     }
 
     @Override
@@ -202,4 +161,9 @@ public class RedisTokenDAO implements TokenDAO {
     // PRIVATE
 
     private static final Logger logger = Logger.getLogger(RedisTokenDAO.class);
+
+    private String getChannelBindingKey(@NotNull String channel) {
+        // todo: key prefixes should be centralized to avoid conflicts
+        return "v2_channel_bus_" + channel;
+    }
 }
