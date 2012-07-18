@@ -103,26 +103,9 @@ public class MessageProcessor extends JedisPubSub {
                     String metaData = new String(b);
                     String[] segs = metaData.split(" ");
                     String key = segs[2];
+                    // if the message body is not found, it expired and should be removed from indexes
                     if (jedis.get(RedisBackplaneMessageDAO.getKey(key)) == null) {
-                        // remove this key from indexes
-                        long rem1= jedis.zrem(RedisBackplaneMessageDAO.getBusKey(segs[0]), key.getBytes());
-                        if (rem1 != 1) {
-                            logger.warn("failed to remove message id " + key + " from " + new String(RedisBackplaneMessageDAO.getBusKey(segs[0])));
-                        }
-                        long rem2= jedis.lrem(RedisBackplaneMessageDAO.getChannelKey(segs[1]), 0, key.getBytes());
-                        if (rem2 != 1) {
-                            logger.warn("failed to remove message id " + key + " from " + new String(RedisBackplaneMessageDAO.getChannelKey(segs[1])));
-                        }
-                        if (rem1 != 1 || rem2 != 1) {
-                            logger.warn("aborting removal of message id " + key + " from " + new String(RedisBackplaneMessageDAO.V1_MESSAGES.getBytes()));
-                        } else {
-                            long rem3= jedis.zrem(RedisBackplaneMessageDAO.V1_MESSAGES.getBytes(), metaData.getBytes());
-                            if (rem3 == 1) {
-                                logger.info("removed message " + key);
-                            } else {
-                                logger.warn("could not remove message " + key + " from " + RedisBackplaneMessageDAO.V1_MESSAGES);
-                            }
-                        }
+                        DaoFactory.getBackplaneMessageDAO().delete(key);
                     }
                 }
             }

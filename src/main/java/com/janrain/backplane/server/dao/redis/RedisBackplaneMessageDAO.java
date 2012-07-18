@@ -72,18 +72,16 @@ public class RedisBackplaneMessageDAO extends DAO<BackplaneMessage> {
             jedis = Redis.getInstance().getJedis();
             Date d = BackplaneMessage.getDateFromId(id);
             Set<String> sortedSetBytes = jedis.zrangeByScore(V1_MESSAGES, d.getTime(), d.getTime());
-            byte[] bytes = jedis.get(getKey(id));
 
             if (!sortedSetBytes.isEmpty()) {
-                Iterator it = sortedSetBytes.iterator();
-                String key = (String) it.next();
+                String key = sortedSetBytes.iterator().next();
                 Transaction t = jedis.multi();
 
                 Response<Long> del1 = t.zrem(V1_MESSAGES, key);
                 String[] args = key.split(" ");
                 Response<Long> del2 = t.lrem(getChannelKey(args[1]), 0, args[2].getBytes());
                 Response<Long> del3 = t.zrem(getBusKey(args[0]), args[2].getBytes());
-                t.del(getKey(id));
+                Response<Long> del4 = t.del(getKey(id));
 
                 t.exec();
 
@@ -96,9 +94,13 @@ public class RedisBackplaneMessageDAO extends DAO<BackplaneMessage> {
                 if (del3.get() == 0) {
                     logger.warn("could not remove message " + id + " from " + new String(getBusKey(args[0])));
                 }
+                if (del4.get() == 0) {
+                    logger.warn("could not remove message " + id + " from " + getKey(id) + " but it may have expired");
+                }
+                logger.info("v1 message " + id + " deleted");
+            } else {
+                logger.warn("v1 message " + id + " not found in " + V1_MESSAGES);
             }
-            logger.info("v1 message " + id + " deleted");
-
         } finally {
             Redis.getInstance().releaseToPool(jedis);
         }

@@ -293,19 +293,7 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
                     String metaData = new String(b);
                     String[] segs = metaData.split(" ");
                     if (jedis.get(getKey(segs[2])) == null) {
-                        // remove this key from indexes
-                        logger.info("removing message " + segs[2]);
-                        if (jedis.zrem(getBusKey(segs[0]), segs[2].getBytes()) != 1) {
-                            logger.warn("could not remove message " + segs[2] + " from " + new String(getBusKey(segs[0])));
-                        }
-
-                        if (jedis.zrem(getChannelKey(segs[1]), segs[2].getBytes()) != 1) {
-                            logger.warn("could not remove message " + segs[2] + " from " + new String(getChannelKey(segs[1])));
-                        }
-
-                        if (jedis.zrem(V2_MESSAGES.getBytes(), metaData.getBytes()) != 1) {
-                            logger.warn("could not remove message + " + segs[2] + " from " + V2_MESSAGES);
-                        }
+                        delete(segs[2]);
                     }
                 }
             }
@@ -345,18 +333,16 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
             jedis = Redis.getInstance().getJedis();
             Date d = BackplaneMessage.getDateFromId(id);
             Set<String> sortedSetBytes = jedis.zrangeByScore(V2_MESSAGES, d.getTime(), d.getTime());
-            byte[] bytes = jedis.get(getKey(id));
 
             if (!sortedSetBytes.isEmpty()) {
-                Iterator it = sortedSetBytes.iterator();
-                String key = (String) it.next();
+                String key = sortedSetBytes.iterator().next();
                 Transaction t = jedis.multi();
 
                 Response<Long> del1 = t.zrem(V2_MESSAGES, key);
                 String[] args = key.split(" ");
                 Response<Long> del2 = t.zrem(getChannelKey(args[1]), args[2].getBytes());
                 Response<Long> del3 = t.zrem(getBusKey(args[0]), args[2].getBytes());
-                t.del(getKey(id));
+                Response<Long> del4 = t.del(getKey(id));
 
                 t.exec();
 
@@ -369,6 +355,12 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
                 if (del3.get() == 0) {
                     logger.warn("could not remove message " + id + " from " + new String(getBusKey(args[0])));
                 }
+                if (del4.get() == 0) {
+                    logger.warn("could not remove message " + id + " from " + getKey(id) + " but it may have expired");
+                }
+                logger.info("v2 message " + id + " deleted");
+            } else {
+                logger.warn("v2 message " + id + " not found in " + V2_MESSAGES);
             }
         } finally {
             Redis.getInstance().releaseToPool(jedis);
