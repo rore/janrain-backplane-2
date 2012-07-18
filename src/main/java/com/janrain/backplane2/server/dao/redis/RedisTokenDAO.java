@@ -113,9 +113,6 @@ public class RedisTokenDAO implements TokenDAO {
 
         final Scope singleChannelScope = new Scope(BackplaneMessage.Field.CHANNEL, channel);
         try {
-/*            List<Token> tokens = superSimpleDB.retrieveWhere(bpConfig.getTableName(BP_ACCESS_TOKEN), Token.class,
-                                Token.TokenField.TYPE.getFieldName() + "='" + GrantType.ANONYMOUS + "' AND " +
-                                Token.TokenField.SCOPE.getFieldName() + " LIKE '%" + singleChannelScope.toString() + "%'", true);*/
             //todo: this method is ripe for optimization
             List<Token> tokens = getAll();
 
@@ -129,7 +126,7 @@ public class RedisTokenDAO implements TokenDAO {
             tokens = filtered;
 
             if (tokens == null || tokens.isEmpty()) {
-                logger.error("No anonymous tokens found to bind channel " + channel + " to a bus");
+                logger.warn("No anonymous tokens found to bind channel " + channel + " to a bus");
                 throw new TokenException("invalid channel: " + channel);
             }
 
