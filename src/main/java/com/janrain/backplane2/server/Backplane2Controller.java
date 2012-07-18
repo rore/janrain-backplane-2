@@ -23,7 +23,7 @@ import com.janrain.crypto.ChannelUtil;
 import com.janrain.crypto.HmacHashUtils;
 import com.janrain.oauth2.*;
 import com.janrain.servlet.ServletUtil;
-import com.yammer.metrics.core.TimerContext;
+import com.yammer.metrics.core.*;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -33,6 +33,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.ModelAndView;
 
 import javax.inject.Inject;
+import javax.naming.Context;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -223,23 +224,24 @@ public class Backplane2Controller {
 
         ServletUtil.checkSecure(request);
 
-        Client authenticatedClient;
-        try {
-            checkClientCredentialsBasicAuthOnly(request.getQueryString(), client_id, client_secret);
-            authenticatedClient = getAuthenticatedClient(authorizationHeader);
-        } catch (AuthException e) {
-            logger.error(e.getMessage());
-            return handleTokenException(new TokenException(OAUTH2_TOKEN_INVALID_CLIENT, "Client authentication failed", SC_UNAUTHORIZED, e), response);
-        }
+        TimerContext context = getPrivilegedTokenTimer.time();
 
         try {
+            checkClientCredentialsBasicAuthOnly(request.getQueryString(), client_id, client_secret);
+            Client authenticatedClient = getAuthenticatedClient(authorizationHeader);
+
             return (new AuthenticatedTokenRequest(
                     grant_type, authenticatedClient, code, redirect_uri, refresh_token, scope,
                     daoFactory, request, authorizationHeader)).tokenResponse();
         } catch (TokenException e) {
             return handleTokenException(e, response);
+        } catch (AuthException e) {
+            logger.error(e.getMessage());
+            return handleTokenException(new TokenException(OAUTH2_TOKEN_INVALID_CLIENT, "Client authentication failed", SC_UNAUTHORIZED, e), response);
         } catch (Exception e) {
             return handleTokenException(new TokenException(OAUTH2_TOKEN_SERVER_ERROR, e.getMessage(), HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e), response);
+        } finally {
+            context.stop();
         }
     }
 
@@ -860,5 +862,7 @@ public class Backplane2Controller {
             com.yammer.metrics.Metrics.newTimer(Backplane2Controller.class, "v2_posts_time", TimeUnit.MILLISECONDS, TimeUnit.SECONDS);
     private final com.yammer.metrics.core.Timer getRegularTokenTimer =
             com.yammer.metrics.Metrics.newTimer(Backplane2Controller.class, "v2_get_reg_tokens_time", TimeUnit.MILLISECONDS, TimeUnit.SECONDS);
+    private final com.yammer.metrics.core.Timer getPrivilegedTokenTimer =
+            com.yammer.metrics.Metrics.newTimer(Backplane2Controller.class, "v2_get_privileged_tokens_time", TimeUnit.MILLISECONDS, TimeUnit.SECONDS);
 
 }

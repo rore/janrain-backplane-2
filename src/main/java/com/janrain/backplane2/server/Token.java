@@ -146,7 +146,7 @@ public class Token extends ExternalizableCore {
         }
 
         if (token == null) {
-            logger.warn("token not found" + tokenAndSource.getLeft());
+            logger.warn("token not found: " + tokenAndSource.getLeft());
             throw new TokenException("invalid token", HttpServletResponse.SC_FORBIDDEN);
         }
 
