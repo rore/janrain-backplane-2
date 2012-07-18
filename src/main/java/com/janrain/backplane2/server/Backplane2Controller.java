@@ -266,7 +266,11 @@ public class Backplane2Controller {
 
         ServletUtil.checkSecure(request);
 
-        TimerContext context = v2GetsTimer.time();
+        TimerContext context = null;
+        // only time the event if it is not blocking
+        if ("0".equals(block)) {
+            context = v2GetsTimer.time();
+        }
 
         try {
             MessageRequest messageRequest = new MessageRequest(callback, since, block);
@@ -303,7 +307,9 @@ public class Backplane2Controller {
         } catch (Exception e) {
             throw new BackplaneServerException("Error processing messages request: " + e.getMessage(), e);
         } finally {
-            context.stop();
+            if (context != null) {
+                context.stop();
+            }
         }
     }
 
