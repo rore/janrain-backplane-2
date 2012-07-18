@@ -95,7 +95,7 @@ public class RedisBackplaneMessageDAO extends DAO<BackplaneMessage> {
                     logger.warn("could not remove message " + id + " from " + new String(getBusKey(args[0])));
                 }
                 if (del4.get() == 0) {
-                    logger.warn("could not remove message " + id + " from " + getKey(id) + " but it may have expired");
+                    logger.warn("could not remove message " + id + " from " + new String(getKey(id)) + " but it may have expired");
                 }
                 logger.info("v1 message " + id + " deleted");
             } else {
