@@ -233,7 +233,7 @@ public class Backplane2Config {
                 logger.info("creating v2 message processor thread");
                 messageProcessor.insertMessages(true);
             }
-        }, 1, 1, TimeUnit.MINUTES);
+        }, 0, 30, TimeUnit.SECONDS);
 
         maintenanceTask.scheduleAtFixedRate(new Runnable() {
             @Override

@@ -86,6 +86,12 @@ public class Redis {
         }
     }
 
+    public void releaseBrokenResourceToPool(Jedis jedis) {
+        if (jedis != null) {
+            pool.returnBrokenResource(jedis);
+        }
+    }
+
     public boolean releaseLock(String lockName, String identifier) {
         Jedis jedis = pool.getResource();
 
