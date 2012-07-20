@@ -38,7 +38,7 @@ window.Backplane = window.Backplane || (function() {
             console.error("Backplane ERROR: " + msg);
         }
     }
-    BP.version = "2.0.0";
+    BP.version = "2.0.1";
     BP.token = null;
     BP.refresh_token = null;
     BP.channelName = null;
@@ -297,13 +297,14 @@ Backplane.resetCookieChannel = function() {
 };
 
 Backplane.fetchNewChannel = function() {
-    var oldScript;
+    var oldScript = document.getElementById('fetchChannelId');
     // cleanup old script if it exists to prevent memory leak
-    while (oldScript = document.getElementById('fetchChannelId')) {
+    while (oldScript && oldScript.parentNode) {
         oldScript.parentNode.removeChild(oldScript);
         for (var prop in oldScript) {
             delete oldScript[prop];
         }
+        oldScript = document.getElementById('fetchChannelId')
     }
 
     var script = document.createElement("script");
