@@ -23,7 +23,7 @@ window.Backplane = window.Backplane || (function() {
             })();
         }
     };
-    BP.version = "1.2.1";
+    BP.version = "1.2.2";
     BP.channelByBus = {};
     BP.config = {};
     BP.initialized = false;
