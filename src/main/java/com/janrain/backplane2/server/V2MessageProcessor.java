@@ -17,6 +17,7 @@
 package com.janrain.backplane2.server;
 
 import com.janrain.backplane.server.config.Backplane1Config;
+import com.janrain.backplane.server.dao.DaoFactory;
 import com.janrain.backplane2.server.config.BusConfig2;
 import com.janrain.backplane2.server.dao.DAOFactory;
 import com.janrain.backplane2.server.dao.redis.RedisBackplaneMessageDAO;
@@ -101,175 +102,207 @@ public class V2MessageProcessor extends JedisPubSub {
      * Processor to pull messages off queue and make them available
      *
      */
-    public void insertMessages(boolean loop) {
-
-        String uuid = UUID.randomUUID().toString();
-        Jedis jedis = null;
+    public void insertMessages() {
 
         try {
-            logger.info("v2 message processor waiting for exclusive write lock");
 
-            // TRY forever to get lock to do work
-            String lock = Redis.getInstance().getLock(V2_WRITE_LOCK, uuid, -1, LOCK_SECONDS);
+            String uuid = UUID.randomUUID().toString();
 
-            // if we lose our lock sometime between this point and the lock refresh, the
-            // transaction will fail
-
-            if (lock != null) {
-                logger.info("v2 message processor got lock " + lock);
-            } else {
-                logger.warn("something went terribly wrong");
-                return;
-            }
-
-            List<String> insertionTimes = new ArrayList<String>();
-            do {
+            while (true) {
 
                 try {
 
-                    jedis = Redis.getInstance().getJedis();
+                    logger.info("message processor waiting for exclusive write lock");
 
-                    // retrieve the latest 'live' message ID
-                    String latestMessageId = null;
-                    Set<String> latestMessageMetaSet = jedis.zrange(RedisBackplaneMessageDAO.V2_MESSAGES, -1, -1);
-                    if (latestMessageMetaSet != null && !latestMessageMetaSet.isEmpty()) {
-                        String[] segs = latestMessageMetaSet.iterator().next().split(" ");
-                        if (segs.length == 3) {
-                            latestMessageId = segs[2];
-                        }
+                    // TRY forever to get obtain lock
+                    String lock = Redis.getInstance().getLock(V2_WRITE_LOCK, uuid, -1, LOCK_SECONDS);
+
+                    // if we lose our lock sometime between this point and the lock refresh, the
+                    // transaction will fail
+
+                    if (lock != null) {
+                        logger.info("v2 message processor got lock " + lock);
+                    } else {
+                        throw new Exception("something went terribly wrong with the lock");
                     }
 
-                    Pair<String, Date> lastIdAndDate = StringUtils.isEmpty(latestMessageId) ?
-                            new Pair<String, Date>("", new Date(0)) :
-                            new Pair<String, Date>(latestMessageId, Backplane1Config.ISO8601.get().parse(latestMessageId.substring(0, latestMessageId.indexOf("Z") + 1)));
+                    while (true) {
+                        processSingleBatchOfPendingMessages();
 
-                    // retrieve a handful of messages (ten) off the queue for processing
-                    List<byte[]> messagesToProcess = jedis.lrange(RedisBackplaneMessageDAO.V2_MESSAGE_QUEUE.getBytes(), 0, 9);
-
-                    // only enter the next block if we have messages to process
-                    if (messagesToProcess.size() > 0) {
-
-                        // set watch on the lock key - this will allow the transaction to abort if
-                        // the lock is reset by another process
-                        jedis.watch(V2_WRITE_LOCK);
-
-                        Transaction transaction = jedis.multi();
-
-                        insertionTimes.clear();
-
-                        for (byte[] messageBytes : messagesToProcess) {
-
-                            if (messageBytes != null) {
-                                BackplaneMessage backplaneMessage = (BackplaneMessage) SerializationUtils.deserialize(messageBytes);
-
-                                if (backplaneMessage != null) {
-
-                                    // retrieve the expiration config per the bus
-                                    BusConfig2 busConfig2 = daoFactory.getBusDao().get(backplaneMessage.getBus());
-                                    int retentionTimeSeconds = 60;
-                                    int retentionTimeStickySeconds = 3600;
-                                    if (busConfig2 != null) {
-                                        // should be here in normal flow
-                                        retentionTimeSeconds = busConfig2.getRetentionTimeSeconds();
-                                        retentionTimeStickySeconds = busConfig2.getRetentionTimeStickySeconds();
-                                    }
-
-                                    String oldId = backplaneMessage.getIdValue();
-                                    insertionTimes.add(oldId);
-
-                                    // TOTAL ORDER GUARANTEE
-                                    // verify that the new message ID is greater than all existing message IDs
-                                    // if not, uptick id by 1 ms and insert
-                                    // this means that all message ids have unique time stamps, even if they
-                                    // arrived at the same time.
-
-                                    lastIdAndDate = backplaneMessage.updateId(lastIdAndDate);
-                                    String newId = backplaneMessage.getIdValue();
-
-                                    // messageTime is guaranteed to be a unique identifier of the message
-                                    // because of the TOTAL ORDER mechanism above
-                                    long messageTime = BackplaneMessage.getDateFromId(newId).getTime();
-
-                                    // <ATOMIC>
-                                    // save the individual message by key
-                                    transaction.set(RedisBackplaneMessageDAO.getKey(newId), SerializationUtils.serialize(backplaneMessage));
-                                    // set the message TTL
-                                    if (backplaneMessage.isSticky()) {
-                                        transaction.expire(RedisBackplaneMessageDAO.getKey(newId), retentionTimeStickySeconds);
-                                    } else {
-                                        transaction.expire(RedisBackplaneMessageDAO.getKey(newId), retentionTimeSeconds);
-                                    }
-
-                                    // channel and bus sorted set index
-                                    transaction.zadd(RedisBackplaneMessageDAO.getChannelKey(backplaneMessage.getChannel()), messageTime,
-                                            backplaneMessage.getIdValue().getBytes());
-                                    transaction.zadd(RedisBackplaneMessageDAO.getBusKey(backplaneMessage.getBus()), messageTime,
-                                            backplaneMessage.getIdValue().getBytes());
-
-                                    // add message id to sorted set of all message ids as an index
-                                    String metaData = backplaneMessage.getBus() + " " + backplaneMessage.getChannel() + " " +
-                                            backplaneMessage.getIdValue();
-
-                                    transaction.zadd(RedisBackplaneMessageDAO.V2_MESSAGES.getBytes(), messageTime, metaData.getBytes());
-
-                                    // add message id to sorted set keyed by bus as an index
-
-                                    // make sure all subscribers get the update
-                                    transaction.publish("alerts", newId);
-
-                                    // pop one message off the queue - which will only happen if this transaction is successful
-                                    transaction.lpop(RedisBackplaneMessageDAO.V2_MESSAGE_QUEUE);
-                                    // </ATOMIC>
-
-                                    logger.info("pipelined v2 message " + oldId + " -> " + newId);
-                                }
-                            }
-                        }
-
-                        logger.info("processing transaction with " + insertionTimes.size() + " v2 message(s)");
-                        if (transaction.exec() == null) {
-                            // the transaction failed, which likely means the lock was lost
-                            logger.warn("transaction failed! - halting work for now");
-                            return;
-                        }
-
-                        logger.info("flushed " + insertionTimes.size() + " v2 messages");
-                        long now = System.currentTimeMillis();
-                        for (String insertionId : insertionTimes) {
-                            long diff = now - com.janrain.backplane.server.BackplaneMessage.getDateFromId(insertionId).getTime();
-                            timeInQueue.update(diff);
-                            if (diff < 0 || diff > 2880000) {
-                                logger.warn("time diff is bizarre at: " + diff);
-                            }
+                        if (!Redis.getInstance().refreshLock(V2_WRITE_LOCK, uuid, LOCK_SECONDS)) {
+                            throw new Exception("lost lock! - halting work for now");
                         }
                     }
-
-                    if (!Redis.getInstance().refreshLock(V2_WRITE_LOCK, uuid, LOCK_SECONDS)) {
-                            logger.warn("lost lock! - halting work for now");
-                            return;
-                    }
-                } catch (Exception e) {
-                    logger.warn("error " + e.getMessage());
-                    Redis.getInstance().releaseBrokenResourceToPool(jedis);
-                    jedis = null;
-                    Thread.sleep(2000);
-                    //return;
+                } catch (Throwable e) {
+                    logger.warn("exception thrown in message processor thread: " + e.getMessage());
                 } finally {
-                    if (jedis != null) {
-                        Redis.getInstance().releaseToPool(jedis);
+                    logger.info("v2 message processor releasing lock");
+                    // we may have already lost the lock, but if we exit for any other reason, good to release it
+                    try {
+                        Redis.getInstance().releaseLock(V2_WRITE_LOCK, uuid);
+                    } catch (Exception e) {
+                        // ignore
                     }
                 }
-            } while (loop);
+                logger.info("attempting to reacquire");
+                try {
+                    Thread.sleep(2000);
+                } catch (InterruptedException e) {
+                    // ignore
+                }
+            }
 
-        } catch (Exception e) {
-            logger.warn("exception thrown in message processor thread: " + e.getMessage());
         } finally {
-            logger.info("v2 message processor releasing lock");
-            // we may have already lost the lock, but if we exit for any other reason, good to release it
-            Redis.getInstance().releaseLock(V2_WRITE_LOCK, uuid);
+            // very bad if we get here...
+            logger.error("method exited but it should NEVER do so");
         }
 
     }
+
+    private void processSingleBatchOfPendingMessages() throws Exception {
+
+        Jedis jedis = null;
+
+        try {
+
+            jedis = Redis.getInstance().getJedis();
+
+            List<String> insertionTimes = new ArrayList<String>();
+
+            // retrieve the latest 'live' message ID
+            String latestMessageId = null;
+            Set<String> latestMessageMetaSet = jedis.zrange(RedisBackplaneMessageDAO.V2_MESSAGES, -1, -1);
+            if (latestMessageMetaSet != null && !latestMessageMetaSet.isEmpty()) {
+                String[] segs = latestMessageMetaSet.iterator().next().split(" ");
+                if (segs.length == 3) {
+                    latestMessageId = segs[2];
+                }
+            }
+
+            Pair<String, Date> lastIdAndDate = StringUtils.isEmpty(latestMessageId) ?
+                    new Pair<String, Date>("", new Date(0)) :
+                    new Pair<String, Date>(latestMessageId, Backplane1Config.ISO8601.get().parse(latestMessageId.substring(0, latestMessageId.indexOf("Z") + 1)));
+
+            // retrieve a handful of messages (ten) off the queue for processing
+            List<byte[]> messagesToProcess = jedis.lrange(RedisBackplaneMessageDAO.V2_MESSAGE_QUEUE.getBytes(), 0, 9);
+
+            // only enter the next block if we have messages to process
+            if (messagesToProcess.size() > 0) {
+
+                // set watch on the lock key - this will allow the transaction to abort if
+                // the lock is reset by another process
+                jedis.watch(V2_WRITE_LOCK);
+
+                Transaction transaction = jedis.multi();
+
+                insertionTimes.clear();
+
+                for (byte[] messageBytes : messagesToProcess) {
+
+                    if (messageBytes != null) {
+                        BackplaneMessage backplaneMessage = (BackplaneMessage) SerializationUtils.deserialize(messageBytes);
+
+                        if (backplaneMessage != null) {
+                            processSingleMessage(backplaneMessage, transaction, insertionTimes, lastIdAndDate);
+                        }
+                    }
+                }
+
+                logger.info("processing transaction with " + insertionTimes.size() + " v2 message(s)");
+                if (transaction.exec() == null) {
+                    // the transaction failed, which likely means the lock was lost
+                    logger.warn("transaction failed! - halting work for now");
+                    return;
+                }
+
+                logger.info("flushed " + insertionTimes.size() + " v2 messages");
+                long now = System.currentTimeMillis();
+                for (String insertionId : insertionTimes) {
+                    long diff = now - com.janrain.backplane.server.BackplaneMessage.getDateFromId(insertionId).getTime();
+                    timeInQueue.update(diff);
+                    if (diff < 0 || diff > 2880000) {
+                        logger.warn("time diff is bizarre at: " + diff);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // if we get here, something bonked, like a connection to the redis server
+            logger.warn("an error occurred while trying to process v2 message batch: " + e.getMessage());
+            Redis.getInstance().releaseBrokenResourceToPool(jedis);
+            jedis = null;
+            throw e;
+        } finally {
+            if (jedis != null) {
+                Redis.getInstance().releaseToPool(jedis);
+            }
+        }
+    }
+
+    private void processSingleMessage(BackplaneMessage backplaneMessage,
+                                 Transaction transaction, List<String> insertionTimes,
+                                 Pair<String, Date> lastIdAndDate) throws BackplaneServerException {
+
+        // retrieve the expiration config per the bus
+        BusConfig2 busConfig2 = daoFactory.getBusDao().get(backplaneMessage.getBus());
+        int retentionTimeSeconds = 60;
+        int retentionTimeStickySeconds = 3600;
+        if (busConfig2 != null) {
+            // should be here in normal flow
+            retentionTimeSeconds = busConfig2.getRetentionTimeSeconds();
+            retentionTimeStickySeconds = busConfig2.getRetentionTimeStickySeconds();
+        }
+
+        String oldId = backplaneMessage.getIdValue();
+        insertionTimes.add(oldId);
+
+        // TOTAL ORDER GUARANTEE
+        // verify that the new message ID is greater than all existing message IDs
+        // if not, uptick id by 1 ms and insert
+        // this means that all message ids have unique time stamps, even if they
+        // arrived at the same time.
+
+        lastIdAndDate = backplaneMessage.updateId(lastIdAndDate);
+        String newId = backplaneMessage.getIdValue();
+
+        // messageTime is guaranteed to be a unique identifier of the message
+        // because of the TOTAL ORDER mechanism above
+        long messageTime = BackplaneMessage.getDateFromId(newId).getTime();
+
+        // <ATOMIC>
+        // save the individual message by key
+        transaction.set(RedisBackplaneMessageDAO.getKey(newId), SerializationUtils.serialize(backplaneMessage));
+        // set the message TTL
+        if (backplaneMessage.isSticky()) {
+            transaction.expire(RedisBackplaneMessageDAO.getKey(newId), retentionTimeStickySeconds);
+        } else {
+            transaction.expire(RedisBackplaneMessageDAO.getKey(newId), retentionTimeSeconds);
+        }
+
+        // channel and bus sorted set index
+        transaction.zadd(RedisBackplaneMessageDAO.getChannelKey(backplaneMessage.getChannel()), messageTime,
+                backplaneMessage.getIdValue().getBytes());
+        transaction.zadd(RedisBackplaneMessageDAO.getBusKey(backplaneMessage.getBus()), messageTime,
+                backplaneMessage.getIdValue().getBytes());
+
+        // add message id to sorted set of all message ids as an index
+        String metaData = backplaneMessage.getBus() + " " + backplaneMessage.getChannel() + " " +
+                backplaneMessage.getIdValue();
+
+        transaction.zadd(RedisBackplaneMessageDAO.V2_MESSAGES.getBytes(), messageTime, metaData.getBytes());
+
+        // add message id to sorted set keyed by bus as an index
+
+        // make sure all subscribers get the update
+        transaction.publish("alerts", newId);
+
+        // pop one message off the queue - which will only happen if this transaction is successful
+        transaction.lpop(RedisBackplaneMessageDAO.V2_MESSAGE_QUEUE);
+        // </ATOMIC>
+
+        logger.info("pipelined v2 message " + oldId + " -> " + newId);
+
+    }
+
 
     private static final String V2_WRITE_LOCK = "v2_write_lock";
     private static final int LOCK_SECONDS = 30;

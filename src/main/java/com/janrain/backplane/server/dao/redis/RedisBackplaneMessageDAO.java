@@ -106,6 +106,37 @@ public class RedisBackplaneMessageDAO extends DAO<BackplaneMessage> {
         }
     }
 
+    public void deleteExpiredMessages() {
+
+        Jedis jedis = null;
+
+        try {
+
+            logger.info("preparing to cleanup v1 messages");
+
+            jedis = Redis.getInstance().getJedis();
+
+            Set<byte[]> messageMetaBytes = jedis.zrangeByScore(RedisBackplaneMessageDAO.V1_MESSAGES.getBytes(), 0, Double.MAX_VALUE);
+            if (messageMetaBytes != null) {
+                for (byte[] b : messageMetaBytes) {
+                    String metaData = new String(b);
+                    String[] segs = metaData.split(" ");
+                    String key = segs[2];
+                    // if the message body is not found, it expired and should be removed from indexes
+                    if (jedis.get(RedisBackplaneMessageDAO.getKey(key)) == null) {
+                        delete(key);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logger.error(e);
+        } finally {
+            logger.info("exiting v1 message cleanup");
+            Redis.getInstance().releaseToPool(jedis);
+        }
+
+    }
+
     @Override
     public BackplaneMessage get(String key) {
         byte[] messageBytes = Redis.getInstance().get(key.getBytes());

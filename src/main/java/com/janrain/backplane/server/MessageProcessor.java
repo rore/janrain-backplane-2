@@ -88,35 +88,11 @@ public class MessageProcessor extends JedisPubSub {
      * Processor to remove expired messages
      */
     public void cleanupMessages() {
-
-        Jedis jedis = null;
-
         try {
-
-            logger.info("preparing to cleanup messages");
-
-            jedis = Redis.getInstance().getJedis();
-
-            Set<byte[]> messageMetaBytes = jedis.zrangeByScore(RedisBackplaneMessageDAO.V1_MESSAGES.getBytes(), 0, Double.MAX_VALUE);
-            if (messageMetaBytes != null) {
-                for (byte[] b : messageMetaBytes) {
-                    String metaData = new String(b);
-                    String[] segs = metaData.split(" ");
-                    String key = segs[2];
-                    // if the message body is not found, it expired and should be removed from indexes
-                    if (jedis.get(RedisBackplaneMessageDAO.getKey(key)) == null) {
-                        DaoFactory.getBackplaneMessageDAO().delete(key);
-                    }
-                }
-            }
+            DaoFactory.getBackplaneMessageDAO().deleteExpiredMessages();
         } catch (Exception e) {
             logger.error(e);
-        } finally {
-            logger.info("exiting message cleanup");
-            Redis.getInstance().releaseToPool(jedis);
         }
-
-
     }
 
     /**
@@ -287,7 +263,11 @@ public class MessageProcessor extends JedisPubSub {
         } finally {
             logger.info("message processor releasing lock");
             // we may have already lost the lock, but if we exit for any other reason, good to release it
-            Redis.getInstance().releaseLock(V1_WRITE_LOCK, uuid);
+            try {
+                Redis.getInstance().releaseLock(V1_WRITE_LOCK, uuid);
+            } catch (Exception e) {
+                // ignore
+            }
         }
     }
 

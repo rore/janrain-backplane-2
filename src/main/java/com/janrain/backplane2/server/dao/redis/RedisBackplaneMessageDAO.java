@@ -300,7 +300,7 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
         } catch (Exception e) {
             logger.error(e);
         } finally {
-            logger.info("exiting message cleanup");
+            logger.info("exiting v2 message cleanup");
             Redis.getInstance().releaseToPool(jedis);
         }
     }

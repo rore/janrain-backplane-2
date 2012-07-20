@@ -227,13 +227,14 @@ public class Backplane2Config {
 
         ScheduledExecutorService maintenanceTask = Executors.newScheduledThreadPool(2);
 
-        maintenanceTask.scheduleAtFixedRate(new Runnable() {
+        // one shot thing, but we expect it to run while this node is up
+        maintenanceTask.schedule(new Runnable() {
             @Override
             public void run() {
                 logger.info("creating v2 message processor thread");
-                messageProcessor.insertMessages(true);
+                messageProcessor.insertMessages();
             }
-        }, 0, 30, TimeUnit.SECONDS);
+        }, 0, TimeUnit.SECONDS);
 
         maintenanceTask.scheduleAtFixedRate(new Runnable() {
             @Override

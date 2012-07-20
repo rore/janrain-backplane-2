@@ -122,7 +122,8 @@ public class Backplane1ControllerTest extends TestCase {
             Map<String,Object> msg = new ObjectMapper().readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
             message = new BackplaneMessage("test", "test", msg);
             DaoFactory.getBackplaneMessageDAO().persist(message);
-            new MessageProcessor().insertMessages(false);
+
+            Thread.sleep(1000);
 
             String encodedCredentials = new String(Base64.encode(credentials.getBytes()));
             request.setAuthType("BASIC");
