@@ -40,6 +40,7 @@ window.Backplane = window.Backplane || (function() {
     }
     BP.version = "2.0.0";
     BP.token = null;
+    BP.refresh_token = null;
     BP.channelName = null;
     BP.block = 0;
     BP.config = {};
@@ -203,13 +204,15 @@ Backplane.expectMessagesWithin = function(interval, types) {
 
 /**
  * Init callback function
- * @param initPayload in the form {"access_token":"anJeTstYkz64Xf3XGaANFE","expires_in":3600,
- *              "token_type":"Bearer","scope":"channel:iEuR8VE9MDfmD3dBxbCtdqgYRtDsDnrh"}
+ * @param initPayload in the form {"token_type":"Bearer","access_token":"AAWBuJ1H2OjNvfK2oJXyXh",
+ *      "expires_in":3600,"scope":"bus:test-bus channel:XUw4aR074KGMit1lHepKOKAQZtBwxSUt",
+ *      "refresh_token":"ARXU21NC8gLdKwIM6SZIf0"}
  */
 Backplane.finishInit = function (initPayload) {
 
     this.log("received access token and channel from server");
     this.token = initPayload.access_token;
+    this.refresh_token = initPayload.refresh_token;
     var scopes = initPayload.scope.split(" ");
     for (var k = 0; k < scopes.length; k++) {
         if (scopes[k].indexOf("channel:") > -1) {
