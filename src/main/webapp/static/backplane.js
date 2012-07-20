@@ -232,17 +232,18 @@ Backplane.resetCookieChannel = function() {
 };
 
 Backplane.fetchNewChannel = function() {
-    var oldScript;
+    var oldScript = document.getElementById('fetchChannelId'); 
     // cleanup old script if it exists to prevent memory leak
-    while (oldScript = document.getElementById('fetchChannelId')) {
+    while (oldScript && oldScript.parentNode)) {
         oldScript.parentNode.removeChild(oldScript);
         for (var prop in oldScript) {
             delete oldScript[prop];
         }
+	oldScript = document.getElementById('fetchChannelId')
     }
 
     var script = document.createElement("script");
-    script.src =  this.config.serverBaseURL + "/bus/" + this.config.busName + "/channel/new?callback=Backplane.finishInit";
+    script.src =  this.config.serverBaseURL + "/bus/" + this.config.busName + "/channel/new?callback=Backplane.finishInit" + "&rnd=" + Math.random();
     script.type = "text/javascript";
     script.id = 'fetchChannelId';
     var firstScript = document.getElementsByTagName("script")[0];
