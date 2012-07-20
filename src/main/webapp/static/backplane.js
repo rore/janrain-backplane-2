@@ -234,7 +234,7 @@ Backplane.resetCookieChannel = function() {
 Backplane.fetchNewChannel = function() {
     var oldScript = document.getElementById('fetchChannelId'); 
     // cleanup old script if it exists to prevent memory leak
-    while (oldScript && oldScript.parentNode)) {
+    while (oldScript && oldScript.parentNode) {
         oldScript.parentNode.removeChild(oldScript);
         for (var prop in oldScript) {
             delete oldScript[prop];
