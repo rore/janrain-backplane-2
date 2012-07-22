@@ -25,6 +25,11 @@ import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.util.AwsUtility;
 import com.janrain.commons.util.InitSystemProps;
 import com.janrain.crypto.HmacHashUtils;
+import com.netflix.curator.framework.CuratorFramework;
+import com.netflix.curator.framework.CuratorFrameworkFactory;
+import com.netflix.curator.framework.recipes.leader.LeaderSelector;
+import com.netflix.curator.framework.recipes.leader.LeaderSelectorListener;
+import com.netflix.curator.retry.ExponentialBackoffRetry;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.MetricsRegistry;
 import com.yammer.metrics.reporting.ConsoleReporter;
@@ -35,6 +40,7 @@ import org.springframework.context.annotation.Scope;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.inject.Inject;
+import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Properties;
@@ -228,13 +234,13 @@ public class Backplane2Config {
         ScheduledExecutorService maintenanceTask = Executors.newScheduledThreadPool(2);
 
         // one shot thing, but we expect it to run while this node is up
-        maintenanceTask.schedule(new Runnable() {
+/*        maintenanceTask.schedule(new Runnable() {
             @Override
             public void run() {
                 logger.info("creating v2 message processor thread");
                 messageProcessor.insertMessages();
             }
-        }, 0, TimeUnit.SECONDS);
+        }, 0, TimeUnit.SECONDS);*/
 
         maintenanceTask.scheduleAtFixedRate(new Runnable() {
             @Override
@@ -273,6 +279,15 @@ public class Backplane2Config {
         }*/
 
         this.tokenCacheCleanup = createCacheCleanupTask();
+
+        try {
+            CuratorFramework client = CuratorFrameworkFactory.newClient("localhost:2181", new ExponentialBackoffRetry(50, 20));
+            client.start();
+            LeaderSelector leaderSelector = new LeaderSelector(client, "/v2_worker", new V2MessageProcessor(daoFactory));
+            leaderSelector.start();
+        } catch (Exception e) {
+            logger.error(e);
+        }
 
     }
 

@@ -22,6 +22,10 @@ import com.janrain.cache.CachedL1;
 import com.janrain.commons.supersimpledb.message.AbstractNamedMap;
 import com.janrain.commons.util.AwsUtility;
 import com.janrain.commons.util.InitSystemProps;
+import com.netflix.curator.framework.CuratorFramework;
+import com.netflix.curator.framework.CuratorFrameworkFactory;
+import com.netflix.curator.framework.recipes.leader.LeaderSelector;
+import com.netflix.curator.retry.ExponentialBackoffRetry;
 import com.yammer.metrics.Metrics;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -200,13 +204,13 @@ public class Backplane1Config {
 
         ScheduledExecutorService messageWorkerTask = Executors.newScheduledThreadPool(3);
 
-        messageWorkerTask.scheduleAtFixedRate(new Runnable() {
+/*        messageWorkerTask.scheduleAtFixedRate(new Runnable() {
             @Override
             public void run() {
                 logger.info("creating message processor thread");
                 messageProcessor.insertMessages(true);
             }
-        }, 0, 30, TimeUnit.SECONDS);
+        }, 0, 30, TimeUnit.SECONDS);*/
 
         messageWorkerTask.scheduleAtFixedRate(new Runnable() {
             @Override
@@ -231,6 +235,15 @@ public class Backplane1Config {
     @PostConstruct
     private void init() {
         backgroundServices.add(createMessageWorker());
+
+        try {
+            CuratorFramework client = CuratorFrameworkFactory.newClient("localhost:2181", new ExponentialBackoffRetry(50, 20));
+            client.start();
+            LeaderSelector leaderSelector = new LeaderSelector(client, "/v1_worker", new MessageProcessor());
+            leaderSelector.start();
+        } catch (Exception e) {
+            logger.error(e);
+        }
     }
 
     @PreDestroy

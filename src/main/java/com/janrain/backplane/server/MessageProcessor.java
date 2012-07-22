@@ -22,8 +22,12 @@ import com.janrain.backplane.server.dao.DaoFactory;
 import com.janrain.backplane2.server.dao.BackplaneMessageDAO;
 import com.janrain.commons.util.Pair;
 import com.janrain.redis.Redis;
+import com.netflix.curator.framework.CuratorFramework;
+import com.netflix.curator.framework.recipes.leader.LeaderSelectorListener;
+import com.netflix.curator.framework.state.ConnectionState;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Histogram;
+import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -36,7 +40,7 @@ import java.util.*;
 /**
  * @author Tom Raney
  */
-public class MessageProcessor extends JedisPubSub {
+public class MessageProcessor extends JedisPubSub implements LeaderSelectorListener {
 
     public MessageProcessor() {}
 
@@ -101,23 +105,8 @@ public class MessageProcessor extends JedisPubSub {
      */
     public void insertMessages(boolean loop) {
 
-        String uuid = UUID.randomUUID().toString();
-
         try {
-            logger.info("message processor waiting for exclusive write lock");
-
-            // TRY forever to get lock to do work
-            String lock = Redis.getInstance().getLock(V1_WRITE_LOCK, uuid, -1, LOCK_SECONDS);
-
-            // if we lose our lock sometime between this point and the lock refresh, the
-            // transaction will fail
-
-            if (lock != null) {
-                logger.info("message processor got lock " + lock);
-            } else {
-                logger.warn("something went terribly wrong");
-                return;
-            }
+            logger.info("v1 message processor started");
 
             List<String> insertionTimes = new ArrayList<String>();
             do {
@@ -143,15 +132,14 @@ public class MessageProcessor extends JedisPubSub {
                         new Pair<String, Date>("", new Date(0)) :
                         new Pair<String, Date>(latestMessageId, Backplane1Config.ISO8601.get().parse(latestMessageId.substring(0, latestMessageId.indexOf("Z") + 1)));
 
+                // set watch on the messages sorted set of keys
+                jedis.watch(RedisBackplaneMessageDAO.V1_MESSAGES);
+
                 // retrieve a handful of messages (ten) off the queue for processing
                 List<byte[]> messagesToProcess = jedis.lrange(RedisBackplaneMessageDAO.V1_MESSAGE_QUEUE.getBytes(), 0, 9);
 
                 // only enter the next block if we have messages to process
                 if (messagesToProcess.size() > 0) {
-
-                    // set watch on the lock key - this will allow the transaction to abort if
-                    // the lock is reset by another process
-                    jedis.watch(V1_WRITE_LOCK);
 
                     Transaction transaction = jedis.multi();
 
@@ -224,7 +212,7 @@ public class MessageProcessor extends JedisPubSub {
 
                     logger.info("processing transaction with " + insertionTimes.size() + " message(s)");
                     if (transaction.exec() == null) {
-                        // the transaction failed, which likely means the lock was lost
+                        // the transaction failed
                         logger.warn("transaction failed! - halting work for now");
                         return;
                     }
@@ -240,18 +228,15 @@ public class MessageProcessor extends JedisPubSub {
                     }
                 } // messagesToProcess > 0
 
-                if (!Redis.getInstance().refreshLock(V1_WRITE_LOCK, uuid, LOCK_SECONDS)) {
-                    logger.warn("lost lock! - halting work for now");
-                    return;
-                }
-
                 } catch (Exception e) {
                     logger.warn("error " + e.getMessage());
+                    jedis.unwatch();
                     Redis.getInstance().releaseBrokenResourceToPool(jedis);
                     jedis = null;
                     Thread.sleep(2000);
                 } finally {
                     if (jedis != null) {
+                        jedis.unwatch();
                         Redis.getInstance().releaseToPool(jedis);
                     }
                 }
@@ -260,21 +245,21 @@ public class MessageProcessor extends JedisPubSub {
 
         } catch (Exception e) {
             logger.warn("exception thrown in message processor thread: " + e.getMessage());
-        } finally {
-            logger.info("message processor releasing lock");
-            // we may have already lost the lock, but if we exit for any other reason, good to release it
-            try {
-                Redis.getInstance().releaseLock(V1_WRITE_LOCK, uuid);
-            } catch (Exception e) {
-                // ignore
-            }
         }
     }
-
-    private static final String V1_WRITE_LOCK = "v1_write_lock";
-    private static final int LOCK_SECONDS = 30;
 
     private static final Logger logger = Logger.getLogger(MessageProcessor.class);
 
     private final Histogram timeInQueue = Metrics.newHistogram(MessageProcessor.class, "time_in_queue");
+
+    @Override
+    public void takeLeadership(CuratorFramework curatorFramework) throws Exception {
+        logger.info("v1 leader elected");
+        insertMessages(true);
+    }
+
+    @Override
+    public void stateChanged(CuratorFramework curatorFramework, ConnectionState connectionState) {
+        logger.info("state changed");
+    }
 }
