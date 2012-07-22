@@ -204,66 +204,75 @@ public class V2MessageProcessor extends JedisPubSub implements LeaderSelectorLis
 
     private void processSingleMessage(BackplaneMessage backplaneMessage,
                                  Transaction transaction, List<String> insertionTimes,
-                                 Pair<String, Date> lastIdAndDate) throws BackplaneServerException {
+                                 Pair<String, Date> lastIdAndDate) throws Exception {
 
-        // retrieve the expiration config per the bus
-        BusConfig2 busConfig2 = daoFactory.getBusDao().get(backplaneMessage.getBus());
-        int retentionTimeSeconds = 60;
-        int retentionTimeStickySeconds = 3600;
-        if (busConfig2 != null) {
-            // should be here in normal flow
-            retentionTimeSeconds = busConfig2.getRetentionTimeSeconds();
-            retentionTimeStickySeconds = busConfig2.getRetentionTimeStickySeconds();
+        try {
+            // retrieve the expiration config per the bus
+            BusConfig2 busConfig2 = daoFactory.getBusDao().get(backplaneMessage.getBus());
+            int retentionTimeSeconds = 60;
+            int retentionTimeStickySeconds = 3600;
+            if (busConfig2 != null) {
+                // should be here in normal flow
+                retentionTimeSeconds = busConfig2.getRetentionTimeSeconds();
+                retentionTimeStickySeconds = busConfig2.getRetentionTimeStickySeconds();
+            }
+
+            String oldId = backplaneMessage.getIdValue();
+            insertionTimes.add(oldId);
+
+            // TOTAL ORDER GUARANTEE
+            // verify that the new message ID is greater than all existing message IDs
+            // if not, uptick id by 1 ms and insert
+            // this means that all message ids have unique time stamps, even if they
+            // arrived at the same time.
+
+            lastIdAndDate = backplaneMessage.updateId(lastIdAndDate);
+            String newId = backplaneMessage.getIdValue();
+
+            // messageTime is guaranteed to be a unique identifier of the message
+            // because of the TOTAL ORDER mechanism above
+            long messageTime = 0;
+            try {
+                BackplaneMessage.getDateFromId(newId).getTime();
+            } catch (Exception e) {
+                // ignore
+            }
+
+            // <ATOMIC>
+            // save the individual message by key
+            transaction.set(RedisBackplaneMessageDAO.getKey(newId), SerializationUtils.serialize(backplaneMessage));
+            // set the message TTL
+            if (backplaneMessage.isSticky()) {
+                transaction.expire(RedisBackplaneMessageDAO.getKey(newId), retentionTimeStickySeconds);
+            } else {
+                transaction.expire(RedisBackplaneMessageDAO.getKey(newId), retentionTimeSeconds);
+            }
+
+            // channel and bus sorted set index
+            transaction.zadd(RedisBackplaneMessageDAO.getChannelKey(backplaneMessage.getChannel()), messageTime,
+                    backplaneMessage.getIdValue().getBytes());
+            transaction.zadd(RedisBackplaneMessageDAO.getBusKey(backplaneMessage.getBus()), messageTime,
+                    backplaneMessage.getIdValue().getBytes());
+
+            // add message id to sorted set of all message ids as an index
+            String metaData = backplaneMessage.getBus() + " " + backplaneMessage.getChannel() + " " +
+                    backplaneMessage.getIdValue();
+
+            transaction.zadd(RedisBackplaneMessageDAO.V2_MESSAGES.getBytes(), messageTime, metaData.getBytes());
+
+            // add message id to sorted set keyed by bus as an index
+
+            // make sure all subscribers get the update
+            transaction.publish("alerts", newId);
+
+            // pop one message off the queue - which will only happen if this transaction is successful
+            transaction.lpop(RedisBackplaneMessageDAO.V2_MESSAGE_QUEUE);
+            // </ATOMIC>
+
+            logger.info("pipelined v2 message " + oldId + " -> " + newId);
+        } catch (Exception e) {
+            throw e;
         }
-
-        String oldId = backplaneMessage.getIdValue();
-        insertionTimes.add(oldId);
-
-        // TOTAL ORDER GUARANTEE
-        // verify that the new message ID is greater than all existing message IDs
-        // if not, uptick id by 1 ms and insert
-        // this means that all message ids have unique time stamps, even if they
-        // arrived at the same time.
-
-        lastIdAndDate = backplaneMessage.updateId(lastIdAndDate);
-        String newId = backplaneMessage.getIdValue();
-
-        // messageTime is guaranteed to be a unique identifier of the message
-        // because of the TOTAL ORDER mechanism above
-        long messageTime = BackplaneMessage.getDateFromId(newId).getTime();
-
-        // <ATOMIC>
-        // save the individual message by key
-        transaction.set(RedisBackplaneMessageDAO.getKey(newId), SerializationUtils.serialize(backplaneMessage));
-        // set the message TTL
-        if (backplaneMessage.isSticky()) {
-            transaction.expire(RedisBackplaneMessageDAO.getKey(newId), retentionTimeStickySeconds);
-        } else {
-            transaction.expire(RedisBackplaneMessageDAO.getKey(newId), retentionTimeSeconds);
-        }
-
-        // channel and bus sorted set index
-        transaction.zadd(RedisBackplaneMessageDAO.getChannelKey(backplaneMessage.getChannel()), messageTime,
-                backplaneMessage.getIdValue().getBytes());
-        transaction.zadd(RedisBackplaneMessageDAO.getBusKey(backplaneMessage.getBus()), messageTime,
-                backplaneMessage.getIdValue().getBytes());
-
-        // add message id to sorted set of all message ids as an index
-        String metaData = backplaneMessage.getBus() + " " + backplaneMessage.getChannel() + " " +
-                backplaneMessage.getIdValue();
-
-        transaction.zadd(RedisBackplaneMessageDAO.V2_MESSAGES.getBytes(), messageTime, metaData.getBytes());
-
-        // add message id to sorted set keyed by bus as an index
-
-        // make sure all subscribers get the update
-        transaction.publish("alerts", newId);
-
-        // pop one message off the queue - which will only happen if this transaction is successful
-        transaction.lpop(RedisBackplaneMessageDAO.V2_MESSAGE_QUEUE);
-        // </ATOMIC>
-
-        logger.info("pipelined v2 message " + oldId + " -> " + newId);
 
     }
 
