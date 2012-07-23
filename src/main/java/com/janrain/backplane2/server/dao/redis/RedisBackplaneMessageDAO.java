@@ -332,6 +332,10 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
         try {
             jedis = Redis.getInstance().getJedis();
             Date d = BackplaneMessage.getDateFromId(id);
+            if (d == null) {
+                logger.warn("cannot retrieve date from " + id + ": aborting delete");
+                return;
+            }
             Set<String> sortedSetBytes = jedis.zrangeByScore(V2_MESSAGES, d.getTime(), d.getTime());
 
             if (!sortedSetBytes.isEmpty()) {

@@ -123,7 +123,7 @@ public class RedisBackplaneMessageDAO extends DAO<BackplaneMessage> {
                     String[] segs = metaData.split(" ");
                     String key = segs[2];
                     // if the message body is not found, it expired and should be removed from indexes
-                    if (jedis.get(RedisBackplaneMessageDAO.getKey(key)) == null) {
+                    if (jedis.get(getKey(key)) == null) {
                         delete(key);
                     }
                 }
