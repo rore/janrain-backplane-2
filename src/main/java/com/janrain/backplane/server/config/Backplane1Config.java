@@ -237,7 +237,12 @@ public class Backplane1Config {
         backgroundServices.add(createMessageWorker());
 
         try {
-            CuratorFramework client = CuratorFrameworkFactory.newClient("localhost:2181", new ExponentialBackoffRetry(50, 20));
+            String zkServerConfig = System.getProperty("ZOOKEEPER_SERVERS");
+            if (StringUtils.isEmpty(zkServerConfig)) {
+                logger.error("Cannot find configuration entry for ZooKeeper server");
+                System.exit(1);
+            }
+            CuratorFramework client = CuratorFrameworkFactory.newClient(zkServerConfig, new ExponentialBackoffRetry(50, 20));
             client.start();
             LeaderSelector leaderSelector = new LeaderSelector(client, "/v1_worker", new MessageProcessor());
             leaderSelector.start();

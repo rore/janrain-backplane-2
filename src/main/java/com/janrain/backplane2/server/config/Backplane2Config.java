@@ -281,7 +281,12 @@ public class Backplane2Config {
         this.tokenCacheCleanup = createCacheCleanupTask();
 
         try {
-            CuratorFramework client = CuratorFrameworkFactory.newClient("localhost:2181", new ExponentialBackoffRetry(50, 20));
+            String zkServerConfig = System.getProperty("ZOOKEEPER_SERVERS");
+            if (StringUtils.isEmpty(zkServerConfig)) {
+                logger.error("Cannot find configuration entry for ZooKeeper server");
+                System.exit(1);
+            }
+            CuratorFramework client = CuratorFrameworkFactory.newClient(zkServerConfig, new ExponentialBackoffRetry(50, 20));
             client.start();
             LeaderSelector leaderSelector = new LeaderSelector(client, "/v2_worker", new V2MessageProcessor(daoFactory));
             leaderSelector.start();
