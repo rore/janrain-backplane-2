@@ -25,7 +25,7 @@
 		http://www.springframework.org/schema/context/spring-context-3.0.xsd">
 
     <!-- pre-load system properties from application context, if it exists -->
-    <bean id="loadSystemProps" class="com.janrain.commons.util.InitSystemProps">
+    <bean id="loadSystemProps" class="com.janrain.backplane.server.utils.BackplaneSystemProps">
         <constructor-arg type="java.lang.String"><value>/log4j_special.xml</value></constructor-arg>
     </bean>
 

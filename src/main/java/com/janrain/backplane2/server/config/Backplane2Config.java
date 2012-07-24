@@ -17,6 +17,7 @@
 package com.janrain.backplane2.server.config;
 
 import com.janrain.backplane.server.config.BpServerConfig;
+import com.janrain.backplane.server.utils.BackplaneSystemProps;
 import com.janrain.backplane2.server.BackplaneServerException;
 import com.janrain.backplane2.server.V2MessageProcessor;
 import com.janrain.backplane2.server.dao.DAOFactory;
@@ -33,6 +34,7 @@ import com.netflix.curator.retry.ExponentialBackoffRetry;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.MetricsRegistry;
 import com.yammer.metrics.reporting.ConsoleReporter;
+import com.yammer.metrics.reporting.GraphiteReporter;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.springframework.context.annotation.Scope;
@@ -209,9 +211,21 @@ public class Backplane2Config {
     private Backplane2Config() {
         this.bpInstanceId = getAwsProp(InitSystemProps.AWS_INSTANCE_ID);
 
-        //TODO: remove at some point...
-        ConsoleReporter.enable(5, TimeUnit.MINUTES);
+        ConsoleReporter.enable(10, TimeUnit.MINUTES);
 
+        // Dump metrics to graphite server
+        String graphiteServer = getAwsProp(BackplaneSystemProps.GRAPHITE_SERVER);
+        if (StringUtils.isNotBlank(graphiteServer)) {
+            try {
+                String args[] = graphiteServer.split(":");
+                String server = args[0];
+                int port = Integer.parseInt(args[1]);
+                GraphiteReporter.enable(1, TimeUnit.MINUTES, server, port);
+                logger.info("Graphite server enabled at " + graphiteServer);
+            } catch (Exception e) {
+                logger.warn("could not enable Graphite from " + graphiteServer + " must be in the form SERVER:PORT");
+            }
+        }
         try {
             buildProperties.load(Backplane2Config.class.getResourceAsStream(BUILD_PROPERTIES));
             //assert(StringUtils.isNotBlank(getEncryptionKey()));
