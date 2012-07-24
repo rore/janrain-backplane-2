@@ -173,7 +173,8 @@ public class V2MessageProcessor extends JedisPubSub implements LeaderSelectorLis
                 }
 
                 logger.info("processing transaction with " + insertionTimes.size() + " v2 message(s)");
-                if (transaction.exec() == null) {
+                List<Object> results = transaction.exec();
+                if (results == null || results.size() == 0) {
                     // the transaction failed
                     logger.warn("transaction failed! - halting work for now");
                     return;
@@ -231,12 +232,7 @@ public class V2MessageProcessor extends JedisPubSub implements LeaderSelectorLis
 
             // messageTime is guaranteed to be a unique identifier of the message
             // because of the TOTAL ORDER mechanism above
-            long messageTime = 0;
-            try {
-                BackplaneMessage.getDateFromId(newId).getTime();
-            } catch (Exception e) {
-                // ignore
-            }
+            long messageTime = BackplaneMessage.getDateFromId(newId).getTime();
 
             // <ATOMIC>
             // save the individual message by key
