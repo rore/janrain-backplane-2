@@ -199,6 +199,7 @@ public class Backplane2Config {
     private ScheduledExecutorService cleanup;
     //private ExecutorService messageCacheUpdater;
     private ExecutorService tokenCacheCleanup;
+    private ExecutorService pingRedis;
 
 
     // Amazon specific instance-id value
@@ -282,6 +283,17 @@ public class Backplane2Config {
         return tokenCacheCleaner;
     }
 
+    private ExecutorService createPingTask() {
+        ScheduledExecutorService ping = Executors.newScheduledThreadPool(1);
+        ping.scheduleWithFixedDelay(new Runnable() {
+            @Override
+            public void run() {
+                com.janrain.redis.Redis.getInstance().ping();
+            }
+        }, 30, 10, TimeUnit.SECONDS);
+        return ping;
+    }
+
     @PostConstruct
     private void init() {
 
@@ -293,6 +305,7 @@ public class Backplane2Config {
         }*/
 
         this.tokenCacheCleanup = createCacheCleanupTask();
+        this.pingRedis = createPingTask();
 
         try {
             String zkServerConfig = System.getProperty("ZOOKEEPER_SERVERS");
@@ -304,6 +317,7 @@ public class Backplane2Config {
             client.start();
             LeaderSelector leaderSelector = new LeaderSelector(client, "/v2_worker", new V2MessageProcessor(daoFactory));
             leaderSelector.start();
+            com.janrain.redis.Redis.getInstance().setActiveRedisInstance(client);
         } catch (Exception e) {
             logger.error(e);
         }
@@ -315,6 +329,7 @@ public class Backplane2Config {
         Metrics.shutdown();
         shutdownExecutor(cleanup);
         shutdownExecutor(tokenCacheCleanup);
+        shutdownExecutor(pingRedis);
     }
 
     private void shutdownExecutor(ExecutorService executor) {
@@ -349,7 +364,11 @@ public class Backplane2Config {
             BpServerConfig bpServerConfigCache = (BpServerConfig) CachedL1.getInstance().getObject(BpServerConfig.BPSERVER_CONFIG_KEY);
             if (bpServerConfigCache == null) {
                 // pull from db if not found in cache
-                bpServerConfigCache = daoFactory.getConfigDAO().get(BpServerConfig.BPSERVER_CONFIG_KEY);
+                try {
+                    bpServerConfigCache = daoFactory.getConfigDAO().get(BpServerConfig.BPSERVER_CONFIG_KEY);
+                } catch (Exception e) {
+                    // if we get an error from the db, create a new object
+                }
 
                 if (bpServerConfigCache == null) {
                     // no instance found in cache or the db, so let's use the default record

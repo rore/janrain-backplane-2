@@ -76,14 +76,15 @@ public class BackplaneMessage extends ExternalizableCore {
     }
 
     public Pair<String, Date> updateId(Pair<String, Date> lastIdAndDate) {
-        String id = getIdValue();
-        if (id.compareTo(lastIdAndDate.getLeft()) <= 0) {
-            logger.warn("message has an id " + id + " that is not > the latest id of " + lastIdAndDate.getLeft());
+        long thisTime = getDateFromId(getIdValue()).getTime();
+        long lastTime = getDateFromId(lastIdAndDate.getLeft()).getTime();
+
+        if (thisTime <= lastTime) {
+            logger.warn("message has an id " + getIdValue() + " that is not > the latest id of " + lastIdAndDate.getLeft());
             Date newDate = new Date(lastIdAndDate.getRight().getTime() + 1);
-            id = generateMessageId(newDate);
-            put(Field.ID.getFieldName(), id);
+            put(Field.ID.getFieldName(), generateMessageId(newDate));
             logger.warn("fixed");
-            return new Pair<String, Date>(id, newDate);
+            return new Pair<String, Date>(getIdValue(), newDate);
         } else {
             return lastIdAndDate;
         }

@@ -166,7 +166,7 @@ public class MessageProcessor extends JedisPubSub implements LeaderSelectorListe
                                 insertionTimes.add(oldId);
 
                                 // TOTAL ORDER GUARANTEE
-                                // verify that the new message ID is greater than all existing message IDs
+                                // verify that the date portion of the new message ID is greater than all existing message ID dates
                                 // if not, uptick id by 1 ms and insert
                                 // this means that all message ids have unique time stamps, even if they
                                 // arrived at the same time.
