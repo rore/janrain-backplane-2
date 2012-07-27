@@ -290,10 +290,14 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
             Set<byte[]> messageMetaBytes = jedis.zrangeByScore(V2_MESSAGES.getBytes(), 0, Double.MAX_VALUE);
             if (messageMetaBytes != null) {
                 for (byte[] b : messageMetaBytes) {
-                    String metaData = new String(b);
-                    String[] segs = metaData.split(" ");
-                    if (jedis.get(getKey(segs[2])) == null) {
-                        delete(segs[2]);
+                    try {
+                        String metaData = new String(b);
+                        String[] segs = metaData.split(" ");
+                        if (jedis.get(getKey(segs[2])) == null) {
+                            delete(segs[2]);
+                        }
+                    } catch (Exception e) {
+                        // ignore
                     }
                 }
             }
@@ -327,7 +331,7 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
     }
 
     @Override
-    public void delete(String id) throws BackplaneServerException, TokenException {
+    public void delete(String id) throws BackplaneServerException {
         Jedis jedis = null;
         try {
             jedis = Redis.getInstance().getJedis();
@@ -336,7 +340,8 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
                 logger.warn("cannot retrieve date from " + id + ": aborting delete");
                 return;
             }
-            Set<String> sortedSetBytes = jedis.zrangeByScore(V2_MESSAGES, d.getTime(), d.getTime());
+            long time = d.getTime();
+            Set<String> sortedSetBytes = jedis.zrangeByScore(V2_MESSAGES, time, time);
 
             if (!sortedSetBytes.isEmpty()) {
                 String key = sortedSetBytes.iterator().next();
@@ -366,6 +371,9 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
             } else {
                 logger.warn("v2 message " + id + " not found in " + V2_MESSAGES);
             }
+        } catch (Exception e) {
+            logger.warn("failed to delete message " + id + ": " + e.getMessage());
+            throw new BackplaneServerException(e.getMessage());
         } finally {
             Redis.getInstance().releaseToPool(jedis);
         }
