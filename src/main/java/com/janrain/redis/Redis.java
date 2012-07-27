@@ -369,7 +369,7 @@ public class Redis implements PathChildrenCacheListener {
                 setRedisServer(BackplaneSystemProps.REDIS_SERVER_SECONDARY);
             }
         } finally {
-            logger.info("PING " + currentRedisServer + " -> " + reply);
+            logger.info("PING " + currentRedisServer + "(" + System.getProperty(currentRedisServer) + ") -> " + reply);
             getActivePool().returnResource(jedis);
         }
 
