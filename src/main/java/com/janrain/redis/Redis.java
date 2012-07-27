@@ -358,10 +358,10 @@ public class Redis implements PathChildrenCacheListener {
 
     public void ping() {
         Jedis jedis = null;
+        String reply = "ERROR";
         try {
             jedis = getActivePool().getResource();
-            logger.info("PING " + currentRedisServer);
-            logger.info(jedis.ping());
+            reply = jedis.ping();
         } catch (Exception e) {
             // something bad
             // if currently set to primary redis server, switch to secondary
@@ -369,6 +369,7 @@ public class Redis implements PathChildrenCacheListener {
                 setRedisServer(BackplaneSystemProps.REDIS_SERVER_SECONDARY);
             }
         } finally {
+            logger.info("PING " + currentRedisServer + " -> " + reply);
             getActivePool().returnResource(jedis);
         }
 
