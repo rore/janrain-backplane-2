@@ -22,6 +22,7 @@ import com.netflix.curator.framework.recipes.cache.ChildData;
 import com.netflix.curator.framework.recipes.cache.PathChildrenCache;
 import com.netflix.curator.framework.recipes.cache.PathChildrenCacheEvent;
 import com.netflix.curator.framework.recipes.cache.PathChildrenCacheListener;
+import com.netflix.curator.framework.recipes.locks.InterProcessMutex;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -280,40 +281,42 @@ public class Redis implements PathChildrenCacheListener {
 
     public void setActiveRedisInstance(CuratorFramework client) {
         this.curatorFramework = client;
+        InterProcessMutex lock = null;
 
         try {
+            lock = new InterProcessMutex(client, REDIS_LOCK);
+            lock.acquire();
 
-            this.curatorFramework.create().creatingParentsIfNeeded().forPath("/test");
-
-            PathChildrenCache pathChildrenCache = new PathChildrenCache(client, "/test", false);
+            PathChildrenCache pathChildrenCache = new PathChildrenCache(client, REDIS, true);
             pathChildrenCache.getListenable().addListener(this);
-
             pathChildrenCache.start(true);
 
-            ChildData childData = pathChildrenCache.getCurrentData("/test");
-            List<ChildData> childs = pathChildrenCache.getCurrentData();
+            ChildData childData = pathChildrenCache.getCurrentData(REDIS);
+
             String redisServer = null;
             if (childData != null) {
                 byte[] bytes = childData.getData();
                 redisServer = new String(bytes);
             }
-            if (BackplaneSystemProps.REDIS_SERVER_PRIMARY.equals(redisServer)) {
-                inFailoverMode = false;
-            } else if (BackplaneSystemProps.REDIS_SERVER_SECONDARY.equals(redisServer)) {
-                inFailoverMode = true;
+
+            if (redisServer == null) {
+                // set the node to the default redis server
+                setRedisServer(BackplaneSystemProps.REDIS_SERVER_PRIMARY);
             } else {
-                // set?
-                //client.setData().forPath("/redis/server", BackplaneSystemProps.REDIS_SERVER_PRIMARY.getBytes());
+                // accept the cluster wide redis server
+                currentRedisServer = redisServer;
             }
-
-            client.create().forPath("/test/one", "foo".getBytes());
-            client.create().forPath("/test/two", "bar".getBytes());
-            client.create().forPath("/test/three", "fail".getBytes());
-
-            logger.info("redis server set to " + redisServer);
 
         } catch (Exception e) {
             logger.error(e);
+        } finally {
+            if (lock != null) {
+                try {
+                    lock.release();
+                } catch (Exception e) {
+                    logger.error("could not release lock " + e);
+                }
+            }
         }
 
     }
@@ -321,17 +324,15 @@ public class Redis implements PathChildrenCacheListener {
     @Override
     public void childEvent(CuratorFramework curatorFramework, PathChildrenCacheEvent pathChildrenCacheEvent) throws Exception {
         try {
-            ChildData childData = pathChildrenCacheEvent.getData();
-            String newValue = new String(childData.getData());
-            logger.info("redis server changed: " + new String(childData.getData()));
+            if ( pathChildrenCacheEvent.getType() == PathChildrenCacheEvent.Type.CHILD_UPDATED
+                    || pathChildrenCacheEvent.getType() == PathChildrenCacheEvent.Type.CHILD_ADDED) {
 
-            if (BackplaneSystemProps.REDIS_SERVER_PRIMARY.equals(newValue)) {
-                inFailoverMode = false;
-            } else if (BackplaneSystemProps.REDIS_SERVER_SECONDARY.equals(newValue)) {
-                logger.warn("Warning! USING BACKUP REDIS SERVER!");
-                inFailoverMode = true;
-            } else {
-                logger.warn("invalid redis server " + newValue);
+                ChildData childData = pathChildrenCacheEvent.getData();
+                if (childData != null && childData.getData() != null)  {
+                    String newValue = new String(childData.getData());
+                    currentRedisServer = newValue;
+                    logger.info("redis server changed: " + newValue);
+                }
             }
         } catch (Exception e) {
             logger.warn("failure with childEvent");
@@ -340,34 +341,33 @@ public class Redis implements PathChildrenCacheListener {
 
     }
 
-    public boolean isInFailoverMode() {
-        return inFailoverMode;
-    }
+    public synchronized void setRedisServer(String server) {
 
-    public synchronized void setFailoverMode(boolean failoverMode) {
-        inFailoverMode = failoverMode;
         if (curatorFramework != null) {
             try {
-                if (inFailoverMode) {
-                    this.curatorFramework.setData().forPath("/redis/server", BackplaneSystemProps.REDIS_SERVER_SECONDARY.getBytes());
-                } else {
-                    this.curatorFramework.setData().forPath("/redis/server", BackplaneSystemProps.REDIS_SERVER_PRIMARY.getBytes());
+                if (this.curatorFramework.checkExists().forPath(REDIS_SERVER) == null) {
+                    this.curatorFramework.create().forPath(REDIS_SERVER);
                 }
+                this.curatorFramework.setData().forPath(REDIS_SERVER, server.getBytes());
             } catch (Exception e) {
                 logger.error(e);
             }
         }
-        logger.warn("redis set to inFailoverMode=" + failoverMode);
+        logger.info("redis server set to " + server);
     }
 
     public void ping() {
         Jedis jedis = null;
         try {
             jedis = getActivePool().getResource();
+            logger.info("PING " + currentRedisServer);
             logger.info(jedis.ping());
         } catch (Exception e) {
             // something bad
-            setFailoverMode(true);
+            // if currently set to primary redis server, switch to secondary
+            if (BackplaneSystemProps.REDIS_SERVER_PRIMARY.equals(currentRedisServer)) {
+                setRedisServer(BackplaneSystemProps.REDIS_SERVER_SECONDARY);
+            }
         } finally {
             getActivePool().returnResource(jedis);
         }
@@ -377,12 +377,15 @@ public class Redis implements PathChildrenCacheListener {
     // PRIVATE
 
     private static final Logger logger = Logger.getLogger(Redis.class);
-    private boolean inFailoverMode = false;
+    private String currentRedisServer;
 
     private final JedisPool pool1;
     private final JedisPool pool2;
 
     private static Redis instance = new Redis();
+    private final String REDIS_LOCK = "/redislock";
+    private final String REDIS = "/redis";
+    private final String REDIS_SERVER = "/redis/server";
 
     private CuratorFramework curatorFramework;
 
@@ -430,10 +433,12 @@ public class Redis implements PathChildrenCacheListener {
 
     
     private JedisPool getActivePool() {
-        if (inFailoverMode) {
+        if (BackplaneSystemProps.REDIS_SERVER_PRIMARY.equals(currentRedisServer)) {
+            return pool1;
+        } else if (BackplaneSystemProps.REDIS_SERVER_SECONDARY.equals(currentRedisServer)) {
             return pool2;
         } else {
-            return pool1;
+            return null;
         }
     }
 
