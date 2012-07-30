@@ -21,6 +21,7 @@ import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import com.janrain.commons.util.Pair;
 import com.janrain.crypto.ChannelUtil;
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
 
@@ -64,7 +65,10 @@ public class BackplaneMessage extends ExternalizableCore {
 
     public Pair<String, Date> updateId(Pair<String, Date> lastIdAndDate) {
         long thisTime = getDateFromId(getIdValue()).getTime();
-        long lastTime = getDateFromId(lastIdAndDate.getLeft()).getTime();
+        long lastTime = 0;
+        if (StringUtils.isNotEmpty(lastIdAndDate.getLeft())) {
+            lastTime = getDateFromId(lastIdAndDate.getLeft()).getTime();
+        }
 
         if (thisTime <= lastTime) {
             logger.warn("message has an id " + getIdValue() + " that is not > the latest id of " + lastIdAndDate.getLeft());

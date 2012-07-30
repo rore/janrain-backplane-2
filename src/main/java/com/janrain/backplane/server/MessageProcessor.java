@@ -128,9 +128,14 @@ public class MessageProcessor extends JedisPubSub implements LeaderSelectorListe
                     }
                 }
 
-                Pair<String, Date> lastIdAndDate = StringUtils.isEmpty(latestMessageId) ?
+                Pair<String, Date> lastIdAndDate =  new Pair<String, Date>("", new Date(0));
+                try {
+                    lastIdAndDate = StringUtils.isEmpty(latestMessageId) ?
                         new Pair<String, Date>("", new Date(0)) :
                         new Pair<String, Date>(latestMessageId, Backplane1Config.ISO8601.get().parse(latestMessageId.substring(0, latestMessageId.indexOf("Z") + 1)));
+                } catch (Exception e) {
+                        //
+                }
 
                 // set watch on the messages sorted set of keys
                 jedis.watch(RedisBackplaneMessageDAO.V1_MESSAGES);
@@ -230,14 +235,20 @@ public class MessageProcessor extends JedisPubSub implements LeaderSelectorListe
 
                 } catch (Exception e) {
                     logger.warn("error " + e.getMessage());
-                    jedis.unwatch();
-                    Redis.getInstance().releaseBrokenResourceToPool(jedis);
-                    jedis = null;
-                    Thread.sleep(2000);
-                } finally {
                     if (jedis != null) {
                         jedis.unwatch();
-                        Redis.getInstance().releaseToPool(jedis);
+                        Redis.getInstance().releaseBrokenResourceToPool(jedis);
+                        jedis = null;
+                    }
+                    Thread.sleep(2000);
+                } finally {
+                    try {
+                        if (jedis != null) {
+                            jedis.unwatch();
+                            Redis.getInstance().releaseToPool(jedis);
+                        }
+                    } catch (Exception e) {
+                        // ignore
                     }
                 }
 
