@@ -215,7 +215,7 @@ public class MessageProcessor extends JedisPubSub implements LeaderSelectorListe
                         }
                     } // for messages
 
-                    Thread.sleep(50);
+                    Thread.sleep(150);
 
                     logger.info("processing transaction with " + insertionTimes.size() + " message(s)");
                     if (transaction.exec() == null) {

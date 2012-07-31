@@ -25,6 +25,7 @@ import com.netflix.curator.framework.recipes.cache.PathChildrenCacheListener;
 import com.netflix.curator.framework.recipes.locks.InterProcessMutex;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.pool.impl.GenericObjectPool;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.Nullable;
 import redis.clients.jedis.Jedis;
@@ -393,6 +394,8 @@ public class Redis implements PathChildrenCacheListener {
     private Redis() {
         JedisPoolConfig config = new JedisPoolConfig();
         config.setMaxActive(100);
+        config.setMaxWait(10l);
+        config.setWhenExhaustedAction(GenericObjectPool.WHEN_EXHAUSTED_BLOCK);
         config.setMaxIdle(100);
         config.setMinIdle(100);
 
