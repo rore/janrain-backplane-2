@@ -7,3 +7,4 @@
 *.iws
 workspace.xml
 test.html
+*.DS_Store
