@@ -221,7 +221,7 @@ public class MessageProcessor extends JedisPubSub implements LeaderSelectorListe
                     if (transaction.exec() == null) {
                         // the transaction failed
                         logger.warn("transaction failed! - halting work for now");
-                        return;
+                        continue;
                     }
 
                     logger.info("flushed " + insertionTimes.size() + " messages");
