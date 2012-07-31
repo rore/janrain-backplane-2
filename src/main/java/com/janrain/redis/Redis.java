@@ -382,7 +382,7 @@ public class Redis implements PathChildrenCacheListener {
     private String currentRedisServer;
 
     private final JedisPool pool1;
-    private final JedisPool pool2;
+/*    private final JedisPool pool2;*/
 
     private static Redis instance = new Redis();
     private final String REDIS_LOCK = "/redislock";
@@ -393,11 +393,11 @@ public class Redis implements PathChildrenCacheListener {
 
     private Redis() {
         JedisPoolConfig config = new JedisPoolConfig();
-        config.setMaxActive(100);
+        config.setMaxActive(80);
         config.setMaxWait(10l);
         config.setWhenExhaustedAction(GenericObjectPool.WHEN_EXHAUSTED_BLOCK);
-        config.setMaxIdle(100);
-        config.setMinIdle(100);
+        config.setMaxIdle(80);
+        config.setMinIdle(80);
 
         String redisServerConfig = System.getProperty("REDIS_SERVER_PRIMARY");
         if (StringUtils.isEmpty(redisServerConfig)) {
@@ -431,19 +431,20 @@ public class Redis implements PathChildrenCacheListener {
             }
         }
 
-        pool2 = new JedisPool(config, args[0], port);
+        /*pool2 = new JedisPool(config, args[0], port);*/
 
     }
 
     
     private JedisPool getActivePool() {
-        if (BackplaneSystemProps.REDIS_SERVER_PRIMARY.equals(currentRedisServer)) {
+        return pool1;
+/*        if (BackplaneSystemProps.REDIS_SERVER_PRIMARY.equals(currentRedisServer)) {
             return pool1;
         } else if (BackplaneSystemProps.REDIS_SERVER_SECONDARY.equals(currentRedisServer)) {
             return pool2;
         } else {
             return null;
-        }
+        }*/
     }
 
 }
