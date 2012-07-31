@@ -638,7 +638,7 @@ public class Backplane2ControllerTest {
         this.saveMessage(message1);
 
         // make sure the processor runs
-        Thread.sleep(1000);
+        Thread.sleep(4000);
 
          // Make the call
         refreshRequestAndResponse();

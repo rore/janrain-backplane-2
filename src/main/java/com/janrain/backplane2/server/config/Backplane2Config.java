@@ -215,7 +215,7 @@ public class Backplane2Config {
         ConsoleReporter.enable(10, TimeUnit.MINUTES);
 
         // Dump metrics to graphite server
-        String graphiteServer = getAwsProp(BackplaneSystemProps.GRAPHITE_SERVER);
+        String graphiteServer = System.getProperty(BackplaneSystemProps.GRAPHITE_SERVER);
         if (StringUtils.isNotBlank(graphiteServer)) {
             try {
                 String args[] = graphiteServer.split(":");

@@ -115,6 +115,7 @@ public class V2MessageProcessor extends JedisPubSub implements LeaderSelectorLis
             while (true) {
                 try {
                     processSingleBatchOfPendingMessages();
+                    Thread.sleep(150);
                 } catch (Exception e) {
                     logger.warn(e);
                     try {
@@ -150,9 +151,14 @@ public class V2MessageProcessor extends JedisPubSub implements LeaderSelectorLis
                 }
             }
 
-            Pair<String, Date> lastIdAndDate = StringUtils.isEmpty(latestMessageId) ?
+            Pair<String, Date> lastIdAndDate =  new Pair<String, Date>("", new Date(0));
+            try {
+                lastIdAndDate = StringUtils.isEmpty(latestMessageId) ?
                     new Pair<String, Date>("", new Date(0)) :
                     new Pair<String, Date>(latestMessageId, Backplane1Config.ISO8601.get().parse(latestMessageId.substring(0, latestMessageId.indexOf("Z") + 1)));
+            } catch (Exception e) {
+                //
+            }
 
             jedis.watch(RedisBackplaneMessageDAO.V2_MESSAGES);
 
@@ -202,8 +208,13 @@ public class V2MessageProcessor extends JedisPubSub implements LeaderSelectorLis
             jedis = null;
             throw e;
         } finally {
-            if (jedis != null) {
-                Redis.getInstance().releaseToPool(jedis);
+            try {
+                if (jedis != null) {
+                    jedis.unwatch();
+                    Redis.getInstance().releaseToPool(jedis);
+                }
+            } catch (Exception e) {
+                // ignore
             }
         }
     }

@@ -17,6 +17,7 @@
 package com.janrain.backplane2.server;
 
 import com.janrain.backplane.server.ExternalizableCore;
+import com.janrain.backplane.server.config.Backplane1Config;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.MessageField;
@@ -76,8 +77,21 @@ public class BackplaneMessage extends ExternalizableCore {
     }
 
     public Pair<String, Date> updateId(Pair<String, Date> lastIdAndDate) {
-        long thisTime = getDateFromId(getIdValue()).getTime();
-        long lastTime = getDateFromId(lastIdAndDate.getLeft()).getTime();
+        long thisTime = 0;
+        try {
+            thisTime = getDateFromId(getIdValue()).getTime();
+        } catch (Exception e) {
+            Date thisDate = new Date();
+            thisTime = thisDate.getTime();
+            put(Field.ID.getFieldName(), generateMessageId(thisDate));
+        }
+
+        long lastTime = 0;
+        try {
+            lastTime = getDateFromId(lastIdAndDate.getLeft()).getTime();
+        } catch (Exception e) {
+            //
+        }
 
         if (thisTime <= lastTime) {
             logger.warn("message has an id " + getIdValue() + " that is not > the latest id of " + lastIdAndDate.getLeft());
