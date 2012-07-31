@@ -215,6 +215,8 @@ public class MessageProcessor extends JedisPubSub implements LeaderSelectorListe
                         }
                     } // for messages
 
+                    Thread.sleep(50);
+
                     logger.info("processing transaction with " + insertionTimes.size() + " message(s)");
                     if (transaction.exec() == null) {
                         // the transaction failed
@@ -247,6 +249,7 @@ public class MessageProcessor extends JedisPubSub implements LeaderSelectorListe
                             jedis.unwatch();
                             Redis.getInstance().releaseToPool(jedis);
                         }
+
                     } catch (Exception e) {
                         // ignore
                     }

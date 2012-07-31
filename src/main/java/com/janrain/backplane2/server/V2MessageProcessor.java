@@ -115,6 +115,7 @@ public class V2MessageProcessor extends JedisPubSub implements LeaderSelectorLis
             while (true) {
                 try {
                     processSingleBatchOfPendingMessages();
+                    Thread.sleep(50);
                 } catch (Exception e) {
                     logger.warn(e);
                     try {
