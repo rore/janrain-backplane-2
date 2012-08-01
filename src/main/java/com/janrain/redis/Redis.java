@@ -388,6 +388,7 @@ public class Redis implements PathChildrenCacheListener {
     private final String REDIS_LOCK = "/redislock";
     private final String REDIS = "/redis";
     private final String REDIS_SERVER = "/redis/server";
+    private static final long REDIS_MAX_WAIT_SECONDS = -1l; //
 
     private CuratorFramework curatorFramework;
 
@@ -395,7 +396,7 @@ public class Redis implements PathChildrenCacheListener {
         JedisPoolConfig config = new JedisPoolConfig();
         config.setTestOnBorrow(true);
         config.setMaxActive(5);
-        config.setMaxWait(10l);
+        config.setMaxWait(REDIS_MAX_WAIT_SECONDS * 1000l);
         config.setWhenExhaustedAction(GenericObjectPool.WHEN_EXHAUSTED_BLOCK);
         config.setMaxIdle(5);
         config.setMinIdle(5);
