@@ -393,6 +393,7 @@ public class Redis implements PathChildrenCacheListener {
 
     private Redis() {
         JedisPoolConfig config = new JedisPoolConfig();
+        config.setTestOnBorrow(true);
         config.setMaxActive(5);
         config.setMaxWait(10l);
         config.setWhenExhaustedAction(GenericObjectPool.WHEN_EXHAUSTED_BLOCK);
