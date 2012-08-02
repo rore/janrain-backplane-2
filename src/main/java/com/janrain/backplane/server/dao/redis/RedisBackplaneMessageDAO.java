@@ -200,6 +200,7 @@ public class RedisBackplaneMessageDAO extends DAO<BackplaneMessage> {
             return messages;
 
         } catch (Exception e) {
+            logger.error("Exception on bus "+bus+" and channel "+channel, e);
             throw new BackplaneServerException(e.getMessage());
         } finally {
             Redis.getInstance().releaseToPool(jedis);
