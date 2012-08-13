@@ -23,8 +23,8 @@ import java.util.Set;
  */
 public class RedisGrantDAO implements GrantDAO {
 
-    public RedisGrantDAO(TokenDAO tokenDAO) {
-        this.tokenDAO = tokenDAO;
+    public RedisGrantDAO() {
+        this.tokenDAO = new RedisTokenDAO();
     }
 
     @Override
@@ -127,6 +127,7 @@ public class RedisGrantDAO implements GrantDAO {
                 }
                 jedis.del(getKey(id));
             }
+            logger.info("deleted grant " + id);
         } finally {
             Redis.getInstance().releaseToPool(jedis);
         }

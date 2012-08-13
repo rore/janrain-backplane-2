@@ -191,7 +191,9 @@ public class Backplane2ControllerTest {
             for (String key:this.createdGrantsKeys) {
                 logger.info("deleting Grant " + key);
                 Grant grant = daoFactory.getGrantDao().get(key);
-                daoFactory.getTokenDao().revokeTokenByGrant(grant.getIdValue());
+                if (grant != null) {
+                    daoFactory.getTokenDao().revokeTokenByGrant(grant.getIdValue());
+                }
                 daoFactory.getGrantDao().delete(key);
             }
 
@@ -1315,6 +1317,46 @@ public class Backplane2ControllerTest {
             daoFactory.getTokenDao().delete(token);
         }
     }
+
+    @Test
+    public void testGrantAndRevokeByBus() throws Exception {
+
+        refreshRequestAndResponse();
+
+        logger.info("TEST: testGrantAndRevokeByBus() =================");
+
+        // Create auth
+        ArrayList<Grant> grants = new ArrayList<Grant>();
+        Grant grant1 = new Grant.Builder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.getClientId(), "bus:mybus.com").buildGrant();
+        Grant grant2 = new Grant.Builder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.getClientId(), "bus:thisbus.com").buildGrant();
+        this.saveGrant(grant1);
+        this.saveGrant(grant2);
+        grants.add(grant1);
+        grants.add(grant2);
+
+        // Create appropriate token
+        String  token = privTokenRequest(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, ""));
+
+        logger.info("revoken grants by bus: mybus.com");
+        daoFactory.getBusDao().delete("mybus.com");
+
+        try {
+            // Now the token should fail
+            // Make the call
+            request.setRequestURI("/v2/messages");
+            request.setMethod("GET");
+            request.setParameter(OAUTH2_ACCESS_TOKEN_PARAM_NAME, token);
+            handlerAdapter.handle(request, response, controller);
+            logger.info("testGrantAndRevokeByBus() => " + response.getContentAsString());
+
+            assertTrue(HttpServletResponse.SC_FORBIDDEN == response.getStatus());
+            assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
+        } finally {
+            daoFactory.getTokenDao().delete(token);
+        }
+
+    }
+
 
     @Test
     public void testAuthenticate() throws Exception {

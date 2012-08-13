@@ -91,9 +91,10 @@ public class RedisBusDAO implements BusDAO {
     }
 
     @Override
-    public void delete(String id) throws BackplaneServerException, TokenException {
+    public void delete(final String id) throws BackplaneServerException, TokenException {
         Jedis jedis = null;
         try {
+            logger.info("==== BEGIN BUS " + id + " DELETE ====");
             jedis = Redis.getInstance().getJedis();
             byte[] bytes = jedis.get(getKey(id));
             if (bytes != null) {
@@ -109,6 +110,10 @@ public class RedisBusDAO implements BusDAO {
                     logger.warn("could not delete bus key " + new String(getKey(id)));
                 }
             }
+            // cleanup related grants
+            new RedisGrantDAO().deleteByBuses(new ArrayList<String>() {{add(id);}});
+            logger.info("Bus " + id + " deleted successfully");
+            logger.info("==== END BUS DELETE ====");
         } finally {
             Redis.getInstance().releaseToPool(jedis);
         }

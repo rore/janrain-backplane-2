@@ -69,6 +69,7 @@ public class RedisBusOwnerDAO implements BusOwnerDAO {
         Jedis jedis = null;
 
         try {
+            logger.info("=== BEGIN BUS OWNER " + id + " DELETE ===");
             jedis = Redis.getInstance().getJedis();
             byte[] bytes = jedis.get(getKey(id));
             if (bytes != null) {
@@ -86,6 +87,14 @@ public class RedisBusOwnerDAO implements BusOwnerDAO {
             } else {
                 logger.warn("could not locate value for key " + new String(getKey(id)));
             }
+
+            // delete all associated buses (and their dependencies)
+            new RedisBusDAO().deleteByOwner(id);
+            logger.info("Bus owner " + id + " deleted successfully");
+            logger.info("=== END BUS OWNER DELETE ===");
+        } catch (Exception e) {
+            logger.error("An exception occurred during an atomic operation.  Corruption may have occurred while removing bus owner: " + id);
+            throw new BackplaneServerException(e.getMessage());
         } finally {
             Redis.getInstance().releaseToPool(jedis);
         }

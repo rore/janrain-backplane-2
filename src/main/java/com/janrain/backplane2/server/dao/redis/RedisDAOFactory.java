@@ -88,7 +88,7 @@ public class RedisDAOFactory extends DAOFactory {
 
     private static BusDAO busDao = new RedisBusDAO();
     private static TokenDAO tokenDao = new RedisTokenDAO();
-    private static GrantDAO grantDao = new RedisGrantDAO(new RedisTokenDAO());
+    private static GrantDAO grantDao = new RedisGrantDAO();
     private static BusOwnerDAO busOwnerDao = new RedisBusOwnerDAO();
     private static ClientDAO clientDao = new RedisClientDAO();
     private static BackplaneMessageDAO messageDao = new RedisBackplaneMessageDAO();
