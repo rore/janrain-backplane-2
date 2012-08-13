@@ -17,6 +17,7 @@ public class BackplaneSystemProps extends InitSystemProps {
     public static final String ZOOKEEPER_SERVERS  = "ZOOKEEPER_SERVERS";
     public static final String REDIS_SERVER_PRIMARY = "REDIS_SERVER_PRIMARY";
     public static final String REDIS_SERVER_SECONDARY = "REDIS_SERVER_SECONDARY";
+    public static final String IP_WHITE_LIST = "IP_WHITE_LIST";
 
     public static String getMachineName() {
         try {
@@ -34,6 +35,7 @@ public class BackplaneSystemProps extends InitSystemProps {
         load(ZOOKEEPER_SERVERS);
         load(REDIS_SERVER_PRIMARY);
         load(REDIS_SERVER_SECONDARY);
+        load(IP_WHITE_LIST);
 
     }
 

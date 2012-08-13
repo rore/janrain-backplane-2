@@ -54,6 +54,17 @@
         <filter-name>jsonpFilter</filter-name>
         <url-pattern>/*</url-pattern>
     </filter-mapping>
+
+    <filter>
+        <filter-name>IPRangeFilter</filter-name>
+        <filter-class>com.janrain.servlet.IPRangeFilter</filter-class>
+    </filter>
+
+    <filter-mapping>
+        <filter-name>IPRangeFilter</filter-name>
+        <url-pattern>/backplane_metrics</url-pattern>
+    </filter-mapping>
+
     <!--todo extract com.janrain.[simpledb|message|servlet] as modules/libraries -->
 
     <!-- Enable logger for debugging / development ONLY!!!!
