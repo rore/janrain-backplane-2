@@ -2,8 +2,11 @@ package com.janrain.backplane.server.utils;
 
 import com.janrain.commons.util.InitSystemProps;
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 
 import javax.naming.InitialContext;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 /**
  * @author Tom Raney
@@ -15,6 +18,15 @@ public class BackplaneSystemProps extends InitSystemProps {
     public static final String REDIS_SERVER_PRIMARY = "REDIS_SERVER_PRIMARY";
     public static final String REDIS_SERVER_SECONDARY = "REDIS_SERVER_SECONDARY";
 
+    public static String getMachineName() {
+        try {
+            return "backplane/" + InetAddress.getLocalHost().getHostName();
+        }  catch (UnknownHostException e) {
+            logger.warn("get localhost call failed");
+        }
+        return "n/a";
+    }
+
     public BackplaneSystemProps(String log4jFile) {
         super(log4jFile);
 
@@ -24,6 +36,10 @@ public class BackplaneSystemProps extends InitSystemProps {
         load(REDIS_SERVER_SECONDARY);
 
     }
+
+    // - PRIVATE
+
+    private static final Logger logger = Logger.getLogger(BackplaneSystemProps.class);
 
     private void load(String paramName) {
         String result = System.getProperty(paramName);

@@ -16,6 +16,7 @@
 
 package com.janrain.backplane2.server;
 
+import com.janrain.backplane.server.utils.BackplaneSystemProps;
 import com.janrain.backplane2.server.config.*;
 import com.janrain.backplane2.server.dao.DAOFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
@@ -855,14 +856,14 @@ public class Backplane2Controller {
     }
 
     private final com.yammer.metrics.core.Timer v2GetsTimer =
-            com.yammer.metrics.Metrics.newTimer(Backplane2Controller.class, "v2_gets_time", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
+            com.yammer.metrics.Metrics.newTimer(new MetricName(BackplaneSystemProps.getMachineName(), this.getClass().getName(), "v2_gets_time"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
     private final com.yammer.metrics.core.Timer v2GetSingleMessageTimer =
-            com.yammer.metrics.Metrics.newTimer(Backplane2Controller.class, "v2_get_single_message_time", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
+            com.yammer.metrics.Metrics.newTimer(new MetricName(BackplaneSystemProps.getMachineName(), this.getClass().getName(), "v2_get_single_message_time"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
     private final com.yammer.metrics.core.Timer v2PostTimer =
-            com.yammer.metrics.Metrics.newTimer(Backplane2Controller.class, "v2_posts_time", TimeUnit.MILLISECONDS, TimeUnit.SECONDS);
+            com.yammer.metrics.Metrics.newTimer(new MetricName(BackplaneSystemProps.getMachineName(), this.getClass().getName(), "v2_posts_time"), TimeUnit.MILLISECONDS, TimeUnit.SECONDS);
     private final com.yammer.metrics.core.Timer getRegularTokenTimer =
-            com.yammer.metrics.Metrics.newTimer(Backplane2Controller.class, "v2_get_reg_tokens_time", TimeUnit.MILLISECONDS, TimeUnit.SECONDS);
+            com.yammer.metrics.Metrics.newTimer(new MetricName(BackplaneSystemProps.getMachineName(), this.getClass().getName(), "v2_get_reg_tokens_time"), TimeUnit.MILLISECONDS, TimeUnit.SECONDS);
     private final com.yammer.metrics.core.Timer getPrivilegedTokenTimer =
-            com.yammer.metrics.Metrics.newTimer(Backplane2Controller.class, "v2_get_privileged_tokens_time", TimeUnit.MILLISECONDS, TimeUnit.SECONDS);
+            com.yammer.metrics.Metrics.newTimer(new MetricName(BackplaneSystemProps.getMachineName(), this.getClass().getName(), "v2_get_privileged_tokens_time"), TimeUnit.MILLISECONDS, TimeUnit.SECONDS);
 
 }

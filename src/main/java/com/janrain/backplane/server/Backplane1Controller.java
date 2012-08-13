@@ -20,11 +20,13 @@ import com.janrain.backplane.server.config.AuthException;
 import com.janrain.backplane.server.config.Backplane1Config;
 import com.janrain.backplane.server.dao.redis.RedisBackplaneMessageDAO;
 import com.janrain.backplane.server.dao.DaoFactory;
+import com.janrain.backplane.server.utils.BackplaneSystemProps;
 import com.janrain.backplane2.server.config.User;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.crypto.HmacHashUtils;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Histogram;
+import com.yammer.metrics.core.MetricName;
 import com.yammer.metrics.core.TimerContext;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.log4j.Logger;
@@ -205,15 +207,15 @@ public class Backplane1Controller {
     private static final int CHANNEL_NAME_LENGTH = 32;
 
     private final com.yammer.metrics.core.Timer getBusMessagesTime =
-            Metrics.newTimer(Backplane1Controller.class, "get_bus_messages_time", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
+            Metrics.newTimer(new MetricName(BackplaneSystemProps.getMachineName(), this.getClass().getName(), "get_bus_messages_time"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
 
     private final com.yammer.metrics.core.Timer getChannelMessagesTime =
-            Metrics.newTimer(Backplane1Controller.class, "get_channel_messages_time", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
+            Metrics.newTimer(new MetricName(BackplaneSystemProps.getMachineName(), this.getClass().getName(), "get_channel_messages_time"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
 
     private final com.yammer.metrics.core.Timer postMessagesTime =
-            Metrics.newTimer(Backplane1Controller.class, "post_messages_time", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
+            Metrics.newTimer(new MetricName(BackplaneSystemProps.getMachineName(), this.getClass().getName(), "post_messages_time"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
 
-    private final Histogram payLoadSizesOnGets = Metrics.newHistogram(Backplane1Controller.class, "payload_sizes_gets");
+    private final Histogram payLoadSizesOnGets = Metrics.newHistogram(new MetricName(BackplaneSystemProps.getMachineName(), this.getClass().getName(), "payload_sizes_gets"));
 
     @Inject
     private Backplane1Config bpConfig;

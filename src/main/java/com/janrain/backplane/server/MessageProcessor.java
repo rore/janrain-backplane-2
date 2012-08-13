@@ -220,7 +220,6 @@ public class MessageProcessor extends JedisPubSub implements LeaderSelectorListe
                     logger.info("processing transaction with " + insertionTimes.size() + " message(s)");
                     if (transaction.exec() == null) {
                         // the transaction failed
-                        logger.warn("transaction failed! - halting work for now");
                         continue;
                     }
 

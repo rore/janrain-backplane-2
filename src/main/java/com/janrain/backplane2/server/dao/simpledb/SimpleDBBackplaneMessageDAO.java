@@ -16,6 +16,7 @@
 
 package com.janrain.backplane2.server.dao.simpledb;
 
+import com.janrain.backplane.server.utils.BackplaneSystemProps;
 import com.janrain.backplane2.server.*;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.backplane2.server.config.BusConfig2;
@@ -28,6 +29,7 @@ import com.janrain.commons.util.Pair;
 import com.janrain.oauth2.TokenException;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Histogram;
+import com.yammer.metrics.core.MetricName;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -288,10 +290,10 @@ public class SimpleDBBackplaneMessageDAO implements BackplaneMessageDAO {
     private DAOFactory daoFactory;
     private Backplane2Config bpConfig;
 
-    private final com.yammer.metrics.core.Timer v2postTimer = Metrics.newTimer(SimpleDBBackplaneMessageDAO.class, "v2_sdb_post_message", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
-    private final com.yammer.metrics.core.Timer v2singleGetTimer = Metrics.newTimer(SimpleDBBackplaneMessageDAO.class, "v2_sdb_get_message", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
-    private final com.yammer.metrics.core.Timer v2multiGetTimer = Metrics.newTimer(SimpleDBBackplaneMessageDAO.class, "v2_sdb_get_messages", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
-    private final com.yammer.metrics.core.Timer v2channelCountTimer = Metrics.newTimer(SimpleDBBackplaneMessageDAO.class, "v2_sdb_channel_count", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
+    private final com.yammer.metrics.core.Timer v2postTimer = Metrics.newTimer(new MetricName(BackplaneSystemProps.getMachineName(), this.getClass().getName(), "v2_sdb_post_message"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
+    private final com.yammer.metrics.core.Timer v2singleGetTimer = Metrics.newTimer(new MetricName(BackplaneSystemProps.getMachineName(), this.getClass().getName(), "v2_sdb_get_message"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
+    private final com.yammer.metrics.core.Timer v2multiGetTimer = Metrics.newTimer(new MetricName(BackplaneSystemProps.getMachineName(), this.getClass().getName(), "v2_sdb_get_messages"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
+    private final com.yammer.metrics.core.Timer v2channelCountTimer = Metrics.newTimer(new MetricName(BackplaneSystemProps.getMachineName(), this.getClass().getName(), "v2_sdb_channel_count"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
     private final Histogram v2messageCount = Metrics.newHistogram(SimpleDBBackplaneMessageDAO.class, "v2_sdb_message_count");
 
     private String getExpiredMessagesClause(String busId, boolean sticky, String retentionTimeSeconds) {

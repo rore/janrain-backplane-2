@@ -18,6 +18,7 @@ package com.janrain.backplane.server.config;
 
 import com.janrain.backplane.server.MessageProcessor;
 import com.janrain.backplane.server.dao.DaoFactory;
+import com.janrain.backplane.server.utils.BackplaneSystemProps;
 import com.janrain.cache.CachedL1;
 import com.janrain.commons.supersimpledb.message.AbstractNamedMap;
 import com.janrain.commons.util.AwsUtility;
@@ -27,6 +28,7 @@ import com.netflix.curator.framework.CuratorFrameworkFactory;
 import com.netflix.curator.framework.recipes.leader.LeaderSelector;
 import com.netflix.curator.retry.ExponentialBackoffRetry;
 import com.yammer.metrics.Metrics;
+import com.yammer.metrics.core.MetricName;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.springframework.context.annotation.Scope;
@@ -180,7 +182,7 @@ public class Backplane1Config {
     private static String EC2InstanceId = AwsUtility.retrieveEC2InstanceId();
 
     private final com.yammer.metrics.core.Timer getMessagesTime =
-            Metrics.newTimer(Backplane1Config.class, "cleanup_messages_time", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
+            Metrics.newTimer(new MetricName(BackplaneSystemProps.getMachineName(), this.getClass().getName(), "cleanup_messages_time"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
 
     @SuppressWarnings({"UnusedDeclaration"})
     private Backplane1Config() {

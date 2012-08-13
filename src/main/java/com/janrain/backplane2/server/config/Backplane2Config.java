@@ -32,6 +32,7 @@ import com.netflix.curator.framework.recipes.leader.LeaderSelector;
 import com.netflix.curator.framework.recipes.leader.LeaderSelectorListener;
 import com.netflix.curator.retry.ExponentialBackoffRetry;
 import com.yammer.metrics.Metrics;
+import com.yammer.metrics.core.MetricName;
 import com.yammer.metrics.core.MetricsRegistry;
 import com.yammer.metrics.reporting.ConsoleReporter;
 import com.yammer.metrics.reporting.GraphiteReporter;
@@ -206,7 +207,7 @@ public class Backplane2Config {
     private static String EC2InstanceId = AwsUtility.retrieveEC2InstanceId();
 
     private final com.yammer.metrics.core.Timer v2CleanupTimer =
-        com.yammer.metrics.Metrics.newTimer(Backplane2Config.class, "cleanup_messages_time", TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
+        com.yammer.metrics.Metrics.newTimer(new MetricName(BackplaneSystemProps.getMachineName(), this.getClass().getName(), "cleanup_messages_time"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
 
     @SuppressWarnings({"UnusedDeclaration"})
     private Backplane2Config() {
