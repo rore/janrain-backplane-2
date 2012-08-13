@@ -127,6 +127,7 @@ public class RedisGrantDAO implements GrantDAO {
                 }
                 jedis.del(getKey(id));
             }
+            tokenDAO.revokeTokenByGrant(id);
             logger.info("deleted grant " + id);
         } finally {
             Redis.getInstance().releaseToPool(jedis);

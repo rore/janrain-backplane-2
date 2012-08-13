@@ -1312,7 +1312,7 @@ public class Backplane2ControllerTest {
             logger.info("testGrantAndRevoke() => " + response.getContentAsString());
 
             assertTrue(HttpServletResponse.SC_FORBIDDEN == response.getStatus());
-            assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
+            assertTrue(response.getContentAsString().contains("invalid token"));
         } finally {
             daoFactory.getTokenDao().delete(token);
         }
@@ -1350,7 +1350,7 @@ public class Backplane2ControllerTest {
             logger.info("testGrantAndRevokeByBus() => " + response.getContentAsString());
 
             assertTrue(HttpServletResponse.SC_FORBIDDEN == response.getStatus());
-            assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
+            assertTrue(response.getContentAsString().contains("invalid token"));
         } finally {
             daoFactory.getTokenDao().delete(token);
         }
