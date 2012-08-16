@@ -77,7 +77,7 @@ public class IPRangeFilter implements Filter {
         if (matches(remoteIp, internalProxies) || matches(remoteIp, whiteListProxies)) {
             chain.doFilter(request,response);
         } else {
-            logger.warn("remote address restricted: " + request.getRemoteAddr() + " for " + ((HttpServletRequest) request).getRequestURI());
+            logger.warn("remote address restricted: " + remoteIp + " for " + ((HttpServletRequest) request).getRequestURI());
             throw new InvalidRequestException("Access restricted");
         }
     }
