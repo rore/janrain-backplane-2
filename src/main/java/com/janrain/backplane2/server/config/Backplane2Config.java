@@ -222,7 +222,7 @@ public class Backplane2Config {
                 String args[] = graphiteServer.split(":");
                 String server = args[0];
                 int port = Integer.parseInt(args[1]);
-                GraphiteReporter.enable(1, TimeUnit.MINUTES, server, port);
+                GraphiteReporter.enable(10, TimeUnit.SECONDS, server, port);
                 logger.info("Graphite server enabled at " + graphiteServer);
             } catch (Exception e) {
                 logger.warn("could not enable Graphite from " + graphiteServer + " must be in the form SERVER:PORT");
