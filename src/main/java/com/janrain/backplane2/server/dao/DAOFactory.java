@@ -2,7 +2,6 @@ package com.janrain.backplane2.server.dao;
 
 import com.janrain.backplane.server.dao.redis.RedisConfigDAO;
 import com.janrain.backplane2.server.dao.redis.RedisDAOFactory;
-import com.janrain.backplane2.server.dao.simpledb.SimpleDBDAOFactory;
 
 /**
  * @author Tom Raney
@@ -10,8 +9,7 @@ import com.janrain.backplane2.server.dao.simpledb.SimpleDBDAOFactory;
 public abstract class DAOFactory {
 
     // List of DAO types supported by the factory
-    public static final int SIMPLEDB = 1;
-    public static final int REDIS = 2;
+    public static final int REDIS = 1;
 
     public abstract BusDAO getBusDao();
     public abstract TokenDAO getTokenDao();
@@ -28,8 +26,6 @@ public abstract class DAOFactory {
 
     public static DAOFactory getDAOFactory(int factory) {
         switch (factory) {
-            case SIMPLEDB:
-                return new SimpleDBDAOFactory();
             case REDIS:
                 return new RedisDAOFactory();
             default:

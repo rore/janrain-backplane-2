@@ -1,4 +1,4 @@
-package com.janrain.backplane.server.utils;
+package com.janrain.utils;
 
 import com.janrain.commons.util.InitSystemProps;
 import org.apache.commons.lang.StringUtils;
@@ -31,11 +31,11 @@ public class BackplaneSystemProps extends InitSystemProps {
     public BackplaneSystemProps(String log4jFile) {
         super(log4jFile);
 
-        load(GRAPHITE_SERVER);
-        load(ZOOKEEPER_SERVERS);
-        load(REDIS_SERVER_PRIMARY);
-        load(REDIS_SERVER_SECONDARY);
-        load(IP_WHITE_LIST);
+        load(GRAPHITE_SERVER, false);
+        load(ZOOKEEPER_SERVERS, true);
+        load(REDIS_SERVER_PRIMARY, true);
+        load(REDIS_SERVER_SECONDARY, true);
+        load(IP_WHITE_LIST, false);
 
     }
 
@@ -43,7 +43,7 @@ public class BackplaneSystemProps extends InitSystemProps {
 
     private static final Logger logger = Logger.getLogger(BackplaneSystemProps.class);
 
-    private void load(String paramName) {
+    private void load(String paramName, boolean required) {
         String result = System.getProperty(paramName);
         if (StringUtils.isBlank(result)) {
             try {
@@ -53,7 +53,9 @@ public class BackplaneSystemProps extends InitSystemProps {
                 System.out.println("Parameter " + paramName + " fetched from context and inserted as system property");
             } catch (Exception e) {
                 //continue
-                System.out.println("An error occurred trying to locate required parameter " + paramName + " => " + e.getMessage());
+                if (required) {
+                    System.out.println("An error occurred trying to locate required parameter " + paramName + " => " + e.getMessage());
+                }
             }
         } else {
             System.out.println("Parameter " + paramName + " exists as a system property");

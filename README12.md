@@ -328,46 +328,20 @@ Response / success:
 
 #### Retrieve Metrics
 
-Backplane server publishes usages statistics.  Interesting data points include the number of channel gets, posts and how long it takes the server to retrieve a get payload.  The output will include one "instance" entry for each running Backplane server on a common SimpleDB instance (`PARAM1`).  Each server publishes its accumulated metrics every few minutes to SimpleDB in a maximum of one entry per running instance.  The server handling a metric request will retrieve all entries and compile them into one response.
-
-If a server is restarted, it will create a new instance ID and begin reporting a fresh set of metrics.  The previous "orphaned" metric entry in SimpleDB for this server will be removed automatically.
+Backplane server publishes usages statistics.  Interesting data points include the number of channel gets,
+posts and how long it takes the server to retrieve a payload.  Metrics exist in memory only, so if the node
+is restarted, the metric data will be reset.
 
 Request:
 
-* endpoint: `/v1/metrics/dump`
-* HTTP method: POST
-* all entries are required
-* body format:
+* Endpoint: `/backplane_metrics`
+* HTTP method: GET
+* Security: access restricted to localhost and white listed IPs
 
-```json
-{
-    "user": "metrics",
-    "secret": "someSecretKey"
-}
-```
+Metric data may also be pushed into Graphite.
+Metric data will periodically be sent to stdout.
+To configure white-listed IPs and Graphite server settings, see the build instructions.
 
-Response success:
-
-* status 200 for requests with valid format that were processed successfully
-* body format (sample data, with metric details removed for brevity)
-
-```json
-[
-   {
-      "id":"6e3d41e0-2206-4c1e-93d2-42ed0d21e377",
-      "time_collected":"2011-10-17T22:42:09.177Z",
-      "metrics":{
-      ...
-      }
-   },
-      "id":"blah",
-      "time_collected":"blah",
-      "metrics":{
-      ...
-      }
-   }
-]
-```
 
 ### Error Responses
 

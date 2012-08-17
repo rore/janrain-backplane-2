@@ -18,9 +18,8 @@ package com.janrain.backplane.server.config;
 
 import com.janrain.backplane.server.MessageProcessor;
 import com.janrain.backplane.server.dao.DaoFactory;
-import com.janrain.backplane.server.utils.BackplaneSystemProps;
+import com.janrain.utils.BackplaneSystemProps;
 import com.janrain.cache.CachedL1;
-import com.janrain.commons.supersimpledb.message.AbstractNamedMap;
 import com.janrain.commons.util.AwsUtility;
 import com.janrain.commons.util.InitSystemProps;
 import com.netflix.curator.framework.CuratorFramework;
@@ -44,8 +43,6 @@ import java.util.Properties;
 import java.util.TimeZone;
 import java.util.concurrent.*;
 
-import static com.janrain.backplane.server.config.Backplane1Config.SimpleDBTables.*;
-
 
 /**
  * Holds configuration settings for the Backplane server
@@ -67,46 +64,6 @@ public class Backplane1Config {
         }
     };
 
-    public String getTableName(SimpleDBTables table) {
-        return Backplane1Config.this.bpInstanceId + table.getTableSuffix();
-    }
-
-    public enum SimpleDBTables {
-
-        BP_SERVER_CONFIG("_bpserverconfig"),
-        BP_ADMIN_AUTH("_Admin"),
-        BP1_BUS_CONFIG("_BusConfig1"),
-        BP1_USERS("_User"),
-        BP1_MESSAGES("_messages"),
-        BP1_SAMPLES("_samples"),
-        BP1_METRICS("_metrics"),
-        BP1_METRICS_AUTH("_bpMetricAuth");
-
-        public String getTableSuffix() {
-            return tableSuffix;
-        }
-
-        // - PRIVATE
-
-        private String tableSuffix;
-
-        private SimpleDBTables(String tableSuffix) {
-            this.tableSuffix = tableSuffix;
-        }
-    }
-
-    public String getMetricsTableName() {
-        return bpInstanceId + BP1_METRICS.getTableSuffix();
-    }
-
-    public String getMessagesTableName() {
-        return bpInstanceId + BP1_MESSAGES.getTableSuffix();
-    }
-
-    public String getSamplesTableName() {
-        return bpInstanceId + BP1_SAMPLES.getTableSuffix();
-    }
-    
     /**
 	 * @return the debugMode
 	 */
@@ -204,15 +161,7 @@ public class Backplane1Config {
 
         final MessageProcessor messageProcessor = new MessageProcessor();
 
-        ScheduledExecutorService messageWorkerTask = Executors.newScheduledThreadPool(3);
-
-/*        messageWorkerTask.scheduleAtFixedRate(new Runnable() {
-            @Override
-            public void run() {
-                logger.info("creating message processor thread");
-                messageProcessor.insertMessages(true);
-            }
-        }, 0, 30, TimeUnit.SECONDS);*/
+        ScheduledExecutorService messageWorkerTask = Executors.newScheduledThreadPool(2);
 
         messageWorkerTask.scheduleAtFixedRate(new Runnable() {
             @Override
@@ -239,7 +188,7 @@ public class Backplane1Config {
         backgroundServices.add(createMessageWorker());
 
         try {
-            String zkServerConfig = System.getProperty("ZOOKEEPER_SERVERS");
+            String zkServerConfig = System.getProperty(BackplaneSystemProps.ZOOKEEPER_SERVERS);
             if (StringUtils.isEmpty(zkServerConfig)) {
                 logger.error("Cannot find configuration entry for ZooKeeper server");
                 System.exit(1);
@@ -290,30 +239,6 @@ public class Backplane1Config {
 
         return bpServerConfigCache.get(property);
 
-    }
-
-    private String getBpServerConfigTableName() {
-        return bpInstanceId + BP_SERVER_CONFIG.getTableSuffix();
-    }
-
-    private String getAdminAuthTableName() {
-        return bpInstanceId + BP_ADMIN_AUTH.getTableSuffix();
-    }
-
-    private Long getMaxCacheAge() {
-        return Long.valueOf(cachedGet(BpServerConfig.Field.CONFIG_CACHE_AGE_SECONDS));
-    }
-
-    public static class BpServerConfigMap extends AbstractNamedMap {
-
-        @SuppressWarnings({"UnusedDeclaration"}) // instantiation through reflection
-        public BpServerConfigMap() { }
-
-        @Override
-        public void setName(String name) { }
-
-        @Override
-        public String getName() { return BP_CONFIG_ENTRY_NAME; }
     }
 
 

@@ -17,7 +17,7 @@
 package com.janrain.backplane2.server.config;
 
 import com.janrain.backplane.server.config.BpServerConfig;
-import com.janrain.backplane.server.utils.BackplaneSystemProps;
+import com.janrain.utils.BackplaneSystemProps;
 import com.janrain.backplane2.server.BackplaneServerException;
 import com.janrain.backplane2.server.V2MessageProcessor;
 import com.janrain.backplane2.server.dao.DAOFactory;
@@ -29,11 +29,9 @@ import com.janrain.crypto.HmacHashUtils;
 import com.netflix.curator.framework.CuratorFramework;
 import com.netflix.curator.framework.CuratorFrameworkFactory;
 import com.netflix.curator.framework.recipes.leader.LeaderSelector;
-import com.netflix.curator.framework.recipes.leader.LeaderSelectorListener;
 import com.netflix.curator.retry.ExponentialBackoffRetry;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.MetricName;
-import com.yammer.metrics.core.MetricsRegistry;
 import com.yammer.metrics.reporting.ConsoleReporter;
 import com.yammer.metrics.reporting.GraphiteReporter;
 import org.apache.commons.lang.StringUtils;
@@ -43,7 +41,6 @@ import org.springframework.context.annotation.Scope;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.inject.Inject;
-import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Properties;
@@ -74,47 +71,6 @@ public class Backplane2Config {
         }
     };
 
-    public void checkAdminAuth(String user, String password) throws AuthException {
-        checkAdminAuth(getAdminAuthTableName(), user, password);
-    }
-
-    public String getTableName(SimpleDBTables table) {
-        return Backplane2Config.this.bpInstanceId + table.getTableSuffix();
-    }
-
-    public enum SimpleDBTables {
-
-        BP_SERVER_CONFIG("_bpserverconfig"),
-        BP_ADMIN_AUTH("_Admin"),
-        BP_BUS_CONFIG("_v2_busconfig"),
-        BP_BUS_OWNERS("_v2_bus_owners"),
-        BP_CLIENTS("_v2_clients"),
-        BP_MESSAGES("_v2_messages"),
-        BP_SAMPLES("_samples"),
-        BP_METRICS("_metrics"),
-        BP_METRIC_AUTH("_bpMetricAuth"),
-        BP_GRANT("_v2_grants"),
-        BP_ACCESS_TOKEN("_v2_accessTokens"),
-        BP_REVOKED_TOKEN("_v2_revokedTokens"),
-        BP_AUTH_SESSION("_v2_authSessions"),
-        BP_AUTHORIZATION_REQUEST("_v2_authorizationRequests"),
-        BP_AUTHORIZATION_DECISION_KEY("_v2_authorizationDecisions");
-
-        public String getTableSuffix() {
-            return tableSuffix;
-        }
-
-        // - PRIVATE
-
-        private String tableSuffix;
-
-        private SimpleDBTables(String tableSuffix) {
-            this.tableSuffix = tableSuffix;
-        }
-    }
-
-
-
     /**
 	 * @return the debugMode
 	 */
@@ -129,16 +85,6 @@ public class Backplane2Config {
     public long getDefaultMaxMessageLimit() {
         Long max = Long.valueOf(cachedGet(BpServerConfig.Field.DEFAULT_MESSAGES_MAX));
         return max == null ? Backplane2Config.BP_MAX_MESSAGES_DEFAULT : max;
-    }
-
-    public long getMaxTokenCacheBytes() {
-        try {
-            Long max = Long.valueOf(cachedGet(BpServerConfig.Field.TOKEN_CACHE_MAX_MB));
-            return max == null ? 0L : max * 1024 * 1024;
-        } catch (NumberFormatException nfe) {
-            logger.error("Invalid message cache size value: " + nfe.getMessage(), nfe);
-            return 0L;
-        }
     }
 
     public Exception getDebugException(Exception e) {
@@ -190,16 +136,9 @@ public class Backplane2Config {
     private static final String BUILD_PROPERTIES = "/build.properties";
     private static final String BUILD_VERSION_PROPERTY = "build.version";
     private static final Properties buildProperties = new Properties();
-
-    private static final String BP_CONFIG_ENTRY_NAME = "bpserverconfig";
     private static final long BP_MAX_MESSAGES_DEFAULT = 100;
-    //private static final long MESSAGE_CACHE_UPDATE_INTERVAL_MILLISECONDS = 300;
-    private static final long TOKEN_CACHE_REVOKE_CLEANUP_INTERVAL_SECONDS = 5;
-
     private final String bpInstanceId;
     private ScheduledExecutorService cleanup;
-    //private ExecutorService messageCacheUpdater;
-    private ExecutorService tokenCacheCleanup;
     private ExecutorService pingRedis;
 
 
@@ -241,22 +180,12 @@ public class Backplane2Config {
     }
 
     private ScheduledExecutorService createMaintenanceTask() {
-        long cleanupIntervalMinutes;
+
         logger.info("calling v2 createMaintenanceTask()");
-        cleanupIntervalMinutes = Long.valueOf(cachedGet(BpServerConfig.Field.CLEANUP_INTERVAL_MINUTES));
 
         final V2MessageProcessor messageProcessor = new V2MessageProcessor(daoFactory);
 
-        ScheduledExecutorService maintenanceTask = Executors.newScheduledThreadPool(2);
-
-        // one shot thing, but we expect it to run while this node is up
-/*        maintenanceTask.schedule(new Runnable() {
-            @Override
-            public void run() {
-                logger.info("creating v2 message processor thread");
-                messageProcessor.insertMessages();
-            }
-        }, 0, TimeUnit.SECONDS);*/
+        ScheduledExecutorService maintenanceTask = Executors.newScheduledThreadPool(1);
 
         maintenanceTask.scheduleAtFixedRate(new Runnable() {
             @Override
@@ -267,21 +196,6 @@ public class Backplane2Config {
         }, 0, 1, TimeUnit.MINUTES);
 
         return maintenanceTask;
-    }
-
-    private ExecutorService createCacheCleanupTask() {
-        ScheduledExecutorService tokenCacheCleaner = Executors.newScheduledThreadPool(1);
-        tokenCacheCleaner.scheduleWithFixedDelay(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    daoFactory.getTokenDao().cacheRevokedCleanup();
-                } catch (Exception e) {
-                    logger.error("Error clearing revoked tokens from cache: " + e.getMessage(), e);
-                }
-            }
-        }, TOKEN_CACHE_REVOKE_CLEANUP_INTERVAL_SECONDS, TOKEN_CACHE_REVOKE_CLEANUP_INTERVAL_SECONDS, TimeUnit.SECONDS);
-        return tokenCacheCleaner;
     }
 
     private ExecutorService createPingTask() {
@@ -299,17 +213,10 @@ public class Backplane2Config {
     private void init() {
 
         this.cleanup = createMaintenanceTask();
-        //this.cacheUpdater = createCacheUpdaterTask();
-
-        /*for(SimpleDBTables table : EnumSet.allOf(SimpleDBTables.class)) {
-            superSimpleDb.checkDomain(getTableName(table));
-        }*/
-
-        this.tokenCacheCleanup = createCacheCleanupTask();
         this.pingRedis = createPingTask();
 
         try {
-            String zkServerConfig = System.getProperty("ZOOKEEPER_SERVERS");
+            String zkServerConfig = System.getProperty(BackplaneSystemProps.ZOOKEEPER_SERVERS);
             if (StringUtils.isEmpty(zkServerConfig)) {
                 logger.error("Cannot find configuration entry for ZooKeeper server");
                 System.exit(1);
@@ -329,7 +236,6 @@ public class Backplane2Config {
     private void cleanup() {
         Metrics.shutdown();
         shutdownExecutor(cleanup);
-        shutdownExecutor(tokenCacheCleanup);
         shutdownExecutor(pingRedis);
     }
 
@@ -388,34 +294,21 @@ public class Backplane2Config {
 
     }
 
-    private String getBpServerConfigTableName() {
-        return bpInstanceId + SimpleDBTables.BP_SERVER_CONFIG.getTableSuffix();
-    }
-
-    private String getAdminAuthTableName() {
-        return bpInstanceId + SimpleDBTables.BP_ADMIN_AUTH.getTableSuffix();
-    }
-
-    private String getMetricAuthTableName() {
-        return bpInstanceId + SimpleDBTables.BP_METRIC_AUTH.getTableSuffix();
-    }
-
     private Long getMaxCacheAge() {
         return Long.valueOf(cachedGet(BpServerConfig.Field.CONFIG_CACHE_AGE_SECONDS));
     }
 
-    public void checkAdminAuth(String authTable, String user, String password) throws AuthException {
+    public void checkAdminAuth(String user, String password) throws AuthException {
         try {
-            //User userEntry = superSimpleDb.retrieve(authTable, User.class, user);
             User userEntry = daoFactory.getAdminDAO().get(user);
             String authKey = userEntry == null ? null : userEntry.get(User.Field.PWDHASH);
             if ( ! HmacHashUtils.checkHmacHash(password, authKey) ) {
-                logger.error("User " + user + " not authorized in " + authTable);
+                logger.error("User " + user + " not authorized");
                 throw new AuthException("Access denied");
             }
         } catch (BackplaneServerException e) {
             logger.error("Error authenticating user " + user + " : " + e.getMessage(), getDebugException(e));
-            throw new AuthException("User " + user + " not authorized in " + authTable + " , " + e.getMessage(), getDebugException(e));
+            throw new AuthException("User " + user + " not authorized, " + e.getMessage(), getDebugException(e));
         }
     }
 }

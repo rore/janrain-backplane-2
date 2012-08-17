@@ -20,7 +20,7 @@ import com.janrain.backplane.server.config.AuthException;
 import com.janrain.backplane.server.config.Backplane1Config;
 import com.janrain.backplane.server.dao.redis.RedisBackplaneMessageDAO;
 import com.janrain.backplane.server.dao.DaoFactory;
-import com.janrain.backplane.server.utils.BackplaneSystemProps;
+import com.janrain.utils.BackplaneSystemProps;
 import com.janrain.backplane2.server.config.User;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.crypto.HmacHashUtils;

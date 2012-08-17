@@ -16,10 +16,8 @@
 
 package com.janrain.servlet;
 
-import com.janrain.backplane.server.BackplaneServerException;
-import com.janrain.backplane.server.utils.BackplaneSystemProps;
+import com.janrain.utils.BackplaneSystemProps;
 import com.janrain.backplane2.server.InvalidRequestException;
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
@@ -106,6 +104,6 @@ public class IPRangeFilter implements Filter {
     // see org.apache.catalina.filters.RemoteIpFilter source...
     private Pattern[] internalProxies = new Pattern[] {
         Pattern.compile("10\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}"), Pattern.compile("192\\.168\\.\\d{1,3}\\.\\d{1,3}"),
-        Pattern.compile("169\\.254\\.\\d{1,3}\\.\\d{1,3}"), Pattern.compile("227\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}")
+        Pattern.compile("169\\.254\\.\\d{1,3}\\.\\d{1,3}"), Pattern.compile("127\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}")
     };
 }

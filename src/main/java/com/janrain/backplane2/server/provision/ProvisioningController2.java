@@ -28,13 +28,11 @@ import com.janrain.servlet.ServletUtil;
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
-
 import javax.inject.Inject;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.util.*;
 
-import static com.janrain.backplane2.server.config.Backplane2Config.SimpleDBTables.*;
 
 /**
  * Controller handling the API calls for backplane customer configuration provisioning.
@@ -53,7 +51,7 @@ public class ProvisioningController2 {
     public Map<String, Map<String, String>> busList(HttpServletRequest request, @RequestBody ListRequest listRequest) throws AuthException {
         ServletUtil.checkSecure(request);
         bpConfig.checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
-        return doList(bpConfig.getTableName(BP_BUS_CONFIG), BusConfig2.class, listRequest.getEntities(), BusConfig2.Field.BUS_NAME);
+        return doList(BusConfig2.class, listRequest.getEntities(), BusConfig2.Field.BUS_NAME);
     }
 
     @RequestMapping(value = "/user/list", method = RequestMethod.POST)
@@ -61,7 +59,7 @@ public class ProvisioningController2 {
     public Map<String, Map<String, String>> userList(HttpServletRequest request, @RequestBody ListRequest listRequest) throws AuthException {
         ServletUtil.checkSecure(request);
         bpConfig.checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
-        return doList(bpConfig.getTableName(BP_BUS_OWNERS), User.class, listRequest.getEntities(), User.Field.USER);
+        return doList(User.class, listRequest.getEntities(), User.Field.USER);
     }
 
     @RequestMapping(value = "/client/list", method = RequestMethod.POST)
@@ -69,7 +67,7 @@ public class ProvisioningController2 {
     public Map<String, Map<String, String>> clientList(HttpServletRequest request, @RequestBody ListRequest listRequest) throws AuthException {
         ServletUtil.checkSecure(request);
         bpConfig.checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
-        return doList(bpConfig.getTableName(BP_CLIENTS), Client.class, listRequest.getEntities(), Client.Field.USER);
+        return doList(Client.class, listRequest.getEntities(), Client.Field.USER);
     }
 
     @RequestMapping(value = "/bus/delete", method = RequestMethod.POST)
@@ -77,7 +75,7 @@ public class ProvisioningController2 {
     public Map<String, String> busDelete(HttpServletRequest request, @RequestBody ListRequest deleteRequest) throws AuthException {
         ServletUtil.checkSecure(request);
         bpConfig.checkAdminAuth(deleteRequest.getAdmin(), deleteRequest.getSecret());
-        return doDelete(bpConfig.getTableName(BP_BUS_CONFIG), BusConfig2.class, deleteRequest.getEntities());
+        return doDelete(BusConfig2.class, deleteRequest.getEntities());
     }
 
     @RequestMapping(value = "/user/delete", method = RequestMethod.POST)
@@ -85,7 +83,7 @@ public class ProvisioningController2 {
     public Map<String, String> userDelete(HttpServletRequest request, @RequestBody ListRequest deleteRequest) throws AuthException {
         ServletUtil.checkSecure(request);
         bpConfig.checkAdminAuth(deleteRequest.getAdmin(), deleteRequest.getSecret());
-        return doDelete(bpConfig.getTableName(BP_BUS_OWNERS), User.class, deleteRequest.getEntities());
+        return doDelete(User.class, deleteRequest.getEntities());
     }
 
     @RequestMapping(value = "/client/delete", method = RequestMethod.POST)
@@ -93,21 +91,21 @@ public class ProvisioningController2 {
     public Map<String, String> clientDelete(HttpServletRequest request, @RequestBody ListRequest deleteRequest) throws AuthException {
         ServletUtil.checkSecure(request);
         bpConfig.checkAdminAuth(deleteRequest.getAdmin(), deleteRequest.getSecret());
-        return doDelete(bpConfig.getTableName(BP_CLIENTS), Client.class, deleteRequest.getEntities());
+        return doDelete(Client.class, deleteRequest.getEntities());
     }
 
     @RequestMapping(value = "/bus/update", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, String> busUpdate(HttpServletRequest request, @RequestBody BusUpdateRequest updateRequest) throws AuthException {
         ServletUtil.checkSecure(request);
-        return doUpdate(bpConfig.getTableName(BP_BUS_CONFIG), BusConfig2.class, updateRequest);
+        return doUpdate(BusConfig2.class, updateRequest);
     }
 
     @RequestMapping(value = "/user/update", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, String> userUpdate(HttpServletRequest request, @RequestBody UserUpdateRequest updateRequest) throws AuthException {
         ServletUtil.checkSecure(request);
-        return doUpdate(bpConfig.getTableName(BP_BUS_OWNERS), User.class, updateRequest);
+        return doUpdate(User.class, updateRequest);
     }
 
     @RequestMapping(value = "/client/update", method = RequestMethod.POST)
@@ -115,7 +113,7 @@ public class ProvisioningController2 {
     public Map<String, String> clientUpdate(HttpServletRequest request, @RequestBody ClientUpdateRequest updateRequest) throws AuthException {
         ServletUtil.checkSecure(request);
         logger.debug("client updateRequest: '" + updateRequest + "'");
-        return doUpdate(bpConfig.getTableName(BP_CLIENTS), Client.class, updateRequest);
+        return doUpdate(Client.class, updateRequest);
     }
 
     @RequestMapping(value = "/grant/list", method = RequestMethod.POST)
@@ -208,16 +206,15 @@ public class ProvisioningController2 {
     @Inject
     private DAOFactory daoFactory;
 
-    private <T extends AbstractMessage> Map<String, Map<String, String>> doList(String tableName, Class<T> entityType, List<String> entityNames, MessageField orderField) {
+    private <T extends AbstractMessage> Map<String, Map<String, String>> doList(Class<T> entityType, List<String> entityNames, MessageField orderField) {
 
-        if (entityNames.size() == 0) return doListAll(tableName, entityType);
+        if (entityNames.size() == 0) return doListAll(entityType);
 
         final Map<String,Map<String,String>> result = new LinkedHashMap<String, Map<String, String>>();
         for(String entityName : entityNames) {
             T config = null;
             Exception thrown = null;
             try {
-                //config = superSimpleDb.retrieve(tableName, entityType, entityName);
                 config = (T) daoFactory.getDaoByObjectType(entityType).get(entityName);
             } catch (Exception e) {
                 thrown = e;
@@ -231,7 +228,7 @@ public class ProvisioningController2 {
         return result;
     }
 
-    private <T extends AbstractMessage> Map<String, Map<String, String>> doListAll(String tableName, Class<T> entityType) {
+    private <T extends AbstractMessage> Map<String, Map<String, String>> doListAll(Class<T> entityType) {
         Map<String,Map<String,String>> result = new LinkedHashMap<String, Map<String, String>>();
         try {
             List<T> items = daoFactory.getDaoByObjectType(entityType).getAll();
@@ -244,7 +241,7 @@ public class ProvisioningController2 {
         return result;
     }
 
-    private <T extends AbstractMessage> Map<String, String> doDelete(String tableName, Class<T> entityType, List<String> entityNames) {
+    private <T extends AbstractMessage> Map<String, String> doDelete(Class<T> entityType, List<String> entityNames) {
         Map<String,String> result = new LinkedHashMap<String, String>();
         for(String entityName : entityNames) {
             String deleteStatus = BACKPLANE_DELETE_SUCCESS;
@@ -262,12 +259,12 @@ public class ProvisioningController2 {
         return result;
     }
 
-    private <T extends AbstractMessage> Map<String, String> doUpdate(String tableName, Class<T> entityType, UpdateRequest<T> updateRequest) throws AuthException {
+    private <T extends AbstractMessage> Map<String, String> doUpdate(Class<T> entityType, UpdateRequest<T> updateRequest) throws AuthException {
         bpConfig.checkAdminAuth(updateRequest.getAdmin(), updateRequest.getSecret());
-        return updateConfigs(tableName, entityType, updateRequest.getConfigs());
+        return updateConfigs(entityType, updateRequest.getConfigs());
     }
 
-    private <T extends AbstractMessage> Map<String, String> updateConfigs(String tableName, Class<T> customerConfigType, List<T> bpConfigs) {
+    private <T extends AbstractMessage> Map<String, String> updateConfigs(Class<T> customerConfigType, List<T> bpConfigs) {
         Map<String,String> result = new LinkedHashMap<String, String>();
         for(T config : bpConfigs) {
             String updateStatus = BACKPLANE_UPDATE_SUCCESS;
