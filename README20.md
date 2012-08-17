@@ -256,20 +256,6 @@ Backplane OAuth2 client accounts are kept in the `<backplane-instance>_v2_client
 
 * `REDIRECT_URI`: the client's redirect_uri for the OAuth2 authorization_code grant type
 
-Backplane Message Store
------------------------
-
-Backplane message frames are stored in SimpleDB under the `<backplane-instance>_v2_messages` table:
-
-* id
-* channel
-* bus
-* sticky
-* source
-* type
-* payload
-
-
 Bus Owner Provisioning API
 --------------------------
 

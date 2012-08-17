@@ -56,7 +56,7 @@ with an appropriate value.
 Configuration
 =============
 
-All Bus Provisioning API calls are only available over HTTPS and are authenticated against the `<backplane-instance>_Admin` table.
+All Bus Provisioning API calls are only available over HTTPS.
 
 Bus Configuration
 -----------------
@@ -89,16 +89,6 @@ Backplane user accounts are kept in the `<backplane-instance>_User` table:
 * `USER`: backplane username
 
 * `PWDHASH`: backplane password (hash)
-
-
-Backplane Message Store
------------------------
-
-Backplane message frames are stored in SimpleDB under the `<backplane-instance>_messages` table:
-
-* message_id
-* channel_name
-* message_payload
 
 
 User Provisioning API
