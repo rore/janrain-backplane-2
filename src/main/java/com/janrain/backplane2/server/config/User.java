@@ -47,6 +47,11 @@ public class User extends ExternalizableCore {
         return EnumSet.allOf(Field.class);
     }
 
+    public void setUserNamePassword(String userName, String password) {
+        this.put(Field.USER.getFieldName(), userName);
+        this.put(Field.PWDHASH.getFieldName(), password);
+    }
+
     public static enum Field implements MessageField {
 
         // - PUBLIC

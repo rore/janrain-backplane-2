@@ -1,10 +1,14 @@
 package com.janrain.backplane.server.config;
 
 import com.janrain.backplane.server.ExternalizableCore;
+import com.janrain.backplane2.server.InvalidRequestException;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.MessageField;
+import com.janrain.utils.BackplaneSystemProps;
 import org.apache.log4j.Logger;
+import org.codehaus.jackson.map.ObjectMapper;
 
+import java.io.IOException;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -15,12 +19,10 @@ import java.util.Set;
  */
 public class BpServerConfig extends ExternalizableCore {
 
-    public final static String BPSERVER_CONFIG_KEY = "bpserverconfig";
-
     public BpServerConfig() {
         Map<String,String> d = new LinkedHashMap<String, String>();
 
-        d.put(Field.ID.getFieldName(), "foo");
+        d.put(Field.ID.getFieldName(), BackplaneSystemProps.BPSERVER_CONFIG_KEY);
         d.put(Field.DEBUG_MODE.getFieldName(), Field.DEBUG_MODE_DEFAULT.toString() );
         d.put(Field.CLEANUP_INTERVAL_MINUTES.getFieldName(), Long.toString(Field.CLEANUP_INTERVAL_MINUTES_DEFAULT));
         d.put(Field.DEFAULT_MESSAGES_MAX.getFieldName(), Long.toString(Field.MESSAGES_MAX_DEFAULT));
@@ -28,7 +30,7 @@ public class BpServerConfig extends ExternalizableCore {
         d.put(Field.TOKEN_CACHE_MAX_MB.getFieldName(), Long.toString(Field.TOKEN_CACHE_MAX_MB_DEFAULT));
 
         try {
-            super.init("foo", d);
+            super.init(BackplaneSystemProps.BPSERVER_CONFIG_KEY, d);
         } catch (SimpleDBException e) {
             logger.error(e);
         }
@@ -39,9 +41,19 @@ public class BpServerConfig extends ExternalizableCore {
         return Long.parseLong(get(Field.CONFIG_CACHE_AGE_SECONDS));
     }
 
+    public String toString() {
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            return mapper.writeValueAsString(this);
+        } catch (IOException e) {
+            logger.error(e);
+            return null;
+        }
+    }
+
     @Override
     public String getIdValue() {
-        return "foo";
+        return get(Field.ID);
     }
 
     @Override
@@ -55,7 +67,14 @@ public class BpServerConfig extends ExternalizableCore {
         DEBUG_MODE,
         CONFIG_CACHE_AGE_SECONDS,
         CLEANUP_INTERVAL_MINUTES,
-        DEFAULT_MESSAGES_MAX,
+        DEFAULT_MESSAGES_MAX {
+            @Override
+            public void validate(String value) throws SimpleDBException {
+                if (isRequired() || value != null) {
+                    String fieldName = getFieldName();
+                    int intValue = validateInt(fieldName, value);
+                }
+            }},
         TOKEN_CACHE_MAX_MB;
 
         @Override

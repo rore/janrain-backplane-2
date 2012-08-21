@@ -225,16 +225,16 @@ public class Backplane1Config {
 
     private String cachedGet(BpServerConfig.Field property) {
 
-        BpServerConfig bpServerConfigCache = (BpServerConfig) CachedL1.getInstance().getObject(BpServerConfig.BPSERVER_CONFIG_KEY);
+        BpServerConfig bpServerConfigCache = (BpServerConfig) CachedL1.getInstance().getObject(BackplaneSystemProps.BPSERVER_CONFIG_KEY);
         if (bpServerConfigCache == null) {
             // pull from db if not found in cache
-            bpServerConfigCache = DaoFactory.getConfigDAO().get(null);
+            bpServerConfigCache = DaoFactory.getConfigDAO().get(BackplaneSystemProps.BPSERVER_CONFIG_KEY);
             if (bpServerConfigCache == null) {
                 // no instance found in cache or the db, so let's use the default record
                 bpServerConfigCache = new BpServerConfig();
             }
             // add it to the L1 cache
-            CachedL1.getInstance().setObject(BpServerConfig.BPSERVER_CONFIG_KEY, -1, bpServerConfigCache);
+            CachedL1.getInstance().setObject(BackplaneSystemProps.BPSERVER_CONFIG_KEY, -1, bpServerConfigCache);
         }
 
         return bpServerConfigCache.get(property);

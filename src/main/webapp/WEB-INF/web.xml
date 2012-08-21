@@ -106,6 +106,9 @@
     <filter-mapping>
         <filter-name>IPRangeFilter</filter-name>
         <url-pattern>/app/backplane_metrics/*</url-pattern>
+        <url-pattern>/app/admin/*</url-pattern>
+        <url-pattern>/app/adminadd/*</url-pattern>
+        <url-pattern>/app/adminupdate/*</url-pattern>
         <dispatcher>REQUEST</dispatcher>
         <dispatcher>FORWARD</dispatcher>
     </filter-mapping>

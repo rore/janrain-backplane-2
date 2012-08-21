@@ -731,9 +731,9 @@ Request:
 * HTTP method: GET
 * Security: access restricted to localhost and white listed IPs
 
-Metric data may also be pushed into Graphite.
+Metric data may optionally be pushed into Graphite.
 Metric data will periodically be sent to stdout.
-To configure white-listed IPs and Graphite server settings, see the build instructions.
+To configure white-listed IPs and Graphite server settings, please see the build instructions.
 
 
 ### Error Responses

@@ -268,11 +268,11 @@ public class Backplane2Config {
 
         try {
 
-            BpServerConfig bpServerConfigCache = (BpServerConfig) CachedL1.getInstance().getObject(BpServerConfig.BPSERVER_CONFIG_KEY);
+            BpServerConfig bpServerConfigCache = (BpServerConfig) CachedL1.getInstance().getObject(BackplaneSystemProps.BPSERVER_CONFIG_KEY);
             if (bpServerConfigCache == null) {
                 // pull from db if not found in cache
                 try {
-                    bpServerConfigCache = daoFactory.getConfigDAO().get(BpServerConfig.BPSERVER_CONFIG_KEY);
+                    bpServerConfigCache = daoFactory.getConfigDAO().get(BackplaneSystemProps.BPSERVER_CONFIG_KEY);
                 } catch (Exception e) {
                     // if we get an error from the db, create a new object
                 }
@@ -282,7 +282,7 @@ public class Backplane2Config {
                     bpServerConfigCache = new BpServerConfig();
                 }
                 // add it to the L1 cache
-                CachedL1.getInstance().setObject(BpServerConfig.BPSERVER_CONFIG_KEY, -1, bpServerConfigCache);
+                CachedL1.getInstance().setObject(BackplaneSystemProps.BPSERVER_CONFIG_KEY, -1, bpServerConfigCache);
             }
 
             return bpServerConfigCache.get(property);

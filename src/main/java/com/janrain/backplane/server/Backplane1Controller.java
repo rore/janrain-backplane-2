@@ -18,8 +18,14 @@ package com.janrain.backplane.server;
 
 import com.janrain.backplane.server.config.AuthException;
 import com.janrain.backplane.server.config.Backplane1Config;
+import com.janrain.backplane.server.config.BpServerConfig;
 import com.janrain.backplane.server.dao.redis.RedisBackplaneMessageDAO;
 import com.janrain.backplane.server.dao.DaoFactory;
+import com.janrain.backplane.server.dao.redis.RedisConfigDAO;
+import com.janrain.backplane.server.dao.redis.RedisUserDAO;
+import com.janrain.backplane2.server.*;
+import com.janrain.cache.CachedL1;
+import com.janrain.servlet.ServletUtil;
 import com.janrain.utils.BackplaneSystemProps;
 import com.janrain.backplane2.server.config.User;
 import com.janrain.commons.supersimpledb.SimpleDBException;
@@ -66,6 +72,113 @@ public class Backplane1Controller {
         }
         return new ModelAndView("welcome");
     }
+
+    @RequestMapping(value = "/admin", method = { RequestMethod.GET, RequestMethod.HEAD })
+    public ModelAndView admin(HttpServletRequest request, HttpServletResponse response) {
+
+        ServletUtil.checkSecure(request);
+        boolean adminUserExists = true;
+
+        // check to see if an admin record already exists, if it does, do not allow an update
+        User admin = DaoFactory.getAdminDAO().get(BackplaneSystemProps.ADMIN_USER);
+        if (admin == null) {
+            adminUserExists = false;
+        }
+
+        if (RequestMethod.HEAD.toString().equals(request.getMethod())) {
+            response.setContentLength(0);
+        }
+
+        BpServerConfig bpServerConfig = DaoFactory.getConfigDAO().get(BackplaneSystemProps.BPSERVER_CONFIG_KEY);
+        if (bpServerConfig == null) {
+            bpServerConfig = new BpServerConfig();
+        }
+        // add it to the L1 cache
+        CachedL1.getInstance().setObject(BackplaneSystemProps.BPSERVER_CONFIG_KEY, -1, bpServerConfig);
+
+        ModelAndView view = new ModelAndView("admin");
+        view.addObject("adminUserExists", adminUserExists);
+        view.addObject("configKey", bpServerConfig.getIdValue());
+        view.addObject("debugMode", bpConfig.isDebugMode());
+        view.addObject("defaultMessagesMax", bpServerConfig.get(BpServerConfig.Field.DEFAULT_MESSAGES_MAX));
+
+        return view;
+    }
+
+    @RequestMapping(value = "/adminupdate", method = { RequestMethod.POST })
+    public ModelAndView updateConfiguration(HttpServletRequest request, HttpServletResponse response) {
+
+        ServletUtil.checkSecure(request);
+
+        BpServerConfig bpServerConfig =
+                DaoFactory.getConfigDAO().get(BackplaneSystemProps.BPSERVER_CONFIG_KEY);
+        if (bpServerConfig == null) {
+            bpServerConfig = new BpServerConfig();
+        }
+        ModelAndView view = new ModelAndView("adminadd");
+        String debugModeString = request.getParameter("debug_mode");
+        String defaultMessagesMax = request.getParameter("default_messages_max");
+        bpServerConfig.put(BpServerConfig.Field.DEBUG_MODE.getFieldName(), Boolean.valueOf(debugModeString).toString());
+        bpServerConfig.put(BpServerConfig.Field.DEFAULT_MESSAGES_MAX.getFieldName(), defaultMessagesMax);
+
+        try {
+            bpServerConfig.validate();
+            DaoFactory.getConfigDAO().persist(bpServerConfig);
+            // add it to the L1 cache
+            CachedL1.getInstance().setObject(BackplaneSystemProps.BPSERVER_CONFIG_KEY, -1, bpServerConfig);
+            logger.info(bpServerConfig.toString());
+        } catch (Exception e) {
+            logger.error(e);
+            view.addObject("message", "An error has occurred " + e.getMessage());
+            return view;
+        }
+
+        view.addObject("message", "Configuration updated");
+        return view;
+
+    }
+
+
+
+    @RequestMapping(value = "/adminadd", method = { RequestMethod.POST })
+    public ModelAndView addAdmin(HttpServletRequest request, HttpServletResponse response) {
+
+        try {
+            ServletUtil.checkSecure(request);
+
+            ModelAndView view = new ModelAndView("adminadd");
+            // be sure no record exists
+            User admin = DaoFactory.getAdminDAO().get(BackplaneSystemProps.ADMIN_USER);
+            if (admin == null) {
+                String name = request.getParameter("username");
+                if (!name.equals(BackplaneSystemProps.ADMIN_USER)) {
+                    view.addObject("message", "Admin user name must be " + BackplaneSystemProps.ADMIN_USER);
+                    return view;
+                }
+                String password = request.getParameter("password");
+                // hash password
+                password = HmacHashUtils.hmacHash(password);
+                User user = new User();
+                user.setUserNamePassword(name, password);
+                DaoFactory.getAdminDAO().persist(user);
+                view.addObject("message", "Admin user " + name + " updated");
+            } else {
+                view.addObject("message", "Admin user already exists.  You must delete the entry from the database before submitting a new admin user.");
+            }
+
+            if (RequestMethod.HEAD.toString().equals(request.getMethod())) {
+                response.setContentLength(0);
+            }
+
+            return view;
+
+        } catch (Exception e) {
+            logger.error(e);
+            throw new RuntimeException(e);
+        }
+    }
+
+
 
     @RequestMapping(value = "/bus/{bus}", method = RequestMethod.GET)
     public @ResponseBody List<HashMap<String,Object>> getBusMessages(

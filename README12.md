@@ -81,15 +81,6 @@ Note: An access decision for the "Post" operation requires the message type
 (from which the required permission can be determined), in addition to the endpoint
 (bus and channel) and credentials required for the "Get All" operation.
 
-User Configuration
-------------------
-
-Backplane user accounts are kept in the `<backplane-instance>_User` table:
-
-* `USER`: backplane username
-
-* `PWDHASH`: backplane password (hash)
-
 
 User Provisioning API
 ---------------------
@@ -98,7 +89,7 @@ User Provisioning API
 
 Example HTTP API request:
 
-POST `/v1.1/provision/user/update`
+POST `/v1.2/provision/user/update`
 Host: backplanesample.com
 Content-Type: application/json
 
@@ -128,7 +119,7 @@ Example curl command for the above HTTP API request:
 
 Example HTTP API request:
 
-POST `/v1.1/provision/user/list`
+POST `/v1.2/provision/user/list`
 Host: backplanesample.com
 Content-Type: application/json
 
@@ -148,7 +139,7 @@ Example curl command for the above HTTP API request:
 
 Example HTTP API request:
 
-POST `/v1.1/provision/user/delete`
+POST `/v1.2/provision/user/delete`
 Host: backplanesample.com
 `Content-Type: application/json`
 
@@ -175,7 +166,7 @@ Returns a list of Bus Configuration data sets.
 
 Request:
 
-* endpoint: `/v1.1/provision/bus/list`
+* endpoint: `/v1.2/provision/bus/list`
 * HTTP method: POST
 * all entries are required
 * the value for the entities entry can be empty, in which case all Backplane Bus configurations are returned
@@ -218,7 +209,7 @@ Removes the specified bus configuration(s).
 
 Request:
 
-* endpoint: `/v1.1/provision/bus/delete`
+* endpoint: `/v1.2/provision/bus/delete`
 * HTTP method: POST
 * all entries are required
 * body format:
@@ -328,9 +319,9 @@ Request:
 * HTTP method: GET
 * Security: access restricted to localhost and white listed IPs
 
-Metric data may also be pushed into Graphite.
+Metric data may optionally be pushed into Graphite.
 Metric data will periodically be sent to stdout.
-To configure white-listed IPs and Graphite server settings, see the build instructions.
+To configure white-listed IPs and Graphite server settings, please see the build instructions.
 
 
 ### Error Responses
