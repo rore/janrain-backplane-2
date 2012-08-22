@@ -29,6 +29,7 @@ import com.netflix.curator.framework.recipes.leader.LeaderSelectorListener;
 import com.netflix.curator.framework.state.ConnectionState;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Histogram;
+import com.yammer.metrics.core.MetricName;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.commons.lang.StringUtils;
@@ -290,7 +291,7 @@ public class V2MessageProcessor extends JedisPubSub implements LeaderSelectorLis
 
     private static final Logger logger = Logger.getLogger(V2MessageProcessor.class);
 
-    private final Histogram timeInQueue = Metrics.newHistogram(V2MessageProcessor.class, "time_in_queue");
+    private final Histogram timeInQueue = Metrics.newHistogram(new MetricName("v2", this.getClass().getName().replace(".","_"), "time_in_queue"));
 
     private DAOFactory daoFactory;
 

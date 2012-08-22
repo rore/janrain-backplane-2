@@ -139,7 +139,7 @@ public class Backplane1Config {
     private static String EC2InstanceId = AwsUtility.retrieveEC2InstanceId();
 
     private final com.yammer.metrics.core.Timer getMessagesTime =
-            Metrics.newTimer(new MetricName("v1", this.getClass().getName().replaceAll(".","_"), "cleanup_messages_time"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
+            Metrics.newTimer(new MetricName("v1", this.getClass().getName().replace(".","_"), "cleanup_messages_time"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
 
     @SuppressWarnings({"UnusedDeclaration"})
     private Backplane1Config() {
