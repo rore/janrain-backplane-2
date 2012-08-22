@@ -146,7 +146,7 @@ public class Backplane2Config {
     private static String EC2InstanceId = AwsUtility.retrieveEC2InstanceId();
 
     private final com.yammer.metrics.core.Timer v2CleanupTimer =
-        com.yammer.metrics.Metrics.newTimer(new MetricName(BackplaneSystemProps.getMachineName(), this.getClass().getName(), "cleanup_messages_time"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
+        com.yammer.metrics.Metrics.newTimer(new MetricName("v2", this.getClass().getName(), "cleanup_messages_time"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
 
     @SuppressWarnings({"UnusedDeclaration"})
     private Backplane2Config() {
@@ -161,7 +161,7 @@ public class Backplane2Config {
                 String args[] = graphiteServer.split(":");
                 String server = args[0];
                 int port = Integer.parseInt(args[1]);
-                GraphiteReporter.enable(10, TimeUnit.SECONDS, server, port);
+                GraphiteReporter.enable(10, TimeUnit.SECONDS, server, port, bpInstanceId + "." + BackplaneSystemProps.getMachineName());
                 logger.info("Graphite server enabled at " + graphiteServer);
             } catch (Exception e) {
                 logger.warn("could not enable Graphite from " + graphiteServer + " must be in the form SERVER:PORT");

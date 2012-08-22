@@ -23,6 +23,7 @@ import com.janrain.redis.Redis;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Histogram;
+import com.yammer.metrics.core.MetricName;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.commons.lang.StringUtils;
@@ -265,7 +266,7 @@ public class RedisBackplaneMessageDAO extends DAO<BackplaneMessage> {
 
     private static final Logger logger = Logger.getLogger(RedisBackplaneMessageDAO.class);
 
-    private final Histogram messagesPerChannel = Metrics.newHistogram(RedisBackplaneMessageDAO.class, "v1_messages_per_channel");
+    private final Histogram messagesPerChannel = Metrics.newHistogram(new MetricName("v1", RedisBackplaneMessageDAO.class.getName(), "v1_messages_per_channel"));
 
     private void filterAndSort(List<BackplaneMessage> messages, String since, String sticky) {
 
