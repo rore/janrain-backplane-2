@@ -264,7 +264,7 @@ public class MessageProcessor extends JedisPubSub implements LeaderSelectorListe
 
     private static final Logger logger = Logger.getLogger(MessageProcessor.class);
 
-    private final Histogram timeInQueue = Metrics.newHistogram(new MetricName("v1", MessageProcessor.class.getName(), "time_in_queue"));
+    private final Histogram timeInQueue = Metrics.newHistogram(new MetricName("v1", this.getClass().getName().replaceAll(".","_"), "time_in_queue"));
 
     @Override
     public void takeLeadership(CuratorFramework curatorFramework) throws Exception {

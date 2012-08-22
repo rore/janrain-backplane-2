@@ -320,15 +320,15 @@ public class Backplane1Controller {
     private static final int CHANNEL_NAME_LENGTH = 32;
 
     private final com.yammer.metrics.core.Timer getBusMessagesTime =
-            Metrics.newTimer(new MetricName("v1", this.getClass().getName(), "get_bus_messages_time"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
+            Metrics.newTimer(new MetricName("v1", this.getClass().getName().replaceAll(".","_"), "get_bus_messages_time"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
 
     private final com.yammer.metrics.core.Timer getChannelMessagesTime =
-            Metrics.newTimer(new MetricName("v1", this.getClass().getName(), "get_channel_messages_time"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
+            Metrics.newTimer(new MetricName("v1", this.getClass().getName().replaceAll(".","_"), "get_channel_messages_time"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
 
     private final com.yammer.metrics.core.Timer postMessagesTime =
-            Metrics.newTimer(new MetricName("v1", this.getClass().getName(), "post_messages_time"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
+            Metrics.newTimer(new MetricName("v1", this.getClass().getName().replaceAll(".","_"), "post_messages_time"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
 
-    private final Histogram payLoadSizesOnGets = Metrics.newHistogram(new MetricName("v1", this.getClass().getName(), "payload_sizes_gets"));
+    private final Histogram payLoadSizesOnGets = Metrics.newHistogram(new MetricName("v1", this.getClass().getName().replaceAll(".","_"), "payload_sizes_gets"));
 
     @Inject
     private Backplane1Config bpConfig;

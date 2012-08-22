@@ -266,7 +266,7 @@ public class RedisBackplaneMessageDAO extends DAO<BackplaneMessage> {
 
     private static final Logger logger = Logger.getLogger(RedisBackplaneMessageDAO.class);
 
-    private final Histogram messagesPerChannel = Metrics.newHistogram(new MetricName("v1", RedisBackplaneMessageDAO.class.getName(), "v1_messages_per_channel"));
+    private final Histogram messagesPerChannel = Metrics.newHistogram(new MetricName("v1", this.getClass().getName().replaceAll(".","_"), "v1_messages_per_channel"));
 
     private void filterAndSort(List<BackplaneMessage> messages, String since, String sticky) {
 
