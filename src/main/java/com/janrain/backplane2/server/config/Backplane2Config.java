@@ -161,7 +161,7 @@ public class Backplane2Config {
                 String args[] = graphiteServer.split(":");
                 String server = args[0];
                 int port = Integer.parseInt(args[1]);
-                GraphiteReporter.enable(10, TimeUnit.SECONDS, server, port, BackplaneSystemProps.getMachineName().replace(".","_") + bpInstanceId + ".");
+                GraphiteReporter.enable(10, TimeUnit.SECONDS, server, port, BackplaneSystemProps.getMachineName().replace(".","_") + "_" + bpInstanceId);
                 logger.info("Graphite server enabled at " + graphiteServer);
             } catch (Exception e) {
                 logger.warn("could not enable Graphite from " + graphiteServer + " must be in the form SERVER:PORT");
