@@ -251,7 +251,8 @@ public class Backplane1Controller {
 
             //Block post if the caller has exceeded the message post limit
             if (backplaneMessageDAO.getMessageCount(bus, channel) >= bpConfig.getDefaultMaxMessageLimit()) {
-                logger.warn("Channel " + bus + ":" + channel + " is full");
+                logger.warn("Channel " + bus + ":" + channel + " has reached the maximum of " +
+                        bpConfig.getDefaultMaxMessageLimit() + " messages");
                 throw new BackplaneServerException("Message limit exceeded for this channel");
             }
 
