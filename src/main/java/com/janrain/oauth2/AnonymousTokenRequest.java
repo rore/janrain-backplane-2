@@ -75,7 +75,7 @@ public class AnonymousTokenRequest implements TokenRequest {
         Pair<String, String> channelBus = processChannelBus();
         Scope processedScope = processScope(channelBus.getLeft(), channelBus.getRight());
         try {
-            accessToken = new Token.Builder(grantType, processedScope.toString()).expires(expires).buildToken();
+            accessToken = new Token.Builder(grantType.getAccessType(), processedScope.toString()).expires(expires).buildToken();
             daoFactory.getTokenDao().persist(accessToken);
             daoFactory.getTokenDao().bindChannel(channelBus.getLeft(), channelBus.getRight(), 10 * expiresIn);
             return accessToken.response(generateRefreshToken(grantType.getRefreshType(), processedScope, daoFactory));

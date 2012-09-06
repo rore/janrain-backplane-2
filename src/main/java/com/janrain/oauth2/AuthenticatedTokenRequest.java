@@ -86,7 +86,7 @@ public class AuthenticatedTokenRequest implements TokenRequest {
         Date expires = new Date(System.currentTimeMillis() + expiresIn.longValue() * 1000);
         Pair<Scope,List<String>> scopeGrants = processScope();
         try {
-            accessToken = new Token.Builder(grantType, scopeGrants.getLeft().toString())
+            accessToken = new Token.Builder(grantType.getAccessType(), scopeGrants.getLeft().toString())
                     .expires(expires)
                     .issuedToClient(authenticatedClientId)
                     .clientSourceUrl(authenticatedClientSourceUrl)

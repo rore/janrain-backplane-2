@@ -34,7 +34,6 @@ import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.context.ApplicationContext;
@@ -46,7 +45,6 @@ import org.springframework.web.servlet.HandlerAdapter;
 import org.springframework.web.servlet.ModelAndView;
 
 import javax.inject.Inject;
-import javax.mail.Message;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletResponse;
 import java.io.UnsupportedEncodingException;
@@ -1622,8 +1620,17 @@ public class Backplane2ControllerTest {
 
         ObjectMapper mapper = new ObjectMapper();
         Map<String,Object> responseBody = mapper.readValue(response.getContentAsString(), new TypeReference<Map<String,Object>>() {});
-        assertNotNull("expected access_token, got null", responseBody.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME));
-        assertNotNull("expected refresh_token, got null", responseBody.get(OAUTH2_REFRESH_TOKEN_PARAM_NAME));
+
+        String responseAccessToken = (String) responseBody.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME);
+        assertNotNull("expected access_token, got null", responseAccessToken);
+        assertFalse("expected access token, got: " + responseAccessToken, GrantType.fromTokenString(responseAccessToken).isRefresh());
+        assertTrue("expected privileged access token, got: " + responseAccessToken, GrantType.fromTokenString(responseAccessToken).isPrivileged());
+
+        String responseRefreshToken = (String) responseBody.get(OAUTH2_REFRESH_TOKEN_PARAM_NAME);
+        assertNotNull("expected refresh_token, got null", responseRefreshToken);
+        assertTrue("expected refresh token, got: " + responseRefreshToken, GrantType.fromTokenString(responseRefreshToken).isRefresh());
+        assertTrue("expected privileged refresh token, got: " + responseRefreshToken, GrantType.fromTokenString(responseRefreshToken).isPrivileged());
+
         Scope scope2 = new Scope(responseBody.get(OAUTH2_SCOPE_PARAM_NAME).toString());
         assertEquals("initial and refresh token response scopes are not equal", scope1, scope2);
     }

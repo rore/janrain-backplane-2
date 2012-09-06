@@ -16,35 +16,31 @@ import static com.janrain.oauth2.OAuth2.*;
  */
 public enum GrantType {
 
-    REFRESH_ANONYMOUS("AR"),
-    ANONYMOUS("AA", REFRESH_ANONYMOUS),
+    ANONYMOUS("AA"),
+    REFRESH_ANONYMOUS("AR", ANONYMOUS),
 
-    REFRESH_PRIVILEGED( "PR", OAUTH2_TOKEN_GRANT_TYPE_REFRESH_TOKEN ),
-    AUTHORIZATION_CODE( "PA", REFRESH_PRIVILEGED, OAUTH2_TOKEN_GRANT_TYPE_AUTH_CODE ),
-    CLIENT_CREDENTIALS( "PC", REFRESH_PRIVILEGED, OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS );
+    AUTHORIZATION_CODE( "PA", OAUTH2_TOKEN_GRANT_TYPE_AUTH_CODE ),
+    CLIENT_CREDENTIALS( "PC", OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS ),
+    REFRESH_PRIVILEGED( "PR", CLIENT_CREDENTIALS, OAUTH2_TOKEN_GRANT_TYPE_REFRESH_TOKEN );
 
     public String getTokenPrefix() {
         return tokenPrefix;
-    }
-
-    public String getOauthType() {
-        return oauthType;
     }
 
     public boolean isPrivileged() {
         return this.oauthType != null;
     }
 
-    public GrantType getRefreshType() {
-        return refreshType;
+    public GrantType getAccessType() {
+        return this.accessType;
     }
 
-    public boolean isRefreshable() {
-        return refreshType != null;
+    public GrantType getRefreshType() {
+        return isPrivileged() ? REFRESH_PRIVILEGED : REFRESH_ANONYMOUS;
     }
 
     public boolean isRefresh() {
-        return refreshType == this;
+        return accessType != this;
     }
 
     public int getTokenExpiresSecondsDefault() {
@@ -101,7 +97,7 @@ public enum GrantType {
 
     private final String tokenPrefix;
     private final String oauthType;
-    private final GrantType refreshType;
+    private final GrantType accessType;
 
     private GrantType(String tokenPrefix) {
         this(tokenPrefix, null, null);
@@ -115,9 +111,9 @@ public enum GrantType {
         this(tokenPrefix, null, oauthType);
     }
 
-    private GrantType(String tokenPrefix, @Nullable GrantType refreshType, @Nullable String oauthType) {
+    private GrantType(String tokenPrefix, @Nullable GrantType accessType, @Nullable String oauthType) {
         this.tokenPrefix = tokenPrefix;
         this.oauthType = oauthType;
-        this.refreshType = refreshType != null ? refreshType : this;
+        this.accessType = accessType != null ? accessType : this;
     }
 }
