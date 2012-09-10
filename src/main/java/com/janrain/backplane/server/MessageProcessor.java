@@ -236,11 +236,15 @@ public class MessageProcessor extends JedisPubSub implements LeaderSelectorListe
                 } // messagesToProcess > 0
 
                 } catch (Exception e) {
-                    logger.warn("error " + e.getMessage());
-                    if (jedis != null) {
-                        jedis.unwatch();
-                        Redis.getInstance().releaseBrokenResourceToPool(jedis);
-                        jedis = null;
+                    try {
+                        logger.warn("error " + e.getMessage());
+                        if (jedis != null) {
+                            jedis.unwatch();
+                            Redis.getInstance().releaseBrokenResourceToPool(jedis);
+                            jedis = null;
+                        }
+                    } catch (Exception e1) {
+                        //ignore
                     }
                     Thread.sleep(2000);
                 } finally {
