@@ -22,6 +22,7 @@ import com.janrain.backplane.server.dao.DaoFactory;
 import com.janrain.backplane2.server.dao.BackplaneMessageDAO;
 import com.janrain.commons.util.Pair;
 import com.janrain.redis.Redis;
+import com.janrain.utils.BackplaneSystemProps;
 import com.netflix.curator.framework.CuratorFramework;
 import com.netflix.curator.framework.recipes.leader.LeaderSelectorListener;
 import com.netflix.curator.framework.state.ConnectionState;
@@ -272,8 +273,9 @@ public class MessageProcessor extends JedisPubSub implements LeaderSelectorListe
 
     @Override
     public void takeLeadership(CuratorFramework curatorFramework) throws Exception {
-        logger.info("v1 leader elected");
+        logger.info("[" + BackplaneSystemProps.getMachineName() + "] v1 leader elected for message processing");
         insertMessages(true);
+        logger.info("[" + BackplaneSystemProps.getMachineName() + "] v1 leader ended message processing");
     }
 
     @Override
