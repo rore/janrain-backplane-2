@@ -42,55 +42,11 @@ import java.util.*;
 /**
  * @author Tom Raney
  */
-public class MessageProcessor extends JedisPubSub implements LeaderSelectorListener {
+public class MessageProcessor implements LeaderSelectorListener {
 
     public MessageProcessor() {}
 
-    @Override
-    public void onMessage(String s, String s1) {
-        logger.info("message received on channel: " + s + " with message: " + s1);
-    }
-
-    @Override
-    public void onPMessage(String s, String s1, String s2) {
-
-    }
-
-    @Override
-    public void onSubscribe(String s, int i) {
-        logger.info("successfully subscribed to " + s);
-    }
-
-    @Override
-    public void onUnsubscribe(String s, int i) {
-
-    }
-
-    @Override
-    public void onPUnsubscribe(String s, int i) {
-
-    }
-
-    @Override
-    public void onPSubscribe(String s, int i) {
-
-    }
-
-    public void subscribe() {
-
-        Jedis jedis = null;
-
-        try {
-            jedis = Redis.getInstance().getJedis();
-            //this call is blocking
-            jedis.subscribe(this, "alerts");
-        } finally {
-            Redis.getInstance().releaseToPool(jedis);
-        }
-
-    }
-
-    /**
+        /**
      * Processor to remove expired messages
      */
     public void cleanupMessages() {

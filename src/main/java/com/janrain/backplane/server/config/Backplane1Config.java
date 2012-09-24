@@ -161,15 +161,15 @@ public class Backplane1Config {
 
         final MessageProcessor messageProcessor = new MessageProcessor();
 
-        ScheduledExecutorService messageWorkerTask = Executors.newScheduledThreadPool(2);
+        ScheduledExecutorService messageWorkerTask = Executors.newScheduledThreadPool(1);
 
-        messageWorkerTask.scheduleAtFixedRate(new Runnable() {
-            @Override
-            public void run() {
-                logger.info("creating subscriber thread");
-                messageProcessor.subscribe();
-            }
-        }, 0, 1, TimeUnit.MINUTES);
+//        messageWorkerTask.scheduleAtFixedRate(new Runnable() {
+//            @Override
+//            public void run() {
+//                logger.info("creating subscriber thread");
+//                messageProcessor.subscribe();
+//            }
+//        }, 0, 1, TimeUnit.MINUTES);
 
         messageWorkerTask.scheduleAtFixedRate(new Runnable() {
             @Override
