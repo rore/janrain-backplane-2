@@ -389,12 +389,12 @@ public class Redis implements PathChildrenCacheListener {
 
     private Redis() {
         JedisPoolConfig config = new JedisPoolConfig();
-        config.setMaxActive(80);
+        config.setMaxActive(50);
         config.setTestOnBorrow(true);
         config.setMaxWait(REDIS_MAX_WAIT_SECONDS*1000l);
         config.setWhenExhaustedAction(GenericObjectPool.WHEN_EXHAUSTED_BLOCK);
-        config.setMaxIdle(80);
-        config.setMinIdle(80);
+        config.setMaxIdle(10);
+        config.setMinIdle(0);
 
         String redisServerConfig = System.getProperty("REDIS_SERVER_PRIMARY");
         if (StringUtils.isEmpty(redisServerConfig)) {
@@ -412,6 +412,7 @@ public class Redis implements PathChildrenCacheListener {
         }
 
         pool1 = new JedisPool(config, args[0], port);
+
 
         redisServerConfig = System.getProperty("REDIS_SERVER_SECONDARY");
         if (StringUtils.isEmpty(redisServerConfig)) {
