@@ -50,7 +50,7 @@ public class RedisTokenDAO implements TokenDAO {
     public void persist(Token token) throws BackplaneServerException {
         Jedis jedis = null;
         try {
-            jedis = Redis.getInstance().getJedis();
+            jedis = Redis.getInstance().getWriteJedis();
             byte[] bytes = SerializationUtils.serialize(token);
             jedis.rpush(getKey("list"), bytes);
             jedis.set(getKey(token.getIdValue()), bytes);
@@ -67,7 +67,7 @@ public class RedisTokenDAO implements TokenDAO {
     public void delete(String tokenId) throws BackplaneServerException {
         Jedis jedis = null;
         try {
-            jedis = Redis.getInstance().getJedis();
+            jedis = Redis.getInstance().getWriteJedis();
             byte[] bytes = jedis.get(getKey(tokenId));
             if (bytes != null) {
                 logger.info("removing token " + tokenId);
@@ -131,7 +131,7 @@ public class RedisTokenDAO implements TokenDAO {
         Jedis jedis = null;
 
         try {
-            jedis = Redis.getInstance().getJedis();
+            jedis = Redis.getInstance().getWriteJedis();
             logger.info("Backplane token cleanup task started.");
 
             List<Token> tokens = getAll();

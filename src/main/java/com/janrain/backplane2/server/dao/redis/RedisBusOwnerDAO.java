@@ -51,7 +51,7 @@ public class RedisBusOwnerDAO implements BusOwnerDAO {
         Jedis jedis = null;
 
         try {
-            jedis = Redis.getInstance().getJedis();
+            jedis = Redis.getInstance().getWriteJedis();
             byte[] bytes = SerializationUtils.serialize(obj);
             Transaction t = jedis.multi();
 
@@ -70,7 +70,7 @@ public class RedisBusOwnerDAO implements BusOwnerDAO {
 
         try {
             logger.info("=== BEGIN BUS OWNER " + id + " DELETE ===");
-            jedis = Redis.getInstance().getJedis();
+            jedis = Redis.getInstance().getWriteJedis();
             byte[] bytes = jedis.get(getKey(id));
             if (bytes != null) {
                 Transaction t= jedis.multi();

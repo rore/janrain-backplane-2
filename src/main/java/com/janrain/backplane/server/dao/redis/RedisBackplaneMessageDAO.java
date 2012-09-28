@@ -70,7 +70,7 @@ public class RedisBackplaneMessageDAO extends DAO<BackplaneMessage> {
     public void delete(String id) throws BackplaneServerException {
         Jedis jedis = null;
         try {
-            jedis = Redis.getInstance().getJedis();
+            jedis = Redis.getInstance().getWriteJedis();
             Date d = BackplaneMessage.getDateFromId(id);
             Set<String> sortedSetBytes = jedis.zrangeByScore(V1_MESSAGES, d.getTime(), d.getTime());
 
@@ -115,7 +115,7 @@ public class RedisBackplaneMessageDAO extends DAO<BackplaneMessage> {
 
             logger.info("preparing to cleanup v1 messages");
 
-            jedis = Redis.getInstance().getJedis();
+            jedis = Redis.getInstance().getWriteJedis();
 
             Set<byte[]> messageMetaBytes = jedis.zrangeByScore(RedisBackplaneMessageDAO.V1_MESSAGES.getBytes(), 0, Double.MAX_VALUE);
             if (messageMetaBytes != null) {
@@ -169,7 +169,7 @@ public class RedisBackplaneMessageDAO extends DAO<BackplaneMessage> {
 
         try {
 
-            jedis = Redis.getInstance().getJedis();
+            jedis = Redis.getInstance().getReadJedis();
 
             double sinceInMs = 0;
             if (StringUtils.isNotBlank(since)) {
@@ -223,7 +223,7 @@ public class RedisBackplaneMessageDAO extends DAO<BackplaneMessage> {
 
         try {
 
-            jedis = Redis.getInstance().getJedis();
+            jedis = Redis.getInstance().getReadJedis();
 
             double sinceInMs = 0;
             if (StringUtils.isNotBlank(since)) {

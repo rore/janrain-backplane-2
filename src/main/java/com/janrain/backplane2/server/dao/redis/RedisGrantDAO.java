@@ -101,7 +101,7 @@ public class RedisGrantDAO implements GrantDAO {
         Jedis jedis = null;
         try {
             tokenDAO.revokeTokenByGrant(existing.getIdValue());
-            jedis = Redis.getInstance().getJedis();
+            jedis = Redis.getInstance().getWriteJedis();
             byte[] newBytes = SerializationUtils.serialize(updated);
             byte[] oldBytes = jedis.get(getKey(existing.getIdValue()));
             Transaction t = jedis.multi();
@@ -119,7 +119,7 @@ public class RedisGrantDAO implements GrantDAO {
     public void delete(String id) throws BackplaneServerException, TokenException {
         Jedis jedis = null;
         try {
-            jedis = Redis.getInstance().getJedis();
+            jedis = Redis.getInstance().getWriteJedis();
             byte[] bytes = jedis.get(getKey(id));
             if (bytes != null) {
                 if (jedis.lrem(getKey("list"), 0, bytes) == 0) {

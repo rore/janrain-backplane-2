@@ -36,7 +36,7 @@ public class RedisBusConfig1DAO extends DAO<BusConfig1> {
     public void delete(String id) throws BackplaneServerException {
         Jedis jedis = null;
         try {
-            jedis = Redis.getInstance().getJedis();
+            jedis = Redis.getInstance().getWriteJedis();
             byte[] bytes = jedis.get(getKey(id));
             if (bytes != null) {
                 Transaction t = jedis.multi();

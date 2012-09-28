@@ -94,7 +94,7 @@ public class V2MessageProcessor implements LeaderSelectorListener {
 
         try {
 
-            jedis = Redis.getInstance().getJedis();
+            jedis = Redis.getInstance().getWriteJedis();
 
             List<String> insertionTimes = new ArrayList<String>();
 

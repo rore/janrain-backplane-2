@@ -73,7 +73,7 @@ public class MessageProcessor implements LeaderSelectorListener {
 
                 try {
 
-                    jedis = Redis.getInstance().getJedis();
+                    jedis = Redis.getInstance().getWriteJedis();
 
                     // retrieve the latest 'live' message ID
                     String latestMessageId = null;

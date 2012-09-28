@@ -95,7 +95,7 @@ public class RedisBusDAO implements BusDAO {
         Jedis jedis = null;
         try {
             logger.info("==== BEGIN BUS " + id + " DELETE ====");
-            jedis = Redis.getInstance().getJedis();
+            jedis = Redis.getInstance().getWriteJedis();
             byte[] bytes = jedis.get(getKey(id));
             if (bytes != null) {
                 Transaction t = jedis.multi();

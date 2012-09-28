@@ -23,8 +23,7 @@ run on each Backplane node (e.g., "localhost:2181").
 
 * `REDIS_SERVER_PRIMARY`: (Required) Location of primary Redis server (e.g., "redis1.databaseserver.com:6379").
 
-* `REDIS_SERVER_SECONDARY`: (Required) Location of secondary Redis server (e.g., "redis2.databaseserver.com:6379").
-Note: failover is not used at this time.
+* `REDIS_SERVER_READS`: (Required) Location of Redis server for reads [may be the same as the primary] (e.g., "localhost:6379").
 
 * `AWS_INSTANCE_ID` : (Required) Used for logging (e.g., "AWS_INSTANCE_ID=BACKPLANE").
 
@@ -70,7 +69,7 @@ To process the tests, you must start the Redis and ZooKeeper instances.
 
 Use the following modification to the Maven build command (be sure to add your parameters):
 
-        mvn package -DargLine="AWS_INSTANCE_ID=test -DZOOKEEPER_SERVERS=localhost:2181 -DREDIS_SERVER_PRIMARY=localhost:6379 -DREDIS_SERVER_SECONDARY=localhost:6379"
+        mvn package -DargLine="AWS_INSTANCE_ID=test -DZOOKEEPER_SERVERS=localhost:2181 -DREDIS_SERVER_PRIMARY=localhost:6379 -DREDIS_SERVER_READS=localhost:6379"
 
 Maven will create a WAR file for deployment in the `/target/` directory.
 

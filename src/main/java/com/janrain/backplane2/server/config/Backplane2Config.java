@@ -17,6 +17,7 @@
 package com.janrain.backplane2.server.config;
 
 import com.janrain.backplane.server.config.BpServerConfig;
+import com.janrain.redis.Redis;
 import com.janrain.utils.BackplaneSystemProps;
 import com.janrain.backplane2.server.BackplaneServerException;
 import com.janrain.backplane2.server.V2MessageProcessor;
@@ -203,7 +204,8 @@ public class Backplane2Config {
         ping.scheduleWithFixedDelay(new Runnable() {
             @Override
             public void run() {
-                com.janrain.redis.Redis.getInstance().ping();
+                com.janrain.redis.Redis.getInstance().ping(Redis.getInstance().getReadJedis());
+                com.janrain.redis.Redis.getInstance().ping(Redis.getInstance().getWriteJedis());
             }
         }, 30, 10, TimeUnit.SECONDS);
         return ping;

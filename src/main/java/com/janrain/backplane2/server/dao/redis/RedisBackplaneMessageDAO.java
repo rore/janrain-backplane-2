@@ -58,7 +58,7 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
     public BackplaneMessage getLatestMessage() throws BackplaneServerException {
         Jedis jedis = null;
         try {
-            jedis = Redis.getInstance().getJedis();
+            jedis = Redis.getInstance().getReadJedis();
 
             Set<byte[]> bytesList = jedis.zrange(V2_MESSAGES.getBytes(), -1, -1);
             if (! bytesList.isEmpty()) {
@@ -104,7 +104,7 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
         final Scope scope = token.getScope();
         Jedis jedis = null;
         try {
-            jedis = Redis.getInstance().getJedis();
+            jedis = Redis.getInstance().getReadJedis();
             Transaction t = jedis.multi();
             List<String> unions = new ArrayList<String>();
 
@@ -185,7 +185,7 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
 
         try {
 
-            jedis = Redis.getInstance().getJedis();
+            jedis = Redis.getInstance().getReadJedis();
 
             double sinceInMs = 0;
             if (StringUtils.isNotBlank(sinceIso8601timestamp)) {
@@ -238,7 +238,7 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
 
         try {
 
-            jedis = Redis.getInstance().getJedis();
+            jedis = Redis.getInstance().getReadJedis();
 
             List<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
             Set<byte[]> messageIdBytes = jedis.zrange(getChannelKey(channel), 0, -1);
@@ -285,7 +285,7 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
 
             logger.info("preparing to cleanup v2 messages");
 
-            jedis = Redis.getInstance().getJedis();
+            jedis = Redis.getInstance().getWriteJedis();
 
             Set<byte[]> messageMetaBytes = jedis.zrangeByScore(V2_MESSAGES.getBytes(), 0, Double.MAX_VALUE);
             if (messageMetaBytes != null) {
@@ -334,7 +334,7 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
     public void delete(String id) throws BackplaneServerException {
         Jedis jedis = null;
         try {
-            jedis = Redis.getInstance().getJedis();
+            jedis = Redis.getInstance().getWriteJedis();
             Date d = BackplaneMessage.getDateFromId(id);
             if (d == null) {
                 logger.warn("cannot retrieve date from " + id + ": aborting delete");

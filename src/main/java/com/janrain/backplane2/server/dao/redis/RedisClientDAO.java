@@ -50,7 +50,7 @@ public class RedisClientDAO implements ClientDAO {
         Jedis jedis = null;
         try {
             byte[] bytes = SerializationUtils.serialize(obj);
-            jedis = Redis.getInstance().getJedis();
+            jedis = Redis.getInstance().getWriteJedis();
 
             Transaction t = jedis.multi();
             t.set(getKey(obj.getIdValue()), bytes);
@@ -66,7 +66,7 @@ public class RedisClientDAO implements ClientDAO {
     public void delete(String id) throws BackplaneServerException, TokenException {
         Jedis jedis = null;
         try {
-            jedis = Redis.getInstance().getJedis();
+            jedis = Redis.getInstance().getWriteJedis();
             byte[] bytes = jedis.get(getKey(id));
             if (bytes != null) {
                 Transaction t = jedis.multi();

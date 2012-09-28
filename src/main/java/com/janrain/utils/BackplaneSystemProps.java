@@ -32,7 +32,7 @@ public class BackplaneSystemProps extends InitSystemProps {
     public static final String GRAPHITE_SERVER    = "GRAPHITE_SERVER";
     public static final String ZOOKEEPER_SERVERS  = "ZOOKEEPER_SERVERS";
     public static final String REDIS_SERVER_PRIMARY = "REDIS_SERVER_PRIMARY";
-    public static final String REDIS_SERVER_SECONDARY = "REDIS_SERVER_SECONDARY";
+    public static final String REDIS_SERVER_READS = "REDIS_SERVER_READS";
     public static final String IP_WHITE_LIST = "IP_WHITE_LIST";
     public static final String ADMIN_USER = "bpadmin";
     public static final String BPSERVER_CONFIG_KEY = "bpserverconfig";
@@ -52,7 +52,7 @@ public class BackplaneSystemProps extends InitSystemProps {
         load(GRAPHITE_SERVER, false);
         load(ZOOKEEPER_SERVERS, true);
         load(REDIS_SERVER_PRIMARY, true);
-        load(REDIS_SERVER_SECONDARY, true);
+        load(REDIS_SERVER_READS, true);
         load(IP_WHITE_LIST, false);
 
     }
