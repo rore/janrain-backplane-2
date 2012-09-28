@@ -196,7 +196,6 @@ public class MessageProcessor implements LeaderSelectorListener {
                     try {
                         logger.warn("error " + e.getMessage());
                         if (jedis != null) {
-                            jedis.unwatch();
                             Redis.getInstance().releaseBrokenResourceToPool(jedis);
                             jedis = null;
                         }

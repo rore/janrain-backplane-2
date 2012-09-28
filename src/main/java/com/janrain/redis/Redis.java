@@ -23,6 +23,10 @@ import com.netflix.curator.framework.recipes.cache.PathChildrenCache;
 import com.netflix.curator.framework.recipes.cache.PathChildrenCacheEvent;
 import com.netflix.curator.framework.recipes.cache.PathChildrenCacheListener;
 import com.netflix.curator.framework.recipes.locks.InterProcessMutex;
+import com.yammer.metrics.Metrics;
+import com.yammer.metrics.core.Counter;
+import com.yammer.metrics.core.Gauge;
+import com.yammer.metrics.core.MetricName;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.pool.impl.GenericObjectPool;
 import org.apache.log4j.Logger;
@@ -35,6 +39,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author Tom Raney
@@ -65,6 +70,7 @@ public class Redis implements PathChildrenCacheListener {
     }
 
     public void releaseToPool(Jedis jedis) {
+        if (jedis == null) return;
         JedisPool pool = checkedOutJedises.get(jedis);
         if (pool != null) {
             pool.returnResource(jedis);
@@ -75,6 +81,7 @@ public class Redis implements PathChildrenCacheListener {
     }
 
     public void releaseBrokenResourceToPool(Jedis jedis) {
+        if (jedis == null) return;
         JedisPool pool = checkedOutJedises.get(jedis);
         if (pool != null) {
             pool.returnBrokenResource(jedis);
@@ -296,19 +303,24 @@ public class Redis implements PathChildrenCacheListener {
         logger.info("redis server set to " + server);
     }
 
-    public void ping(Jedis jedis) {
-        String reply = "ERROR";
+    public void ping() {
+
+        Jedis jedisWrite = null;
+        Jedis jedisRead = null;
+
         try {
-            reply = jedis.ping();
+            jedisWrite = this.getWriteJedis();
+            String reply = jedisWrite.ping();
+            logger.info("PING " + System.getProperty(BackplaneSystemProps.REDIS_SERVER_PRIMARY) + " (" + BackplaneSystemProps.REDIS_SERVER_PRIMARY + ") -> " + reply);
+
+            jedisRead = this.getReadJedis();
+            logger.info("PING " + System.getProperty(BackplaneSystemProps.REDIS_SERVER_READS) + " (" + BackplaneSystemProps.REDIS_SERVER_READS + ") -> " + reply);
+
         } catch (Exception e) {
             // something bad
         } finally {
-            JedisPool pool = checkedOutJedises.get(jedis);
-            if (pool == poolForReads) {
-                logger.info("PING " + currentRedisServerForReads + "(" + System.getProperty(currentRedisServerForReads) + ") -> " + reply);
-            } else {
-                logger.info("PING " + currentRedisServerForWrites + "(" + System.getProperty(currentRedisServerForWrites) + ") -> " + reply);
-            }
+            if (jedisRead != null) this.releaseToPool(jedisRead);
+            if (jedisWrite != null) this.releaseToPool(jedisWrite);
         }
     }
 
@@ -333,7 +345,7 @@ public class Redis implements PathChildrenCacheListener {
 
     private Redis() {
         JedisPoolConfig config = new JedisPoolConfig();
-        config.setMaxActive(50);
+        config.setMaxActive(5);
         config.setTestOnBorrow(true);
         config.setMaxWait(REDIS_MAX_WAIT_SECONDS*1000l);
         config.setWhenExhaustedAction(GenericObjectPool.WHEN_EXHAUSTED_BLOCK);
@@ -388,6 +400,11 @@ public class Redis implements PathChildrenCacheListener {
         return poolForReads;
     }
 
-    private Map<Jedis, JedisPool> checkedOutJedises = new HashMap<Jedis, JedisPool>();
+    private ConcurrentHashMap<Jedis, JedisPool> checkedOutJedises = new ConcurrentHashMap<Jedis, JedisPool>();
+    private final Gauge checkedOutJedisesCounterGauge = Metrics.newGauge(new MetricName("redis", this.getClass().getName().replace(".","_"), "map_db_connections"), new Gauge<Integer>() {
+        public Integer value() {
+            return checkedOutJedises.size();
+        }
+    });
 
 }

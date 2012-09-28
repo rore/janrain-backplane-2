@@ -204,8 +204,7 @@ public class Backplane2Config {
         ping.scheduleWithFixedDelay(new Runnable() {
             @Override
             public void run() {
-                com.janrain.redis.Redis.getInstance().ping(Redis.getInstance().getReadJedis());
-                com.janrain.redis.Redis.getInstance().ping(Redis.getInstance().getWriteJedis());
+                com.janrain.redis.Redis.getInstance().ping();
             }
         }, 30, 10, TimeUnit.SECONDS);
         return ping;
