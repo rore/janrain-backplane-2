@@ -216,7 +216,6 @@ public class MessageProcessor implements LeaderSelectorListener {
                         }
 
                     } catch (Exception e) {
-                        // ignore
                         Redis.getInstance().releaseBrokenResourceToPool(jedis);
                     }
                 }
