@@ -32,6 +32,7 @@ import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.Response;
 import redis.clients.jedis.Transaction;
+import redis.clients.jedis.exceptions.JedisConnectionException;
 
 import java.util.*;
 
@@ -200,6 +201,11 @@ public class RedisBackplaneMessageDAO extends DAO<BackplaneMessage> {
             filterAndSort(messages, since, sticky);
             return messages;
 
+        } catch (JedisConnectionException jce) {
+            logger.warn("connection broken on bus "+bus+" and channel "+channel);
+            Redis.getInstance().releaseBrokenResourceToPool(jedis);
+            jedis=null;
+            throw new BackplaneServerException(jce.getMessage());
         } catch (Exception e) {
             logger.error("Exception on bus "+bus+" and channel "+channel, e);
             throw new BackplaneServerException(e.getMessage());

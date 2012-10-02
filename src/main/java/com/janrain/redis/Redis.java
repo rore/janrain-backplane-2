@@ -34,7 +34,6 @@ import org.jetbrains.annotations.Nullable;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -56,39 +55,38 @@ public class Redis implements PathChildrenCacheListener {
      */
 
     public Jedis getReadJedis() {
-        JedisPool readPool = getReadPool();
-        Jedis jedis = readPool.getResource();
-        checkedOutJedises.put(jedis, readPool);
-        return jedis;
+        return getJedisFromPool(getReadPool());
     }
 
     public Jedis getWriteJedis() {
-        JedisPool writePool = getWritePool();
-        Jedis jedis = writePool.getResource();
-        checkedOutJedises.put(jedis, writePool);
-        return jedis;
+        return getJedisFromPool(getWritePool());
     }
 
     public void releaseToPool(Jedis jedis) {
-        if (jedis == null) return;
-        JedisPool pool = checkedOutJedises.get(jedis);
-        if (pool != null) {
-            pool.returnResource(jedis);
-            checkedOutJedises.remove(jedis);
-        } else {
-            logger.warn("attempted to return a resource that wasn't checked out");
-        }
+        releaseToPool(jedis, false);
     }
 
     public void releaseBrokenResourceToPool(Jedis jedis) {
+        releaseToPool(jedis, true);
+    }
+
+    public void releaseToPool(Jedis jedis, boolean isBroken) {
         if (jedis == null) return;
+        logger.debug("returning jedis: " + jedis.toString() + " to pool -> isBroken: " + isBroken);
         JedisPool pool = checkedOutJedises.get(jedis);
         if (pool != null) {
-            pool.returnBrokenResource(jedis);
-            checkedOutJedises.remove(jedis);
+            synchronized (jedis) {
+                if (isBroken) {
+                    pool.returnBrokenResource(jedis);
+                } else {
+                    pool.returnResource(jedis);
+                }
+                checkedOutJedises.remove(jedis);
+            }
         } else {
-            logger.warn("attempted to return a broken resource that wasn't checked out");
+            logger.warn("attempted to return a broken jedis: " + jedis.toString() + " that wasn't checked out");
         }
+
     }
 
     public void set(byte[] key, byte[] value) {
@@ -308,20 +306,31 @@ public class Redis implements PathChildrenCacheListener {
         Jedis jedisWrite = null;
         Jedis jedisRead = null;
 
+        String replyJedisWrite = "ERROR";
+        String replyJedisRead = "ERROR";
+
         try {
             jedisWrite = this.getWriteJedis();
-            String reply = jedisWrite.ping();
-            logger.info("PING " + System.getProperty(BackplaneSystemProps.REDIS_SERVER_PRIMARY) + " (" + BackplaneSystemProps.REDIS_SERVER_PRIMARY + ") -> " + reply);
-
-            jedisRead = this.getReadJedis();
-            logger.info("PING " + System.getProperty(BackplaneSystemProps.REDIS_SERVER_READS) + " (" + BackplaneSystemProps.REDIS_SERVER_READS + ") -> " + reply);
-
+            replyJedisWrite = jedisWrite.ping();
         } catch (Exception e) {
             // something bad
+            logger.warn("error during ping");
         } finally {
-            if (jedisRead != null) this.releaseToPool(jedisRead);
-            if (jedisWrite != null) this.releaseToPool(jedisWrite);
+            logger.info("PING " + System.getProperty(BackplaneSystemProps.REDIS_SERVER_PRIMARY) + " (" + BackplaneSystemProps.REDIS_SERVER_PRIMARY + ") -> " + replyJedisWrite);
+            releaseToPool(jedisWrite);
         }
+
+        try {
+            jedisRead = this.getReadJedis();
+            replyJedisRead = jedisRead.ping();
+        }   catch (Exception e) {
+            // something bad
+            logger.warn("error during ping");
+        } finally {
+            logger.info("PING " + System.getProperty(BackplaneSystemProps.REDIS_SERVER_READS) + " (" + BackplaneSystemProps.REDIS_SERVER_READS + ") -> " + replyJedisRead);
+            releaseToPool(jedisRead);
+        }
+
     }
 
     // PRIVATE
@@ -344,13 +353,14 @@ public class Redis implements PathChildrenCacheListener {
     private CuratorFramework curatorFramework;
 
     private Redis() {
-        JedisPoolConfig config = new JedisPoolConfig();
-        config.setMaxActive(5);
-        config.setTestOnBorrow(true);
-        config.setMaxWait(REDIS_MAX_WAIT_SECONDS*1000l);
-        config.setWhenExhaustedAction(GenericObjectPool.WHEN_EXHAUSTED_BLOCK);
-        config.setMaxIdle(-1);
-        config.setMinIdle(0);
+        JedisPoolConfig jedisPoolConfig = new JedisPoolConfig();
+        jedisPoolConfig.setMaxActive(50);
+        jedisPoolConfig.setTestWhileIdle(true);
+        //jedisPoolConfig.setTestOnBorrow(true);
+        jedisPoolConfig.setMaxWait(REDIS_MAX_WAIT_SECONDS*1000l);
+        jedisPoolConfig.setWhenExhaustedAction(GenericObjectPool.WHEN_EXHAUSTED_BLOCK);
+        jedisPoolConfig.setMaxIdle(-1);
+        jedisPoolConfig.setMinIdle(20);
 
 
         String redisServerConfig = System.getProperty(BackplaneSystemProps.REDIS_SERVER_PRIMARY);
@@ -368,7 +378,7 @@ public class Redis implements PathChildrenCacheListener {
             }
         }
 
-        poolForWrites = new JedisPool(config, args[0], port);
+        poolForWrites = new JedisPool(jedisPoolConfig, args[0], port);
 
         redisServerConfig = System.getProperty(BackplaneSystemProps.REDIS_SERVER_READS);
         if (StringUtils.isEmpty(redisServerConfig)) {
@@ -387,7 +397,7 @@ public class Redis implements PathChildrenCacheListener {
             }
         }
 
-        poolForReads = new JedisPool(config, args[0], port);
+        poolForReads = new JedisPool(jedisPoolConfig, args[0], port);
 
     }
 
@@ -398,6 +408,21 @@ public class Redis implements PathChildrenCacheListener {
 
     private JedisPool getReadPool() {
         return poolForReads;
+    }
+
+    private Jedis getJedisFromPool(JedisPool pool) {
+        try {
+            logger.debug("attempting to get resource from pool");
+            Jedis jedis = pool.getResource();
+            synchronized (jedis) {
+                checkedOutJedises.put(jedis, pool);
+                logger.debug("jedis " + jedis.toString() + " checked out from pool " + pool.toString());
+            }
+            return jedis;
+        } catch (RuntimeException e) {
+            logger.warn("an error occurred while trying to retrieve connection to redis");
+            throw e;
+        }
     }
 
     private ConcurrentHashMap<Jedis, JedisPool> checkedOutJedises = new ConcurrentHashMap<Jedis, JedisPool>();

@@ -69,11 +69,14 @@ public class MessageProcessor implements LeaderSelectorListener {
             List<String> insertionTimes = new ArrayList<String>();
             do {
 
+                logger.debug("beginning message processor loop");
+
                 Jedis jedis = null;
 
                 try {
 
                     jedis = Redis.getInstance().getWriteJedis();
+                    logger.debug("retrieved jedis connection: " + jedis.toString());
 
                     // retrieve the latest 'live' message ID
                     String latestMessageId = null;
@@ -100,6 +103,8 @@ public class MessageProcessor implements LeaderSelectorListener {
 
                     // retrieve a handful of messages (ten) off the queue for processing
                     List<byte[]> messagesToProcess = jedis.lrange(RedisBackplaneMessageDAO.V1_MESSAGE_QUEUE.getBytes(), 0, 9);
+
+                    logger.debug("number of messages to process: " + messagesToProcess.size());
 
                     // only enter the next block if we have messages to process
                     if (messagesToProcess.size() > 0) {
@@ -212,6 +217,7 @@ public class MessageProcessor implements LeaderSelectorListener {
 
                     } catch (Exception e) {
                         // ignore
+                        Redis.getInstance().releaseBrokenResourceToPool(jedis);
                     }
                 }
 

@@ -219,6 +219,8 @@ public class Backplane1Controller {
 
         final TimerContext context = getChannelMessagesTime.time();
 
+        logger.debug("request started");
+
         try {
 
             return new ResponseEntity<String>(
@@ -230,6 +232,7 @@ public class Backplane1Controller {
 
         } finally {
             context.stop();
+            logger.debug("request ended");
         }
 
     }
