@@ -24,6 +24,7 @@ import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Histogram;
 import com.yammer.metrics.core.MetricName;
+import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.commons.lang.StringUtils;
@@ -179,21 +180,18 @@ public class RedisBackplaneMessageDAO extends DAO<BackplaneMessage> {
 
             // every message has a unique timestamp - which serves as a key for indexing
             List<byte[]> messageIdBytes = jedis.lrange(getChannelKey(channel), 0, -1);
-
             List<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
 
-            Pipeline pipeline = jedis.pipelined();
-            List<Response<byte[]>> responses = new ArrayList<Response<byte[]>>();
-
-            if (messageIdBytes != null) {
-                for (byte[] b: messageIdBytes) {
-                    responses.add(pipeline.get(getKey(new String(b))));
+            if (!messageIdBytes.isEmpty()) {
+                int i=0;
+                for (byte[] key: messageIdBytes) {
+                    messageIdBytes.set(i++, getKey(new String(key)));
                 }
-                pipeline.sync();
-                for (Response<byte[]> response: responses) {
-                    byte[] bytes = response.get();
-                    if (bytes != null) {
-                        messages.add((BackplaneMessage) SerializationUtils.deserialize(bytes));
+
+                List<byte[]> responses = jedis.mget(messageIdBytes.toArray(new byte[messageIdBytes.size()][]));
+                for (byte[] response : responses) {
+                    if (response != null) {
+                        messages.add((BackplaneMessage) SerializationUtils.deserialize(response));
                     }
                 }
             }
