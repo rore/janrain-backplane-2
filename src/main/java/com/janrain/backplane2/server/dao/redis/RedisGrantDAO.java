@@ -23,8 +23,8 @@ import java.util.Set;
  */
 public class RedisGrantDAO implements GrantDAO {
 
-    public RedisGrantDAO() {
-        this.tokenDAO = new RedisTokenDAO();
+    public RedisGrantDAO(TokenDAO tokenDao) {
+        this.tokenDAO = tokenDao;
     }
 
     @Override
@@ -138,7 +138,7 @@ public class RedisGrantDAO implements GrantDAO {
 
     private static final Logger logger = Logger.getLogger(RedisGrantDAO.class);
 
-    private TokenDAO tokenDAO;
+    private final TokenDAO tokenDAO;
 
     private static byte[] getKey(String id) {
         return ("v2_grant_" + id).getBytes();

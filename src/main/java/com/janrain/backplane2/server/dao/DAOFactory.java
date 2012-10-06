@@ -12,6 +12,7 @@ public abstract class DAOFactory {
     public static final int REDIS = 1;
 
     public abstract BusDAO getBusDao();
+    public abstract ChannelDAO getChannelDao();
     public abstract TokenDAO getTokenDao();
     public abstract GrantDAO getGrantDao();
     public abstract BusOwnerDAO getBusOwnerDAO();

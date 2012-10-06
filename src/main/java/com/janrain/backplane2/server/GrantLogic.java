@@ -54,8 +54,9 @@ public class GrantLogic {
             for(Scope authReqScope : scope.getAuthReqScopes()) {
                 final Scope testScope;
                 if (authReqScope.getScopeMap().containsKey(BackplaneMessage.Field.CHANNEL)) {
-                    String channel = authReqScope.getScopeMap().get(BackplaneMessage.Field.CHANNEL).iterator().next();
-                    testScope = new Scope(BackplaneMessage.Field.BUS, daoFactory.getTokenDao().getBusForChannel(channel));
+                    Channel channel = daoFactory.getChannelDao().get(authReqScope.getScopeMap().get(BackplaneMessage.Field.CHANNEL).iterator().next());
+                    String boundBus = channel == null ? null : channel.get(Channel.ChannelField.BUS);
+                    testScope = new Scope(BackplaneMessage.Field.BUS, boundBus);
                 } else {
                     testScope = authReqScope;
                 }

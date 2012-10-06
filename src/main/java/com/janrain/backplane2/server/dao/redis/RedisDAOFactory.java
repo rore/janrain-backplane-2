@@ -22,6 +22,11 @@ public class RedisDAOFactory extends DAOFactory {
     }
 
     @Override
+    public ChannelDAO getChannelDao() {
+        return channelDao;
+    }
+
+    @Override
     public TokenDAO getTokenDao() {
         return tokenDao;
     }
@@ -85,15 +90,15 @@ public class RedisDAOFactory extends DAOFactory {
     }
 
     // - PRIVATE
-
-    private static BusDAO busDao = new RedisBusDAO();
-    private static TokenDAO tokenDao = new RedisTokenDAO();
-    private static GrantDAO grantDao = new RedisGrantDAO();
-    private static BusOwnerDAO busOwnerDao = new RedisBusOwnerDAO();
-    private static ClientDAO clientDao = new RedisClientDAO();
-    private static BackplaneMessageDAO messageDao = new RedisBackplaneMessageDAO();
-    private static AuthSessionDAO authSessionDao = new RedisAuthSessionDAO();
-    private static AuthorizationRequestDAO authorizationRequestDao = new RedisAuthorizationRequestDAO();
-    private static AuthorizationDecisionKeyDAO authorizationDecisionKeyDao = new RedisAuthorizationDecisionKeyDAO();
+    private static final TokenDAO tokenDao = new RedisTokenDAO();
+    private static final GrantDAO grantDao = new RedisGrantDAO(tokenDao);
+    private static final BusDAO busDao = new RedisBusDAO(grantDao);
+    private static final ChannelDAO channelDao = new RedisChannelDAO();
+    private static final BusOwnerDAO busOwnerDao = new RedisBusOwnerDAO(busDao);
+    private static final ClientDAO clientDao = new RedisClientDAO();
+    private static final BackplaneMessageDAO messageDao = new RedisBackplaneMessageDAO();
+    private static final AuthSessionDAO authSessionDao = new RedisAuthSessionDAO();
+    private static final AuthorizationRequestDAO authorizationRequestDao = new RedisAuthorizationRequestDAO();
+    private static final AuthorizationDecisionKeyDAO authorizationDecisionKeyDao = new RedisAuthorizationDecisionKeyDAO();
 
 }

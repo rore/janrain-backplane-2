@@ -19,6 +19,7 @@ package com.janrain.backplane2.server.dao.redis;
 import com.janrain.backplane2.server.BackplaneServerException;
 import com.janrain.backplane2.server.config.BusConfig2;
 import com.janrain.backplane2.server.dao.BusDAO;
+import com.janrain.backplane2.server.dao.GrantDAO;
 import com.janrain.oauth2.TokenException;
 import com.janrain.redis.Redis;
 import org.apache.commons.lang.SerializationUtils;
@@ -34,6 +35,10 @@ import java.util.List;
  * @author Johnny Bufu
  */
 public class RedisBusDAO implements BusDAO {
+
+    public RedisBusDAO(GrantDAO grantDao) {
+        this.grantDao = grantDao;
+    }
 
     public static byte[] getKey(String id) {
         return ("v2_bus_" + id).getBytes();
@@ -111,7 +116,7 @@ public class RedisBusDAO implements BusDAO {
                 }
             }
             // cleanup related grants
-            new RedisGrantDAO().deleteByBuses(new ArrayList<String>() {{add(id);}});
+            grantDao.deleteByBuses(new ArrayList<String>() {{add(id);}});
             logger.info("Bus " + id + " deleted successfully");
             logger.info("==== END BUS DELETE ====");
         } finally {
@@ -123,4 +128,5 @@ public class RedisBusDAO implements BusDAO {
 
     private static final Logger logger = Logger.getLogger(RedisClientDAO.class);
 
+    private final GrantDAO grantDao;
 }

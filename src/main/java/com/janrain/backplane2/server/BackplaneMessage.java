@@ -17,7 +17,6 @@
 package com.janrain.backplane2.server;
 
 import com.janrain.backplane.server.ExternalizableCore;
-import com.janrain.backplane.server.config.Backplane1Config;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.MessageField;
@@ -43,26 +42,18 @@ public class BackplaneMessage extends ExternalizableCore {
     @SuppressWarnings("UnusedDeclaration")
     public BackplaneMessage() {}
 
-    public BackplaneMessage(String clientSourceUrl, Map<String, Object> data) throws BackplaneServerException, SimpleDBException {
-        if (data.containsKey(Field.SOURCE.getFieldName())) {
-            throw new InvalidRequestException("Upstream messages must not include the 'source' field.");
-        }
+    public BackplaneMessage(String clientSourceUrl, int defaultExpireSeconds, int maxExpireSeconds, Map<String, Object> data) throws BackplaneServerException, SimpleDBException {
+        checkUpstreamExtraFields(data);
         Map<String,String> d = new LinkedHashMap<String, String>(toStringMap(data));
         String id = generateMessageId(new Date());
         d.put(Field.ID.getFieldName(), id);
-        d.put(Field.TYPE.getFieldName(), data.get(Field.TYPE.getFieldName()).toString());
         d.put(Field.SOURCE.getFieldName(), clientSourceUrl);
-        d.put(Field.BUS.getFieldName(), data.get(Field.BUS.getFieldName()).toString());
-        d.put(Field.CHANNEL.getFieldName(), data.get(Field.CHANNEL.getFieldName()).toString());
-        d.put(Field.PAYLOAD.getFieldName(), extractFieldValueAsJsonString(Field.PAYLOAD, data));
-        if (! d.containsKey(Field.STICKY.getFieldName())) {
-            d.put(Field.STICKY.getFieldName(), Boolean.FALSE.toString());
+        if (data.containsKey(Field.PAYLOAD.getFieldName())) {
+            d.put(Field.PAYLOAD.getFieldName(), extractFieldValueAsJsonString(Field.PAYLOAD, data));
         }
-
-        if (getFields().size() < d.size()) {
-            throw new InvalidRequestException("Extra invalid parameter(s)");
-        }
-
+        Object sticky = data.get(Field.STICKY.getFieldName());
+        d.put(Field.STICKY.getFieldName(), sticky != null ? sticky.toString() : Boolean.FALSE.toString());
+        d.put(Field.EXPIRE.getFieldName(), processExpireTime(sticky, data.get(Field.EXPIRE.getFieldName()), defaultExpireSeconds, maxExpireSeconds));
         super.init(id, d);
     }
 
@@ -116,6 +107,27 @@ public class BackplaneMessage extends ExternalizableCore {
         return "true".equalsIgnoreCase(get(Field.STICKY));
     }
 
+    public int getExpireSeconds() {
+        long seconds = (getExpireTime().getTime() - System.currentTimeMillis()) / 1000;
+        if (seconds < 0 || seconds>Integer.MAX_VALUE) {
+            logger.warn("invalid expiration seconds: " + seconds);
+            return isSticky() ? MAX_RETENTION_SECONDS : DEFAULT_RETENTION_SECONDS;
+        } else {
+            return (int)seconds;
+        }
+    }
+
+    public Date getExpireTime() {
+        String expire = get(Field.EXPIRE);
+        try {
+            return StringUtils.isEmpty(expire) ? null : Backplane2Config.INTERNETDATE.get().parse(expire);
+        } catch (ParseException e) {
+            Date defaultExpiration = isSticky() ? new Date(System.currentTimeMillis() + MAX_RETENTION_SECONDS * 1000) : new Date(System.currentTimeMillis() + DEFAULT_RETENTION_SECONDS * 1000);
+            logger.warn("invalid expiration for message " + getIdValue() + " : " + expire + " returning hardcoded default: " + Backplane2Config.INTERNETDATE.get().format(defaultExpiration));
+            return defaultExpiration;
+        }
+    }
+
     public Map<String, Object> asFrame(String serverDomain, boolean includePayload) throws BackplaneServerException {
 
         HashMap<String, Object> frame = new LinkedHashMap<String, Object>();
@@ -127,6 +139,7 @@ public class BackplaneMessage extends ExternalizableCore {
         frame.put(Field.BUS.getFieldName(), get(Field.BUS));
         frame.put(Field.CHANNEL.getFieldName(), get(Field.CHANNEL));
         frame.put(Field.STICKY.getFieldName(), containsKey(Field.STICKY.getFieldName()) ? get(Field.STICKY) : Boolean.FALSE.toString());
+        frame.put(Field.EXPIRE.getFieldName(), get(Field.EXPIRE));
 
         try {
             if (includePayload) {
@@ -155,6 +168,17 @@ public class BackplaneMessage extends ExternalizableCore {
                 super.validate(value);
                 if (value != null && ! Boolean.TRUE.toString().equalsIgnoreCase(value) && ! Boolean.FALSE.toString().equalsIgnoreCase(value)) {
                     throw new InvalidRequestException("Invalid boolean value for " + getFieldName() + ": " + value);
+                }
+            }},
+
+        EXPIRE("expire", false, NONE) {
+            @Override
+            public void validate(String value) throws SimpleDBException {
+                super.validate(value);
+                try {
+                    Backplane2Config.INTERNETDATE.get().parse(value);
+                } catch (ParseException e) {
+                    throw new InvalidRequestException("Invalid Internet Date/Time value for " + getFieldName() + ": " + value);
                 }
             }},
 
@@ -233,6 +257,44 @@ public class BackplaneMessage extends ExternalizableCore {
     private static final long serialVersionUID = -6609794896611874473L;
 
     private static final Logger logger = Logger.getLogger(BackplaneMessage.class);
+
+    private static final Set<String> UPSTREAM_FIELDS = new HashSet<String>() {{
+        add(Field.TYPE.getFieldName());
+        add(Field.BUS.getFieldName());
+        add(Field.CHANNEL.getFieldName());
+        add(Field.PAYLOAD.getFieldName());
+        add(Field.STICKY.getFieldName());
+        add(Field.EXPIRE.getFieldName());
+    }};
+
+    private static final int DEFAULT_RETENTION_SECONDS = 60;
+    private static final int MAX_RETENTION_SECONDS = 3600;
+
+    private void checkUpstreamExtraFields(Map<String, Object> data) {
+        for (String field : data.keySet()) {
+            if (!UPSTREAM_FIELDS.contains(field)) {
+                throw new InvalidRequestException("Invalid field in upstream message: " + field);
+            }
+        }
+    }
+
+    private String processExpireTime(Object requestSticky, Object requestedExpireTime, int defaultRetentionSeconds, int maxRetentionSeconds) {
+        try {
+            boolean sticky = requestSticky != null && Boolean.parseBoolean(requestSticky.toString());
+            if (requestedExpireTime == null) {
+                return Backplane2Config.INTERNETDATE.get().format(new Date(System.currentTimeMillis() + (sticky ? maxRetentionSeconds : defaultRetentionSeconds) * 1000));
+            } else {
+                Date requestedExpire = Backplane2Config.INTERNETDATE.get().parse(requestedExpireTime.toString());
+                if (requestedExpire.before(new Date(System.currentTimeMillis() + maxRetentionSeconds * 1000))) {
+                    return requestedExpireTime.toString();
+                } else {
+                    throw new InvalidRequestException("Requested expiration time " + requestedExpireTime + " is too far in the future, max is " + maxRetentionSeconds + " seconds");
+                }
+            }
+        } catch (ParseException pe) {
+            throw new InvalidRequestException("Requested exipration time not in internet date/time format: " + pe.getMessage());
+        }
+    }
 
     /**
      * @return a time-based, lexicographically comparable message ID.

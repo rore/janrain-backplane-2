@@ -17,8 +17,6 @@
 package com.janrain.backplane2.server.config;
 
 import com.janrain.backplane.server.config.BpServerConfig;
-import com.janrain.redis.Redis;
-import com.janrain.utils.BackplaneSystemProps;
 import com.janrain.backplane2.server.BackplaneServerException;
 import com.janrain.backplane2.server.V2MessageProcessor;
 import com.janrain.backplane2.server.dao.DAOFactory;
@@ -27,6 +25,7 @@ import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.util.AwsUtility;
 import com.janrain.commons.util.InitSystemProps;
 import com.janrain.crypto.HmacHashUtils;
+import com.janrain.utils.BackplaneSystemProps;
 import com.netflix.curator.framework.CuratorFramework;
 import com.netflix.curator.framework.CuratorFrameworkFactory;
 import com.netflix.curator.framework.recipes.leader.LeaderSelector;
@@ -68,6 +67,15 @@ public class Backplane2Config {
         protected DateFormat initialValue() {
             return new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'") {{
                 setTimeZone(TimeZone.getTimeZone("GMT"));
+            }};
+        }
+    };
+
+    public static final ThreadLocal<DateFormat> INTERNETDATE = new ThreadLocal<DateFormat>() {
+        @Override
+        protected DateFormat initialValue() {
+            return new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'") {{
+                setTimeZone(TimeZone.getTimeZone("UTC"));
             }};
         }
     };

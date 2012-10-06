@@ -17,9 +17,6 @@
 package com.janrain.backplane2.server;
 
 import com.janrain.backplane.server.config.Backplane1Config;
-import com.janrain.backplane.server.dao.DaoFactory;
-import com.janrain.backplane2.server.config.BusConfig2;
-import com.janrain.backplane2.server.dao.BackplaneMessageDAO;
 import com.janrain.backplane2.server.dao.DAOFactory;
 import com.janrain.backplane2.server.dao.redis.RedisBackplaneMessageDAO;
 import com.janrain.commons.util.Pair;
@@ -30,16 +27,16 @@ import com.netflix.curator.framework.state.ConnectionState;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Histogram;
 import com.yammer.metrics.core.MetricName;
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import redis.clients.jedis.Jedis;
-import redis.clients.jedis.JedisPubSub;
-import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.Transaction;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Set;
 
 /**
  * @author Tom Raney
@@ -181,16 +178,6 @@ public class V2MessageProcessor implements LeaderSelectorListener {
                                  Pair<String, Date> lastIdAndDate) throws Exception {
 
         try {
-            // retrieve the expiration config per the bus
-            BusConfig2 busConfig2 = daoFactory.getBusDao().get(backplaneMessage.getBus());
-            int retentionTimeSeconds = 60;
-            int retentionTimeStickySeconds = 3600;
-            if (busConfig2 != null) {
-                // should be here in normal flow
-                retentionTimeSeconds = busConfig2.getRetentionTimeSeconds();
-                retentionTimeStickySeconds = busConfig2.getRetentionTimeStickySeconds();
-            }
-
             String oldId = backplaneMessage.getIdValue();
             insertionTimes.add(oldId);
 
@@ -208,14 +195,8 @@ public class V2MessageProcessor implements LeaderSelectorListener {
             long messageTime = BackplaneMessage.getDateFromId(newId).getTime();
 
             // <ATOMIC>
-            // save the individual message by key
-            transaction.set(RedisBackplaneMessageDAO.getKey(newId), SerializationUtils.serialize(backplaneMessage));
-            // set the message TTL
-            if (backplaneMessage.isSticky()) {
-                transaction.expire(RedisBackplaneMessageDAO.getKey(newId), retentionTimeStickySeconds);
-            } else {
-                transaction.expire(RedisBackplaneMessageDAO.getKey(newId), retentionTimeSeconds);
-            }
+            // save the individual message by key & TTL
+            transaction.setex(RedisBackplaneMessageDAO.getKey(newId), backplaneMessage.getExpireSeconds(), SerializationUtils.serialize(backplaneMessage));
 
             // channel and bus sorted set index
             transaction.zadd(RedisBackplaneMessageDAO.getChannelKey(backplaneMessage.getChannel()), messageTime,

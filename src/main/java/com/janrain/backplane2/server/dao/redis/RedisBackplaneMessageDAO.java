@@ -18,14 +18,12 @@ package com.janrain.backplane2.server.dao.redis;
 
 import com.janrain.backplane2.server.*;
 import com.janrain.backplane2.server.dao.BackplaneMessageDAO;
-import com.janrain.commons.supersimpledb.message.Message;
 import com.janrain.crypto.ChannelUtil;
 import com.janrain.oauth2.TokenException;
 import com.janrain.redis.Redis;
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import org.jboss.netty.util.internal.StringUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import redis.clients.jedis.*;

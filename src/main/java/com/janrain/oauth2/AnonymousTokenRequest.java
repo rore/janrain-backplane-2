@@ -1,10 +1,9 @@
 package com.janrain.oauth2;
 
 import com.janrain.backplane2.server.*;
+import com.janrain.backplane2.server.config.BusConfig2;
 import com.janrain.backplane2.server.dao.DAOFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.commons.util.Pair;
-import com.janrain.crypto.ChannelUtil;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
@@ -34,14 +33,16 @@ public class AnonymousTokenRequest implements TokenRequest {
             throw new TokenException("callback parameter value is malformed");
         }
 
-        this.bus = bus;
-        if ( StringUtils.isEmpty(refreshToken) ^ StringUtils.isNotEmpty(this.bus)) {
+        if ( StringUtils.isEmpty(refreshToken) ^ StringUtils.isNotEmpty(bus)) {
             throw new TokenException("bus parameter is required if and only if refresh_token is not present");
         }
 
         try {
-            if ( StringUtils.isNotEmpty(this.bus) && daoFactory.getBusDao().get(this.bus) == null) {
-                throw new TokenException("Invalid bus: " + bus);
+            if (StringUtils.isNotEmpty(bus)) {
+                this.busConfig = daoFactory.getBusDao().get(bus);
+                if ( this.busConfig == null) {
+                    throw new TokenException("Invalid bus: " + bus);
+                }
             }
         } catch (BackplaneServerException e) {
             logger.error("error processing anonymous token request: " + e.getMessage(), e);
@@ -72,12 +73,11 @@ public class AnonymousTokenRequest implements TokenRequest {
         final Token accessToken;
         final Integer expiresIn = grantType.getTokenExpiresSecondsDefault();
         Date expires = new Date(System.currentTimeMillis() + expiresIn.longValue() * 1000);
-        Pair<String, String> channelBus = processChannelBus();
-        Scope processedScope = processScope(channelBus.getLeft(), channelBus.getRight());
         try {
+            Channel channel = createOrRefreshChannel(10 * expiresIn);
+            Scope processedScope = processScope(channel.getIdValue(), channel.get(Channel.ChannelField.BUS));
             accessToken = new Token.Builder(grantType.getAccessType(), processedScope.toString()).expires(expires).buildToken();
             daoFactory.getTokenDao().persist(accessToken);
-            daoFactory.getTokenDao().bindChannel(channelBus.getLeft(), channelBus.getRight(), 10 * expiresIn);
             return accessToken.response(generateRefreshToken(grantType.getRefreshType(), processedScope, daoFactory));
         } catch (Exception e) {
             logger.error("error processing anonymous access token request: " + e.getMessage(), e);
@@ -98,13 +98,12 @@ public class AnonymousTokenRequest implements TokenRequest {
 
     private static final Logger logger = Logger.getLogger(AnonymousTokenRequest.class);
 
-    private static final int CHANNEL_NAME_LENGTH = 32;
 
     private DAOFactory daoFactory;
     private final GrantType grantType;
-    private final String bus;
     private final Scope requestScope;
     private Token refreshToken;
+    private BusConfig2 busConfig;
 
     private static String generateRefreshToken(GrantType refreshType, Scope scope, DAOFactory daoFactory) throws SimpleDBException, BackplaneServerException {
         if (refreshType == null || ! refreshType.isRefresh()) return null;
@@ -113,9 +112,9 @@ public class AnonymousTokenRequest implements TokenRequest {
         return refreshToken.getIdValue();
     }
 
-    private Pair<String,String> processChannelBus() throws TokenException {
-        final String bus;
-        final String channel;
+    private Channel createOrRefreshChannel(int expireSeconds) throws TokenException, SimpleDBException, BackplaneServerException {
+        String channelId = null;
+        BusConfig2 config;
         if (refreshToken != null ) {
             final Set<String> channels = refreshToken.getScope().getScopeFieldValues(BackplaneMessage.Field.CHANNEL);
             final Set<String> buses = refreshToken.getScope().getScopeFieldValues(BackplaneMessage.Field.BUS);
@@ -123,17 +122,18 @@ public class AnonymousTokenRequest implements TokenRequest {
                     buses == null || buses.isEmpty() || buses.size() > 1 ) {
                 throw new TokenException("invalid anonymous refresh token: " + refreshToken.getIdValue());
             } else {
-                bus = buses.iterator().next();
-                channel = channels.iterator().next();
+                config = daoFactory.getBusDao().get(buses.iterator().next());
+                channelId = channels.iterator().next();
             }
         } else {
-            bus = this.bus; // bind generated channel to the requested bus
-            channel = ChannelUtil.randomString(CHANNEL_NAME_LENGTH);
+            config = busConfig;
         }
-        return new Pair<String, String>(channel, bus);
+        Channel channel = new Channel(channelId, config, expireSeconds);
+        daoFactory.getChannelDao().persist(channel);
+        return channel;
     }
 
-    private Scope processScope(final String channel, final String bus) throws TokenException {
+    private Scope processScope(final String channel, final String bus) {
         Map<BackplaneMessage.Field,LinkedHashSet<String>> scopeMap = new LinkedHashMap<BackplaneMessage.Field, LinkedHashSet<String>>();
         scopeMap.putAll(requestScope.getScopeMap());
         scopeMap.put(BackplaneMessage.Field.BUS, new LinkedHashSet<String>() {{ add(bus);}});

@@ -4,10 +4,8 @@ import com.janrain.backplane2.server.BackplaneServerException;
 import com.janrain.backplane2.server.Token;
 import com.janrain.backplane2.server.dao.TokenDAO;
 import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.oauth2.TokenException;
 import com.janrain.redis.Redis;
 import org.apache.commons.lang.SerializationUtils;
-import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import redis.clients.jedis.Jedis;
@@ -101,27 +99,6 @@ public class RedisTokenDAO implements TokenDAO {
         }
         if (! tokens.isEmpty()) {
             logger.info("all tokens for grant " + grantId + " have been revoked");
-        }
-    }
-
-    @Override
-    public void bindChannel(String channel, String bus, Integer expireSeconds) {
-        Redis.getInstance().set(getChannelBindingKey(channel), bus, expireSeconds);
-    }
-
-
-    @Override
-    public String getBusForChannel(String channel) throws BackplaneServerException, TokenException {
-        return StringUtils.isEmpty(channel) ? null : Redis.getInstance().get(getChannelBindingKey(channel));
-    }
-
-    @Override
-    public boolean isValidBinding(String channel, String bus) throws BackplaneServerException {
-        try {
-            return bus != null && channel != null && bus.equals(getBusForChannel(channel));
-        } catch (TokenException e) {
-            logger.error(e.getMessage(), e);
-            return false;
         }
     }
 

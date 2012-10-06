@@ -16,15 +16,16 @@
 
 package com.janrain.backplane2.server;
 
-import com.janrain.utils.BackplaneSystemProps;
 import com.janrain.backplane2.server.config.*;
 import com.janrain.backplane2.server.dao.DAOFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.crypto.ChannelUtil;
 import com.janrain.crypto.HmacHashUtils;
 import com.janrain.oauth2.*;
+import com.janrain.redis.Redis;
 import com.janrain.servlet.ServletUtil;
-import com.yammer.metrics.core.*;
+import com.yammer.metrics.core.MetricName;
+import com.yammer.metrics.core.TimerContext;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -830,21 +831,27 @@ public class Backplane2Controller {
             throw new InvalidRequestException("Invalid data in payload", HttpServletResponse.SC_BAD_REQUEST);
         }
 
-        String channel = msg.get(BackplaneMessage.Field.CHANNEL.getFieldName()) != null ? msg.get(BackplaneMessage.Field.CHANNEL.getFieldName()).toString() : null;
+        String channelId = msg.get(BackplaneMessage.Field.CHANNEL.getFieldName()) != null ? msg.get(BackplaneMessage.Field.CHANNEL.getFieldName()).toString() : null;
         String bus = msg.get(BackplaneMessage.Field.BUS.getFieldName()) != null ? msg.get(BackplaneMessage.Field.BUS.getFieldName()).toString() : null;
-        if ( ! daoFactory.getTokenDao().isValidBinding(channel, bus)) {
+        Channel channel = getChannel(channelId);
+        String boundBus = channel == null ? null : channel.get(Channel.ChannelField.BUS);
+        if ( channel == null || ! StringUtils.equals(bus, boundBus)) {
             throw new InvalidRequestException("Invalid bus - channel binding ", HttpServletResponse.SC_FORBIDDEN);
         }
 
         // check to see if channel is already full
-        if (daoFactory.getBackplaneMessageDAO().getMessageCount(channel) >= bpConfig.getDefaultMaxMessageLimit()) {
+        if (daoFactory.getBackplaneMessageDAO().getMessageCount(channelId) >= bpConfig.getDefaultMaxMessageLimit()) {
             throw new InvalidRequestException("Message limit of " + bpConfig.getDefaultMaxMessageLimit() + " has been reached for channel '" + channel + "'",
                     HttpServletResponse.SC_FORBIDDEN);
         }
 
         BackplaneMessage message;
         try {
-            message = new BackplaneMessage(token.get(Token.TokenField.CLIENT_SOURCE_URL), msg);
+            message = new BackplaneMessage(
+                    token.get(Token.TokenField.CLIENT_SOURCE_URL),
+                    Integer.parseInt(channel.get(Channel.ChannelField.MESSAGE_EXPIRE_DEFAULT_SECONDS)),
+                    Integer.parseInt(channel.get(Channel.ChannelField.MESSAGE_EXPIRE_MAX_SECONDS)),
+                    msg);
         } catch (Exception e) {
             throw new InvalidRequestException("Invalid message data: " + e.getMessage(), HttpServletResponse.SC_BAD_REQUEST);
         }
@@ -852,6 +859,24 @@ public class Backplane2Controller {
             throw new InvalidRequestException("Invalid bus in message", HttpServletResponse.SC_FORBIDDEN);
         }
         return  message;
+    }
+
+    private Channel getChannel(String channelId) throws BackplaneServerException {
+        Channel channel = daoFactory.getChannelDao().get(channelId);
+        if (channel == null) {
+            // legacy channel-bus binding support
+            // todo: remove after all old channels have expired
+            BusConfig2 busConfig = daoFactory.getBusDao().get(Redis.getInstance().get("v2_channel_bus_" + channelId));
+            if (busConfig != null) {
+                try {
+                    channel = new Channel(channelId, busConfig, 0);
+                } catch (SimpleDBException e) {
+                    // shouldn't happen
+                    throw new BackplaneServerException("", e);
+                }
+            }
+        }
+        return channel;
     }
 
     private final com.yammer.metrics.core.Timer v2GetsTimer =

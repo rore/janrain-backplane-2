@@ -2,6 +2,7 @@ package com.janrain.backplane2.server.dao.redis;
 
 import com.janrain.backplane2.server.BackplaneServerException;
 import com.janrain.backplane2.server.config.User;
+import com.janrain.backplane2.server.dao.BusDAO;
 import com.janrain.backplane2.server.dao.BusOwnerDAO;
 import com.janrain.oauth2.TokenException;
 import com.janrain.redis.Redis;
@@ -21,6 +22,10 @@ public class RedisBusOwnerDAO implements BusOwnerDAO {
 
     public static byte[] getKey(String id) {
         return ("v2_bus_owner_" + id).getBytes();
+    }
+
+    public RedisBusOwnerDAO(BusDAO busDao) {
+        this.busDao = busDao;
     }
 
     @Override
@@ -89,7 +94,7 @@ public class RedisBusOwnerDAO implements BusOwnerDAO {
             }
 
             // delete all associated buses (and their dependencies)
-            new RedisBusDAO().deleteByOwner(id);
+            busDao.deleteByOwner(id);
             logger.info("Bus owner " + id + " deleted successfully");
             logger.info("=== END BUS OWNER DELETE ===");
         } catch (Exception e) {
@@ -102,6 +107,8 @@ public class RedisBusOwnerDAO implements BusOwnerDAO {
 
     // PRIVATE
 
-   private static final Logger logger = Logger.getLogger(RedisBusOwnerDAO.class);
+    private static final Logger logger = Logger.getLogger(RedisBusOwnerDAO.class);
+
+    private final BusDAO busDao;
 
 }

@@ -79,6 +79,8 @@ public class Backplane2ControllerTest {
     private static final Logger logger = Logger.getLogger(Backplane2ControllerTest.class);
 
     private static final int TOKEN_EXPIRES_SECONDS = 600;
+    private static final int DEFAULT_MESSAGE_RETENTION_SECONDS = 60;
+    private static final int MAX_MESSAGE_RETENTION_SECONDS = 300;
 
     ArrayList<String> createdMessageKeys = new ArrayList<String>();
     ArrayList<String> createdTokenKeys = new ArrayList<String>();
@@ -634,7 +636,7 @@ public class Backplane2ControllerTest {
         Map<String,Object> msg = mapper.readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {});
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), randomBuses.get(randomBuses.size()-1));
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), "randomchannel");
-        BackplaneMessage message1 = new BackplaneMessage(testClient.getSourceUrl(), msg);
+        BackplaneMessage message1 = new BackplaneMessage(testClient.getSourceUrl(), DEFAULT_MESSAGE_RETENTION_SECONDS, MAX_MESSAGE_RETENTION_SECONDS, msg);
         this.saveMessage(message1);
 
         // make sure the processor runs
@@ -857,7 +859,7 @@ public class Backplane2ControllerTest {
         Map<String,Object> msg = mapper.readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {});
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), tokenBus);
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokensAndChannel.channel);
-        BackplaneMessage message = new BackplaneMessage(testClient.getSourceUrl(), msg);
+        BackplaneMessage message = new BackplaneMessage(testClient.getSourceUrl(), DEFAULT_MESSAGE_RETENTION_SECONDS, MAX_MESSAGE_RETENTION_SECONDS, msg);
         this.saveMessage(message);
 
         Thread.sleep(1000);
@@ -885,7 +887,9 @@ public class Backplane2ControllerTest {
                         "\"source\":\\s*\".*\",\\s*" +
                         "\"type\":\\s*\".*\",\\s*" +
                         "\"bus\":\\s*\".*\",\\s*" +
-                        "\"channel\":\\s*\".*\"\\s*" +
+                        "\"channel\":\\s*\".*\",\\s*" +
+                        "\"sticky\":\\s*\".*\",\\s*" +
+                        "\"expire\":\\s*\".*\"\\s*" +
                         "[}]"));
 
         assertTrue("Expected " + HttpServletResponse.SC_OK + " but received: " + response.getStatus(), response.getStatus() == HttpServletResponse.SC_OK);
@@ -908,7 +912,7 @@ public class Backplane2ControllerTest {
         Map<String,Object> msg = mapper.readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {});
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), testBus);
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), "randomchannel");
-        BackplaneMessage message = new BackplaneMessage(testClient.getSourceUrl(), msg);
+        BackplaneMessage message = new BackplaneMessage(testClient.getSourceUrl(), DEFAULT_MESSAGE_RETENTION_SECONDS, MAX_MESSAGE_RETENTION_SECONDS, msg);
         this.saveMessage(message);
 
         Thread.sleep(1000);
@@ -941,6 +945,8 @@ public class Backplane2ControllerTest {
                         "\"type\":\\s*\".*\",\\s*" +
                         "\"bus\":\\s*\".*\",\\s*" +
                         "\"channel\":\\s*\".*\",\\s*" +
+                        "\"sticky\":\\s*\".*\",\\s*" +
+                        "\"expire\":\\s*\".*\",\\s*" +
                         "\"payload\":\\s*.*" +
                         "[}]"));
 
@@ -962,12 +968,12 @@ public class Backplane2ControllerTest {
 
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), "this.com");
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), "qCDsQm3JTnhZ91RiPpri8R31ehJQ9lhp");
-        BackplaneMessage message1 = new BackplaneMessage(testClient.getSourceUrl(), msg);
+        BackplaneMessage message1 = new BackplaneMessage(testClient.getSourceUrl(), DEFAULT_MESSAGE_RETENTION_SECONDS, MAX_MESSAGE_RETENTION_SECONDS, msg);
         this.saveMessage(message1);
 
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), "that.com");
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), "randomchannel");
-        BackplaneMessage message2 = new BackplaneMessage(testClient.getSourceUrl(), msg);
+        BackplaneMessage message2 = new BackplaneMessage(testClient.getSourceUrl(), DEFAULT_MESSAGE_RETENTION_SECONDS, MAX_MESSAGE_RETENTION_SECONDS, msg);
         this.saveMessage(message2);
 
         Thread.sleep(1000);
@@ -1000,13 +1006,13 @@ public class Backplane2ControllerTest {
 
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), "otherbus");
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokensAndchannel.channel);
-        BackplaneMessage message1 = new BackplaneMessage(testClient.getSourceUrl(), msg);
+        BackplaneMessage message1 = new BackplaneMessage(testClient.getSourceUrl(), DEFAULT_MESSAGE_RETENTION_SECONDS, MAX_MESSAGE_RETENTION_SECONDS, msg);
         this.saveMessage(message1);
 
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), "testbus");
         // same channel / different bus should never happen in production with true random, server-generated channel name
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokensAndchannel.channel);
-        BackplaneMessage message2 = new BackplaneMessage(testClient.getSourceUrl(), msg);
+        BackplaneMessage message2 = new BackplaneMessage(testClient.getSourceUrl(), DEFAULT_MESSAGE_RETENTION_SECONDS, MAX_MESSAGE_RETENTION_SECONDS, msg);
         this.saveMessage(message2);
 
         Thread.sleep(1000);
@@ -1193,7 +1199,7 @@ public class Backplane2ControllerTest {
         Map<String,Object> msg = mapper.readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {});
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), testBus);
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokensAndChannel.channel);
-        BackplaneMessage message1 = new BackplaneMessage(testClient.getSourceUrl(), msg);
+        BackplaneMessage message1 = new BackplaneMessage(testClient.getSourceUrl(), DEFAULT_MESSAGE_RETENTION_SECONDS, MAX_MESSAGE_RETENTION_SECONDS, msg);
         this.saveMessage(message1);
 
         Thread.sleep(1000);
@@ -1517,7 +1523,7 @@ public class Backplane2ControllerTest {
         ArrayList<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
 
         for (int i=0;i <= numMessages; i++) {
-            messages.add(new BackplaneMessage(testClient.getSourceUrl(), msg));
+            messages.add(new BackplaneMessage(testClient.getSourceUrl(), DEFAULT_MESSAGE_RETENTION_SECONDS, MAX_MESSAGE_RETENTION_SECONDS, msg));
         }
 
         // use #0 to set the 'since' from server time, don't count #0
@@ -1643,7 +1649,7 @@ public class Backplane2ControllerTest {
         Map<String,Object> msg = mapper.readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {});
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), "foo");
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), "bar");
-        BackplaneMessage message = new BackplaneMessage(testClient.getSourceUrl(), msg);
+        BackplaneMessage message = new BackplaneMessage(testClient.getSourceUrl(), DEFAULT_MESSAGE_RETENTION_SECONDS, MAX_MESSAGE_RETENTION_SECONDS, msg);
         this.saveMessage(message);
 
         Thread.sleep(1000);
@@ -1651,8 +1657,6 @@ public class Backplane2ControllerTest {
         BackplaneMessage lastMessage = daoFactory.getBackplaneMessageDAO().getLatestMessage();
 
         assertTrue("messages not equal", lastMessage.getIdValue().equals(message.getIdValue()));
-
-
     }
 
     // - PRIVATE
