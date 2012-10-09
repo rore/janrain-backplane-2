@@ -171,7 +171,7 @@ public class BackplaneMessage extends ExternalizableCore {
                 }
             }},
 
-        EXPIRE("expire", false, NONE) {
+        EXPIRE("expire", true, NONE) {
             @Override
             public void validate(String value) throws MessageException {
                 super.validate(value);
