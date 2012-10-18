@@ -228,7 +228,12 @@ public class Backplane1Config {
         BpServerConfig bpServerConfigCache = (BpServerConfig) CachedL1.getInstance().getObject(BackplaneSystemProps.BPSERVER_CONFIG_KEY);
         if (bpServerConfigCache == null) {
             // pull from db if not found in cache
-            bpServerConfigCache = DaoFactory.getConfigDAO().get(BackplaneSystemProps.BPSERVER_CONFIG_KEY);
+            try {
+                bpServerConfigCache = DaoFactory.getConfigDAO().get(BackplaneSystemProps.BPSERVER_CONFIG_KEY);
+            } catch (Exception e) {
+                bpServerConfigCache = null;
+            }
+
             if (bpServerConfigCache == null) {
                 // no instance found in cache or the db, so let's use the default record
                 bpServerConfigCache = new BpServerConfig();

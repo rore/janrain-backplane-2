@@ -284,6 +284,16 @@ public class Backplane1Controller {
         }};
     }
 
+    @ExceptionHandler
+    @ResponseBody
+    public Map<String, String> handle(final BackplaneServerException bse, HttpServletResponse response) {
+        logger.error("Backplane server error: " + bse.getMessage(), bpConfig.getDebugException(bse));
+        response.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+        return new HashMap<String,String>() {{
+            put(ERR_MSG_FIELD, bpConfig.isDebugMode() ? bse.getMessage() : "Service unavailable");
+        }};
+    }
+
     /**
      * Handle all other errors
      */
