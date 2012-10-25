@@ -277,7 +277,12 @@
             <artifactId>curator-recipes</artifactId>
             <version>1.1.15</version>
         </dependency>
-    </dependencies>
+        <dependency>
+        	<groupId>com.janrain</groupId>
+        	<artifactId>federate-utils</artifactId>
+        	<version>1.0.1</version>
+        </dependency>
+	</dependencies>
     <repositories>
         <!-- For Hibernate Validator -->
         <repository>

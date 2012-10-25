@@ -67,16 +67,17 @@ public class MessageProcessor implements LeaderSelectorListener {
             logger.info("v1 message processor started");
 
             List<String> insertionTimes = new ArrayList<String>();
+            Jedis jedis = Redis.getInstance().getWriteJedis();
+            logger.debug("retrieved jedis connection: " + jedis.toString());
+            // set watch on the messages sorted set of keys
+            jedis.watch(RedisBackplaneMessageDAO.V1_MESSAGES);
             do {
 
                 logger.debug("beginning message processor loop");
 
-                Jedis jedis = null;
 
                 try {
 
-                    jedis = Redis.getInstance().getWriteJedis();
-                    logger.debug("retrieved jedis connection: " + jedis.toString());
 
                     // retrieve the latest 'live' message ID
                     String latestMessageId = null;
@@ -98,8 +99,6 @@ public class MessageProcessor implements LeaderSelectorListener {
                         //
                     }
 
-                    // set watch on the messages sorted set of keys
-                    jedis.watch(RedisBackplaneMessageDAO.V1_MESSAGES);
 
                     // retrieve a handful of messages (ten) off the queue for processing
                     List<byte[]> messagesToProcess = jedis.lrange(RedisBackplaneMessageDAO.V1_MESSAGE_QUEUE.getBytes(), 0, 9);
@@ -199,7 +198,7 @@ public class MessageProcessor implements LeaderSelectorListener {
 
                 } catch (Exception e) {
                     try {
-                        logger.warn("error " + e.getMessage());
+                        logger.warn("error " + e.getMessage(), e);
                         if (jedis != null) {
                             Redis.getInstance().releaseBrokenResourceToPool(jedis);
                             jedis = null;
@@ -209,19 +208,19 @@ public class MessageProcessor implements LeaderSelectorListener {
                     }
                     Thread.sleep(2000);
                 } finally {
-                    try {
-                        if (jedis != null) {
-                            jedis.unwatch();
-                            Redis.getInstance().releaseToPool(jedis);
-                        }
-
-                    } catch (Exception e) {
-                        Redis.getInstance().releaseBrokenResourceToPool(jedis);
-                    }
                 }
 
             } while (loop);
 
+        try {
+            if (jedis != null) {
+                jedis.unwatch();
+                Redis.getInstance().releaseToPool(jedis);
+            }
+
+        } catch (Exception e) {
+            Redis.getInstance().releaseBrokenResourceToPool(jedis);
+        }
         } catch (Exception e) {
             logger.warn("exception thrown in message processor thread: " + e.getMessage());
         }

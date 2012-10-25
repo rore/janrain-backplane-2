@@ -224,47 +224,6 @@ public class Redis implements PathChildrenCacheListener {
         }
     }
 
-    public void setActiveRedisInstance(CuratorFramework client) {
-        this.curatorFramework = client;
-        InterProcessMutex lock = null;
-
-        try {
-            lock = new InterProcessMutex(client, REDIS_LOCK);
-            lock.acquire();
-
-            PathChildrenCache pathChildrenCache = new PathChildrenCache(client, REDIS, true);
-            pathChildrenCache.getListenable().addListener(this);
-            pathChildrenCache.start(true);
-
-            ChildData childData = pathChildrenCache.getCurrentData(REDIS);
-
-            String redisServer = null;
-            if (childData != null) {
-                byte[] bytes = childData.getData();
-                redisServer = new String(bytes);
-            }
-
-            if (redisServer == null) {
-                // set the node to the default redis server
-                setRedisServer(BackplaneSystemProps.REDIS_SERVER_PRIMARY);
-            } else {
-                // accept the cluster wide redis server
-                currentRedisServerForWrites = redisServer;
-            }
-
-        } catch (Exception e) {
-            logger.error(e);
-        } finally {
-            if (lock != null) {
-                try {
-                    lock.release();
-                } catch (Exception e) {
-                    logger.error("could not release lock " + e);
-                }
-            }
-        }
-
-    }
 
     @Override
     public void childEvent(CuratorFramework curatorFramework, PathChildrenCacheEvent pathChildrenCacheEvent) throws Exception {
@@ -347,8 +306,12 @@ public class Redis implements PathChildrenCacheListener {
     private final String REDIS_LOCK = "/redislock";
     private final String REDIS = "/redis";
     private final String REDIS_SERVER = "/redis/server";
+    private static final String DEFAULT_REDIS_SERVER_PRIMARY = "localhost:6379";
+	private static final String DEFAULT_REDIS_SERVER_READS = "localhost:6379";
+	private static final int DEFAULT_REDIS_PORT = 6379;
 
     private static final long REDIS_MAX_WAIT_SECONDS = 2l;
+
 
     private CuratorFramework curatorFramework;
 
@@ -365,8 +328,8 @@ public class Redis implements PathChildrenCacheListener {
 
         String redisServerConfig = System.getProperty(BackplaneSystemProps.REDIS_SERVER_PRIMARY);
         if (StringUtils.isEmpty(redisServerConfig)) {
-            logger.error("cannot find configuration entry for " + BackplaneSystemProps.REDIS_SERVER_PRIMARY);
-            System.exit(1);
+        	redisServerConfig = DEFAULT_REDIS_SERVER_PRIMARY;
+            logger.error("cannot find configuration entry for " + BackplaneSystemProps.REDIS_SERVER_PRIMARY+", defaulting to "+redisServerConfig);
         }
         String[] args = redisServerConfig.split(":");
         int port = 6379;
@@ -382,8 +345,8 @@ public class Redis implements PathChildrenCacheListener {
 
         redisServerConfig = System.getProperty(BackplaneSystemProps.REDIS_SERVER_READS);
         if (StringUtils.isEmpty(redisServerConfig)) {
-            logger.error("cannot find configuration entry for " + BackplaneSystemProps.REDIS_SERVER_READS);
-            System.exit(1);
+        	redisServerConfig = DEFAULT_REDIS_SERVER_READS;
+            logger.error("cannot find configuration entry for " + BackplaneSystemProps.REDIS_SERVER_READS+" defaulting to "+redisServerConfig);
         }
         args = redisServerConfig.split(":");
         port = 6379;
@@ -392,8 +355,8 @@ public class Redis implements PathChildrenCacheListener {
                 port = Integer.parseInt(args[1]);
                 currentRedisServerForReads = args[0];
             } catch (NumberFormatException e) {
-                logger.error("invalid Redis server configuration: " + redisServerConfig);
-                System.exit(1);
+            	port = DEFAULT_REDIS_PORT;
+                logger.error("invalid Redis server configuration: " + redisServerConfig+", defaulting to port "+port);
             }
         }
 

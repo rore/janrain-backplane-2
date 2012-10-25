@@ -29,6 +29,7 @@ import com.janrain.servlet.ServletUtil;
 import com.janrain.utils.BackplaneSystemProps;
 import com.janrain.backplane2.server.config.User;
 import com.janrain.commons.supersimpledb.SimpleDBException;
+import com.janrain.commons.util.ExecutionTimer;
 import com.janrain.crypto.HmacHashUtils;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Histogram;
@@ -308,6 +309,8 @@ public class Backplane1Controller {
     }
 
     public static String randomString(int length) {
+    	ExecutionTimer et = new ExecutionTimer();
+    	et.start();
         byte[] randomBytes = new byte[length];
         random.nextBytes(randomBytes);
         for (int i = 0; i < length; i++) {
@@ -317,6 +320,8 @@ public class Backplane1Controller {
             else c += (97 - 10);   // map (10..15) to 'a'..'f'
             randomBytes[i] = (byte) c;
         }
+        et.stop();
+        logger.info(String.format("Generated a new random string of length %d in %.2f milliseconds", randomBytes.length, et.getElapsedTimeMillis()));
         try {
             return new String(randomBytes, "US-ASCII");
         }

@@ -144,11 +144,12 @@ public class Backplane2Config {
 
     private static final String BUILD_PROPERTIES = "/build.properties";
     private static final String BUILD_VERSION_PROPERTY = "build.version";
+    private static final String DEFAULT_ZOOKEEPER_SERVER = "localhost:2181";
     private static final Properties buildProperties = new Properties();
     private static final long BP_MAX_MESSAGES_DEFAULT = 100;
     private final String bpInstanceId;
     private ScheduledExecutorService cleanup;
-    private ExecutorService pingRedis;
+//    private ExecutorService pingRedis;
 
 
     // Amazon specific instance-id value
@@ -207,34 +208,23 @@ public class Backplane2Config {
         return maintenanceTask;
     }
 
-    private ExecutorService createPingTask() {
-        ScheduledExecutorService ping = Executors.newScheduledThreadPool(1);
-        ping.scheduleWithFixedDelay(new Runnable() {
-            @Override
-            public void run() {
-                com.janrain.redis.Redis.getInstance().ping();
-            }
-        }, 30, 10, TimeUnit.SECONDS);
-        return ping;
-    }
 
     @PostConstruct
     private void init() {
 
         this.cleanup = createMaintenanceTask();
-        this.pingRedis = createPingTask();
+//        this.pingRedis = createPingTask();
 
         try {
             String zkServerConfig = System.getProperty(BackplaneSystemProps.ZOOKEEPER_SERVERS);
             if (StringUtils.isEmpty(zkServerConfig)) {
-                logger.error("Cannot find configuration entry for ZooKeeper server");
-                System.exit(1);
+                zkServerConfig = DEFAULT_ZOOKEEPER_SERVER;
+                logger.error("Cannot find configuration entry for ZooKeeper server, defaulting to "+zkServerConfig);
             }
             CuratorFramework client = CuratorFrameworkFactory.newClient(zkServerConfig, new ExponentialBackoffRetry(50, 20));
             client.start();
             LeaderSelector leaderSelector = new LeaderSelector(client, "/v2_worker", new V2MessageProcessor(daoFactory));
             leaderSelector.start();
-            com.janrain.redis.Redis.getInstance().setActiveRedisInstance(client);
         } catch (Exception e) {
             logger.error(e);
         }
@@ -245,7 +235,7 @@ public class Backplane2Config {
     private void cleanup() {
         Metrics.shutdown();
         shutdownExecutor(cleanup);
-        shutdownExecutor(pingRedis);
+//        shutdownExecutor(pingRedis);
     }
 
     private void shutdownExecutor(ExecutorService executor) {

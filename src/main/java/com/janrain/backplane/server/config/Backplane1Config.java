@@ -128,9 +128,11 @@ public class Backplane1Config {
 
     private static final String BUILD_PROPERTIES = "/build.properties";
     private static final String BUILD_VERSION_PROPERTY = "build.version";
+	private static final String DEFAULT_ZOOKEEPER_SERVER = "localhost:2181";
     private static final String BP_CONFIG_ENTRY_NAME = "bpserverconfig";
     private static final long BP_MAX_MESSAGES_DEFAULT = 100;
     private static final Properties buildProperties = new Properties();
+
 
     private final String bpInstanceId;
     private final List<ExecutorService> backgroundServices = new ArrayList<ExecutorService>();
@@ -190,8 +192,8 @@ public class Backplane1Config {
         try {
             String zkServerConfig = System.getProperty(BackplaneSystemProps.ZOOKEEPER_SERVERS);
             if (StringUtils.isEmpty(zkServerConfig)) {
-                logger.error("Cannot find configuration entry for ZooKeeper server");
-                System.exit(1);
+            	zkServerConfig = DEFAULT_ZOOKEEPER_SERVER;
+                logger.error("Cannot find configuration entry for ZooKeeper server, defaulting to "+zkServerConfig);
             }
             CuratorFramework client = CuratorFrameworkFactory.newClient(zkServerConfig, new ExponentialBackoffRetry(50, 20));
             client.start();
