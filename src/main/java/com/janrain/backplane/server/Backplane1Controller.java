@@ -217,8 +217,6 @@ public class Backplane1Controller {
             @RequestParam(value = "sticky", required = false) String sticky )
             throws SimpleDBException, AuthException, BackplaneServerException {
 
-        final TimerContext context = getChannelMessagesTime.time();
-
         logger.debug("request started");
 
         try {
@@ -231,7 +229,6 @@ public class Backplane1Controller {
                     HttpStatus.OK);
 
         } finally {
-            context.stop();
             logger.debug("request ended");
         }
 
@@ -340,6 +337,9 @@ public class Backplane1Controller {
     private final com.yammer.metrics.core.Timer getChannelMessagesTime =
             Metrics.newTimer(new MetricName("v1", this.getClass().getName().replace(".","_"), "get_channel_messages_time"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
 
+    private final com.yammer.metrics.core.Timer getNewChannelTime =
+            Metrics.newTimer(new MetricName("v1", this.getClass().getName().replace(".","_"), "get_new_channel_time"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
+
     private final com.yammer.metrics.core.Timer postMessagesTime =
             Metrics.newTimer(new MetricName("v1", this.getClass().getName().replace(".","_"), "post_messages_time"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
 
@@ -405,10 +405,15 @@ public class Backplane1Controller {
     }
 
     private String newChannel() {
-        return "\"" + randomString(CHANNEL_NAME_LENGTH) +"\"";
+    	final TimerContext context = getNewChannelTime.time();
+        String newChannel = "\"" + randomString(CHANNEL_NAME_LENGTH) +"\"";
+        context.stop();
+    	return newChannel;
     }
 
     private String getChannelMessages(final String bus, final String channel, final String since, final String sticky) throws SimpleDBException, BackplaneServerException {
+
+        final TimerContext context = getChannelMessagesTime.time();
 
         try {
             List<BackplaneMessage> messages = DaoFactory.getBackplaneMessageDAO().getMessagesByChannel(bus, channel, since, sticky);
@@ -434,6 +439,8 @@ public class Backplane1Controller {
             throw bse;
         } catch (Exception e) {
             throw new BackplaneServerException(e.getMessage());
+        } finally {
+            context.stop();
         }
     }
 }
