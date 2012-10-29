@@ -19,7 +19,6 @@ package com.janrain.backplane.server;
 import com.janrain.backplane.server.config.Backplane1Config;
 import com.janrain.backplane.server.dao.redis.RedisBackplaneMessageDAO;
 import com.janrain.backplane.server.dao.DaoFactory;
-import com.janrain.backplane2.server.dao.BackplaneMessageDAO;
 import com.janrain.commons.util.Pair;
 import com.janrain.redis.Redis;
 import com.janrain.utils.BackplaneSystemProps;
@@ -29,12 +28,10 @@ import com.netflix.curator.framework.state.ConnectionState;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Histogram;
 import com.yammer.metrics.core.MetricName;
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import redis.clients.jedis.Jedis;
-import redis.clients.jedis.JedisPubSub;
 import redis.clients.jedis.Transaction;
 
 import java.util.*;
@@ -67,10 +64,7 @@ public class MessageProcessor implements LeaderSelectorListener {
             logger.info("v1 message processor started");
 
             List<String> insertionTimes = new ArrayList<String>();
-            Jedis jedis = Redis.getInstance().getWriteJedis();
-            logger.debug("retrieved jedis connection: " + jedis.toString());
-            // set watch on the messages sorted set of keys
-            jedis.watch(RedisBackplaneMessageDAO.V1_MESSAGES);
+            Jedis jedis = null;
             do {
 
                 logger.debug("beginning message processor loop");
@@ -78,31 +72,19 @@ public class MessageProcessor implements LeaderSelectorListener {
 
                 try {
 
+                    jedis = Redis.getInstance().getWriteJedis();
+                    logger.debug("retrieved jedis connection: " + jedis.toString());
+                    // set watch on the messages sorted set of keys
+                    jedis.watch(RedisBackplaneMessageDAO.V1_MESSAGES);
+                    Pair<String, Date> lastIdAndDate = retrieveLatestLiveMessageId(jedis);
 
-                    // retrieve the latest 'live' message ID
-                    String latestMessageId = null;
-                    Set<String> latestMessageMetaSet = jedis.zrange(RedisBackplaneMessageDAO.V1_MESSAGES, -1, -1);
-
-                    if (latestMessageMetaSet != null && !latestMessageMetaSet.isEmpty()) {
-                        String[] segs = latestMessageMetaSet.iterator().next().split(" ");
-                        if (segs.length == 3) {
-                            latestMessageId = segs[2];
-                        }
-                    }
-
-                    Pair<String, Date> lastIdAndDate =  new Pair<String, Date>("", new Date(0));
-                    try {
-                        lastIdAndDate = StringUtils.isEmpty(latestMessageId) ?
-                                new Pair<String, Date>("", new Date(0)) :
-                                new Pair<String, Date>(latestMessageId, Backplane1Config.ISO8601.get().parse(latestMessageId.substring(0, latestMessageId.indexOf("Z") + 1)));
-                    } catch (Exception e) {
-                        //
-                    }
-
-
-                    // retrieve a handful of messages (ten) off the queue for processing
-                    List<byte[]> messagesToProcess = jedis.lrange(RedisBackplaneMessageDAO.V1_MESSAGE_QUEUE.getBytes(), 0, 9);
-
+                    List<byte[]> blPoppedResult = jedis.blpop(0, RedisBackplaneMessageDAO.V1_MESSAGE_QUEUE.getBytes());
+                    byte[] newMessageBytes = blPoppedResult.get(1);
+                    logger.debug("blpop returned a message");
+                    // retrieve a handful of messages (up to 9 more) off the queue for processing
+                    List<byte[]> messagesToProcess = jedis.lrange(RedisBackplaneMessageDAO.V1_MESSAGE_QUEUE.getBytes(), 0, 8);
+                    // push the one message we know we have to the front of the list
+                    messagesToProcess.add(0, newMessageBytes);
                     logger.debug("number of messages to process: " + messagesToProcess.size());
 
                     // only enter the next block if we have messages to process
@@ -177,8 +159,6 @@ public class MessageProcessor implements LeaderSelectorListener {
                             }
                         } // for messages
 
-                        Thread.sleep(150);
-
                         logger.info("processing transaction with " + insertionTimes.size() + " message(s)");
                         if (transaction.exec() == null) {
                             // the transaction failed
@@ -225,6 +205,29 @@ public class MessageProcessor implements LeaderSelectorListener {
             logger.warn("exception thrown in message processor thread: " + e.getMessage());
         }
     }
+
+	private Pair<String, Date> retrieveLatestLiveMessageId(Jedis jedis) {
+		// retrieve the latest 'live' message ID
+		String latestMessageId = null;
+		Set<String> latestMessageMetaSet = jedis.zrange(RedisBackplaneMessageDAO.V1_MESSAGES, -1, -1);
+
+		if (latestMessageMetaSet != null && !latestMessageMetaSet.isEmpty()) {
+		    String[] segs = latestMessageMetaSet.iterator().next().split(" ");
+		    if (segs.length == 3) {
+		        latestMessageId = segs[2];
+		    }
+		}
+
+		Pair<String, Date> lastIdAndDate =  new Pair<String, Date>("", new Date(0));
+		try {
+		    lastIdAndDate = StringUtils.isEmpty(latestMessageId) ?
+		            new Pair<String, Date>("", new Date(0)) :
+		            new Pair<String, Date>(latestMessageId, Backplane1Config.ISO8601.get().parse(latestMessageId.substring(0, latestMessageId.indexOf("Z") + 1)));
+		} catch (Exception e) {
+		    //
+		}
+		return lastIdAndDate;
+	}
 
     private static final Logger logger = Logger.getLogger(MessageProcessor.class);
 
