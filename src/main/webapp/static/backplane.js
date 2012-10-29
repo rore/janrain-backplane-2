@@ -95,6 +95,9 @@ Backplane.init = function(config) {
         this.config.channelExpires = d.toGMTString();
     }
 
+    // XXX: this can be removed after couple of weeks
+    this.renameOldCache();
+
     if (this.getChannelName()) {
         this.finishInit(false);
     } else {
@@ -104,6 +107,22 @@ Backplane.init = function(config) {
     return true;
 };
 
+Backplane.renameOldCache = function() {
+    // Check for old cache
+    if (!localStorage) return;
+    var v1 = localStorage.getItem("cacheExpires");
+    var v2 = localStorage.getItem("cachedMessages");
+    var v3 = localStorage.getItem("cachedMessagesIndex");
+    if (!v1 || !v2 || !v3) return;
+
+    localStorage.setItem("backplaneCacheExpires", v1);
+    localStorage.setItem("backplaneCachedMessages", v2);
+    localStorage.setItem("backplaneCachedMessagesIndex", v3);
+
+    localStorage.removeItem("cacheExpires");
+    localStorage.removeItem("cachedMessages");
+    localStorage.removeItem("cachedMessagesIndex");
+}
 
 /**
  * Subscribes to messages from Backplane server
