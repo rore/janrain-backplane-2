@@ -58,8 +58,8 @@ public class MessageProcessor implements LeaderSelectorListener {
      * Processor to pull messages off queue and make them available
      *
      */
-    public void insertMessages(boolean loop) {
-
+    public void insertMessages() {
+    	keepProcessingFlag = true;
         try {
             logger.info("v1 message processor started");
 
@@ -190,7 +190,7 @@ public class MessageProcessor implements LeaderSelectorListener {
                 } finally {
                 }
 
-            } while (loop);
+            } while (keepProcessingFlag);
 
         try {
             if (jedis != null) {
@@ -233,15 +233,20 @@ public class MessageProcessor implements LeaderSelectorListener {
 
     private final Histogram timeInQueue = Metrics.newHistogram(new MetricName("v1", this.getClass().getName().replace(".","_"), "time_in_queue"));
 
+	private volatile boolean keepProcessingFlag;
+
     @Override
     public void takeLeadership(CuratorFramework curatorFramework) throws Exception {
         logger.info("[" + BackplaneSystemProps.getMachineName() + "] v1 leader elected for message processing");
-        insertMessages(true);
+        insertMessages();
         logger.info("[" + BackplaneSystemProps.getMachineName() + "] v1 leader ended message processing");
     }
 
     @Override
     public void stateChanged(CuratorFramework curatorFramework, ConnectionState connectionState) {
-        logger.info("state changed");
+        logger.info("state changed: "+connectionState);
+    	if (connectionState.compareTo(ConnectionState.CONNECTED) != 0) {
+    		keepProcessingFlag = false;
+    	}
     }
 }
