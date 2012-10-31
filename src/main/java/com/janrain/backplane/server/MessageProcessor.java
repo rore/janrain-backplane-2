@@ -16,10 +16,8 @@
 
 package com.janrain.backplane.server;
 
-import com.janrain.backplane.server.config.Backplane1Config;
 import com.janrain.backplane.server.dao.redis.RedisBackplaneMessageDAO;
 import com.janrain.backplane.server.dao.DaoFactory;
-import com.janrain.commons.util.Pair;
 import com.janrain.redis.Redis;
 import com.janrain.utils.BackplaneSystemProps;
 import com.netflix.curator.framework.CuratorFramework;
@@ -28,11 +26,8 @@ import com.netflix.curator.framework.state.ConnectionState;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Histogram;
 import com.yammer.metrics.core.MetricName;
-import org.apache.commons.lang.SerializationUtils;
-import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import redis.clients.jedis.Jedis;
-import redis.clients.jedis.Transaction;
 
 import java.util.*;
 
@@ -41,7 +36,7 @@ import java.util.*;
  */
 public class MessageProcessor implements LeaderSelectorListener {
 
-    public MessageProcessor() {}
+	public MessageProcessor() {}
 
         /**
      * Processor to remove expired messages
@@ -60,178 +55,66 @@ public class MessageProcessor implements LeaderSelectorListener {
      */
     public void insertMessages() {
     	keepProcessingFlag = true;
-        try {
-            logger.info("v1 message processor started");
+    	logger.info("v1 message processor started");
 
-            List<String> insertionTimes = new ArrayList<String>();
-            Jedis jedis = null;
-            do {
+    	Jedis jedis = Redis.getInstance().getWriteJedis();
+    	logger.debug("retrieved jedis connection: " + jedis.toString());
+    	do {
 
-                logger.debug("beginning message processor loop");
+    		logger.debug("beginning message processor loop");
 
+    		// set watch on the messages sorted set of keys
+    		jedis.watch(RedisBackplaneMessageDAO.V1_MESSAGES);
+    		List<byte[]> blPoppedResult = jedis.blpop(0, RedisBackplaneMessageDAO.V1_MESSAGE_QUEUE.getBytes());
+    		logger.debug("blpop returned a message");
+    		byte[] newMessageBytes = blPoppedResult.get(1);
+    		jedis.lpush(V1_JOB_QUEUE, newMessageBytes);
+    		MessageProcessingJob job = JobCreator.createJob(jedis, newMessageBytes);
+	    	if (job.process()) {
+	    		timeInQueue.update(job.timeInQueue());
+	    	} else {
+	    		handleRetry(jedis, newMessageBytes);
+	    	}
+	    	// TODO what happens if something above really fails and leaves the message on the job queue?
+	    	// we need something to run periodically and look for messages older than some delta
+	    	// then decide how we handle them
+			jedis.lpop(V1_JOB_QUEUE);
 
-                try {
+    		jedis.unwatch();
+    		
+    	} while (keepProcessingFlag);
 
-                    jedis = Redis.getInstance().getWriteJedis();
-                    logger.debug("retrieved jedis connection: " + jedis.toString());
-                    // set watch on the messages sorted set of keys
-                    jedis.watch(RedisBackplaneMessageDAO.V1_MESSAGES);
-                    Pair<String, Date> lastIdAndDate = retrieveLatestLiveMessageId(jedis);
+     }
 
-                    List<byte[]> blPoppedResult = jedis.blpop(0, RedisBackplaneMessageDAO.V1_MESSAGE_QUEUE.getBytes());
-                    byte[] newMessageBytes = blPoppedResult.get(1);
-                    logger.debug("blpop returned a message");
-                    // retrieve a handful of messages (up to 9 more) off the queue for processing
-                    List<byte[]> messagesToProcess = jedis.lrange(RedisBackplaneMessageDAO.V1_MESSAGE_QUEUE.getBytes(), 0, 8);
-                    // push the one message we know we have to the front of the list
-                    messagesToProcess.add(0, newMessageBytes);
-                    logger.debug("number of messages to process: " + messagesToProcess.size());
-
-                    // only enter the next block if we have messages to process
-                    if (messagesToProcess.size() > 0) {
-
-                        Transaction transaction = jedis.multi();
-
-                        insertionTimes.clear();
-
-                        for (byte[] messageBytes : messagesToProcess) {
-
-                            if (messageBytes != null) {
-                                BackplaneMessage backplaneMessage = (BackplaneMessage) SerializationUtils.deserialize(messageBytes);
-
-                                if (backplaneMessage != null) {
-
-                                    // retrieve the expiration config per the bus
-                                    BusConfig1 busConfig1 = DaoFactory.getBusDAO().get(backplaneMessage.getBus());
-                                    int retentionTimeSeconds = 60;
-                                    int retentionTimeStickySeconds = 3600;
-                                    if (busConfig1 != null) {
-                                        // should be here in normal flow
-                                        retentionTimeSeconds = busConfig1.getRetentionTimeSeconds();
-                                        retentionTimeStickySeconds = busConfig1.getRetentionTimeStickySeconds();
-                                    }
-
-                                    String oldId = backplaneMessage.getIdValue();
-                                    insertionTimes.add(oldId);
-
-                                    // TOTAL ORDER GUARANTEE
-                                    // verify that the date portion of the new message ID is greater than all existing message ID dates
-                                    // if not, uptick id by 1 ms and insert
-                                    // this means that all message ids have unique time stamps, even if they
-                                    // arrived at the same time.
-
-                                    lastIdAndDate = backplaneMessage.updateId(lastIdAndDate);
-                                    String newId = backplaneMessage.getIdValue();
-
-                                    // messageTime is guaranteed to be a unique identifier of the message
-                                    // because of the TOTAL ORDER mechanism above
-                                    long messageTime = BackplaneMessage.getDateFromId(newId).getTime();
-
-                                    // <ATOMIC>
-                                    // save the individual message by key
-                                    transaction.set(RedisBackplaneMessageDAO.getKey(newId), SerializationUtils.serialize(backplaneMessage));
-                                    // set the message TTL
-                                    if (backplaneMessage.isSticky()) {
-                                        transaction.expire(RedisBackplaneMessageDAO.getKey(newId), retentionTimeStickySeconds);
-                                    } else {
-                                        transaction.expire(RedisBackplaneMessageDAO.getKey(newId), retentionTimeSeconds);
-                                    }
-
-                                    // add message id to channel list
-                                    transaction.rpush(RedisBackplaneMessageDAO.getChannelKey(backplaneMessage.getChannel()), newId.getBytes());
-
-                                    // add message id to sorted set of all message ids as an index
-                                    String metaData = backplaneMessage.getBus() + " " + backplaneMessage.getChannel() + " " + newId;
-                                    transaction.zadd(RedisBackplaneMessageDAO.V1_MESSAGES.getBytes(), messageTime, metaData.getBytes());
-
-                                    // add message id to sorted set keyed by bus as an index
-                                    transaction.zadd(RedisBackplaneMessageDAO.getBusKey(backplaneMessage.getBus()), messageTime, newId.getBytes());
-
-                                    // make sure all subscribers get the update
-                                    transaction.publish("alerts", newId);
-
-                                    // pop one message off the queue - which will only happen if this transaction is successful
-                                    transaction.lpop(RedisBackplaneMessageDAO.V1_MESSAGE_QUEUE);
-                                    // </ATOMIC>
-
-                                    logger.info("pipelined message " + oldId + " -> " + newId);
-                                }
-                            }
-                        } // for messages
-
-                        logger.info("processing transaction with " + insertionTimes.size() + " message(s)");
-                        if (transaction.exec() == null) {
-                            // the transaction failed
-                            continue;
-                        }
-
-                        logger.info("flushed " + insertionTimes.size() + " messages");
-                        long now = System.currentTimeMillis();
-                        for (String insertionId : insertionTimes) {
-                            long diff = now - BackplaneMessage.getDateFromId(insertionId).getTime();
-                            timeInQueue.update(diff);
-                            if (diff < 0 || diff > 2880000) {
-                                logger.warn("time diff is bizarre at: " + diff);
-                            }
-                        }
-                    } // messagesToProcess > 0
-
-                } catch (Exception e) {
-                    try {
-                        logger.warn("error " + e.getMessage(), e);
-                        if (jedis != null) {
-                            Redis.getInstance().releaseBrokenResourceToPool(jedis);
-                            jedis = null;
-                        }
-                    } catch (Exception e1) {
-                        //ignore
-                    }
-                    Thread.sleep(2000);
-                } finally {
-                }
-
-            } while (keepProcessingFlag);
-
-        try {
-            if (jedis != null) {
-                jedis.unwatch();
-                Redis.getInstance().releaseToPool(jedis);
-            }
-
-        } catch (Exception e) {
-            Redis.getInstance().releaseBrokenResourceToPool(jedis);
-        }
-        } catch (Exception e) {
-            logger.warn("exception thrown in message processor thread: " + e.getMessage());
-        }
-    }
-
-	private Pair<String, Date> retrieveLatestLiveMessageId(Jedis jedis) {
-		// retrieve the latest 'live' message ID
-		String latestMessageId = null;
-		Set<String> latestMessageMetaSet = jedis.zrange(RedisBackplaneMessageDAO.V1_MESSAGES, -1, -1);
-
-		if (latestMessageMetaSet != null && !latestMessageMetaSet.isEmpty()) {
-		    String[] segs = latestMessageMetaSet.iterator().next().split(" ");
-		    if (segs.length == 3) {
-		        latestMessageId = segs[2];
-		    }
+	private void handleRetry(Jedis jedis, byte[] newMessageBytes) {
+		int retries = getRetryCountForMessage(jedis, newMessageBytes);
+		if (retries < MAX_RETRIES) {
+			retries++;
+			jedis.set(newMessageBytes, String.valueOf(retries).getBytes());
+			jedis.rpush(RedisBackplaneMessageDAO.V1_MESSAGE_QUEUE.getBytes(), newMessageBytes);	    		
+		} else {
+			jedis.rpush(V1_FAILED_JOBS, newMessageBytes);
 		}
+	}
 
-		Pair<String, Date> lastIdAndDate =  new Pair<String, Date>("", new Date(0));
-		try {
-		    lastIdAndDate = StringUtils.isEmpty(latestMessageId) ?
-		            new Pair<String, Date>("", new Date(0)) :
-		            new Pair<String, Date>(latestMessageId, Backplane1Config.ISO8601.get().parse(latestMessageId.substring(0, latestMessageId.indexOf("Z") + 1)));
-		} catch (Exception e) {
-		    //
+	private int getRetryCountForMessage(Jedis jedis, byte[] newMessageBytes) {
+		byte[] retryCount = jedis.get(newMessageBytes);
+		if (retryCount != null) { // we've retried this message before
+			return Integer.valueOf(new String(retryCount));
+		} else {
+			return 0;
 		}
-		return lastIdAndDate;
 	}
 
     private static final Logger logger = Logger.getLogger(MessageProcessor.class);
 
-    private final Histogram timeInQueue = Metrics.newHistogram(new MetricName("v1", this.getClass().getName().replace(".","_"), "time_in_queue"));
+    public static final byte[] V1_JOB_QUEUE = "V1_JOB_QUEUE".getBytes();
+
+    private static final int MAX_RETRIES = 3;
+
+	private static final byte[] V1_FAILED_JOBS = "V1_FAILED_JOBS".getBytes();
+
+   private final Histogram timeInQueue = Metrics.newHistogram(new MetricName("v1", this.getClass().getName().replace(".","_"), "time_in_queue"));
 
 	private volatile boolean keepProcessingFlag;
 
@@ -244,9 +127,17 @@ public class MessageProcessor implements LeaderSelectorListener {
 
     @Override
     public void stateChanged(CuratorFramework curatorFramework, ConnectionState connectionState) {
-        logger.info("state changed: "+connectionState);
-    	if (connectionState.compareTo(ConnectionState.CONNECTED) != 0) {
-    		keepProcessingFlag = false;
+    	logger.info("state changed: "+connectionState);
+    	switch (connectionState) {
+    	case SUSPENDED:
+    		keepProcessingFlag = false;			
+    		break;
+    	case LOST:
+    		keepProcessingFlag = false;			
+    		break;
+    	default:
+    		// if we quit processing, someone else should have been elected leader, we don't restart ourselves
+    		break;
     	}
     }
 }
