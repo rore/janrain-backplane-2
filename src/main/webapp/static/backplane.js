@@ -109,7 +109,7 @@ Backplane.init = function(config) {
 
 Backplane.renameOldCache = function() {
     // Check for old cache
-    if (!localStorage) return;
+    if (!window.localStorage) return;
     var v1 = localStorage.getItem("cacheExpires");
     var v2 = localStorage.getItem("cachedMessages");
     var v3 = localStorage.getItem("cachedMessagesIndex");
@@ -293,7 +293,7 @@ Backplane.invalidateCache = function() {
     this.cachedMessages = {};
     this.cachedMessagesIndex = [];
 
-    if (localStorage) {
+    if (window.localStorage) {
         localStorage.removeItem("backplaneCacheExpires");
         localStorage.removeItem("backplaneCachedMessages");
         localStorage.removeItem("backplaneCachedMessagesIndex");
@@ -345,7 +345,7 @@ Backplane.request = function() {
 
         // if no since parameter exists, check cache and play those back
         // rather than hitting the server
-        if (localStorage && !self.since) {
+        if (window.localStorage && !self.since) {
             // should cache be expired?
             var cacheExpiresString = localStorage.getItem("backplaneCacheExpires");
             if (cacheExpiresString) {
@@ -421,9 +421,10 @@ Backplane.response = function(messages) {
                 delete this.cachedMessages[this.cachedMessagesIndex[0]];
                 this.cachedMessagesIndex.splice(0,1);
             }
-            if (localStorage) {
+            if (window.localStorage) {
                 localStorage.setItem("backplaneCachedMessages", JSON.stringify(this.cachedMessages));
                 localStorage.setItem("backplaneCachedMessagesIndex", JSON.stringify(this.cachedMessagesIndex));
+
                 var expiresDate = new Date();
                 expiresDate.setDate(expiresDate.getDate()+7);
                 localStorage.setItem("backplaneCacheExpires", expiresDate.toUTCString()); 
