@@ -34,10 +34,8 @@ import org.jetbrains.annotations.Nullable;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -337,11 +335,11 @@ public class Redis implements PathChildrenCacheListener {
 
     private static final Logger logger = Logger.getLogger(Redis.class);
 
-    private String currentRedisServerForReads;
+    private String[] currentRedisServerForReads;
     private String currentRedisServerForWrites;
 
     private final JedisPool poolForWrites;
-    private final JedisPool poolForReads;
+    private final ArrayList<JedisPool> poolForReads = new ArrayList<JedisPool>();
 
     private static Redis instance = new Redis();
     private final String REDIS_LOCK = "/redislock";
@@ -362,7 +360,6 @@ public class Redis implements PathChildrenCacheListener {
         jedisPoolConfig.setMaxIdle(-1);
         jedisPoolConfig.setMinIdle(20);
 
-
         String redisServerConfig = System.getProperty(BackplaneSystemProps.REDIS_SERVER_PRIMARY);
         if (StringUtils.isEmpty(redisServerConfig)) {
             logger.error("cannot find configuration entry for " + BackplaneSystemProps.REDIS_SERVER_PRIMARY);
@@ -381,23 +378,27 @@ public class Redis implements PathChildrenCacheListener {
         poolForWrites = new JedisPool(jedisPoolConfig, args[0], port);
 
         redisServerConfig = System.getProperty(BackplaneSystemProps.REDIS_SERVER_READS);
+
         if (StringUtils.isEmpty(redisServerConfig)) {
             logger.error("cannot find configuration entry for " + BackplaneSystemProps.REDIS_SERVER_READS);
             System.exit(1);
         }
-        args = redisServerConfig.split(":");
-        port = 6379;
-        if (args.length == 2) {
-            try {
-                port = Integer.parseInt(args[1]);
-                currentRedisServerForReads = args[0];
-            } catch (NumberFormatException e) {
-                logger.error("invalid Redis server configuration: " + redisServerConfig);
-                System.exit(1);
+
+        String[] readServers = redisServerConfig.split(",");
+        for (int i=0; i< readServers.length; i++) {
+            args = readServers[i].split(":");
+            port = 6379;
+            if (args.length == 2) {
+                try {
+                    port = Integer.parseInt(args[1]);
+                    currentRedisServerForReads[i] = args[0];
+                    poolForReads.add(new JedisPool(jedisPoolConfig, args[0], port));
+                } catch (NumberFormatException e) {
+                    logger.error("invalid Redis server configuration: " + redisServerConfig);
+                    System.exit(1);
+                }
             }
         }
-
-        poolForReads = new JedisPool(jedisPoolConfig, args[0], port);
 
     }
 
@@ -407,7 +408,8 @@ public class Redis implements PathChildrenCacheListener {
     }
 
     private JedisPool getReadPool() {
-        return poolForReads;
+        Random random = new Random();
+        return poolForReads.get(random.nextInt(poolForReads.size()));
     }
 
     private Jedis getJedisFromPool(JedisPool pool) {
