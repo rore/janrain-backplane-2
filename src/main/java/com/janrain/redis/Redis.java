@@ -335,7 +335,7 @@ public class Redis implements PathChildrenCacheListener {
 
     private static final Logger logger = Logger.getLogger(Redis.class);
 
-    private String[] currentRedisServerForReads;
+    //private String[] currentRedisServerForReads;
     private String currentRedisServerForWrites;
 
     private final JedisPool poolForWrites;
@@ -391,7 +391,7 @@ public class Redis implements PathChildrenCacheListener {
             if (args.length == 2) {
                 try {
                     port = Integer.parseInt(args[1]);
-                    currentRedisServerForReads[i] = args[0];
+                    //currentRedisServerForReads[i] = args[0];
                     poolForReads.add(new JedisPool(jedisPoolConfig, args[0], port));
                 } catch (NumberFormatException e) {
                     logger.error("invalid Redis server configuration: " + redisServerConfig);
