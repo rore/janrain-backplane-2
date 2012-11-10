@@ -26,6 +26,7 @@ import com.janrain.cache.CachedL1;
 import com.janrain.servlet.ServletUtil;
 import com.janrain.utils.BackplaneSystemProps;
 import com.janrain.commons.message.MessageException;
+import com.janrain.backplane.server.dao.redis.RedisBackplaneMessageDAO;
 import com.janrain.crypto.HmacHashUtils;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Histogram;
