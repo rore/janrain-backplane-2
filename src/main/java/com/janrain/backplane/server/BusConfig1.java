@@ -41,7 +41,7 @@ public class BusConfig1 extends ExternalizableCore {
         try {
             init(busName, d);
         } catch (MessageException e) {
-            throw new BackplaneServerException(e.getMessage());
+            throw new BackplaneServerException(e.getMessage(), e);
         }
     }
 

@@ -24,7 +24,6 @@ import com.janrain.commons.message.MessageException;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Histogram;
 import com.yammer.metrics.core.MetricName;
-import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.commons.lang.StringUtils;
@@ -203,10 +202,10 @@ public class RedisBackplaneMessageDAO extends DAO<BackplaneMessage> {
             logger.warn("connection broken on bus "+bus+" and channel "+channel);
             Redis.getInstance().releaseBrokenResourceToPool(jedis);
             jedis=null;
-            throw new BackplaneServerException(jce.getMessage());
+            throw new BackplaneServerException(jce.getMessage(), jce);
         } catch (Exception e) {
             logger.error("Exception on bus "+bus+" and channel "+channel, e);
-            throw new BackplaneServerException(e.getMessage());
+            throw new BackplaneServerException(e.getMessage(), e);
         } finally {
             Redis.getInstance().releaseToPool(jedis);
         }
