@@ -21,7 +21,6 @@ import com.janrain.backplane.server.config.Backplane1Config;
 import com.janrain.backplane.server.config.BpServerConfig;
 import com.janrain.backplane.server.dao.redis.RedisBackplaneMessageDAO;
 import com.janrain.backplane.server.dao.DaoFactory;
-import com.janrain.backplane.server.dao.redis.RedisBackplaneMessageDAO;
 import com.janrain.backplane2.server.config.User;
 import com.janrain.cache.CachedL1;
 import com.janrain.servlet.ServletUtil;
