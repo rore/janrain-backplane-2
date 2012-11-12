@@ -354,7 +354,7 @@ public class Redis implements PathChildrenCacheListener {
         JedisPoolConfig jedisPoolConfig = new JedisPoolConfig();
         jedisPoolConfig.setMaxActive(50);
         jedisPoolConfig.setTestWhileIdle(true);
-        //jedisPoolConfig.setTestOnBorrow(true);
+        jedisPoolConfig.setTestOnReturn(true);
         jedisPoolConfig.setMaxWait(REDIS_MAX_WAIT_SECONDS*1000l);
         jedisPoolConfig.setWhenExhaustedAction(GenericObjectPool.WHEN_EXHAUSTED_BLOCK);
         jedisPoolConfig.setMaxIdle(-1);
