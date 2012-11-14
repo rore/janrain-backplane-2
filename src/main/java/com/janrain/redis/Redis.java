@@ -88,30 +88,30 @@ public class Redis implements PathChildrenCacheListener {
     }
 
     public void set(byte[] key, byte[] value) {
-        Jedis jedis = getWritePool().getResource();
+        Jedis jedis = getWriteJedis();
 
         try {
             jedis.set(key,value);
         } finally {
-            getWritePool().returnResource(jedis);
+            releaseToPool(jedis);
         }
     }
 
     public void del(byte[] key) {
-        Jedis jedis = getWritePool().getResource();
+        Jedis jedis = getWriteJedis();
         try {
             jedis.del(key);
         } finally {
-            getWritePool().returnResource(jedis);
+        	releaseToPool(jedis);
         }
     }
 
     public void set(byte[] key, byte[] value, int seconds) {
-        Jedis jedis = getWritePool().getResource();
+        Jedis jedis = getWriteJedis();
         try {
             jedis.setex(key, seconds, value);
         } finally {
-            getWritePool().returnResource(jedis);
+            releaseToPool(jedis);
         }
     }
 
@@ -120,7 +120,7 @@ public class Redis implements PathChildrenCacheListener {
     }
 
     public void set(String key, String value, @Nullable Integer seconds) {
-        Jedis jedis = getWritePool().getResource();
+        Jedis jedis = getWriteJedis();
         try {
             if (seconds == null) {
                 jedis.set(key, value);
@@ -128,93 +128,93 @@ public class Redis implements PathChildrenCacheListener {
                 jedis.setex(key, seconds, value);
             }
         } finally {
-            getWritePool().returnResource(jedis);
+        	releaseToPool(jedis);
         }
     }
 
     public void append(byte[] key, byte[] value) {
-        Jedis jedis = getWritePool().getResource();
+        Jedis jedis = getWriteJedis();
         try {
             jedis.append(key, value);
         } finally {
-            getWritePool().returnResource(jedis);
+        	releaseToPool(jedis);
         }
     }
 
     public Long rpush(final byte[] key, final byte[] string) {
-        Jedis jedis = getWritePool().getResource();
+        Jedis jedis = getWriteJedis();
         try {
             return jedis.rpush(key, string);
         } finally {
-            getWritePool().returnResource(jedis);
+        	releaseToPool(jedis);
         }
     }
 
     public long llen(byte[] key) {
-        Jedis jedis = getReadPool().getResource();
+        Jedis jedis = getReadJedis();
         try {
             return jedis.llen(key);
         } finally {
-            getReadPool().returnResource(jedis);
+        	releaseToPool(jedis);
         }
     }
 
     public byte[] get(byte[] key) {
-        Jedis jedis = getReadPool().getResource();
+        Jedis jedis = getReadJedis();
         try {
             return jedis.get(key);
         } finally {
-            getReadPool().returnResource(jedis);
+        	releaseToPool(jedis);
         }
     }
 
     public String get(String key) {
-        Jedis jedis = getReadPool().getResource();
+        Jedis jedis = getReadJedis();
         try {
             return jedis.get(key);
         } finally {
-            getReadPool().returnResource(jedis);
+        	releaseToPool(jedis);
         }
     }
 
     public List<byte[]> mget(byte[]... keys) {
-        Jedis jedis = getReadPool().getResource();
+        Jedis jedis = getReadJedis();
         try {
             return jedis.mget(keys);
         } finally {
-            getReadPool().returnResource(jedis);
+        	releaseToPool(jedis);
         }
     }
 
     public byte[] lpop(byte[] key) {
-        Jedis jedis = getReadPool().getResource();
+        Jedis jedis = getReadJedis();
         try {
             return jedis.lpop(key);
         } finally {
-            getReadPool().returnResource(jedis);
+        	releaseToPool(jedis);
         }
     }
 
     public List<byte[]> lrange(final byte[] key, final int start, final int end) {
-        Jedis jedis = getReadPool().getResource();
+        Jedis jedis = getReadJedis();
         try {
             return jedis.lrange(key, start, end);
         } finally {
-            getReadPool().returnResource(jedis);
+        	releaseToPool(jedis);
         }
     }
 
     public Set<byte[]> zrangebyscore(final byte[] key, double min, double max) {
-        Jedis jedis = getReadPool().getResource();
+        Jedis jedis = getReadJedis();
         try {
             return jedis.zrangeByScore(key, min, max);
         } finally {
-            getReadPool().returnResource(jedis);
+        	releaseToPool(jedis);
         }
     }
 
     public long zcard(final byte[] key) {
-        Jedis jedis = getReadPool().getResource();
+        Jedis jedis = getReadJedis();
         try {
             return jedis.zcard(key);
         } finally {
