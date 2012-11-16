@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.janrain.crypto
+package com.janrain.backplane.common
 
 object ChannelUtil {
 

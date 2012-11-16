@@ -1,4 +1,4 @@
-package com.janrain.crypto;
+package com.janrain.backplane.common;
 
 import com.janrain.backplane2.server.Token;
 import com.janrain.commons.util.EncryptUtil;

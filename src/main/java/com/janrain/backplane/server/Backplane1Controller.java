@@ -18,6 +18,7 @@ package com.janrain.backplane.server;
 
 import com.janrain.backplane.common.AuthException;
 import com.janrain.backplane.common.BackplaneServerException;
+import com.janrain.backplane.common.HmacHashUtils;
 import com.janrain.backplane.config.BackplaneConfig;
 import com.janrain.backplane.config.BackplaneSystemProps;
 import com.janrain.backplane.config.BpServerConfig;
@@ -27,7 +28,6 @@ import com.janrain.backplane2.server.config.User;
 import com.janrain.backplane.DateTimeUtils;
 import com.janrain.cache.CachedL1;
 import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.crypto.HmacHashUtils;
 import com.janrain.servlet.ServletUtil;
 import com.janrain.utils.AnalyticsLogger;
 import com.yammer.metrics.Metrics;

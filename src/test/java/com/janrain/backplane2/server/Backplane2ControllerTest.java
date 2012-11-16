@@ -18,6 +18,8 @@ package com.janrain.backplane2.server;
 
 
 import com.janrain.backplane.common.BackplaneServerException;
+import com.janrain.backplane.common.ChannelUtil;
+import com.janrain.backplane.common.HmacHashUtils;
 import com.janrain.backplane.config.BackplaneConfig;
 import com.janrain.backplane2.server.config.BusConfig2;
 import com.janrain.backplane2.server.config.Client;
@@ -26,9 +28,8 @@ import com.janrain.backplane2.server.dao.BackplaneMessageDAO;
 import com.janrain.backplane2.server.dao.DAOFactory;
 import com.janrain.backplane2.server.dao.TokenDAO;
 import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.crypto.ChannelUtil;
-import com.janrain.crypto.HmacHashUtils;
 import com.janrain.oauth2.*;
+import com.janrain.servlet.InvalidRequestException;
 import org.apache.catalina.util.Base64;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
