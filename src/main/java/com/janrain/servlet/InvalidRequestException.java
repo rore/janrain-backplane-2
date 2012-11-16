@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.janrain.backplane2.server;
+package com.janrain.servlet;
 
 import org.jetbrains.annotations.Nullable;
 import org.springframework.http.HttpStatus;

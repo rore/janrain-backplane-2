@@ -25,7 +25,7 @@ import com.janrain.backplane2.server.dao.DAOFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
-import com.janrain.crypto.HmacHashUtils;
+import com.janrain.backplane.common.HmacHashUtils;
 import com.janrain.oauth2.TokenException;
 import com.janrain.servlet.ServletUtil;
 import org.apache.log4j.Logger;

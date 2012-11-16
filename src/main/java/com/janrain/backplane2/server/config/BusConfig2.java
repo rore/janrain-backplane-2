@@ -17,7 +17,7 @@
 package com.janrain.backplane2.server.config;
 
 import com.janrain.backplane.server.ExternalizableCore;
-import com.janrain.backplane2.server.InvalidRequestException;
+import com.janrain.servlet.InvalidRequestException;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.MessageField;
 

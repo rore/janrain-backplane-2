@@ -16,10 +16,10 @@
 
 package com.janrain.oauth2;
 
-import com.janrain.backplane.DateTimeUtils;
+import com.janrain.backplane.common.DateTimeUtils;
 import com.janrain.backplane.server.ExternalizableCore;
 import com.janrain.backplane.common.BackplaneServerException;
-import com.janrain.backplane2.server.InvalidRequestException;
+import com.janrain.servlet.InvalidRequestException;
 import com.janrain.backplane2.server.config.Client;
 import com.janrain.backplane2.server.dao.ClientDAO;
 import com.janrain.commons.supersimpledb.SimpleDBException;

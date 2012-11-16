@@ -16,9 +16,9 @@
 
 package com.janrain.backplane2.server;
 
-import com.janrain.backplane.DateTimeUtils;
 import com.janrain.backplane.config.BackplaneConfig;
 import com.janrain.backplane.config.BackplaneSystemProps;
+import com.janrain.backplane.common.DateTimeUtils;
 import com.janrain.backplane2.server.dao.DAOFactory;
 import com.janrain.backplane2.server.dao.redis.RedisBackplaneMessageDAO;
 import com.janrain.commons.util.Pair;

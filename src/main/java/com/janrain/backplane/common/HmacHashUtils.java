@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.janrain.crypto;
+package com.janrain.backplane.common;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.log4j.Logger;

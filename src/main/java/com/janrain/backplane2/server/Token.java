@@ -16,17 +16,18 @@
 
 package com.janrain.backplane2.server;
 
-import com.janrain.backplane.DateTimeUtils;
 import com.janrain.backplane.common.BackplaneServerException;
+import com.janrain.backplane.common.ChannelUtil;
+import com.janrain.backplane.common.DateTimeUtils;
 import com.janrain.backplane.server.ExternalizableCore;
 import com.janrain.backplane2.server.dao.DAOFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import com.janrain.commons.util.Pair;
-import com.janrain.crypto.ChannelUtil;
 import com.janrain.oauth2.OAuth2;
 import com.janrain.oauth2.TokenException;
+import com.janrain.servlet.InvalidRequestException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
@@ -37,8 +38,6 @@ import java.text.ParseException;
 import java.util.*;
 
 import static com.janrain.oauth2.OAuth2.*;
-import static com.janrain.oauth2.OAuth2.OAUTH2_REFRESH_TOKEN_PARAM_NAME;
-import static com.janrain.oauth2.OAuth2.OAUTH2_SCOPE_PARAM_NAME;
 
 /**
  * @author Tom Raney, Johnny Bufu

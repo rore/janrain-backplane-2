@@ -16,11 +16,11 @@
 
 package com.janrain.backplane2.server;
 
-import com.janrain.backplane.DateTimeUtils;
+import com.janrain.backplane.common.ChannelUtil;
+import com.janrain.backplane.common.DateTimeUtils;
 import com.janrain.backplane.server.ExternalizableCore;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.MessageField;
-import com.janrain.crypto.ChannelUtil;
 import com.janrain.oauth2.TokenException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
