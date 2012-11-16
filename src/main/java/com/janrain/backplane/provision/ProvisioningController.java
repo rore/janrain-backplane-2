@@ -50,28 +50,28 @@ public class ProvisioningController {
     @RequestMapping(value = "/bus/list", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, Map<String, String>> busList(@RequestBody ListRequest listRequest) throws AuthException {
-        checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
+        bpConfig.checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
         return doList(BusConfig1.class, listRequest.getEntities());
     }
 
     @RequestMapping(value = "/user/list", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, Map<String, String>> userList(@RequestBody ListRequest listRequest) throws AuthException {
-        checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
+        bpConfig.checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
         return doList(User.class, listRequest.getEntities());
     }
 
     @RequestMapping(value = "/bus/delete", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, String> busDelete(@RequestBody ListRequest deleteRequest) throws AuthException {
-        checkAdminAuth(deleteRequest.getAdmin(), deleteRequest.getSecret());
+        bpConfig.checkAdminAuth(deleteRequest.getAdmin(), deleteRequest.getSecret());
         return doDelete(BusConfig1.class, deleteRequest.getEntities());
     }
 
     @RequestMapping(value = "/user/delete", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, String> userDelete(@RequestBody ListRequest deleteRequest) throws AuthException {
-        checkAdminAuth(deleteRequest.getAdmin(), deleteRequest.getSecret());
+        bpConfig.checkAdminAuth(deleteRequest.getAdmin(), deleteRequest.getSecret());
         return doDelete(User.class, deleteRequest.getEntities());
     }
 
@@ -138,20 +138,6 @@ public class ProvisioningController {
     @Inject
     private BackplaneConfig bpConfig;
 
-    private void checkAdminAuth(String user, String password) throws AuthException {
-        checkAuth("v1_admin", user, password);
-    }
-
-    private void checkAuth(String authTable, String user, String password) throws AuthException {
-        //User userEntry = superSimpleDb.retrieve(authTable, User.class, user);
-        User userEntry = DaoFactory.getAdminDAO().get(user);
-        String authKey = userEntry == null ? null : userEntry.get(User.Field.PWDHASH);
-        if ( ! HmacHashUtils.checkHmacHash(password, authKey) ) {
-            throw new AuthException("User " + user + " not authorized in " + authTable);
-        }
-
-    }
-
     private <T extends AbstractMessage> Map<String, Map<String, String>> doList(Class<T> entityType, List<String> entityNames) {
 
         if (entityNames.size() == 0) return doListAll(entityType);
@@ -202,7 +188,7 @@ public class ProvisioningController {
     }
 
     private <T extends AbstractMessage> Map<String, String> doUpdate(Class<T> entityType, UpdateRequest<T> updateRequest) throws AuthException, SimpleDBException {
-        checkAdminAuth(updateRequest.getAdmin(), updateRequest.getSecret());
+        bpConfig.checkAdminAuth(updateRequest.getAdmin(), updateRequest.getSecret());
         validateConfigs(entityType, updateRequest);
         return updateConfigs(entityType, updateRequest.getConfigs());
     }
