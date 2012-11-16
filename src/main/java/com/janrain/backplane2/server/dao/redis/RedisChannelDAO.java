@@ -1,6 +1,6 @@
 package com.janrain.backplane2.server.dao.redis;
 
-import com.janrain.backplane2.server.BackplaneServerException;
+import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane2.server.Channel;
 import com.janrain.backplane2.server.dao.ChannelDAO;
 import com.janrain.oauth2.TokenException;

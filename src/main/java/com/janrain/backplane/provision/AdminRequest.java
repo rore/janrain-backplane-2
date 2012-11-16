@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.janrain.backplane.server.provision;
+package com.janrain.backplane.provision;
 
 /**
  * @author Johnny Bufu

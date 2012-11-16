@@ -14,28 +14,22 @@
  * limitations under the License.
  */
 
-package com.janrain.backplane2.server.provision;
-
-import java.util.Collections;
-import java.util.List;
+package com.janrain.backplane.common;
 
 /**
  * @author Johnny Bufu
  */
-public class ListRequest extends AdminRequest {
+public class AuthException extends Exception {
 
-    // - PUBLIC
-
-    public List<String> getEntities() {
-        return entities;
+    public AuthException(String message) {
+        super(message);
     }
 
-    @SuppressWarnings({"UnusedDeclaration"})
-    public void setEntities(List<String> entities) {
-        this.entities = Collections.unmodifiableList(entities);
+    public AuthException(String message, Throwable cause) {
+        super(message, cause);
     }
 
-    // - PRIVATE
-
-    private List<String> entities;
+    public AuthException(Throwable cause) {
+        super(cause);
+    }
 }

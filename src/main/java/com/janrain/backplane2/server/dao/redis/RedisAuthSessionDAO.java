@@ -1,7 +1,7 @@
 package com.janrain.backplane2.server.dao.redis;
 
 import com.janrain.backplane2.server.AuthSession;
-import com.janrain.backplane2.server.BackplaneServerException;
+import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane2.server.dao.AuthSessionDAO;
 import com.janrain.redis.Redis;
 import org.apache.commons.lang.NotImplementedException;

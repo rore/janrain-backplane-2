@@ -16,7 +16,7 @@
 
 package com.janrain.servlet;
 
-import com.janrain.utils.BackplaneSystemProps;
+import com.janrain.backplane.config.BackplaneSystemProps;
 import com.janrain.backplane2.server.InvalidRequestException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;

@@ -16,6 +16,7 @@
 
 package com.janrain.backplane.server;
 
+import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import org.apache.commons.lang.StringUtils;
