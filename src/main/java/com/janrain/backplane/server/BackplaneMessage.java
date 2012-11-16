@@ -148,7 +148,7 @@ public class BackplaneMessage extends ExternalizableCore {
                 try {
                     DateTimeUtils.INTERNETDATE.get().parse(value);
                 } catch (ParseException e) {
-                    throw new InvalidRequestException("Invalid Internet Date/Time value for " + getFieldName() + ": " + value);
+                    throw new IllegalArgumentException("Invalid Internet Date/Time value for " + getFieldName() + ": " + value);
                 }
             }},
         SOURCE("source") {
