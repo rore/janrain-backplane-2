@@ -1,6 +1,6 @@
 package com.janrain.backplane2.server;
 
-import com.janrain.backplane.common.ChannelUtil;
+import com.janrain.backplane.common.RandomUtils;
 import com.janrain.backplane.server.ExternalizableCore;
 import com.janrain.backplane2.server.config.BusConfig2;
 import com.janrain.commons.supersimpledb.SimpleDBException;
@@ -20,7 +20,7 @@ public class Channel extends ExternalizableCore {
     public Channel() { }
 
     public Channel(String channelId, BusConfig2 busConfig, int channelExpireSeconds) throws SimpleDBException {
-        String id = channelId == null ? ChannelUtil.randomString(CHANNEL_NAME_LENGTH) : channelId;
+        String id = channelId == null ? RandomUtils.randomString(CHANNEL_NAME_LENGTH) : channelId;
         Map<String,String> data = new LinkedHashMap<String, String>();
         data.put(ChannelField.ID.getFieldName(), id);
         data.put(ChannelField.BUS.getFieldName(), busConfig.getIdValue());

@@ -17,7 +17,7 @@
 package com.janrain.backplane2.server.provision;
 
 import com.janrain.backplane.common.BackplaneServerException;
-import com.janrain.backplane.common.ChannelUtil;
+import com.janrain.backplane.common.RandomUtils;
 import com.janrain.backplane.common.HmacHashUtils;
 import com.janrain.backplane.config.BackplaneConfig;
 import com.janrain.backplane.provision.ProvisioningController2;
@@ -69,18 +69,18 @@ public class ProvisioningController2Test {
 
         // create temporary admin user account to enable the tests to work
         user = new User();
-        pw = ChannelUtil.randomString(10);
-        user.put(User.Field.USER.getFieldName(), ChannelUtil.randomString(20));
+        pw = RandomUtils.randomString(10);
+        user.put(User.Field.USER.getFieldName(), RandomUtils.randomString(20));
         user.put(User.Field.PWDHASH.getFieldName(), HmacHashUtils.hmacHash(pw));
 
         //superSimpleDB.store(bpConfig.getTableName(BackplaneConfig.SimpleDBTables.BP_ADMIN_AUTH), User.class, user);
         daoFactory.getAdminDAO().persist(user);
 
         busOwner = new User();
-        busOwner.put(User.Field.USER.getFieldName(), ChannelUtil.randomString(20));
+        busOwner.put(User.Field.USER.getFieldName(), RandomUtils.randomString(20));
         busOwner.put(User.Field.PWDHASH.getFieldName(), HmacHashUtils.hmacHash(pw));
         try {
-            client = new Client( ChannelUtil.randomString(20), pw, "http://source.com", "http://redirect.com" );
+            client = new Client( RandomUtils.randomString(20), pw, "http://source.com", "http://redirect.com" );
             daoFactory.getClientDAO().persist(client);
             logger.info("Created test client: " + client.getClientId());
         } catch (SimpleDBException e) {

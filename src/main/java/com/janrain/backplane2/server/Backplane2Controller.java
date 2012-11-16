@@ -18,7 +18,7 @@ package com.janrain.backplane2.server;
 
 import com.janrain.backplane.common.AuthException;
 import com.janrain.backplane.common.BackplaneServerException;
-import com.janrain.backplane.common.ChannelUtil;
+import com.janrain.backplane.common.RandomUtils;
 import com.janrain.backplane.common.HmacHashUtils;
 import com.janrain.backplane.config.BackplaneConfig;
 import com.janrain.backplane2.server.config.BusConfig2;
@@ -559,7 +559,7 @@ public class Backplane2Controller {
 
     private void persistAuthenticatedSession(HttpServletResponse response, String busOwner) throws BackplaneServerException {
         try {
-            String authCookie = ChannelUtil.randomString(AUTH_SESSION_COOKIE_LENGTH);
+            String authCookie = RandomUtils.randomString(AUTH_SESSION_COOKIE_LENGTH);
             daoFactory.getAuthSessionDAO().persist(new AuthSession(busOwner, authCookie));
             response.addCookie(new Cookie(AUTH_SESSION_COOKIE, authCookie));
         } catch (SimpleDBException e) {
@@ -603,7 +603,7 @@ public class Backplane2Controller {
         try {
             // parse authz request
             AuthorizationRequest authorizationRequest = new AuthorizationRequest(
-                    ChannelUtil.randomString(AUTHORIZATION_REQUEST_COOKIE_LENGTH),
+                    RandomUtils.randomString(AUTHORIZATION_REQUEST_COOKIE_LENGTH),
                     request.getParameterMap());
             logger.info("Parsed authorization request: " + authorizationRequest);
             return authorizationRequest;
