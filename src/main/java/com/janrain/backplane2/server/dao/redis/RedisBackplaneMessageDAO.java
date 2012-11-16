@@ -17,9 +17,12 @@
 package com.janrain.backplane2.server.dao.redis;
 
 import com.janrain.backplane.common.BackplaneServerException;
-import com.janrain.backplane2.server.*;
+import com.janrain.backplane.common.ChannelUtil;
+import com.janrain.backplane2.server.BackplaneMessage;
+import com.janrain.backplane2.server.MessagesResponse;
+import com.janrain.backplane2.server.Scope;
+import com.janrain.backplane2.server.Token;
 import com.janrain.backplane2.server.dao.BackplaneMessageDAO;
-import com.janrain.crypto.ChannelUtil;
 import com.janrain.oauth2.TokenException;
 import com.janrain.redis.Redis;
 import org.apache.commons.lang.SerializationUtils;
