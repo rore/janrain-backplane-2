@@ -17,8 +17,8 @@
 package com.janrain.backplane2.server;
 
 import com.janrain.backplane.common.BackplaneServerException;
-import com.janrain.backplane.common.ChannelUtil;
 import com.janrain.backplane.common.DateTimeUtils;
+import com.janrain.backplane.common.RandomUtils;
 import com.janrain.backplane.server.ExternalizableCore;
 import com.janrain.backplane2.server.dao.DAOFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
@@ -283,7 +283,7 @@ public class Token extends ExternalizableCore {
         }
         
         public Token buildToken() throws SimpleDBException {
-            String id = type.getTokenPrefix() + ChannelUtil.randomString(TOKEN_LENGTH);
+            String id = type.getTokenPrefix() + RandomUtils.randomString(TOKEN_LENGTH);
             data.put(TokenField.ID.getFieldName(), id);
             return new Token(id, data);
         }

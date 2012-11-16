@@ -18,7 +18,7 @@ package com.janrain.backplane2.server;
 
 
 import com.janrain.backplane.common.BackplaneServerException;
-import com.janrain.backplane.common.ChannelUtil;
+import com.janrain.backplane.common.RandomUtils;
 import com.janrain.backplane.common.HmacHashUtils;
 import com.janrain.backplane.config.BackplaneConfig;
 import com.janrain.backplane2.server.config.BusConfig2;
@@ -213,7 +213,7 @@ public class Backplane2ControllerTest {
         try {
             daoFactory.getBusDao().persist(new BusConfig2("testbus", "testBusOwner", "600", "28800"));
 
-            Client client = new Client(ChannelUtil.randomString(15), HmacHashUtils.hmacHash("secret"), "http://source_url.com", "http://redirect.com");
+            Client client = new Client(RandomUtils.randomString(15), HmacHashUtils.hmacHash("secret"), "http://source_url.com", "http://redirect.com");
 
             daoFactory.getClientDAO().persist(client);
             return client;
@@ -257,7 +257,7 @@ public class Backplane2ControllerTest {
 
     @Test
     public void testChannelGeneration() {
-        String channel = ChannelUtil.randomString(1000);
+        String channel = RandomUtils.randomString(1000);
         logger.info(channel);
         assertTrue(Base64.isBase64(channel));
     }
@@ -597,7 +597,7 @@ public class Backplane2ControllerTest {
         ArrayList<String> randomBuses = new ArrayList<String>();
         int numBuses = 60;
         for (int i=0; i < numBuses; i++) {
-            randomBuses.add(ChannelUtil.randomString(10));
+            randomBuses.add(RandomUtils.randomString(10));
         }
 
         // add a duplicate bus in the grant - it should be ignored in the issued token
@@ -1368,11 +1368,11 @@ public class Backplane2ControllerTest {
     public void testAuthenticate() throws Exception {
 
         User user = new User();
-        user.put(User.Field.USER.getFieldName(), ChannelUtil.randomString(20));
+        user.put(User.Field.USER.getFieldName(), RandomUtils.randomString(20));
         user.put(User.Field.PWDHASH.getFieldName(), HmacHashUtils.hmacHash("foo"));
 
-        BusConfig2 bus1 = new BusConfig2(ChannelUtil.randomString(30), user.getIdValue(), "100", "50000");
-        BusConfig2 bus2 = new BusConfig2(ChannelUtil.randomString(30), user.getIdValue(), "100", "50000");
+        BusConfig2 bus1 = new BusConfig2(RandomUtils.randomString(30), user.getIdValue(), "100", "50000");
+        BusConfig2 bus2 = new BusConfig2(RandomUtils.randomString(30), user.getIdValue(), "100", "50000");
 
         try {
             daoFactory.getBusOwnerDAO().persist(user);

@@ -16,7 +16,7 @@
 
 package com.janrain.backplane2.server;
 
-import com.janrain.backplane.common.ChannelUtil;
+import com.janrain.backplane.common.RandomUtils;
 import com.janrain.backplane.common.DateTimeUtils;
 import com.janrain.backplane.server.ExternalizableCore;
 import com.janrain.commons.supersimpledb.SimpleDBException;
@@ -232,7 +232,7 @@ public class Grant extends ExternalizableCore {
         public Grant buildGrant() throws SimpleDBException {
             String id = data.get(GrantField.ID.getFieldName());
             if ( id == null) {
-                id = ChannelUtil.randomString(CODE_ID_LENGTH);
+                id = RandomUtils.randomString(CODE_ID_LENGTH);
                 data.put(GrantField.ID.getFieldName(), id);
             }
 
