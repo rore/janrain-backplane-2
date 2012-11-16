@@ -17,7 +17,7 @@
 package com.janrain.backplane2.server.dao.redis;
 
 import com.janrain.backplane.common.BackplaneServerException;
-import com.janrain.backplane.common.ChannelUtil;
+import com.janrain.backplane.common.RandomUtils;
 import com.janrain.backplane2.server.BackplaneMessage;
 import com.janrain.backplane2.server.MessagesResponse;
 import com.janrain.backplane2.server.Scope;
@@ -113,7 +113,7 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
 
             Set<String> channelScopes = scope.getScopeFieldValues(BackplaneMessage.Field.CHANNEL);
             if (channelScopes != null) {
-                String channelUnion = "scope_req_" + ChannelUtil.randomString(10);
+                String channelUnion = "scope_req_" + RandomUtils.randomString(10);
                 unions.add(channelUnion);
                 for(String channel : channelScopes) {
                     t.zunionstore( channelUnion.getBytes(), new ZParams() {{aggregate(Aggregate.MAX);}},
@@ -122,7 +122,7 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
             }
             Set<String> busScopes = scope.getScopeFieldValues(BackplaneMessage.Field.BUS);
             if (busScopes != null) {
-                String busUnion = "scope_req_" + ChannelUtil.randomString(10);
+                String busUnion = "scope_req_" + RandomUtils.randomString(10);
                 unions.add(busUnion);
                 for(String bus : busScopes) {
                     t.zunionstore( busUnion.getBytes(), new ZParams() {{aggregate(Aggregate.MAX);}},

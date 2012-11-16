@@ -17,7 +17,7 @@
 package com.janrain.backplane.server;
 
 import com.janrain.backplane.common.BackplaneServerException;
-import com.janrain.backplane.common.ChannelUtil;
+import com.janrain.backplane.common.RandomUtils;
 import com.janrain.backplane.common.DateTimeUtils;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.MessageField;
@@ -219,7 +219,7 @@ public class BackplaneMessage extends ExternalizableCore {
      * @return a time-based, lexicographically comparable message ID.
      */
     private static String generateMessageId(Date date) {
-        return DateTimeUtils.ISO8601.get().format(date) + "-" + ChannelUtil.randomString(10);
+        return DateTimeUtils.ISO8601.get().format(date) + "-" + RandomUtils.randomString(10);
     }
 
     private String extractFieldValueAsJsonString(Field field, Map<String,Object> data) throws BackplaneServerException {

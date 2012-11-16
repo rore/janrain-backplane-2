@@ -16,7 +16,7 @@
 
 package com.janrain.oauth2;
 
-import com.janrain.backplane.common.ChannelUtil;
+import com.janrain.backplane.common.RandomUtils;
 import com.janrain.backplane.common.DateTimeUtils;
 import com.janrain.backplane.server.ExternalizableCore;
 import com.janrain.commons.supersimpledb.SimpleDBException;
@@ -38,7 +38,7 @@ public class AuthorizationDecisionKey extends ExternalizableCore {
 
     public AuthorizationDecisionKey(String authCookie) throws SimpleDBException {
         Map<String,String> data = new LinkedHashMap<String, String>();
-        String key = ChannelUtil.randomString(AUTHORIZATION_DECISION_KEY_LENGTH);
+        String key = RandomUtils.randomString(AUTHORIZATION_DECISION_KEY_LENGTH);
         data.put(Field.KEY.getFieldName(), key);
         data.put(Field.AUTH_COOKIE.getFieldName(), authCookie);
         data.put(Field.EXPIRES.getFieldName(), DateTimeUtils.ISO8601.get().format(new Date(System.currentTimeMillis() + AUTHORIZATION_DECISION_TIMEOUT_SECONDS * 1000)));
