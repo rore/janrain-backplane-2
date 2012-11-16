@@ -21,7 +21,6 @@ import com.janrain.backplane2.server.BackplaneMessage;
 import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane2.server.Scope;
 import com.janrain.backplane2.server.config.BusConfig2;
-import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.backplane2.server.config.Client;
 import com.janrain.backplane2.server.config.User;
 import com.janrain.backplane2.server.dao.DAOFactory;
@@ -74,7 +73,7 @@ public class ProvisioningController2Test {
         user.put(User.Field.USER.getFieldName(), ChannelUtil.randomString(20));
         user.put(User.Field.PWDHASH.getFieldName(), HmacHashUtils.hmacHash(pw));
 
-        //superSimpleDB.store(bpConfig.getTableName(Backplane2Config.SimpleDBTables.BP_ADMIN_AUTH), User.class, user);
+        //superSimpleDB.store(bpConfig.getTableName(BackplaneConfig.SimpleDBTables.BP_ADMIN_AUTH), User.class, user);
         daoFactory.getAdminDAO().persist(user);
 
         busOwner = new User();
@@ -103,9 +102,9 @@ public class ProvisioningController2Test {
 
     @After
     public void cleanup() throws BackplaneServerException, TokenException {
-        //superSimpleDB.delete(bpConfig.getTableName(Backplane2Config.SimpleDBTables.BP_ADMIN_AUTH), user.getIdValue());
+        //superSimpleDB.delete(bpConfig.getTableName(BackplaneConfig.SimpleDBTables.BP_ADMIN_AUTH), user.getIdValue());
         daoFactory.getAdminDAO().delete(user.getIdValue());
-        //superSimpleDB.delete(bpConfig.getTableName(Backplane2Config.SimpleDBTables.BP_CLIENTS), client.getIdValue());
+        //superSimpleDB.delete(bpConfig.getTableName(BackplaneConfig.SimpleDBTables.BP_CLIENTS), client.getIdValue());
         daoFactory.getClientDAO().delete(client.getClientId());
         daoFactory.getBusDao().delete(bus1);
         daoFactory.getBusDao().delete(bus2);
@@ -580,9 +579,6 @@ public class ProvisioningController2Test {
 
    // @Inject
   //  private SuperSimpleDB superSimpleDB;
-
-    @Inject
-    private Backplane2Config bpConfig;
 
     @Inject
     private DAOFactory daoFactory;

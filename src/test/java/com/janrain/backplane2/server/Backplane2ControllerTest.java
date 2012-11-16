@@ -18,7 +18,7 @@ package com.janrain.backplane2.server;
 
 
 import com.janrain.backplane.common.BackplaneServerException;
-import com.janrain.backplane2.server.config.Backplane2Config;
+import com.janrain.backplane.config.BackplaneConfig;
 import com.janrain.backplane2.server.config.BusConfig2;
 import com.janrain.backplane2.server.config.Client;
 import com.janrain.backplane2.server.config.User;
@@ -72,7 +72,7 @@ public class Backplane2ControllerTest {
 	private Backplane2Controller controller;
 
     @Inject
-    private Backplane2Config bpConfig;
+    private BackplaneConfig bpConfig;
 
     @Inject
     private DAOFactory daoFactory;

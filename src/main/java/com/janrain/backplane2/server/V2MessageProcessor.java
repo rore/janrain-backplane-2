@@ -17,12 +17,12 @@
 package com.janrain.backplane2.server;
 
 import com.janrain.backplane.DateTimeUtils;
-import com.janrain.backplane2.server.config.Backplane2Config;
+import com.janrain.backplane.config.BackplaneConfig;
+import com.janrain.backplane.config.BackplaneSystemProps;
 import com.janrain.backplane2.server.dao.DAOFactory;
 import com.janrain.backplane2.server.dao.redis.RedisBackplaneMessageDAO;
 import com.janrain.commons.util.Pair;
 import com.janrain.redis.Redis;
-import com.janrain.utils.BackplaneSystemProps;
 import com.netflix.curator.framework.CuratorFramework;
 import com.netflix.curator.framework.recipes.leader.LeaderSelectorListener;
 import com.netflix.curator.framework.state.ConnectionState;
@@ -51,8 +51,7 @@ public class V2MessageProcessor implements LeaderSelectorListener {
 
     // - PUBLIC
 
-    public V2MessageProcessor(Backplane2Config backplane2Config, final DAOFactory daoFactory) {
-        this.config = backplane2Config;
+    public V2MessageProcessor(final DAOFactory daoFactory) {
         cleanupRunnable = new Runnable() {
             @Override
             public void run() {
@@ -94,21 +93,19 @@ public class V2MessageProcessor implements LeaderSelectorListener {
 
     private static ScheduledExecutorService scheduledExecutor = Executors.newScheduledThreadPool(1);
     static {
-        Backplane2Config.addToBackgroundServices(scheduledExecutor);
+        BackplaneConfig.addToBackgroundServices("v2_cleanup_runner", scheduledExecutor);
     }
 
     private final Runnable cleanupRunnable;
 
     private final Histogram timeInQueue = Metrics.newHistogram(new MetricName("v2", this.getClass().getName().replace(".","_"), "time_in_queue"));
 
-    private final Backplane2Config config;
-
     private synchronized void setLeader(boolean leader) {
         this.leader = leader;
     }
 
     private synchronized boolean isLeader() {
-        return leader && ! config.isLeaderDisabled();
+        return leader && ! BackplaneConfig.isLeaderDisabled();
     }
 
     private boolean leader = false;
