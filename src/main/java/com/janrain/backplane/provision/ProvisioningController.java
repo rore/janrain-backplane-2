@@ -16,9 +16,9 @@
 
 package com.janrain.backplane.provision;
 
-import com.janrain.backplane.server.BusConfig1;
 import com.janrain.backplane.common.AuthException;
-import com.janrain.backplane.config.Backplane1Config;
+import com.janrain.backplane.config.BackplaneConfig;
+import com.janrain.backplane.server.BusConfig1;
 import com.janrain.backplane.server.dao.DaoFactory;
 import com.janrain.backplane2.server.config.User;
 import com.janrain.commons.supersimpledb.SimpleDBException;
@@ -136,7 +136,7 @@ public class ProvisioningController {
     private static final String CONFIG_NOT_FOUND = "CONFIG_NOT_FOUND";
 
     @Inject
-    private Backplane1Config bpConfig;
+    private BackplaneConfig bpConfig;
 
     private void checkAdminAuth(String user, String password) throws AuthException {
         checkAuth("v1_admin", user, password);

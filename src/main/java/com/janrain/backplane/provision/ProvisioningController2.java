@@ -18,6 +18,7 @@ package com.janrain.backplane.provision;
 
 import com.janrain.backplane.common.AuthException;
 import com.janrain.backplane.common.BackplaneServerException;
+import com.janrain.backplane.config.BackplaneConfig;
 import com.janrain.backplane2.server.*;
 import com.janrain.backplane2.server.config.*;
 import com.janrain.backplane2.server.dao.DAOFactory;
@@ -203,7 +204,7 @@ public class ProvisioningController2 {
     private static final String CONFIG_NOT_FOUND = "CONFIG_NOT_FOUND";
 
     @Inject
-    private Backplane2Config bpConfig;
+    private BackplaneConfig bpConfig;
 
     @Inject
     private DAOFactory daoFactory;

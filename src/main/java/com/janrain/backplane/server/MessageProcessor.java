@@ -17,12 +17,12 @@
 package com.janrain.backplane.server;
 
 import com.janrain.backplane.DateTimeUtils;
-import com.janrain.backplane.server.config.Backplane1Config;
+import com.janrain.backplane.config.BackplaneConfig;
+import com.janrain.backplane.config.BackplaneSystemProps;
 import com.janrain.backplane.server.dao.DaoFactory;
 import com.janrain.backplane.server.dao.redis.RedisBackplaneMessageDAO;
 import com.janrain.commons.util.Pair;
 import com.janrain.redis.Redis;
-import com.janrain.backplane.config.BackplaneSystemProps;
 import com.netflix.curator.framework.CuratorFramework;
 import com.netflix.curator.framework.recipes.leader.LeaderSelectorListener;
 import com.netflix.curator.framework.state.ConnectionState;
@@ -82,7 +82,7 @@ public class MessageProcessor implements LeaderSelectorListener {
 
     private static ScheduledExecutorService scheduledExecutor = Executors.newScheduledThreadPool(1);
     static {
-        Backplane1Config.addToBackgroundServices(scheduledExecutor);
+        BackplaneConfig.addToBackgroundServices("v1_cleanup_runner", scheduledExecutor);
     }
 
     private static Runnable cleanupRunnable = new Runnable() {
@@ -103,7 +103,7 @@ public class MessageProcessor implements LeaderSelectorListener {
     }
 
     private synchronized boolean isLeader() {
-        return leader && ! Backplane1Config.isLeaderDisabled();
+        return leader && ! BackplaneConfig.isLeaderDisabled();
     }
 
     private boolean leader = false;

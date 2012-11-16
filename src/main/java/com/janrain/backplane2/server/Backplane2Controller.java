@@ -18,6 +18,7 @@ package com.janrain.backplane2.server;
 
 import com.janrain.backplane.common.AuthException;
 import com.janrain.backplane.common.BackplaneServerException;
+import com.janrain.backplane.config.BackplaneConfig;
 import com.janrain.backplane2.server.config.*;
 import com.janrain.backplane2.server.dao.DAOFactory;
 import com.janrain.backplane.DateTimeUtils;
@@ -553,7 +554,7 @@ public class Backplane2Controller {
     private DAOFactory daoFactory;
 
     @Inject
-    private Backplane2Config bpConfig;
+    private BackplaneConfig bpConfig;
 
     @Inject
     private AnalyticsLogger anilogger;
