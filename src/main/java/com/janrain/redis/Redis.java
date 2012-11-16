@@ -17,7 +17,7 @@
 package com.janrain.redis;
 
 import com.janrain.commons.util.Pair;
-import com.janrain.utils.BackplaneSystemProps;
+import com.janrain.backplane.config.BackplaneSystemProps;
 import com.netflix.curator.framework.CuratorFramework;
 import com.netflix.curator.framework.recipes.cache.ChildData;
 import com.netflix.curator.framework.recipes.cache.PathChildrenCache;

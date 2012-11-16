@@ -16,6 +16,8 @@
 
 package com.janrain.backplane2.server;
 
+import com.janrain.backplane.common.AuthException;
+import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane2.server.config.*;
 import com.janrain.backplane2.server.dao.DAOFactory;
 import com.janrain.backplane.DateTimeUtils;

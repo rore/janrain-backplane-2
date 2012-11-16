@@ -16,6 +16,7 @@
 
 package com.janrain.backplane2.server.dao.redis;
 
+import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane2.server.*;
 import com.janrain.backplane2.server.dao.BackplaneMessageDAO;
 import com.janrain.crypto.ChannelUtil;

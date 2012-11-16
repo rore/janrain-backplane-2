@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.janrain.utils;
+package com.janrain.backplane.config;
 
 import com.janrain.commons.util.InitSystemProps;
 import org.apache.commons.lang.StringUtils;

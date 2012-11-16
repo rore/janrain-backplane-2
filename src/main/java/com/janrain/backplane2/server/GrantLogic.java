@@ -1,5 +1,6 @@
 package com.janrain.backplane2.server;
 
+import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane2.server.dao.DAOFactory;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.oauth2.TokenException;
