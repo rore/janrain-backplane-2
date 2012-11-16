@@ -14,22 +14,29 @@
  * limitations under the License.
  */
 
-package com.janrain.backplane.server;
+package com.janrain.backplane.config;
 
 /**
- * @author Johnny Bufu
+ * @author Tom Raney
  */
-public class BackplaneServerException extends Exception {
+public class AdminData {
 
-    public BackplaneServerException(String message) {
-        super(message);
+    String username;
+    String password;
+
+    public String getUsername() {
+        return username;
     }
 
-    public BackplaneServerException(String message, Throwable cause) {
-        super(message, cause);
+    public void setUsername(String username) {
+        this.username = username;
     }
 
-    public BackplaneServerException(Throwable cause) {
-        super(cause);
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
     }
 }

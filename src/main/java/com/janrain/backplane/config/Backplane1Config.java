@@ -14,14 +14,13 @@
  * limitations under the License.
  */
 
-package com.janrain.backplane.server.config;
+package com.janrain.backplane.config;
 
 import com.janrain.backplane.server.MessageProcessor;
 import com.janrain.backplane.server.dao.DaoFactory;
 import com.janrain.cache.CachedL1;
 import com.janrain.commons.util.AwsUtility;
 import com.janrain.commons.util.InitSystemProps;
-import com.janrain.utils.BackplaneSystemProps;
 import com.netflix.curator.framework.CuratorFramework;
 import com.netflix.curator.framework.CuratorFrameworkFactory;
 import com.netflix.curator.framework.recipes.leader.LeaderSelector;

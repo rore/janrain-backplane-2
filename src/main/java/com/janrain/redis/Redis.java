@@ -16,7 +16,7 @@
 
 package com.janrain.redis;
 
-import com.janrain.utils.BackplaneSystemProps;
+import com.janrain.backplane.config.BackplaneSystemProps;
 import com.netflix.curator.framework.CuratorFramework;
 import com.netflix.curator.framework.recipes.cache.ChildData;
 import com.netflix.curator.framework.recipes.cache.PathChildrenCache;
@@ -24,7 +24,6 @@ import com.netflix.curator.framework.recipes.cache.PathChildrenCacheEvent;
 import com.netflix.curator.framework.recipes.cache.PathChildrenCacheListener;
 import com.netflix.curator.framework.recipes.locks.InterProcessMutex;
 import com.yammer.metrics.Metrics;
-import com.yammer.metrics.core.Counter;
 import com.yammer.metrics.core.Gauge;
 import com.yammer.metrics.core.MetricName;
 import org.apache.commons.lang.StringUtils;

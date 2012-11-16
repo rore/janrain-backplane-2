@@ -1,5 +1,6 @@
 package com.janrain.backplane2.server;
 
+import com.janrain.backplane.common.BackplaneServerException;
 import org.apache.commons.lang.StringUtils;
 
 import java.util.*;

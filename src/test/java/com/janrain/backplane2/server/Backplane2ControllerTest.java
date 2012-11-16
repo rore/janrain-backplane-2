@@ -17,6 +17,7 @@
 package com.janrain.backplane2.server;
 
 
+import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.backplane2.server.config.BusConfig2;
 import com.janrain.backplane2.server.config.Client;

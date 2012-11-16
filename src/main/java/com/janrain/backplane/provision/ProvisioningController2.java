@@ -14,8 +14,10 @@
  * limitations under the License.
  */
 
-package com.janrain.backplane2.server.provision;
+package com.janrain.backplane.provision;
 
+import com.janrain.backplane.common.AuthException;
+import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane2.server.*;
 import com.janrain.backplane2.server.config.*;
 import com.janrain.backplane2.server.dao.DAOFactory;

@@ -16,9 +16,11 @@
 
 package com.janrain.backplane.server;
 
-import com.janrain.backplane.server.config.AuthException;
-import com.janrain.backplane.server.config.Backplane1Config;
-import com.janrain.backplane.server.config.BpServerConfig;
+import com.janrain.backplane.common.AuthException;
+import com.janrain.backplane.common.BackplaneServerException;
+import com.janrain.backplane.config.Backplane1Config;
+import com.janrain.backplane.config.BackplaneSystemProps;
+import com.janrain.backplane.config.BpServerConfig;
 import com.janrain.backplane.server.dao.DaoFactory;
 import com.janrain.backplane.server.dao.redis.RedisBackplaneMessageDAO;
 import com.janrain.backplane2.server.config.User;
@@ -26,7 +28,6 @@ import com.janrain.cache.CachedL1;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.crypto.HmacHashUtils;
 import com.janrain.servlet.ServletUtil;
-import com.janrain.utils.BackplaneSystemProps;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Histogram;
 import com.yammer.metrics.core.MetricName;

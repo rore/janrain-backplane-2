@@ -16,7 +16,7 @@
 
 package com.janrain.backplane2.server.dao.redis;
 
-import com.janrain.backplane2.server.BackplaneServerException;
+import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane2.server.config.BusConfig2;
 import com.janrain.backplane2.server.dao.BusDAO;
 import com.janrain.backplane2.server.dao.GrantDAO;

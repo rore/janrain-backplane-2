@@ -1,4 +1,6 @@
-package com.janrain.backplane2.server.provision;
+package com.janrain.backplane.provision;
+
+import com.janrain.backplane.provision.AdminRequest;
 
 import java.util.HashMap;
 import java.util.Map;

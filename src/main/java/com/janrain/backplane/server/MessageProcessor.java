@@ -21,7 +21,7 @@ import com.janrain.backplane.server.dao.redis.RedisBackplaneMessageDAO;
 import com.janrain.backplane.server.dao.DaoFactory;
 import com.janrain.commons.util.Pair;
 import com.janrain.redis.Redis;
-import com.janrain.utils.BackplaneSystemProps;
+import com.janrain.backplane.config.BackplaneSystemProps;
 import com.netflix.curator.framework.CuratorFramework;
 import com.netflix.curator.framework.recipes.leader.LeaderSelectorListener;
 import com.netflix.curator.framework.state.ConnectionState;

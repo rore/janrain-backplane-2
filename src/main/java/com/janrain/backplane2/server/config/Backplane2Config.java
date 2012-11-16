@@ -16,8 +16,10 @@
 
 package com.janrain.backplane2.server.config;
 
-import com.janrain.backplane.server.config.BpServerConfig;
-import com.janrain.backplane2.server.BackplaneServerException;
+import com.janrain.backplane.common.AuthException;
+import com.janrain.backplane.config.BackplaneSystemProps;
+import com.janrain.backplane.config.BpServerConfig;
+import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane2.server.V2MessageProcessor;
 import com.janrain.backplane2.server.dao.DAOFactory;
 import com.janrain.cache.CachedL1;
@@ -25,7 +27,6 @@ import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.util.AwsUtility;
 import com.janrain.commons.util.InitSystemProps;
 import com.janrain.crypto.HmacHashUtils;
-import com.janrain.utils.BackplaneSystemProps;
 import com.netflix.curator.framework.CuratorFramework;
 import com.netflix.curator.framework.CuratorFrameworkFactory;
 import com.netflix.curator.framework.recipes.leader.LeaderSelector;
@@ -41,10 +42,7 @@ import org.springframework.context.annotation.Scope;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.inject.Inject;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.Properties;
-import java.util.TimeZone;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;

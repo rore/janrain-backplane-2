@@ -16,8 +16,9 @@
 
 package com.janrain.backplane2.server.provision;
 
+import com.janrain.backplane.provision.ProvisioningController2;
 import com.janrain.backplane2.server.BackplaneMessage;
-import com.janrain.backplane2.server.BackplaneServerException;
+import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane2.server.Scope;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.backplane2.server.config.Client;
