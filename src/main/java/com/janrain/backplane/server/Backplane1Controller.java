@@ -18,7 +18,7 @@ package com.janrain.backplane.server;
 
 import com.janrain.backplane.common.AuthException;
 import com.janrain.backplane.common.BackplaneServerException;
-import com.janrain.backplane.config.Backplane1Config;
+import com.janrain.backplane.config.BackplaneConfig;
 import com.janrain.backplane.config.BackplaneSystemProps;
 import com.janrain.backplane.config.BpServerConfig;
 import com.janrain.backplane.server.dao.DaoFactory;
@@ -349,7 +349,7 @@ public class Backplane1Controller {
     private final Histogram payLoadSizesOnGets = Metrics.newHistogram(new MetricName("v1", this.getClass().getName().replace(".","_"), "payload_sizes_gets"));
 
     @Inject
-    private Backplane1Config bpConfig;
+    private BackplaneConfig bpConfig;
 
     private static final Random random = new SecureRandom();
 

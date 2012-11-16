@@ -16,7 +16,7 @@
 
 package com.janrain.backplane.server;
 
-import com.janrain.backplane.config.Backplane1Config;
+import com.janrain.backplane.config.BackplaneConfig;
 import com.janrain.backplane.server.dao.DaoFactory;
 import com.janrain.backplane2.server.config.User;
 import junit.framework.TestCase;
@@ -48,7 +48,7 @@ public class Backplane1ControllerTest extends TestCase {
     private static final Logger logger = Logger.getLogger(Backplane1ControllerTest.class);
 
     @Inject
-    private Backplane1Config bpConfig;
+    private BackplaneConfig bpConfig;
 
     @Inject
 	private ApplicationContext applicationContext;

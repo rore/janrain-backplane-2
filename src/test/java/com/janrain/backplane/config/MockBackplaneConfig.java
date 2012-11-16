@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package com.janrain.backplane2.server.config;
+package com.janrain.backplane.config;
 
 /**
  * @author Johnny Bufu
  */
-public class MockBackplaneConfig extends Backplane2Config {
+public class MockBackplaneConfig extends BackplaneConfig {
 
     public MockBackplaneConfig(String instanceId) {
         super(instanceId);
