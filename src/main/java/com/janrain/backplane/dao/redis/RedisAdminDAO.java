@@ -1,8 +1,8 @@
-package com.janrain.backplane2.server.dao.redis;
+package com.janrain.backplane.dao.redis;
 
 import com.janrain.backplane.common.BackplaneServerException;
+import com.janrain.backplane.dao.AdminDAO;
 import com.janrain.backplane2.server.config.User;
-import com.janrain.backplane2.server.dao.AdminDAO;
 import com.janrain.redis.Redis;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.SerializationUtils;

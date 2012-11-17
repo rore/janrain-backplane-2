@@ -17,7 +17,7 @@
 package com.janrain.backplane2.server;
 
 import com.janrain.backplane.common.DateTimeUtils;
-import com.janrain.backplane2.server.dao.DAOFactory;
+import com.janrain.backplane2.server.dao.BP2DAOs;
 import com.janrain.backplane2.server.dao.redis.RedisBackplaneMessageDAO;
 import com.janrain.commons.util.Pair;
 import com.janrain.redis.Redis;
@@ -43,16 +43,12 @@ import java.util.Set;
  */
 public class V2MessageProcessor implements LeaderSelectorListener {
 
-    public V2MessageProcessor(DAOFactory daoFactory) {
-        this.daoFactory = daoFactory;
-    }
-
     /**
      * Processor to remove expired messages
      */
     public void cleanupMessages() {
         try {
-            daoFactory.getBackplaneMessageDAO().deleteExpiredMessages();
+            BP2DAOs.getBackplaneMessageDAO().deleteExpiredMessages();
         } catch (Exception e) {
             logger.error(e);
         }
@@ -231,8 +227,6 @@ public class V2MessageProcessor implements LeaderSelectorListener {
     private static final Logger logger = Logger.getLogger(V2MessageProcessor.class);
 
     private final Histogram timeInQueue = Metrics.newHistogram(new MetricName("v2", this.getClass().getName().replace(".","_"), "time_in_queue"));
-
-    private DAOFactory daoFactory;
 
     @Override
     public void takeLeadership(CuratorFramework curatorFramework) throws Exception {

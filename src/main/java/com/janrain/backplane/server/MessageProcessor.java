@@ -17,8 +17,9 @@
 package com.janrain.backplane.server;
 
 import com.janrain.backplane.common.DateTimeUtils;
-import com.janrain.backplane.server.dao.redis.RedisBackplaneMessageDAO;
-import com.janrain.backplane.server.dao.DaoFactory;
+import com.janrain.backplane.dao.ServerDAOs;
+import com.janrain.backplane.server.redisdao.BP1DAOs;
+import com.janrain.backplane.server.redisdao.RedisBackplaneMessageDAO;
 import com.janrain.commons.util.Pair;
 import com.janrain.redis.Redis;
 import com.janrain.backplane.config.BackplaneSystemProps;
@@ -48,7 +49,7 @@ public class MessageProcessor implements LeaderSelectorListener {
      */
     public void cleanupMessages() {
         try {
-            DaoFactory.getBackplaneMessageDAO().deleteExpiredMessages();
+            BP1DAOs.getMessageDao().deleteExpiredMessages();
         } catch (Exception e) {
             logger.error(e);
         }
@@ -118,7 +119,7 @@ public class MessageProcessor implements LeaderSelectorListener {
                                 if (backplaneMessage != null) {
 
                                     // retrieve the expiration config per the bus
-                                    BusConfig1 busConfig1 = DaoFactory.getBusDAO().get(backplaneMessage.getBus());
+                                    BusConfig1 busConfig1 = BP1DAOs.getBusDao().get(backplaneMessage.getBus());
                                     int retentionTimeSeconds = 60;
                                     int retentionTimeStickySeconds = 3600;
                                     if (busConfig1 != null) {

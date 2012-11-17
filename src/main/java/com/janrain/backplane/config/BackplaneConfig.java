@@ -19,10 +19,10 @@ package com.janrain.backplane.config;
 import com.janrain.backplane.common.AuthException;
 import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.common.HmacHashUtils;
+import com.janrain.backplane.dao.ServerDAOs;
 import com.janrain.backplane.server.MessageProcessor;
 import com.janrain.backplane2.server.V2MessageProcessor;
 import com.janrain.backplane2.server.config.User;
-import com.janrain.backplane2.server.dao.DAOFactory;
 import com.janrain.cache.CachedL1;
 import com.janrain.commons.util.AwsUtility;
 import com.janrain.commons.util.InitSystemProps;
@@ -41,7 +41,6 @@ import org.springframework.context.annotation.Scope;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
-import javax.inject.Inject;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -130,6 +129,9 @@ public class BackplaneConfig {
 
     private final Map<String, ExecutorService> backgroundServices = new HashMap<String, ExecutorService>();
 
+    final MessageProcessor v1messageProcessor = new MessageProcessor();
+    final V2MessageProcessor v2messageProcessor = new V2MessageProcessor();
+
     // Amazon specific instance-id value
     private static String EC2InstanceId = AwsUtility.retrieveEC2InstanceId();
 
@@ -168,15 +170,13 @@ public class BackplaneConfig {
         final String label = "v1 message cleanup";
         logger.info("calling create for " + label);
 
-        final MessageProcessor messageProcessor = new MessageProcessor();
-
         ScheduledExecutorService messageWorkerTask = Executors.newScheduledThreadPool(1);
 
         messageWorkerTask.scheduleAtFixedRate(new Runnable() {
             @Override
             public void run() {
                 logger.info("creating " + label + " thread");
-                messageProcessor.cleanupMessages();
+                v1messageProcessor.cleanupMessages();
             }
         }, 0, 1, TimeUnit.MINUTES);
 
@@ -188,15 +188,13 @@ public class BackplaneConfig {
         final String label = "v2 message cleanup";
         logger.info("calling create for " + label);
 
-        final V2MessageProcessor messageProcessor = new V2MessageProcessor(daoFactory);
-
         ScheduledExecutorService maintenanceTask = Executors.newScheduledThreadPool(1);
 
         maintenanceTask.scheduleAtFixedRate(new Runnable() {
             @Override
             public void run() {
                 logger.info("creating " + label + " thread");
-                messageProcessor.cleanupMessages();
+                v2messageProcessor.cleanupMessages();
             }
         }, 0, 1, TimeUnit.MINUTES);
 
@@ -224,8 +222,8 @@ public class BackplaneConfig {
         addTask(backgroundServices, createV1messageCleanupTask());
         addTask(backgroundServices, createV2messageCleanupTask());
         addTask(backgroundServices, createPingTask());
-        initZk("/v1_worker", new MessageProcessor());
-        initZk("/v2_worker", new V2MessageProcessor(daoFactory));
+        initZk("/v1_worker", v1messageProcessor);
+        initZk("/v2_worker", v2messageProcessor);
     }
 
     private void initZk(String leaderPath, LeaderSelectorListener listener) {
@@ -272,9 +270,6 @@ public class BackplaneConfig {
         }
     }
 
-    @Inject
-    private DAOFactory daoFactory;
-
     private String cachedGet(BpServerConfig.Field property) {
 
         try {
@@ -283,7 +278,7 @@ public class BackplaneConfig {
             if (bpServerConfigCache == null) {
                 // pull from db if not found in cache
                 try {
-                    bpServerConfigCache = daoFactory.getConfigDAO().get(BackplaneSystemProps.BPSERVER_CONFIG_KEY);
+                    bpServerConfigCache = ServerDAOs.getConfigDAO().get(BackplaneSystemProps.BPSERVER_CONFIG_KEY);
                 } catch (Exception e) {
                     // if we get an error from the db, create a new object
                 }
@@ -307,7 +302,7 @@ public class BackplaneConfig {
 
     public void checkAdminAuth(String user, String password) throws AuthException {
         try {
-            User userEntry = daoFactory.getAdminDAO().get(user);
+            User userEntry = ServerDAOs.getAdminDAO().get(user);
             String authKey = userEntry == null ? null : userEntry.get(User.Field.PWDHASH);
             if ( ! HmacHashUtils.checkHmacHash(password, authKey) ) {
                 logger.error("User " + user + " not authorized");

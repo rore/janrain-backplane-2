@@ -4,7 +4,6 @@ import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane2.server.config.User;
 import com.janrain.backplane2.server.dao.BusDAO;
 import com.janrain.backplane2.server.dao.BusOwnerDAO;
-import com.janrain.oauth2.TokenException;
 import com.janrain.redis.Redis;
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.log4j.Logger;
@@ -70,7 +69,7 @@ public class RedisBusOwnerDAO implements BusOwnerDAO {
     }
 
     @Override
-    public void delete(String id) throws BackplaneServerException, TokenException {
+    public void delete(String id) throws BackplaneServerException {
         Jedis jedis = null;
 
         try {

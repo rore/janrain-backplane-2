@@ -1,10 +1,10 @@
-package com.janrain.backplane2.server.dao.redis;
+package com.janrain.backplane2.server.dao;
 
-import com.janrain.backplane.server.dao.redis.RedisConfigDAO;
+import com.janrain.backplane.dao.DAO;
 import com.janrain.backplane2.server.config.BusConfig2;
 import com.janrain.backplane2.server.config.Client;
 import com.janrain.backplane2.server.config.User;
-import com.janrain.backplane2.server.dao.*;
+import com.janrain.backplane2.server.dao.redis.*;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
 
@@ -14,65 +14,49 @@ import org.springframework.stereotype.Service;
 
 @Service(value="redisDaoFactory")
 @Scope(value="singleton")
-public class RedisDAOFactory extends DAOFactory {
+public class BP2DAOs {
 
-    @Override
-    public BusDAO getBusDao() {
+    public static BusDAO getBusDao() {
         return busDao;
     }
 
-    @Override
-    public ChannelDAO getChannelDao() {
+    public static ChannelDAO getChannelDao() {
         return channelDao;
     }
 
-    @Override
-    public TokenDAO getTokenDao() {
+    public static TokenDAO getTokenDao() {
         return tokenDao;
     }
 
-    @Override
-    public GrantDAO getGrantDao() {
+    public static GrantDAO getGrantDao() {
         return grantDao;
     }
 
-    @Override
-    public BusOwnerDAO getBusOwnerDAO() {
+    public static BusOwnerDAO getBusOwnerDAO() {
         return busOwnerDao;
     }
 
-    @Override
-    public ClientDAO getClientDAO() {
+    public static ClientDAO getClientDAO() {
         return clientDao;
     }
 
-    @Override
-    public BackplaneMessageDAO getBackplaneMessageDAO() {
+    public static BackplaneMessageDAO getBackplaneMessageDAO() {
         return messageDao;
     }
 
-    @Override
-    public AuthSessionDAO getAuthSessionDAO() {
+    public static AuthSessionDAO getAuthSessionDAO() {
         return authSessionDao;
     }
 
-    @Override
-    public AuthorizationRequestDAO getAuthorizationRequestDAO() {
+    public static AuthorizationRequestDAO getAuthorizationRequestDAO() {
         return authorizationRequestDao;
     }
 
-    @Override
-    public AuthorizationDecisionKeyDAO getAuthorizationDecisionKeyDAO() {
+    public static AuthorizationDecisionKeyDAO getAuthorizationDecisionKeyDAO() {
         return authorizationDecisionKeyDao;
     }
 
-    @Override
-    public RedisConfigDAO getConfigDAO() {
-        return new RedisConfigDAO();
-    }
-
-    @Override
-    public DAO getDaoByObjectType(Class<?> obj) {
+    public static DAO getDaoByObjectType(Class<?> obj) {
         if (Client.class.isAssignableFrom(obj)) {
             return getClientDAO();
         } else if (User.class.isAssignableFrom(obj)) {
@@ -84,12 +68,8 @@ public class RedisDAOFactory extends DAOFactory {
         return null;
     }
 
-    @Override
-    public AdminDAO getAdminDAO() {
-        return new RedisAdminDAO();
-    }
-
     // - PRIVATE
+
     private static final TokenDAO tokenDao = new RedisTokenDAO();
     private static final GrantDAO grantDao = new RedisGrantDAO(tokenDao);
     private static final BusDAO busDao = new RedisBusDAO(grantDao);

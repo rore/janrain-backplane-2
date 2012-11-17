@@ -20,12 +20,13 @@ import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.common.RandomUtils;
 import com.janrain.backplane.common.HmacHashUtils;
 import com.janrain.backplane.config.BackplaneConfig;
+import com.janrain.backplane.dao.ServerDAOs;
 import com.janrain.backplane.provision.ProvisioningController2;
 import com.janrain.backplane2.server.BackplaneMessage;
 import com.janrain.backplane2.server.Scope;
 import com.janrain.backplane2.server.config.Client;
 import com.janrain.backplane2.server.config.User;
-import com.janrain.backplane2.server.dao.DAOFactory;
+import com.janrain.backplane2.server.dao.BP2DAOs;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.oauth2.TokenException;
 import org.apache.log4j.Logger;
@@ -74,14 +75,14 @@ public class ProvisioningController2Test {
         user.put(User.Field.PWDHASH.getFieldName(), HmacHashUtils.hmacHash(pw));
 
         //superSimpleDB.store(bpConfig.getTableName(BackplaneConfig.SimpleDBTables.BP_ADMIN_AUTH), User.class, user);
-        daoFactory.getAdminDAO().persist(user);
+        ServerDAOs.getAdminDAO().persist(user);
 
         busOwner = new User();
         busOwner.put(User.Field.USER.getFieldName(), RandomUtils.randomString(20));
         busOwner.put(User.Field.PWDHASH.getFieldName(), HmacHashUtils.hmacHash(pw));
         try {
             client = new Client( RandomUtils.randomString(20), pw, "http://source.com", "http://redirect.com" );
-            daoFactory.getClientDAO().persist(client);
+            BP2DAOs.getClientDAO().persist(client);
             logger.info("Created test client: " + client.getClientId());
         } catch (SimpleDBException e) {
             throw new BackplaneServerException(e.getMessage());
@@ -91,9 +92,9 @@ public class ProvisioningController2Test {
     @After
     public void cleanup() throws BackplaneServerException, TokenException {
         //superSimpleDB.delete(bpConfig.getTableName(BackplaneConfig.SimpleDBTables.BP_ADMIN_AUTH), user.getIdValue());
-        daoFactory.getAdminDAO().delete(user.getIdValue());
+        ServerDAOs.getAdminDAO().delete(user.getIdValue());
         //superSimpleDB.delete(bpConfig.getTableName(BackplaneConfig.SimpleDBTables.BP_CLIENTS), client.getIdValue());
-        daoFactory.getClientDAO().delete(client.getClientId());
+        BP2DAOs.getClientDAO().delete(client.getClientId());
     }
 
     @Test
@@ -152,7 +153,7 @@ public class ProvisioningController2Test {
         refreshRequestAndResponse();
 
         // delete the default client
-        daoFactory.getClientDAO().delete(client.getClientId());
+        BP2DAOs.getClientDAO().delete(client.getClientId());
 
         // create client
         String jsonUpdateClient = "{ \"admin\": \"" + user.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\"," +
@@ -227,7 +228,7 @@ public class ProvisioningController2Test {
         assertTrue(response.getStatus() == HttpServletResponse.SC_OK);
         assertTrue(response.getContentAsString().contains("Invalid bus owner: busowner1"));
 
-        daoFactory.getBusDao().delete("customer1");
+        BP2DAOs.getBusDao().delete("customer1");
     }
 
     @Test
@@ -301,7 +302,7 @@ public class ProvisioningController2Test {
         logger.info("testBusCRUD() => " + response.getContentAsString());
         assertFalse(response.getContentAsString().contains("customer1"));
 
-        daoFactory.getBusOwnerDAO().delete(busOwner.get(User.Field.USER));
+        BP2DAOs.getBusOwnerDAO().delete(busOwner.get(User.Field.USER));
 
 
     }
@@ -524,9 +525,6 @@ public class ProvisioningController2Test {
 
     @Inject
     private BackplaneConfig bpConfig;
-
-    @Inject
-    private DAOFactory daoFactory;
 
     private MockHttpServletRequest request;
     private MockHttpServletResponse response;
