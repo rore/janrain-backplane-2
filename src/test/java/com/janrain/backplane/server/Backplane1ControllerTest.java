@@ -17,7 +17,7 @@
 package com.janrain.backplane.server;
 
 import com.janrain.backplane.config.BackplaneConfig;
-import com.janrain.backplane.server.dao.DaoFactory;
+import com.janrain.backplane.server.redisdao.BP1DAOs;
 import com.janrain.backplane2.server.config.User;
 import junit.framework.TestCase;
 import org.apache.catalina.util.Base64;
@@ -113,15 +113,15 @@ public class Backplane1ControllerTest extends TestCase {
 
             try {
 
-                DaoFactory.getUserDAO().persist(new User("testBusOwner", "busOwnerSecret"));
-                DaoFactory.getBusDAO().persist(new BusConfig1("test", "testBusOwner", "60", "28800"));
+                BP1DAOs.getUserDao().persist(new User("testBusOwner", "busOwnerSecret"));
+                BP1DAOs.getBusDao().persist(new BusConfig1("test", "testBusOwner", "60", "28800"));
 
                 // encode un:pw
                 String credentials = "testBusOwner:busOwnerSecret";
 
                 Map<String,Object> msg = new ObjectMapper().readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
                 message = new BackplaneMessage("test", "test", DEFAULT_MESSAGE_RETENTION_SECONDS, MAX_MESSAGE_RETENTION_SECONDS, msg);
-                DaoFactory.getBackplaneMessageDAO().persist(message);
+                BP1DAOs.getMessageDao().persist(message);
 
                 Thread.sleep(1000);
 
@@ -136,10 +136,10 @@ public class Backplane1ControllerTest extends TestCase {
                 assertFalse("passed", response.getContentAsString().contains("[]"));
 
             } finally {
-                DaoFactory.getUserDAO().delete("testBusOwner");
-                DaoFactory.getBusDAO().delete("test");
+                BP1DAOs.getUserDao().delete("testBusOwner");
+                BP1DAOs.getBusDao().delete("test");
                 if (message != null) {
-                    DaoFactory.getBackplaneMessageDAO().delete(message.getIdValue());
+                    BP1DAOs.getMessageDao().delete(message.getIdValue());
                 }
             }
         }

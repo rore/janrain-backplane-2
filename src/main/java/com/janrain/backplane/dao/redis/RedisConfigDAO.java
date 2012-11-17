@@ -1,8 +1,8 @@
-package com.janrain.backplane.server.dao.redis;
+package com.janrain.backplane.dao.redis;
 
 import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.config.BpServerConfig;
-import com.janrain.backplane.server.dao.DAO;
+import com.janrain.backplane.dao.DAO;
 import com.janrain.commons.util.SerializationUtils;
 import com.janrain.redis.Redis;
 import org.apache.commons.lang.NotImplementedException;
@@ -14,7 +14,7 @@ import java.util.List;
 /**
  * @author Tom Raney
  */
-public class RedisConfigDAO extends DAO<BpServerConfig> {
+public class RedisConfigDAO implements DAO<BpServerConfig> {
 
     public static byte[] getKey(String id) {
         return ("config_" + id).getBytes();

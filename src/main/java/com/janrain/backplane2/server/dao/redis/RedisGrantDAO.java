@@ -116,7 +116,7 @@ public class RedisGrantDAO implements GrantDAO {
     }
 
     @Override
-    public void delete(String id) throws BackplaneServerException, TokenException {
+    public void delete(String id) throws BackplaneServerException {
         Jedis jedis = null;
         try {
             jedis = Redis.getInstance().getWriteJedis();

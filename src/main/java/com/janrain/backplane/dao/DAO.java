@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-package com.janrain.backplane.server.dao;
-
+package com.janrain.backplane.dao;
 
 import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.commons.supersimpledb.message.NamedMap;
@@ -26,11 +25,11 @@ import java.util.List;
  * @author Tom Raney
  */
 
-public abstract class DAO<T extends NamedMap> {
+public interface DAO<T extends NamedMap> {
 
-    abstract public void persist(T obj) throws BackplaneServerException;
-    abstract public void delete(String id) throws BackplaneServerException;
     abstract public T get(String id) throws BackplaneServerException;
     abstract public List<T> getAll() throws BackplaneServerException;
+    abstract public void persist(T obj) throws BackplaneServerException;
+    abstract public void delete(String id) throws BackplaneServerException;
 
 }

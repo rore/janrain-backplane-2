@@ -18,19 +18,22 @@ package com.janrain.backplane.provision;
 
 import com.janrain.backplane.common.AuthException;
 import com.janrain.backplane.common.BackplaneServerException;
+import com.janrain.backplane.common.HmacHashUtils;
 import com.janrain.backplane.config.BackplaneConfig;
 import com.janrain.backplane2.server.*;
-import com.janrain.backplane2.server.config.*;
-import com.janrain.backplane2.server.dao.DAOFactory;
+import com.janrain.backplane2.server.config.BusConfig2;
+import com.janrain.backplane2.server.config.Client;
+import com.janrain.backplane2.server.config.User;
+import com.janrain.backplane2.server.dao.BP2DAOs;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
-import com.janrain.backplane.common.HmacHashUtils;
 import com.janrain.oauth2.TokenException;
 import com.janrain.servlet.ServletUtil;
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
+
 import javax.inject.Inject;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -130,7 +133,7 @@ public class ProvisioningController2 {
         for(String clientId : listRequest.getEntities()) {
             try {
                 Map<String,String> grantsList = new HashMap<String, String>();
-                Map<Scope, Set<Grant>> scopeGrants = new GrantLogic(daoFactory).retrieveClientGrants(clientId, null);
+                Map<Scope, Set<Grant>> scopeGrants = GrantLogic.retrieveClientGrants(clientId, null);
                 for (Set<Grant> grantSets : scopeGrants.values()) {
                     for(Grant grant : grantSets) {
                         grantsList.put(grant.getIdValue(), grant.getAuthorizedScope().toString());
@@ -206,9 +209,6 @@ public class ProvisioningController2 {
     @Inject
     private BackplaneConfig bpConfig;
 
-    @Inject
-    private DAOFactory daoFactory;
-
     private <T extends AbstractMessage> Map<String, Map<String, String>> doList(Class<T> entityType, List<String> entityNames, MessageField orderField) {
 
         if (entityNames.size() == 0) return doListAll(entityType);
@@ -218,7 +218,7 @@ public class ProvisioningController2 {
             T config = null;
             Exception thrown = null;
             try {
-                config = (T) daoFactory.getDaoByObjectType(entityType).get(entityName);
+                config = (T) BP2DAOs.getDaoByObjectType(entityType).get(entityName);
             } catch (Exception e) {
                 thrown = e;
             }
@@ -234,7 +234,7 @@ public class ProvisioningController2 {
     private <T extends AbstractMessage> Map<String, Map<String, String>> doListAll(Class<T> entityType) {
         Map<String,Map<String,String>> result = new LinkedHashMap<String, Map<String, String>>();
         try {
-            List<T> items = daoFactory.getDaoByObjectType(entityType).getAll();
+            List<T> items = BP2DAOs.getDaoByObjectType(entityType).getAll();
             for(T config :  items) {
                 result.put(config.getIdValue(), config);
             }
@@ -249,10 +249,10 @@ public class ProvisioningController2 {
         for(String entityName : entityNames) {
             String deleteStatus = BACKPLANE_DELETE_SUCCESS;
             try {
-                if (daoFactory.getDaoByObjectType(entityType).get(entityName) == null) {
+                if (BP2DAOs.getDaoByObjectType(entityType).get(entityName) == null) {
                     deleteStatus = BACKPLANE_ENTRY_NOT_FOUND;
                 } else {
-                    daoFactory.getDaoByObjectType(entityType).delete(entityName);
+                    BP2DAOs.getDaoByObjectType(entityType).delete(entityName);
                 }
             } catch (Exception e) {
                 deleteStatus = e.getMessage();
@@ -277,9 +277,7 @@ public class ProvisioningController2 {
                     User user = (User) config;
                     user.put(User.Field.PWDHASH.getFieldName(), HmacHashUtils.hmacHash(user.get(User.Field.PWDHASH)));
                 } else if (config instanceof BusConfig2) {
-                    User user = null;
-                    user = daoFactory.getBusOwnerDAO().get(config.get(BusConfig2.Field.OWNER.getFieldName()));
-
+                    User user = BP2DAOs.getBusOwnerDAO().get(config.get(BusConfig2.Field.OWNER.getFieldName()));
                     if (user == null) {
                         String fieldName = config.get(BusConfig2.Field.OWNER.getFieldName());
                         throw new BackplaneServerException("Invalid bus owner: " + fieldName);
@@ -287,7 +285,7 @@ public class ProvisioningController2 {
                 }
 
                 config.validate();
-                daoFactory.getDaoByObjectType(customerConfigType).persist(config);
+                BP2DAOs.getDaoByObjectType(customerConfigType).persist(config);
             } catch (Exception e) {
                 updateStatus = e.getMessage();
             }
@@ -304,7 +302,7 @@ public class ProvisioningController2 {
             String clientId = newGrantEntry.getKey();
             String buses = newGrantEntry.getValue();
             try {
-                if (null == daoFactory.getClientDAO().get(clientId)) {
+                if (null == BP2DAOs.getClientDAO().get(clientId)) {
                     result.put(clientId, "invalid client_id");
                 } else {
                     List<String> busesAsList = Scope.getScopesAsList(buses);
@@ -326,7 +324,7 @@ public class ProvisioningController2 {
 
     private void validateBuses(List<String> buses) throws BackplaneServerException {
         for(String bus : buses) {
-            if (null == daoFactory.getBusDao().get(bus)) {
+            if (null == BP2DAOs.getBusDao().get(bus)) {
                 throw new BackplaneServerException("Invalid bus: " + bus);
             }
         }
@@ -340,13 +338,13 @@ public class ProvisioningController2 {
                 clientId,
                 Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, buses))
                 .buildGrant();
-        daoFactory.getGrantDao().persist(grant);
+        BP2DAOs.getGrantDao().persist(grant);
     }
 
     private void revokeBuses(String clientId, List<String> buses) throws TokenException, SimpleDBException, BackplaneServerException {
         boolean updated = false;
         Scope busesToRevoke = new Scope(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, buses));
-        if ( ! daoFactory.getGrantDao().revokeBuses(daoFactory.getGrantDao().getByClientId(clientId), buses) ) {
+        if ( ! BP2DAOs.getGrantDao().revokeBuses(BP2DAOs.getGrantDao().getByClientId(clientId), buses) ) {
             throw new BackplaneServerException("No grants found to revoke for buses: " + buses);
         }
     }

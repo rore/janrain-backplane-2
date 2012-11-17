@@ -1,7 +1,7 @@
 package com.janrain.backplane2.server;
 
 import com.janrain.backplane.common.BackplaneServerException;
-import com.janrain.backplane2.server.dao.DAOFactory;
+import com.janrain.backplane2.server.dao.BP2DAOs;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.oauth2.TokenException;
 import org.apache.commons.lang.StringUtils;
@@ -12,14 +12,11 @@ import org.jetbrains.annotations.Nullable;
 import java.util.*;
 
 /**
+ * Grant logic utility class.
+ * 
  * @author Tom Raney
  */
 public class GrantLogic {
-
-    public GrantLogic(DAOFactory daoFactory)  {
-        this.daoFactory = daoFactory;
-
-    }
 
    /**
      * Retrieve all active grants issued to the supplied clientId
@@ -32,10 +29,10 @@ public class GrantLogic {
      * @return  map of authorized scopes backed-by grants
      * @throws
      */
-    public @NotNull
-    Map<Scope,Set<Grant>> retrieveClientGrants(final String clientId, @Nullable Scope scope) throws BackplaneServerException, TokenException {
+    public static @NotNull Map<Scope,Set<Grant>>
+    retrieveClientGrants(final String clientId, @Nullable Scope scope) throws BackplaneServerException, TokenException {
 
-        List<Grant> clientActiveGrants = daoFactory.getGrantDao().getByClientId(clientId);
+        List<Grant> clientActiveGrants = BP2DAOs.getGrantDao().getByClientId(clientId);
 
         Map<Scope,Set<Grant>> result = new LinkedHashMap<Scope, Set<Grant>>();
 
@@ -55,7 +52,7 @@ public class GrantLogic {
             for(Scope authReqScope : scope.getAuthReqScopes()) {
                 final Scope testScope;
                 if (authReqScope.getScopeMap().containsKey(BackplaneMessage.Field.CHANNEL)) {
-                    Channel channel = daoFactory.getChannelDao().get(authReqScope.getScopeMap().get(BackplaneMessage.Field.CHANNEL).iterator().next());
+                    Channel channel = BP2DAOs.getChannelDao().get(authReqScope.getScopeMap().get(BackplaneMessage.Field.CHANNEL).iterator().next());
                     String boundBus = channel == null ? null : channel.get(Channel.ChannelField.BUS);
                     testScope = new Scope(BackplaneMessage.Field.BUS, boundBus);
                 } else {
@@ -93,9 +90,9 @@ public class GrantLogic {
      *
      * @throws
      */
-      public Grant getAndActivateCodeGrant(final String codeId, String authenticatedClientId) throws BackplaneServerException, TokenException {
+      public static Grant getAndActivateCodeGrant(final String codeId, String authenticatedClientId) throws BackplaneServerException, TokenException {
 
-          Grant existing = daoFactory.getGrantDao().get(codeId);
+          Grant existing = BP2DAOs.getGrantDao().get(codeId);
 
           GrantState updatedState = GrantState.ACTIVE;
           if ( existing == null) {
@@ -116,7 +113,7 @@ public class GrantLogic {
               throw new BackplaneServerException(e.getMessage());
           }
 
-          daoFactory.getGrantDao().update(existing, updated);
+          BP2DAOs.getGrantDao().update(existing, updated);
 
           logger.info( "Grant status: " + updatedState.toString().toLowerCase() + " for code: " + codeId + ", client_id: " + authenticatedClientId);
 
@@ -127,9 +124,9 @@ public class GrantLogic {
           }
     }
 
-    // PRIVATE
-
-    private DAOFactory daoFactory;
+    // - PRIVATE
 
     private static final Logger logger = Logger.getLogger(GrantLogic.class);
+
+    private GrantLogic() {}
 }

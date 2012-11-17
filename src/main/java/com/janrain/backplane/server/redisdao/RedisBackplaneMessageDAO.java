@@ -14,11 +14,10 @@
  * limitations under the License.
  */
 
-package com.janrain.backplane.server.dao.redis;
+package com.janrain.backplane.server.redisdao;
 
-import com.janrain.backplane.server.BackplaneMessage;
 import com.janrain.backplane.common.BackplaneServerException;
-import com.janrain.backplane.server.dao.DAO;
+import com.janrain.backplane.server.BackplaneMessage;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.redis.Redis;
 import com.yammer.metrics.Metrics;
@@ -39,7 +38,7 @@ import java.util.*;
 /**
  * @author Tom Raney
  */
-public class RedisBackplaneMessageDAO extends DAO<BackplaneMessage> {
+public class RedisBackplaneMessageDAO implements BP1MessageDao {
 
     final public static String V1_MESSAGE_QUEUE = "v1_message_queue";
     final public static String V1_MESSAGES = "v1_messages";
@@ -108,6 +107,7 @@ public class RedisBackplaneMessageDAO extends DAO<BackplaneMessage> {
         }
     }
 
+    @Override
     public void deleteExpiredMessages() {
 
         Jedis jedis = null;
@@ -231,6 +231,7 @@ public class RedisBackplaneMessageDAO extends DAO<BackplaneMessage> {
         return ids;
     }
 
+    @Override
     public List<BackplaneMessage> getMessagesByBus(String bus, String since, String sticky) throws SimpleDBException, BackplaneServerException {
 
         Jedis jedis = null;
