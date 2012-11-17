@@ -1,7 +1,7 @@
 package com.janrain.backplane2.server.dao.redis;
 
 import com.janrain.backplane.common.BackplaneServerException;
-import com.janrain.backplane2.server.config.User;
+import com.janrain.backplane.common.User;
 import com.janrain.backplane2.server.dao.BusDAO;
 import com.janrain.backplane2.server.dao.BusOwnerDAO;
 import com.janrain.redis.Redis;

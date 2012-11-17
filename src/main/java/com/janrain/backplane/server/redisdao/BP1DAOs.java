@@ -4,7 +4,7 @@ import com.janrain.backplane.dao.DAO;
 import com.janrain.backplane.dao.redis.RedisUserDAO;
 import com.janrain.backplane.server.BackplaneMessage;
 import com.janrain.backplane.server.BusConfig1;
-import com.janrain.backplane2.server.config.User;
+import com.janrain.backplane.common.User;
 
 /**
  * @author Johnny Bufu

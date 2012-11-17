@@ -23,7 +23,7 @@ import com.janrain.backplane.common.RandomUtils;
 import com.janrain.backplane.config.BackplaneConfig;
 import com.janrain.backplane2.server.config.BusConfig2;
 import com.janrain.backplane2.server.config.Client;
-import com.janrain.backplane2.server.config.User;
+import com.janrain.backplane.common.User;
 import com.janrain.backplane2.server.dao.BP2DAOs;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.oauth2.*;

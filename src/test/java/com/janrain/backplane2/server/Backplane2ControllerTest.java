@@ -23,7 +23,7 @@ import com.janrain.backplane.common.HmacHashUtils;
 import com.janrain.backplane.config.BackplaneConfig;
 import com.janrain.backplane2.server.config.BusConfig2;
 import com.janrain.backplane2.server.config.Client;
-import com.janrain.backplane2.server.config.User;
+import com.janrain.backplane.common.User;
 import com.janrain.backplane2.server.dao.BP2DAOs;
 import com.janrain.backplane2.server.dao.BackplaneMessageDAO;
 import com.janrain.backplane2.server.dao.TokenDAO;

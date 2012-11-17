@@ -18,7 +18,7 @@ package com.janrain.backplane.server;
 
 import com.janrain.backplane.config.BackplaneConfig;
 import com.janrain.backplane.server.redisdao.BP1DAOs;
-import com.janrain.backplane2.server.config.User;
+import com.janrain.backplane.common.User;
 import junit.framework.TestCase;
 import org.apache.catalina.util.Base64;
 import org.apache.log4j.Logger;

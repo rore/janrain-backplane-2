@@ -1,6 +1,6 @@
 package com.janrain.backplane.config;
 
-import com.janrain.backplane.server.ExternalizableCore;
+import com.janrain.backplane.common.ExternalizableCore;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import org.apache.log4j.Logger;

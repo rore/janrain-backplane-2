@@ -25,7 +25,7 @@ import com.janrain.backplane.config.BpServerConfig;
 import com.janrain.backplane.dao.ServerDAOs;
 import com.janrain.backplane.server.redisdao.BP1DAOs;
 import com.janrain.backplane.server.redisdao.BP1MessageDao;
-import com.janrain.backplane2.server.config.User;
+import com.janrain.backplane.common.User;
 import com.janrain.cache.CachedL1;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.servlet.ServletUtil;

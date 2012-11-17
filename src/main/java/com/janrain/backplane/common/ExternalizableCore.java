@@ -1,4 +1,4 @@
-package com.janrain.backplane.server;
+package com.janrain.backplane.common;
 
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 

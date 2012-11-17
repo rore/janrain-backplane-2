@@ -22,7 +22,7 @@ import com.janrain.backplane.common.HmacHashUtils;
 import com.janrain.backplane.dao.ServerDAOs;
 import com.janrain.backplane.server.MessageProcessor;
 import com.janrain.backplane2.server.V2MessageProcessor;
-import com.janrain.backplane2.server.config.User;
+import com.janrain.backplane.common.User;
 import com.janrain.cache.CachedL1;
 import com.janrain.commons.util.AwsUtility;
 import com.janrain.commons.util.InitSystemProps;

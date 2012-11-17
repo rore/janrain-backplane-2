@@ -1,6 +1,6 @@
 package com.janrain.backplane.dao;
 
-import com.janrain.backplane2.server.config.User;
+import com.janrain.backplane.common.User;
 
 /**
  * @author Tom Raney

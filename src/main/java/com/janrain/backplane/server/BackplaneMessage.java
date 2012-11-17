@@ -17,6 +17,7 @@
 package com.janrain.backplane.server;
 
 import com.janrain.backplane.common.BackplaneServerException;
+import com.janrain.backplane.common.ExternalizableCore;
 import com.janrain.backplane.common.RandomUtils;
 import com.janrain.backplane.common.DateTimeUtils;
 import com.janrain.commons.supersimpledb.SimpleDBException;

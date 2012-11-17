@@ -2,7 +2,7 @@ package com.janrain.backplane.dao.redis;
 
 import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.dao.DAO;
-import com.janrain.backplane2.server.config.User;
+import com.janrain.backplane.common.User;
 import com.janrain.redis.Redis;
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.log4j.Logger;

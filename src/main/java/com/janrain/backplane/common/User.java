@@ -14,12 +14,10 @@
  * limitations under the License.
  */
 
-package com.janrain.backplane2.server.config;
+package com.janrain.backplane.common;
 
-import com.janrain.backplane.server.ExternalizableCore;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.MessageField;
-import com.janrain.backplane.common.HmacHashUtils;
 
 import java.util.*;
 
