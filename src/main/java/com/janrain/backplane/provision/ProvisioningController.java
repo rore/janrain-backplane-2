@@ -17,13 +17,13 @@
 package com.janrain.backplane.provision;
 
 import com.janrain.backplane.common.AuthException;
+import com.janrain.backplane.common.HmacHashUtils;
 import com.janrain.backplane.config.BackplaneConfig;
 import com.janrain.backplane.server.BusConfig1;
-import com.janrain.backplane.server.dao.DaoFactory;
+import com.janrain.backplane.server.redisdao.BP1DAOs;
 import com.janrain.backplane2.server.config.User;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
-import com.janrain.backplane.common.HmacHashUtils;
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
@@ -147,7 +147,7 @@ public class ProvisioningController {
             T config = null;
             Exception thrown = null;
             try {
-                config = (T) DaoFactory.getDaoByObjectType(entityType).get(entityName);
+                config = (T) BP1DAOs.getDaoByObjectType(entityType).get(entityName);
             } catch (Exception e) {
                 thrown = e;
             }
@@ -163,7 +163,7 @@ public class ProvisioningController {
     private <T extends AbstractMessage> Map<String, Map<String, String>> doListAll(Class<T> entityType) {
         Map<String,Map<String,String>> result = new LinkedHashMap<String, Map<String, String>>();
         try {
-            List<T> items = DaoFactory.getDaoByObjectType(entityType).getAll();
+            List<T> items = BP1DAOs.getDaoByObjectType(entityType).getAll();
             for(T config : items) {
                 result.put(config.getIdValue(), config);
             }
@@ -178,7 +178,7 @@ public class ProvisioningController {
         for(String entityName : entityNames) {
             String deleteStatus = BACKPLANE_DELETE_SUCCESS;
             try {
-                DaoFactory.getDaoByObjectType(entityType).delete(entityName);
+                BP1DAOs.getDaoByObjectType(entityType).delete(entityName);
             } catch (Exception e) {
                 deleteStatus = e.getMessage();
             }
@@ -209,7 +209,7 @@ public class ProvisioningController {
             }
             String updateStatus = BACKPLANE_UPDATE_SUCCESS;
             try {
-                DaoFactory.getDaoByObjectType(customerConfigType).persist(config);
+                BP1DAOs.getDaoByObjectType(customerConfigType).persist(config);
             } catch (Exception e) {
                 updateStatus = e.getMessage();
             }

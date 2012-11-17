@@ -14,23 +14,32 @@
  * limitations under the License.
  */
 
-package com.janrain.backplane2.server.dao;
+package com.janrain.backplane.dao;
 
-import com.janrain.backplane.common.BackplaneServerException;
-import com.janrain.commons.supersimpledb.message.NamedMap;
-import com.janrain.oauth2.TokenException;
-
-import java.util.List;
+import com.janrain.backplane.config.BpServerConfig;
+import com.janrain.backplane.dao.redis.RedisAdminDAO;
+import com.janrain.backplane.dao.redis.RedisConfigDAO;
 
 /**
  * @author Tom Raney
  */
 
-public interface DAO<T extends NamedMap> {
+public class ServerDAOs {
 
-    abstract public T get(String id) throws BackplaneServerException;
-    abstract public List<T> getAll() throws BackplaneServerException;
-    abstract public void persist(T obj) throws BackplaneServerException;
-    abstract public void delete(String id) throws BackplaneServerException, TokenException;
+    // - SERVER-WIDE DAOs
 
+    public static DAO<BpServerConfig> getConfigDAO() {
+        return configDao;
+    }
+
+    public static AdminDAO getAdminDAO() {
+        return adminDao;
+    }
+
+    // - PRIVATE
+
+    private ServerDAOs() {}
+
+    private static final DAO<BpServerConfig> configDao = new RedisConfigDAO();
+    private static final AdminDAO adminDao = new RedisAdminDAO();
 }

@@ -19,7 +19,7 @@ package com.janrain.backplane2.server;
 import com.janrain.backplane.config.BackplaneConfig;
 import com.janrain.backplane.config.BackplaneSystemProps;
 import com.janrain.backplane.common.DateTimeUtils;
-import com.janrain.backplane2.server.dao.DAOFactory;
+import com.janrain.backplane2.server.dao.BP2DAOs;
 import com.janrain.backplane2.server.dao.redis.RedisBackplaneMessageDAO;
 import com.janrain.commons.util.Pair;
 import com.janrain.redis.Redis;
@@ -51,12 +51,12 @@ public class V2MessageProcessor implements LeaderSelectorListener {
 
     // - PUBLIC
 
-    public V2MessageProcessor(final DAOFactory daoFactory) {
+    public V2MessageProcessor() {
         cleanupRunnable = new Runnable() {
             @Override
             public void run() {
                 try {
-                    daoFactory.getBackplaneMessageDAO().deleteExpiredMessages();
+                    BP2DAOs.getBackplaneMessageDAO().deleteExpiredMessages();
                 } catch (Exception e) {
                     logger.warn(e);
                 }

@@ -20,7 +20,7 @@ import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.common.DateTimeUtils;
 import com.janrain.backplane.common.RandomUtils;
 import com.janrain.backplane.server.ExternalizableCore;
-import com.janrain.backplane2.server.dao.DAOFactory;
+import com.janrain.backplane2.server.dao.BP2DAOs;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
@@ -125,7 +125,7 @@ public class Token extends ExternalizableCore {
         return tokenNoPrefix.length() == TOKEN_LENGTH;
     }
 
-    public static @NotNull Token fromRequest(DAOFactory daoFactory, HttpServletRequest request, String tokenString, String authorizationHeader) throws TokenException {
+    public static @NotNull Token fromRequest(HttpServletRequest request, String tokenString, String authorizationHeader) throws TokenException {
         
         Pair<String, EnumSet<TokenSource>> tokenAndSource = extractToken(request.getQueryString(), tokenString, authorizationHeader);
 
@@ -135,7 +135,7 @@ public class Token extends ExternalizableCore {
 
         Token token;
         try {
-            token = daoFactory.getTokenDao().get(tokenAndSource.getLeft());
+            token = BP2DAOs.getTokenDao().get(tokenAndSource.getLeft());
         } catch (BackplaneServerException e) {
             logger.error("Error looking up token: " + tokenAndSource.getLeft() , e);
             throw new TokenException(OAuth2.OAUTH2_TOKEN_SERVER_ERROR, "error loading token", HttpServletResponse.SC_INTERNAL_SERVER_ERROR);

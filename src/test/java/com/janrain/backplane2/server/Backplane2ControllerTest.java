@@ -24,8 +24,8 @@ import com.janrain.backplane.config.BackplaneConfig;
 import com.janrain.backplane2.server.config.BusConfig2;
 import com.janrain.backplane2.server.config.Client;
 import com.janrain.backplane2.server.config.User;
+import com.janrain.backplane2.server.dao.BP2DAOs;
 import com.janrain.backplane2.server.dao.BackplaneMessageDAO;
-import com.janrain.backplane2.server.dao.DAOFactory;
 import com.janrain.backplane2.server.dao.TokenDAO;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.oauth2.*;
@@ -74,9 +74,6 @@ public class Backplane2ControllerTest {
 
     @Inject
     private BackplaneConfig bpConfig;
-
-    @Inject
-    private DAOFactory daoFactory;
 
     private static final Logger logger = Logger.getLogger(Backplane2ControllerTest.class);
 
@@ -168,12 +165,12 @@ public class Backplane2ControllerTest {
 
             for (String key:this.createdMessageKeys) {
                 logger.info("deleting Message " + key);
-                daoFactory.getBackplaneMessageDAO().delete(key);
+                BP2DAOs.getBackplaneMessageDAO().delete(key);
                 //superSimpleDB.delete(bpConfig.getTableName(BP_MESSAGES), key);
             }
 
             try {
-                BackplaneMessageDAO backplaneMessageDAO = daoFactory.getBackplaneMessageDAO();
+                BackplaneMessageDAO backplaneMessageDAO = BP2DAOs.getBackplaneMessageDAO();
                 List<BackplaneMessage> testMsgs = backplaneMessageDAO.retrieveMessagesByChannel("testchannel");
 
                 for (BackplaneMessage msg : testMsgs) {
@@ -187,16 +184,16 @@ public class Backplane2ControllerTest {
             logger.info("checking for tokens to delete...");
             for (String key:this.createdTokenKeys) {
                 logger.info("deleting Token " + key);
-                daoFactory.getTokenDao().delete(key);
+                BP2DAOs.getTokenDao().delete(key);
             }
 
             for (String key:this.createdGrantsKeys) {
                 logger.info("deleting Grant " + key);
-                Grant grant = daoFactory.getGrantDao().get(key);
+                Grant grant = BP2DAOs.getGrantDao().get(key);
                 if (grant != null) {
-                    daoFactory.getTokenDao().revokeTokenByGrant(grant.getIdValue());
+                    BP2DAOs.getTokenDao().revokeTokenByGrant(grant.getIdValue());
                 }
-                daoFactory.getGrantDao().delete(key);
+                BP2DAOs.getGrantDao().delete(key);
             }
 
             deleteTestBusAndClient();
@@ -209,13 +206,13 @@ public class Backplane2ControllerTest {
 
 
     private Client createTestBusAndClient() throws BackplaneServerException {
-        daoFactory.getBusOwnerDAO().persist(new User("testBusOwner", "busOwnerSecret"));
+        BP2DAOs.getBusOwnerDAO().persist(new User("testBusOwner", "busOwnerSecret"));
         try {
-            daoFactory.getBusDao().persist(new BusConfig2("testbus", "testBusOwner", "600", "28800"));
+            BP2DAOs.getBusDao().persist(new BusConfig2("testbus", "testBusOwner", "600", "28800"));
 
             Client client = new Client(RandomUtils.randomString(15), HmacHashUtils.hmacHash("secret"), "http://source_url.com", "http://redirect.com");
 
-            daoFactory.getClientDAO().persist(client);
+            BP2DAOs.getClientDAO().persist(client);
             return client;
         } catch (SimpleDBException e) {
             throw new BackplaneServerException(e.getMessage());
@@ -223,9 +220,9 @@ public class Backplane2ControllerTest {
     }
 
     private void deleteTestBusAndClient() throws BackplaneServerException, TokenException {
-        daoFactory.getBusOwnerDAO().delete("testBusOwner");
-        daoFactory.getBusDao().delete("testbus");
-        daoFactory.getClientDAO().delete(this.testClient.getClientId());
+        BP2DAOs.getBusOwnerDAO().delete("testBusOwner");
+        BP2DAOs.getBusDao().delete("testbus");
+        BP2DAOs.getClientDAO().delete(this.testClient.getClientId());
     }
 
     private void refreshRequestAndResponse() {
@@ -236,19 +233,19 @@ public class Backplane2ControllerTest {
 	}
 
     private void saveMessage(BackplaneMessage message) throws BackplaneServerException {
-        daoFactory.getBackplaneMessageDAO().persist(message);
+        BP2DAOs.getBackplaneMessageDAO().persist(message);
         this.createdMessageKeys.add(message.getIdValue());
         logger.info("created Message " + message.getIdValue());
     }
 
     private void saveGrant(Grant grant) throws BackplaneServerException {
-        daoFactory.getGrantDao().persist(grant);
+        BP2DAOs.getGrantDao().persist(grant);
         logger.info("saved grant: " + grant.getIdValue());
         this.createdGrantsKeys.add(grant.getIdValue());
     }
 
     private void saveToken(Token token) throws BackplaneServerException {
-        daoFactory.getTokenDao().persist(token);
+        BP2DAOs.getTokenDao().persist(token);
         logger.info("saved token: " + token.getIdValue());
         this.createdTokenKeys.add(token.getIdValue());
     }
@@ -328,8 +325,8 @@ public class Backplane2ControllerTest {
         // cleanup test tokens
         String result = response.getContentAsString();
         Map<String,Object> returnedBody = new ObjectMapper().readValue(result, new TypeReference<Map<String,Object>>() {});
-        daoFactory.getTokenDao().delete((String)returnedBody.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME));
-        daoFactory.getTokenDao().delete((String)returnedBody.get(OAUTH2_REFRESH_TOKEN_PARAM_NAME));
+        BP2DAOs.getTokenDao().delete((String)returnedBody.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME));
+        BP2DAOs.getTokenDao().delete((String)returnedBody.get(OAUTH2_REFRESH_TOKEN_PARAM_NAME));
 
 
     }
@@ -445,8 +442,8 @@ public class Backplane2ControllerTest {
         assertTrue(scope.contains("channel:"));
 
         // remove test tokens
-        daoFactory.getTokenDao().delete((String)msg.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME));
-        daoFactory.getTokenDao().delete((String)msg.get(OAUTH2_REFRESH_TOKEN_PARAM_NAME));
+        BP2DAOs.getTokenDao().delete((String)msg.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME));
+        BP2DAOs.getTokenDao().delete((String)msg.get(OAUTH2_REFRESH_TOKEN_PARAM_NAME));
     }
 
 
@@ -699,7 +696,7 @@ public class Backplane2ControllerTest {
         handlerAdapter.handle(request, response, controller);
         logger.info("testTokenEndPointClientUsedCode() ====> " + response.getContentAsString());
 
-        assertTrue(daoFactory.getGrantDao().get(grant.getIdValue()).getState() == GrantState.ACTIVE);
+        assertTrue(BP2DAOs.getGrantDao().get(grant.getIdValue()).getState() == GrantState.ACTIVE);
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
 
 
@@ -896,7 +893,7 @@ public class Backplane2ControllerTest {
 
         assertTrue("Expected " + HttpServletResponse.SC_OK + " but received: " + response.getStatus(), response.getStatus() == HttpServletResponse.SC_OK);
 
-        TokenDAO tokenDAO = daoFactory.getTokenDao();
+        TokenDAO tokenDAO = BP2DAOs.getTokenDao();
         tokenDAO.delete(tokensAndChannel.bearerToken);
         tokenDAO.delete(tokensAndChannel.refreshToken);
     }
@@ -1036,7 +1033,7 @@ public class Backplane2ControllerTest {
         List<Map<String,Object>> returnedMsgs = (List<Map<String, Object>>) returnedBody.get("messages");
         assertTrue("Expected 1 message, received "  + returnedMsgs.size(), returnedMsgs.size() == 1);
 
-        TokenDAO tokenDAO = daoFactory.getTokenDao();
+        TokenDAO tokenDAO = BP2DAOs.getTokenDao();
         tokenDAO.delete(tokensAndchannel.bearerToken);
         tokenDAO.delete(tokensAndchannel.refreshToken);
 
@@ -1095,12 +1092,12 @@ public class Backplane2ControllerTest {
 
         Thread.sleep(1000);
 
-        List<BackplaneMessage> messages = daoFactory.getBackplaneMessageDAO().retrieveMessagesByChannel(tokensAndChannel.channel);
+        List<BackplaneMessage> messages = BP2DAOs.getBackplaneMessageDAO().retrieveMessagesByChannel(tokensAndChannel.channel);
         for (BackplaneMessage message: messages) {
-            daoFactory.getBackplaneMessageDAO().delete(message.getIdValue());
+            BP2DAOs.getBackplaneMessageDAO().delete(message.getIdValue());
         }
 
-        TokenDAO tokenDAO = daoFactory.getTokenDao();
+        TokenDAO tokenDAO = BP2DAOs.getTokenDao();
         tokenDAO.delete(tokensAndChannel.bearerToken);
         tokenDAO.delete(tokensAndChannel.refreshToken);
 
@@ -1174,7 +1171,7 @@ public class Backplane2ControllerTest {
             assertTrue(expected.getMessage().contains("Invalid bus - channel binding"));
         }
 
-        TokenDAO tokenDAO = daoFactory.getTokenDao();
+        TokenDAO tokenDAO = BP2DAOs.getTokenDao();
         tokenDAO.delete(tokensAndChannelAndChannel.bearerToken);
         tokenDAO.delete(tokensAndChannelAndChannel.refreshToken);
     }
@@ -1216,7 +1213,7 @@ public class Backplane2ControllerTest {
         logger.info(response.getContentAsString());
         assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
 
-        TokenDAO tokenDAO = daoFactory.getTokenDao();
+        TokenDAO tokenDAO = BP2DAOs.getTokenDao();
         tokenDAO.delete(tokensAndChannel.bearerToken);
         tokenDAO.delete(tokensAndChannel.refreshToken);
 
@@ -1279,7 +1276,7 @@ public class Backplane2ControllerTest {
 
         assertTrue("Limit should have been reached, but " + numberOfPostedMessages + "<=" + bpConfig.getDefaultMaxMessageLimit(), success);
 
-        TokenDAO tokenDAO = daoFactory.getTokenDao();
+        TokenDAO tokenDAO = BP2DAOs.getTokenDao();
         tokenDAO.delete(tokensAndChannel.bearerToken);
         tokenDAO.delete(tokensAndChannel.refreshToken);
 
@@ -1306,7 +1303,7 @@ public class Backplane2ControllerTest {
         String  token = privTokenRequest(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, ""));
 
         // Revoke token based on one code
-        daoFactory.getTokenDao().revokeTokenByGrant(grant1.getIdValue());
+        BP2DAOs.getTokenDao().revokeTokenByGrant(grant1.getIdValue());
 
         try {
             // Now the token should fail
@@ -1320,7 +1317,7 @@ public class Backplane2ControllerTest {
             assertTrue(HttpServletResponse.SC_FORBIDDEN == response.getStatus());
             assertTrue(response.getContentAsString().contains("invalid token"));
         } finally {
-            daoFactory.getTokenDao().delete(token);
+            BP2DAOs.getTokenDao().delete(token);
         }
     }
 
@@ -1344,7 +1341,7 @@ public class Backplane2ControllerTest {
         String  token = privTokenRequest(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, ""));
 
         logger.info("revoken grants by bus: mybus.com");
-        daoFactory.getBusDao().delete("mybus.com");
+        BP2DAOs.getBusDao().delete("mybus.com");
 
         try {
             // Now the token should fail
@@ -1358,7 +1355,7 @@ public class Backplane2ControllerTest {
             assertTrue(HttpServletResponse.SC_FORBIDDEN == response.getStatus());
             assertTrue(response.getContentAsString().contains("invalid token"));
         } finally {
-            daoFactory.getTokenDao().delete(token);
+            BP2DAOs.getTokenDao().delete(token);
         }
 
     }
@@ -1375,11 +1372,11 @@ public class Backplane2ControllerTest {
         BusConfig2 bus2 = new BusConfig2(RandomUtils.randomString(30), user.getIdValue(), "100", "50000");
 
         try {
-            daoFactory.getBusOwnerDAO().persist(user);
+            BP2DAOs.getBusOwnerDAO().persist(user);
 
             // create a few buses
-            daoFactory.getBusDao().persist(bus1);
-            daoFactory.getBusDao().persist(bus2);
+            BP2DAOs.getBusDao().persist(bus1);
+            BP2DAOs.getBusDao().persist(bus2);
 
             refreshRequestAndResponse();
 
@@ -1487,17 +1484,17 @@ public class Backplane2ControllerTest {
             String tokenId = (String) returnedBody.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME);
             assertNotNull(tokenId);
 
-            Grant grant = daoFactory.getGrantDao().get(code);
-            Token token = daoFactory.getTokenDao().get(tokenId);
+            Grant grant = BP2DAOs.getGrantDao().get(code);
+            Token token = BP2DAOs.getTokenDao().get(tokenId);
 
             assertTrue(grant.get(Grant.GrantField.ISSUED_TO_CLIENT_ID).equals(token.get(Token.TokenField.ISSUED_TO_CLIENT_ID)));
             assertTrue(grant.get(Grant.GrantField.ISSUED_BY_USER_ID).equals(user.getIdValue()));
 
 
         } finally {
-            daoFactory.getBusOwnerDAO().delete(user.getIdValue());
-            daoFactory.getBusDao().delete(bus1.getIdValue());
-            daoFactory.getBusDao().delete(bus2.getIdValue());
+            BP2DAOs.getBusOwnerDAO().delete(user.getIdValue());
+            BP2DAOs.getBusDao().delete(bus1.getIdValue());
+            BP2DAOs.getBusDao().delete(bus2.getIdValue());
         }
 
     }
@@ -1577,7 +1574,7 @@ public class Backplane2ControllerTest {
             prev = (String)m.get("messageURL");
         }
 
-        TokenDAO tokenDAO = daoFactory.getTokenDao();
+        TokenDAO tokenDAO = BP2DAOs.getTokenDao();
         tokenDAO.delete(tokensAndChannel.bearerToken);
         tokenDAO.delete(tokensAndChannel.refreshToken);
 
@@ -1586,7 +1583,7 @@ public class Backplane2ControllerTest {
     @Test
     public void testAnonymousRefreshToken() throws Exception {
 
-        Map<String, Object> tokenResponse = new AnonymousTokenRequest("bla", "testbus", null, null, daoFactory, request, null).tokenResponse();
+        Map<String, Object> tokenResponse = new AnonymousTokenRequest("bla", "testbus", null, null, request, null).tokenResponse();
         String refreshToken = tokenResponse.get(OAUTH2_REFRESH_TOKEN_PARAM_NAME).toString();
         Scope scope1 = new Scope(tokenResponse.get(OAUTH2_SCOPE_PARAM_NAME).toString());
 
@@ -1613,7 +1610,7 @@ public class Backplane2ControllerTest {
         Scope scope1 = new Scope(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, "testbus"));
         setOAuthBasicAuthentication(request, testClient.getClientId(), testClient.getClientSecret());
         Map<String, Object> tokenResponse = new AuthenticatedTokenRequest(OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS, testClient,
-                null, null, null, scope1.toString(), daoFactory, request, request.getHeader("Authorization")).tokenResponse();
+                null, null, null, scope1.toString(), request, request.getHeader("Authorization")).tokenResponse();
         String accessToken = tokenResponse.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME).toString();
         String refreshToken = tokenResponse.get(OAUTH2_REFRESH_TOKEN_PARAM_NAME).toString();
 
@@ -1656,7 +1653,7 @@ public class Backplane2ControllerTest {
 
         Thread.sleep(1000);
 
-        BackplaneMessage lastMessage = daoFactory.getBackplaneMessageDAO().getLatestMessage();
+        BackplaneMessage lastMessage = BP2DAOs.getBackplaneMessageDAO().getLatestMessage();
 
         assertTrue("messages not equal", lastMessage.getIdValue().equals(message.getIdValue()));
     }
@@ -1674,7 +1671,7 @@ public class Backplane2ControllerTest {
 
     private TokensAndChannel anonTokenRequest(String tokenBus) throws TokenException {
         refreshRequestAndResponse();
-        TokenRequest req = new AnonymousTokenRequest("bla", tokenBus, null, null, daoFactory, request, null);
+        TokenRequest req = new AnonymousTokenRequest("bla", tokenBus, null, null, request, null);
         Map<String, Object> tokenResponse = req.tokenResponse();
         Scope scope = new Scope(tokenResponse.get(OAUTH2_SCOPE_PARAM_NAME).toString());
 
@@ -1691,7 +1688,7 @@ public class Backplane2ControllerTest {
         Scope scope = new Scope(scopeString);
         setOAuthBasicAuthentication(request, testClient.getClientId(), testClient.getClientSecret());
         TokenRequest req = new AuthenticatedTokenRequest(OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS, testClient,
-                null, null, null, scope.toString(), daoFactory, request, request.getHeader("Authorization"));
+                null, null, null, scope.toString(), request, request.getHeader("Authorization"));
         return req.tokenResponse().get(OAUTH2_ACCESS_TOKEN_PARAM_NAME).toString();
     }
 

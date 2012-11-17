@@ -22,8 +22,9 @@ import com.janrain.backplane.common.HmacHashUtils;
 import com.janrain.backplane.config.BackplaneConfig;
 import com.janrain.backplane.config.BackplaneSystemProps;
 import com.janrain.backplane.config.BpServerConfig;
-import com.janrain.backplane.server.dao.DaoFactory;
-import com.janrain.backplane.server.dao.redis.RedisBackplaneMessageDAO;
+import com.janrain.backplane.dao.ServerDAOs;
+import com.janrain.backplane.server.redisdao.BP1DAOs;
+import com.janrain.backplane.server.redisdao.BP1MessageDao;
 import com.janrain.backplane2.server.config.User;
 import com.janrain.cache.CachedL1;
 import com.janrain.commons.supersimpledb.SimpleDBException;
@@ -72,13 +73,13 @@ public class Backplane1Controller {
     }
 
     @RequestMapping(value = "/admin", method = { RequestMethod.GET, RequestMethod.HEAD })
-    public ModelAndView admin(HttpServletRequest request, HttpServletResponse response) {
+    public ModelAndView admin(HttpServletRequest request, HttpServletResponse response) throws BackplaneServerException {
 
         ServletUtil.checkSecure(request);
         boolean adminUserExists = true;
 
         // check to see if an admin record already exists, if it does, do not allow an update
-        User admin = DaoFactory.getAdminDAO().get(BackplaneSystemProps.ADMIN_USER);
+        User admin = ServerDAOs.getAdminDAO().get(BackplaneSystemProps.ADMIN_USER);
         if (admin == null) {
             adminUserExists = false;
         }
@@ -87,7 +88,7 @@ public class Backplane1Controller {
             response.setContentLength(0);
         }
 
-        BpServerConfig bpServerConfig = DaoFactory.getConfigDAO().get(BackplaneSystemProps.BPSERVER_CONFIG_KEY);
+        BpServerConfig bpServerConfig = ServerDAOs.getConfigDAO().get(BackplaneSystemProps.BPSERVER_CONFIG_KEY);
         if (bpServerConfig == null) {
             bpServerConfig = new BpServerConfig();
         }
@@ -104,12 +105,12 @@ public class Backplane1Controller {
     }
 
     @RequestMapping(value = "/adminupdate", method = { RequestMethod.POST })
-    public ModelAndView updateConfiguration(HttpServletRequest request, HttpServletResponse response) {
+    public ModelAndView updateConfiguration(HttpServletRequest request, HttpServletResponse response) throws BackplaneServerException {
 
         ServletUtil.checkSecure(request);
 
         BpServerConfig bpServerConfig =
-                DaoFactory.getConfigDAO().get(BackplaneSystemProps.BPSERVER_CONFIG_KEY);
+                ServerDAOs.getConfigDAO().get(BackplaneSystemProps.BPSERVER_CONFIG_KEY);
         if (bpServerConfig == null) {
             bpServerConfig = new BpServerConfig();
         }
@@ -121,7 +122,7 @@ public class Backplane1Controller {
 
         try {
             bpServerConfig.validate();
-            DaoFactory.getConfigDAO().persist(bpServerConfig);
+            ServerDAOs.getConfigDAO().persist(bpServerConfig);
             // add it to the L1 cache
             CachedL1.getInstance().setObject(BackplaneSystemProps.BPSERVER_CONFIG_KEY, -1, bpServerConfig);
             logger.info(bpServerConfig.toString());
@@ -146,7 +147,7 @@ public class Backplane1Controller {
 
             ModelAndView view = new ModelAndView("adminadd");
             // be sure no record exists
-            User admin = DaoFactory.getAdminDAO().get(BackplaneSystemProps.ADMIN_USER);
+            User admin = ServerDAOs.getAdminDAO().get(BackplaneSystemProps.ADMIN_USER);
             if (admin == null) {
                 String name = request.getParameter("username");
                 if (!name.equals(BackplaneSystemProps.ADMIN_USER)) {
@@ -158,7 +159,7 @@ public class Backplane1Controller {
                 password = HmacHashUtils.hmacHash(password);
                 User user = new User();
                 user.setUserNamePassword(name, password);
-                DaoFactory.getAdminDAO().persist(user);
+                ServerDAOs.getAdminDAO().persist(user);
                 view.addObject("message", "Admin user " + name + " updated");
             } else {
                 view.addObject("message", "Admin user already exists.  You must delete the entry from the database before submitting a new admin user.");
@@ -193,7 +194,7 @@ public class Backplane1Controller {
 
             checkAuth(basicAuth, bus, BusConfig1.BUS_PERMISSION.GETALL);
 
-            List<BackplaneMessage> messages = DaoFactory.getBackplaneMessageDAO().getMessagesByBus(bus, since, sticky);
+            List<BackplaneMessage> messages = BP1DAOs.getMessageDao().getMessagesByBus(bus, since, sticky);
 
             List<HashMap<String,Object>> frames = new ArrayList<HashMap<String, Object>>();
             for (BackplaneMessage message : messages) {
@@ -248,7 +249,7 @@ public class Backplane1Controller {
 
         try {
 
-            RedisBackplaneMessageDAO backplaneMessageDAO = DaoFactory.getBackplaneMessageDAO();
+            BP1MessageDao backplaneMessageDAO = BP1DAOs.getMessageDao();
 
             //Block post if the caller has exceeded the message post limit
             if (backplaneMessageDAO.getMessageCount(bus, channel) >= bpConfig.getDefaultMaxMessageLimit()) {
@@ -257,7 +258,7 @@ public class Backplane1Controller {
                 throw new BackplaneServerException("Message limit exceeded for this channel");
             }
 
-            BusConfig1 busConfig = DaoFactory.getBusDAO().get(bus);
+            BusConfig1 busConfig = BP1DAOs.getBusDao().get(bus);
 
             for(Map<String,Object> messageData : messages) {
                 BackplaneMessage message = new BackplaneMessage(bus, channel,
@@ -357,7 +358,7 @@ public class Backplane1Controller {
 
     private static final Random random = new SecureRandom();
 
-    private void checkAuth(String basicAuth, String bus, BusConfig1.BUS_PERMISSION permission) throws AuthException {
+    private void checkAuth(String basicAuth, String bus, BusConfig1.BUS_PERMISSION permission) throws AuthException, BackplaneServerException {
         // authN
         String userPass = null;
         if ( basicAuth == null || ! basicAuth.startsWith("Basic ") || basicAuth.length() < 7) {
@@ -381,7 +382,7 @@ public class Backplane1Controller {
         User userEntry;
 
         //userEntry = superSimpleDb.retrieve(bpConfig.getTableName(Backplane1Config.SimpleDBTables.BP1_USERS), User.class, user);
-        userEntry = DaoFactory.getUserDAO().get(user);
+        userEntry = BP1DAOs.getUserDao().get(user);
 
         if (userEntry == null) {
             authError("User not found: " + user);
@@ -393,7 +394,7 @@ public class Backplane1Controller {
         BusConfig1 busConfig;
 
         //busConfig = superSimpleDb.retrieve(bpConfig.getTableName(BP1_BUS_CONFIG), BusConfig1.class, bus);
-        busConfig = DaoFactory.getBusDAO().get(bus);
+        busConfig = BP1DAOs.getBusDao().get(bus);
 
         if (busConfig == null) {
             authError("Bus configuration not found for " + bus);
@@ -423,7 +424,7 @@ public class Backplane1Controller {
         final TimerContext context = getChannelMessagesTime.time();
 
         try {
-            List<BackplaneMessage> messages = DaoFactory.getBackplaneMessageDAO().getMessagesByChannel(bus, channel, since, sticky);
+            List<BackplaneMessage> messages = BP1DAOs.getMessageDao().getMessagesByChannel(bus, channel, since, sticky);
             List<Map<String,Object>> frames = new ArrayList<Map<String, Object>>();
 
             for (BackplaneMessage message : messages) {
