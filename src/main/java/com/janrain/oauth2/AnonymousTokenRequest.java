@@ -2,7 +2,7 @@ package com.janrain.oauth2;
 
 import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane2.server.*;
-import com.janrain.backplane2.server.config.BusConfig2;
+import com.janrain.backplane2.server.BusConfig2;
 import com.janrain.backplane2.server.dao.BP2DAOs;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import org.apache.commons.lang.StringUtils;

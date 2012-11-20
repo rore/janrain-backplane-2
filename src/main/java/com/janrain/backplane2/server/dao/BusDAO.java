@@ -18,7 +18,7 @@ package com.janrain.backplane2.server.dao;
 
 import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.dao.DAO;
-import com.janrain.backplane2.server.config.BusConfig2;
+import com.janrain.backplane2.server.BusConfig2;
 import com.janrain.oauth2.TokenException;
 
 import java.util.List;

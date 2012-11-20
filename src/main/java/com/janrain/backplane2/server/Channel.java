@@ -1,8 +1,7 @@
 package com.janrain.backplane2.server;
 
-import com.janrain.backplane.common.RandomUtils;
 import com.janrain.backplane.common.ExternalizableCore;
-import com.janrain.backplane2.server.config.BusConfig2;
+import com.janrain.backplane.common.RandomUtils;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.MessageField;
 

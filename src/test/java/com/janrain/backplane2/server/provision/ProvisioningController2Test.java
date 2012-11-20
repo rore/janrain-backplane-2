@@ -26,7 +26,7 @@ import com.janrain.backplane.dao.ServerDAOs;
 import com.janrain.backplane.provision.ProvisioningController2;
 import com.janrain.backplane2.server.BackplaneMessage;
 import com.janrain.backplane2.server.Scope;
-import com.janrain.backplane2.server.config.Client;
+import com.janrain.backplane2.server.Client;
 import com.janrain.backplane2.server.dao.BP2DAOs;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.oauth2.TokenException;

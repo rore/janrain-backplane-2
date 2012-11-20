@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.janrain.backplane2.server.config;
+package com.janrain.backplane2.server;
 
 import com.janrain.backplane.common.User;
 import com.janrain.commons.supersimpledb.SimpleDBException;
@@ -101,4 +101,7 @@ public class Client extends User {
             if (isRequired()) validateNotBlank(name(), value);
         }
     }
+
+    private static final long serialVersionUID = 8537164289881802596L;
+
 }

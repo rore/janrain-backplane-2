@@ -20,7 +20,7 @@ import com.janrain.backplane.common.DateTimeUtils;
 import com.janrain.backplane.common.ExternalizableCore;
 import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.servlet.InvalidRequestException;
-import com.janrain.backplane2.server.config.Client;
+import com.janrain.backplane2.server.Client;
 import com.janrain.backplane2.server.dao.ClientDAO;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.MessageField;
