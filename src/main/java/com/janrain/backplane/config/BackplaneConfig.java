@@ -20,10 +20,10 @@ import com.janrain.backplane.common.AuthException;
 import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.common.HmacHashUtils;
 import com.janrain.backplane.dao.ServerDAOs;
-import com.janrain.backplane.server.MessageProcessor;
-import com.janrain.backplane2.server.V2MessageProcessor;
+import com.janrain.backplane.server1.MessageProcessor;
+import com.janrain.backplane.server2.V2MessageProcessor;
 import com.janrain.backplane.common.User;
-import com.janrain.cache.CachedL1;
+import com.janrain.backplane.cache.CachedL1;
 import com.janrain.commons.util.AwsUtility;
 import com.janrain.commons.util.InitSystemProps;
 import com.janrain.commons.util.Pair;
@@ -207,7 +207,7 @@ public class BackplaneConfig {
         ping.scheduleWithFixedDelay(new Runnable() {
             @Override
             public void run() {
-                com.janrain.redis.Redis.getInstance().ping();
+                com.janrain.backplane.redis.Redis.getInstance().ping();
             }
         }, 30, 10, TimeUnit.SECONDS);
         return new Pair<String, ExecutorService>(label, ping);
@@ -238,7 +238,7 @@ public class BackplaneConfig {
             LeaderSelector leaderSelector = new LeaderSelector(client, leaderPath, listener);
             leaderSelector.start();
             // todo: review, the following was being set only for bp2 message processor
-            com.janrain.redis.Redis.getInstance().setActiveRedisInstance(client);
+            com.janrain.backplane.redis.Redis.getInstance().setActiveRedisInstance(client);
         } catch (Exception e) {
             logger.error(e);
         }

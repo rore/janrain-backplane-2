@@ -55,8 +55,8 @@
     <bean id="superSimpleDB" class="com.janrain.commons.supersimpledb.SuperSimpleDBImpl" />
     -->
 
-    <bean id="bpIdFilter" class="com.janrain.servlet.InstanceIdFilter" />
-    <bean id="jsonpFilter" class="com.janrain.servlet.JsonpCallbackFilter" />
+    <bean id="bpIdFilter" class="com.janrain.backplane.servlet.InstanceIdFilter" />
+    <bean id="jsonpFilter" class="com.janrain.backplane.servlet.JsonpCallbackFilter" />
 
     <bean id="bpConfig" class="com.janrain.backplane.config.BackplaneConfig"/>
     <bean id="bpConfig2" class="com.janrain.backplane.config.BackplaneConfig"/>

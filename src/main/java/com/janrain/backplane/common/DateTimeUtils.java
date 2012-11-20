@@ -1,6 +1,6 @@
 package com.janrain.backplane.common;
 
-import com.janrain.servlet.InvalidRequestException;
+import com.janrain.backplane.servlet.InvalidRequestException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 

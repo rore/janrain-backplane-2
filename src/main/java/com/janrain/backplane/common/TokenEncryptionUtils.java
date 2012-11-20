@@ -1,6 +1,6 @@
 package com.janrain.backplane.common;
 
-import com.janrain.backplane2.server.Token;
+import com.janrain.backplane.server2.Token;
 import com.janrain.commons.util.EncryptUtil;
 import com.janrain.commons.util.UtilsException;
 import org.apache.log4j.Logger;
