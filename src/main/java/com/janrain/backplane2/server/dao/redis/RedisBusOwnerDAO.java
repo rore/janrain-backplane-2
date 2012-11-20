@@ -1,7 +1,7 @@
 package com.janrain.backplane2.server.dao.redis;
 
 import com.janrain.backplane.common.BackplaneServerException;
-import com.janrain.backplane.common.User;
+import com.janrain.backplane2.server.BusOwner;
 import com.janrain.backplane2.server.dao.BusDAO;
 import com.janrain.backplane2.server.dao.BusOwnerDAO;
 import com.janrain.redis.Redis;
@@ -28,22 +28,22 @@ public class RedisBusOwnerDAO implements BusOwnerDAO {
     }
 
     @Override
-    public User get(String id) throws BackplaneServerException {
+    public BusOwner get(String id) throws BackplaneServerException {
         byte[] bytes = Redis.getInstance().get(getKey(id));
         if (bytes != null) {
-            return (User) SerializationUtils.deserialize(bytes);
+            return (BusOwner) SerializationUtils.deserialize(bytes);
         } else {
             return null;
         }
     }
 
     @Override
-    public List<User> getAll() throws BackplaneServerException {
-        List<User> users = new ArrayList<User>();
+    public List<BusOwner> getAll() throws BackplaneServerException {
+        List<BusOwner> users = new ArrayList<BusOwner>();
         List<byte[]> bytesList = Redis.getInstance().lrange(getKey("list"), 0, -1);
         for (byte [] bytes : bytesList) {
             if (bytes != null) {
-                users.add((User) SerializationUtils.deserialize(bytes));
+                users.add((BusOwner) SerializationUtils.deserialize(bytes));
             }
         }
         return users;
@@ -51,7 +51,7 @@ public class RedisBusOwnerDAO implements BusOwnerDAO {
     }
 
     @Override
-    public void persist(User obj) throws BackplaneServerException {
+    public void persist(BusOwner obj) throws BackplaneServerException {
         Jedis jedis = null;
 
         try {

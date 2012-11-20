@@ -206,7 +206,7 @@ public class Backplane2ControllerTest {
 
 
     private Client createTestBusAndClient() throws BackplaneServerException {
-        BP2DAOs.getBusOwnerDAO().persist(new User("testBusOwner", "busOwnerSecret"));
+        BP2DAOs.getBusOwnerDAO().persist(new BusOwner("testBusOwner", "busOwnerSecret"));
         try {
             BP2DAOs.getBusDao().persist(new BusConfig2("testbus", "testBusOwner", "600", "28800"));
 
@@ -1364,15 +1364,15 @@ public class Backplane2ControllerTest {
     @Test
     public void testAuthenticate() throws Exception {
 
-        User user = new User();
-        user.put(User.Field.USER.getFieldName(), RandomUtils.randomString(20));
-        user.put(User.Field.PWDHASH.getFieldName(), HmacHashUtils.hmacHash("foo"));
+        BusOwner busOwner = new BusOwner();
+        busOwner.put(User.Field.USER.getFieldName(), RandomUtils.randomString(20));
+        busOwner.put(User.Field.PWDHASH.getFieldName(), HmacHashUtils.hmacHash("foo"));
 
-        BusConfig2 bus1 = new BusConfig2(RandomUtils.randomString(30), user.getIdValue(), "100", "50000");
-        BusConfig2 bus2 = new BusConfig2(RandomUtils.randomString(30), user.getIdValue(), "100", "50000");
+        BusConfig2 bus1 = new BusConfig2(RandomUtils.randomString(30), busOwner.getIdValue(), "100", "50000");
+        BusConfig2 bus2 = new BusConfig2(RandomUtils.randomString(30), busOwner.getIdValue(), "100", "50000");
 
         try {
-            BP2DAOs.getBusOwnerDAO().persist(user);
+            BP2DAOs.getBusOwnerDAO().persist(busOwner);
 
             // create a few buses
             BP2DAOs.getBusDao().persist(bus1);
@@ -1409,7 +1409,7 @@ public class Backplane2ControllerTest {
             refreshRequestAndResponse();
 
             request.setRequestURI("/v2/authenticate");
-            request.addParameter("busOwner", user.getIdValue());
+            request.addParameter("busOwner", busOwner.getIdValue());
             request.addParameter("password", "foo");
             request.setMethod("POST");
             mv = handlerAdapter.handle(request, response, controller);
@@ -1488,11 +1488,11 @@ public class Backplane2ControllerTest {
             Token token = BP2DAOs.getTokenDao().get(tokenId);
 
             assertTrue(grant.get(Grant.GrantField.ISSUED_TO_CLIENT_ID).equals(token.get(Token.TokenField.ISSUED_TO_CLIENT_ID)));
-            assertTrue(grant.get(Grant.GrantField.ISSUED_BY_USER_ID).equals(user.getIdValue()));
+            assertTrue(grant.get(Grant.GrantField.ISSUED_BY_USER_ID).equals(busOwner.getIdValue()));
 
 
         } finally {
-            BP2DAOs.getBusOwnerDAO().delete(user.getIdValue());
+            BP2DAOs.getBusOwnerDAO().delete(busOwner.getIdValue());
             BP2DAOs.getBusDao().delete(bus1.getIdValue());
             BP2DAOs.getBusDao().delete(bus2.getIdValue());
         }

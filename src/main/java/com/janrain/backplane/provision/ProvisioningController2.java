@@ -109,9 +109,9 @@ public class ProvisioningController2 {
 
     @RequestMapping(value = "/user/update", method = RequestMethod.POST)
     @ResponseBody
-    public Map<String, String> userUpdate(HttpServletRequest request, @RequestBody UserUpdateRequest updateRequest) throws AuthException {
+    public Map<String, String> userUpdate(HttpServletRequest request, @RequestBody BusOwnerUpdateRequest updateRequest) throws AuthException {
         ServletUtil.checkSecure(request);
-        return doUpdate(User.class, updateRequest);
+        return doUpdate(BusOwner.class, updateRequest);
     }
 
     @RequestMapping(value = "/client/update", method = RequestMethod.POST)
@@ -341,6 +341,6 @@ public class ProvisioningController2 {
 
     // type helper classes for JSON mapper
     private static class BusUpdateRequest extends UpdateRequest<BusConfig2> {}
-    private static class UserUpdateRequest extends UpdateRequest<User> {}
+    private static class BusOwnerUpdateRequest extends UpdateRequest<BusOwner> {}
     private static class ClientUpdateRequest extends UpdateRequest<Client> {}
 }
