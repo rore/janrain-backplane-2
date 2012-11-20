@@ -1,8 +1,8 @@
 package com.janrain.backplane.dao.redis;
 
 import com.janrain.backplane.common.BackplaneServerException;
-import com.janrain.backplane.dao.AdminDAO;
-import com.janrain.backplane.common.User;
+import com.janrain.backplane.config.Admin;
+import com.janrain.backplane.dao.DAO;
 import com.janrain.redis.Redis;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.SerializationUtils;
@@ -13,37 +13,37 @@ import java.util.List;
 /**
  * @author Tom Raney
  */
-public class RedisAdminDAO implements AdminDAO {
+public class RedisAdminDAO implements DAO<Admin> {
 
-    public static byte[] getAdminUserKey(String userId) {
+    public static byte[] getAdminAdminKey(String userId) {
         return ("v2_admin_" + userId).getBytes();
     }
 
     @Override
-    public void persist(User user) throws BackplaneServerException {
-        byte[] key = getAdminUserKey(user.getIdValue());
+    public void persist(Admin user) throws BackplaneServerException {
+        byte[] key = getAdminAdminKey(user.getIdValue());
         logger.info("writing key to redis: " + new String(key));
-        Redis.getInstance().set(getAdminUserKey(user.getIdValue()), SerializationUtils.serialize(user));
+        Redis.getInstance().set(getAdminAdminKey(user.getIdValue()), SerializationUtils.serialize(user));
     }
 
     @Override
     public void delete(String id) throws BackplaneServerException {
-        byte[] key = getAdminUserKey(id);
+        byte[] key = getAdminAdminKey(id);
         Redis.getInstance().del(key);
     }
 
     @Override
-    public User get(String key) {
-        byte[] bytes = Redis.getInstance().get(getAdminUserKey(key));
+    public Admin get(String key) {
+        byte[] bytes = Redis.getInstance().get(getAdminAdminKey(key));
         if (bytes != null) {
-            return (User) SerializationUtils.deserialize(bytes);
+            return (Admin) SerializationUtils.deserialize(bytes);
         } else {
             return null;
         }
     }
 
     @Override
-    public List<User> getAll() throws BackplaneServerException {
+    public List<Admin> getAll() throws BackplaneServerException {
         throw new NotImplementedException();
     }
 

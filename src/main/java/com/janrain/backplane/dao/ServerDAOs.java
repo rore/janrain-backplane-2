@@ -16,6 +16,7 @@
 
 package com.janrain.backplane.dao;
 
+import com.janrain.backplane.config.Admin;
 import com.janrain.backplane.config.BpServerConfig;
 import com.janrain.backplane.dao.redis.RedisAdminDAO;
 import com.janrain.backplane.dao.redis.RedisConfigDAO;
@@ -32,7 +33,7 @@ public class ServerDAOs {
         return configDao;
     }
 
-    public static AdminDAO getAdminDAO() {
+    public static DAO<Admin> getAdminDAO() {
         return adminDao;
     }
 
@@ -41,5 +42,5 @@ public class ServerDAOs {
     private ServerDAOs() {}
 
     private static final DAO<BpServerConfig> configDao = new RedisConfigDAO();
-    private static final AdminDAO adminDao = new RedisAdminDAO();
+    private static final DAO<Admin> adminDao = new RedisAdminDAO();
 }

@@ -19,13 +19,14 @@ package com.janrain.backplane.server;
 import com.janrain.backplane.common.AuthException;
 import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.common.HmacHashUtils;
+import com.janrain.backplane.common.User;
+import com.janrain.backplane.config.Admin;
 import com.janrain.backplane.config.BackplaneConfig;
 import com.janrain.backplane.config.BackplaneSystemProps;
 import com.janrain.backplane.config.BpServerConfig;
 import com.janrain.backplane.dao.ServerDAOs;
 import com.janrain.backplane.server.redisdao.BP1DAOs;
 import com.janrain.backplane.server.redisdao.BP1MessageDao;
-import com.janrain.backplane.common.User;
 import com.janrain.cache.CachedL1;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.servlet.ServletUtil;
@@ -147,7 +148,7 @@ public class Backplane1Controller {
 
             ModelAndView view = new ModelAndView("adminadd");
             // be sure no record exists
-            User admin = ServerDAOs.getAdminDAO().get(BackplaneSystemProps.ADMIN_USER);
+            Admin admin = ServerDAOs.getAdminDAO().get(BackplaneSystemProps.ADMIN_USER);
             if (admin == null) {
                 String name = request.getParameter("username");
                 if (!name.equals(BackplaneSystemProps.ADMIN_USER)) {
@@ -157,9 +158,9 @@ public class Backplane1Controller {
                 String password = request.getParameter("password");
                 // hash password
                 password = HmacHashUtils.hmacHash(password);
-                User user = new User();
-                user.setUserNamePassword(name, password);
-                ServerDAOs.getAdminDAO().persist(user);
+                Admin newAdmin = new Admin();
+                newAdmin.setUserNamePassword(name, password);
+                ServerDAOs.getAdminDAO().persist(newAdmin);
                 view.addObject("message", "Admin user " + name + " updated");
             } else {
                 view.addObject("message", "Admin user already exists.  You must delete the entry from the database before submitting a new admin user.");

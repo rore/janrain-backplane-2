@@ -17,19 +17,18 @@
 package com.janrain.backplane2.server.config;
 
 import com.janrain.backplane.common.User;
-import com.janrain.servlet.InvalidRequestException;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import com.janrain.oauth2.OAuth2;
 import com.janrain.oauth2.ValidationException;
+import com.janrain.servlet.InvalidRequestException;
 
-import java.io.Externalizable;
 import java.util.*;
 
 /**
  * @author Tom Raney
  */
-public class Client extends User implements Externalizable {
+public class Client extends User {
 
     /**
      * Empty default constructor for AWS to use
