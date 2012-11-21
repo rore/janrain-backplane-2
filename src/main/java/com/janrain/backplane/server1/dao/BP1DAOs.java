@@ -1,10 +1,12 @@
-package com.janrain.backplane.server1.redisdao;
+package com.janrain.backplane.server1.dao;
 
 import com.janrain.backplane.dao.DAO;
-import com.janrain.backplane.dao.redis.RedisUserDAO;
+import com.janrain.backplane.server1.dao.redis.RedisUserDAO;
 import com.janrain.backplane.server1.BackplaneMessage;
 import com.janrain.backplane.server1.BusConfig1;
 import com.janrain.backplane.common.User;
+import com.janrain.backplane.server1.dao.redis.RedisBackplaneMessageDAO;
+import com.janrain.backplane.server1.dao.redis.RedisBusConfig1DAO;
 
 /**
  * @author Johnny Bufu

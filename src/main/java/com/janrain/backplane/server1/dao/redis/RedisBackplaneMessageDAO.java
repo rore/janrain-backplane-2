@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-package com.janrain.backplane.server1.redisdao;
+package com.janrain.backplane.server1.dao.redis;
 
 import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.common.BpSerialUtils;
 import com.janrain.backplane.redis.Redis;
 import com.janrain.backplane.server1.BackplaneMessage;
+import com.janrain.backplane.server1.dao.BP1MessageDao;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Histogram;

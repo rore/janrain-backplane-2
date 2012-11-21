@@ -1,4 +1,4 @@
-package com.janrain.backplane.server1.redisdao;
+package com.janrain.backplane.server1.dao;
 
 import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.dao.DAO;

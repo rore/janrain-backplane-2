@@ -1,10 +1,10 @@
-package com.janrain.backplane.server1.redisdao;
+package com.janrain.backplane.server1.dao.redis;
 
 import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.common.BpSerialUtils;
+import com.janrain.backplane.common.User;
 import com.janrain.backplane.dao.DAO;
 import com.janrain.backplane.redis.Redis;
-import com.janrain.backplane.server1.BusConfig1;
 import org.apache.log4j.Logger;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Response;
@@ -16,19 +16,17 @@ import java.util.List;
 /**
  * @author Tom Raney
  */
-public class RedisBusConfig1DAO implements DAO<BusConfig1> {
+public class RedisUserDAO implements DAO<User> {
 
-    public static byte[] getKey(String busId) {
-        return ("v1_bus_" + busId).getBytes();
+    public static byte[] getKey(String userId) {
+        return ("v1_user_" + userId).getBytes();
     }
 
-    private static final Logger logger = Logger.getLogger(RedisBusConfig1DAO.class);
-
     @Override
-    public void persist(BusConfig1 busConfig1) throws BackplaneServerException {
-        logger.info("writing key to redis: " + new String(getKey(busConfig1.getIdValue())));
-        byte[] bytes = BpSerialUtils.serialize(busConfig1);
-        Redis.getInstance().set(getKey(busConfig1.getIdValue()), bytes);
+    public void persist(User user) {
+        logger.info("writing key to redis: " + new String(getKey(user.getIdValue())));
+        byte[] bytes = BpSerialUtils.serialize(user);
+        Redis.getInstance().set(getKey(user.getIdValue()), bytes);
         Redis.getInstance().rpush(getKey("list"), bytes);
     }
 
@@ -46,13 +44,13 @@ public class RedisBusConfig1DAO implements DAO<BusConfig1> {
                 t.exec();
 
                 if (del1.get() == 0) {
-                    logger.warn("could not delete v1 bus " + new String(getKey(id)) + " from list " + new String(getKey("list")));
+                    logger.warn("could not delete user " + new String(getKey(id)) + " from list " + new String(getKey("list")));
                 }
                 if (del2.get() == 0) {
-                    logger.warn("could not delete v1 bus " + new String(getKey(id)));
+                    logger.warn("could not delete user key " + new String(getKey(id)));
                 }
             }
-            logger.info("removed v1 bus " + id);
+            logger.info("removed user " + id);
 
         } finally {
             Redis.getInstance().releaseToPool(jedis);
@@ -60,25 +58,26 @@ public class RedisBusConfig1DAO implements DAO<BusConfig1> {
     }
 
     @Override
-    public BusConfig1 get(String bus) {
-        byte[] bytes = Redis.getInstance().get(getKey(bus));
+    public User get(String key) {
+        byte[] bytes = Redis.getInstance().get(getKey(key));
         if (bytes != null) {
-            return (BusConfig1) BpSerialUtils.deserialize(bytes);
+            return (User) BpSerialUtils.deserialize(bytes);
         } else {
             return null;
         }
     }
 
     @Override
-    public List<BusConfig1> getAll() throws BackplaneServerException {
-        List<BusConfig1> users = new ArrayList<BusConfig1>();
+    public List<User> getAll() throws BackplaneServerException {
+        List<User> users = new ArrayList<User>();
         List<byte[]> bytesList = Redis.getInstance().lrange(getKey("list"), 0, -1);
         for (byte[] bytes : bytesList) {
             if (bytes != null) {
-                users.add((BusConfig1) BpSerialUtils.deserialize(bytes));
+                users.add((User) BpSerialUtils.deserialize(bytes));
             }
         }
         return users;
     }
 
+    private static final Logger logger = Logger.getLogger(RedisUserDAO.class);
 }

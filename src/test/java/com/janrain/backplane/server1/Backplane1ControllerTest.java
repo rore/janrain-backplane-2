@@ -17,7 +17,7 @@
 package com.janrain.backplane.server1;
 
 import com.janrain.backplane.config.BackplaneConfig;
-import com.janrain.backplane.server1.redisdao.BP1DAOs;
+import com.janrain.backplane.server1.dao.BP1DAOs;
 import com.janrain.backplane.common.User;
 import junit.framework.TestCase;
 import org.apache.catalina.util.Base64;
