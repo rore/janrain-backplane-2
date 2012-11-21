@@ -102,6 +102,6 @@ public class Client extends User {
         }
     }
 
-    private static final long serialVersionUID = 8537164289881802596L;
+    private static final long serialVersionUID = -7216424765846672928L;
 
 }

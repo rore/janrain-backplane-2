@@ -94,4 +94,5 @@ public class Channel extends ExternalizableCore {
 
     private static final int CHANNEL_NAME_LENGTH = 32;
 
+    private static final long serialVersionUID = 4892206445886794360L;
 }
