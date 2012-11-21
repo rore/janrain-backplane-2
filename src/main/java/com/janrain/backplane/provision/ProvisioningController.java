@@ -18,10 +18,11 @@ package com.janrain.backplane.provision;
 
 import com.janrain.backplane.common.AuthException;
 import com.janrain.backplane.common.HmacHashUtils;
+import com.janrain.backplane.common.User;
 import com.janrain.backplane.config.BackplaneConfig;
+import com.janrain.backplane.server1.BP1User;
 import com.janrain.backplane.server1.BusConfig1;
 import com.janrain.backplane.server1.dao.BP1DAOs;
-import com.janrain.backplane.common.User;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import org.apache.log4j.Logger;
@@ -58,7 +59,7 @@ public class ProvisioningController {
     @ResponseBody
     public Map<String, Map<String, String>> userList(@RequestBody ListRequest listRequest) throws AuthException {
         bpConfig.checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
-        return doList(User.class, listRequest.getEntities());
+        return doList(BP1User.class, listRequest.getEntities());
     }
 
     @RequestMapping(value = "/bus/delete", method = RequestMethod.POST)
@@ -72,7 +73,7 @@ public class ProvisioningController {
     @ResponseBody
     public Map<String, String> userDelete(@RequestBody ListRequest deleteRequest) throws AuthException {
         bpConfig.checkAdminAuth(deleteRequest.getAdmin(), deleteRequest.getSecret());
-        return doDelete(User.class, deleteRequest.getEntities());
+        return doDelete(BP1User.class, deleteRequest.getEntities());
     }
 
     @RequestMapping(value = "/bus/update", method = RequestMethod.POST)
@@ -84,7 +85,7 @@ public class ProvisioningController {
     @RequestMapping(value = "/user/update", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, String> userUpdate(@RequestBody UserUpdateRequest updateRequest) throws AuthException, SimpleDBException {
-        return doUpdate(User.class, updateRequest);
+        return doUpdate(BP1User.class, updateRequest);
     }
 
     /**
@@ -220,5 +221,5 @@ public class ProvisioningController {
 
     // type helper classes for JSON mapper
     private static class BusUpdateRequest extends UpdateRequest<BusConfig1> {}
-    private static class UserUpdateRequest extends UpdateRequest<User> {}
+    private static class UserUpdateRequest extends UpdateRequest<BP1User> {}
 }

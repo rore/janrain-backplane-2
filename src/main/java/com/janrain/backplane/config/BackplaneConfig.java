@@ -16,14 +16,13 @@
 
 package com.janrain.backplane.config;
 
+import com.janrain.backplane.cache.CachedL1;
 import com.janrain.backplane.common.AuthException;
 import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.common.HmacHashUtils;
 import com.janrain.backplane.dao.ServerDAOs;
 import com.janrain.backplane.server1.MessageProcessor;
 import com.janrain.backplane.server2.V2MessageProcessor;
-import com.janrain.backplane.common.User;
-import com.janrain.backplane.cache.CachedL1;
 import com.janrain.commons.util.AwsUtility;
 import com.janrain.commons.util.InitSystemProps;
 import com.janrain.commons.util.Pair;
@@ -302,10 +301,10 @@ public class BackplaneConfig {
 
     public void checkAdminAuth(String user, String password) throws AuthException {
         try {
-            User userEntry = ServerDAOs.getAdminDAO().get(user);
-            String authKey = userEntry == null ? null : userEntry.get(User.Field.PWDHASH);
+            Admin userEntry = ServerDAOs.getAdminDAO().get(user);
+            String authKey = userEntry == null ? null : userEntry.get(Admin.Field.PWDHASH);
             if ( ! HmacHashUtils.checkHmacHash(password, authKey) ) {
-                logger.error("User " + user + " not authorized");
+                logger.error("Admin user " + user + " not authorized");
                 throw new AuthException("Access denied");
             }
         } catch (BackplaneServerException e) {

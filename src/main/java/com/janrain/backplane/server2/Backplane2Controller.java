@@ -21,7 +21,6 @@ import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.common.HmacHashUtils;
 import com.janrain.backplane.common.RandomUtils;
 import com.janrain.backplane.config.BackplaneConfig;
-import com.janrain.backplane.common.User;
 import com.janrain.backplane.server2.dao.BP2DAOs;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.backplane.server2.oauth2.*;
@@ -536,7 +535,7 @@ public class Backplane2Controller {
     //private static final Random random = new SecureRandom();
 
     private void checkBusOwnerAuth(String busOwner, String password) throws AuthException {
-        User busOwnerEntry = null;
+        BusOwner busOwnerEntry = null;
         try {
             busOwnerEntry = BP2DAOs.getBusOwnerDAO().get(busOwner);
         } catch (BackplaneServerException e) {
@@ -546,7 +545,7 @@ public class Backplane2Controller {
 
         if (busOwnerEntry == null) {
             authError("Bus owner user not found: " + busOwner);
-        } else if ( ! HmacHashUtils.checkHmacHash(password, busOwnerEntry.get(User.Field.PWDHASH)) ) {
+        } else if ( ! HmacHashUtils.checkHmacHash(password, busOwnerEntry.get(BusOwner.Field.PWDHASH)) ) {
             authError("Incorrect password for bus owner user " + busOwner);
         }
         logger.info("Authenticated bus owner: " + busOwner);

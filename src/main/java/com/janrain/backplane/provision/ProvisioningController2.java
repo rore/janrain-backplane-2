@@ -65,7 +65,7 @@ public class ProvisioningController2 {
     public Map<String, Map<String, String>> userList(HttpServletRequest request, @RequestBody ListRequest listRequest) throws AuthException {
         ServletUtil.checkSecure(request);
         bpConfig.checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
-        return doList(User.class, listRequest.getEntities(), User.Field.USER);
+        return doList(BusOwner.class, listRequest.getEntities(), BusOwner.Field.USER);
     }
 
     @RequestMapping(value = "/client/list", method = RequestMethod.POST)
@@ -89,7 +89,7 @@ public class ProvisioningController2 {
     public Map<String, String> userDelete(HttpServletRequest request, @RequestBody ListRequest deleteRequest) throws AuthException {
         ServletUtil.checkSecure(request);
         bpConfig.checkAdminAuth(deleteRequest.getAdmin(), deleteRequest.getSecret());
-        return doDelete(User.class, deleteRequest.getEntities());
+        return doDelete(BusOwner.class, deleteRequest.getEntities());
     }
 
     @RequestMapping(value = "/client/delete", method = RequestMethod.POST)
@@ -277,7 +277,7 @@ public class ProvisioningController2 {
                     User user = (User) config;
                     user.put(User.Field.PWDHASH.getFieldName(), HmacHashUtils.hmacHash(user.get(User.Field.PWDHASH)));
                 } else if (config instanceof BusConfig2) {
-                    User user = BP2DAOs.getBusOwnerDAO().get(config.get(BusConfig2.Field.OWNER.getFieldName()));
+                    BusOwner user = BP2DAOs.getBusOwnerDAO().get(config.get(BusConfig2.Field.OWNER.getFieldName()));
                     if (user == null) {
                         updateStatus = "Invalid bus owner: " + config.get(BusConfig2.Field.OWNER.getFieldName());
                     }

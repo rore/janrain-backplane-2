@@ -18,16 +18,15 @@ package com.janrain.backplane.server2;
 
 
 import com.janrain.backplane.common.BackplaneServerException;
-import com.janrain.backplane.common.RandomUtils;
 import com.janrain.backplane.common.HmacHashUtils;
+import com.janrain.backplane.common.RandomUtils;
 import com.janrain.backplane.config.BackplaneConfig;
-import com.janrain.backplane.common.User;
 import com.janrain.backplane.server2.dao.BP2DAOs;
 import com.janrain.backplane.server2.dao.BackplaneMessageDAO;
 import com.janrain.backplane.server2.dao.TokenDAO;
-import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.backplane.server2.oauth2.*;
 import com.janrain.backplane.servlet.InvalidRequestException;
+import com.janrain.commons.supersimpledb.SimpleDBException;
 import org.apache.catalina.util.Base64;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -280,7 +279,7 @@ public class Backplane2ControllerTest {
         request.setRequestURI("/v2/token");
         request.setMethod("POST");
         request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS);
-        setOAuthBasicAuthentication(request, testClient.get(User.Field.USER), "wrong_secret");
+        setOAuthBasicAuthentication(request, testClient.get(Client.Field.USER), "wrong_secret");
         handlerAdapter.handle(request, response, controller);
         logger.info("testTokenEndPointAuthenticationFailure() => " + response.getContentAsString());
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
@@ -457,7 +456,7 @@ public class Backplane2ControllerTest {
         //will fail because the code below is not valid
         request.setParameter("code", "meh");
         request.setParameter("redirect_uri", testClient.get(Client.ClientField.REDIRECT_URI));
-        setOAuthBasicAuthentication(request, testClient.get(User.Field.USER), "secret");
+        setOAuthBasicAuthentication(request, testClient.get(Client.Field.USER), "secret");
         handlerAdapter.handle(request, response, controller);
         logger.info("testTokenEndPointClientTokenRequestInvalidCode() => " + request.toString() + " => " + response.getContentAsString());
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
@@ -483,7 +482,7 @@ public class Backplane2ControllerTest {
         request.setParameter("scope", "sticky:true");
         request.setParameter("code", grant.getIdValue());
         request.setParameter("redirect_uri", testClient.get(Client.ClientField.REDIRECT_URI));
-        setOAuthBasicAuthentication(request, testClient.get(User.Field.USER), "secret");
+        setOAuthBasicAuthentication(request, testClient.get(Client.Field.USER), "secret");
 
         handlerAdapter.handle(request, response, controller);
         logger.info("testTokenEndPointClientTokenRequest() => " + response.getContentAsString());
@@ -531,7 +530,7 @@ public class Backplane2ControllerTest {
 
         request.setParameter("code", grant1.getIdValue());
         request.setParameter("redirect_uri", testClient.get(Client.ClientField.REDIRECT_URI));
-        setOAuthBasicAuthentication(request, testClient.get(User.Field.USER), "secret");
+        setOAuthBasicAuthentication(request, testClient.get(Client.Field.USER), "secret");
 
         handlerAdapter.handle(request, response, controller);
         logger.info("testTokenGrantByCodeScopeIsolation() => " + response.getContentAsString());
@@ -559,7 +558,7 @@ public class Backplane2ControllerTest {
         request.setMethod("POST");
         request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS);
 
-        setOAuthBasicAuthentication(request, testClient.get(User.Field.USER), "secret");
+        setOAuthBasicAuthentication(request, testClient.get(Client.Field.USER), "secret");
         // because we didn't use a "code", the server will
         // return the scope it determined from grant1 and grant2
         handlerAdapter.handle(request, response, controller);
@@ -670,7 +669,7 @@ public class Backplane2ControllerTest {
         request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_AUTH_CODE);
         request.setParameter("code", grant.getIdValue());
         request.setParameter("redirect_uri", testClient.get(Client.ClientField.REDIRECT_URI));
-        setOAuthBasicAuthentication(request, testClient.get(User.Field.USER), "secret");
+        setOAuthBasicAuthentication(request, testClient.get(Client.Field.USER), "secret");
 
         handlerAdapter.handle(request, response, controller);
         logger.info("testTokenEndPointClientUsedCode() => " + response.getContentAsString());
@@ -690,7 +689,7 @@ public class Backplane2ControllerTest {
         request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_AUTH_CODE);
         request.setParameter("code", grant.getIdValue());
         request.setParameter("redirect_uri", testClient.get(Client.ClientField.REDIRECT_URI));
-        setOAuthBasicAuthentication(request, testClient.get(User.Field.USER), testClient.get(User.Field.PWDHASH));
+        setOAuthBasicAuthentication(request, testClient.get(Client.Field.USER), testClient.get(Client.Field.PWDHASH));
         handlerAdapter.handle(request, response, controller);
         logger.info("testTokenEndPointClientUsedCode() ====> " + response.getContentAsString());
 
@@ -715,7 +714,7 @@ public class Backplane2ControllerTest {
 
         request.setParameter("code", grant.getIdValue());
         request.setParameter("redirect_uri", testClient.get(Client.ClientField.REDIRECT_URI));
-        setOAuthBasicAuthentication(request, testClient.get(User.Field.USER), "secret");
+        setOAuthBasicAuthentication(request, testClient.get(Client.Field.USER), "secret");
         request.setParameter("scope", "bus;mybus.com bus:yourbus.com");
         handlerAdapter.handle(request, response, controller);
         logger.info("TryToUseMalformedScopeTest() => " + response.getContentAsString());
@@ -745,7 +744,7 @@ public class Backplane2ControllerTest {
 
         request.setParameter("code", grant.getIdValue());
         request.setParameter("redirect_uri", testClient.get(Client.ClientField.REDIRECT_URI));
-        setOAuthBasicAuthentication(request, testClient.get(User.Field.USER), "secret");
+        setOAuthBasicAuthentication(request, testClient.get(Client.Field.USER), "secret");
 
         request.setParameter("scope", "bus:mybus.com bus:yourbus.com");
         handlerAdapter.handle(request, response, controller);
@@ -760,7 +759,7 @@ public class Backplane2ControllerTest {
         request.setMethod("POST");
         request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS);
         request.setParameter("scope", "bus:someunauthorized.bus");
-        setOAuthBasicAuthentication(request, testClient.get(User.Field.USER), "secret");
+        setOAuthBasicAuthentication(request, testClient.get(Client.Field.USER), "secret");
         handlerAdapter.handle(request, response, controller);
         logger.info("testClientCredentialsUnauthorizedScope() => " + response.getContentAsString());
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
@@ -1363,8 +1362,8 @@ public class Backplane2ControllerTest {
     public void testAuthenticate() throws Exception {
 
         BusOwner busOwner = new BusOwner();
-        busOwner.put(User.Field.USER.getFieldName(), RandomUtils.randomString(20));
-        busOwner.put(User.Field.PWDHASH.getFieldName(), HmacHashUtils.hmacHash("foo"));
+        busOwner.put(BusOwner.Field.USER.getFieldName(), RandomUtils.randomString(20));
+        busOwner.put(BusOwner.Field.PWDHASH.getFieldName(), HmacHashUtils.hmacHash("foo"));
 
         BusConfig2 bus1 = new BusConfig2(RandomUtils.randomString(30), busOwner.getIdValue(), "100", "50000");
         BusConfig2 bus2 = new BusConfig2(RandomUtils.randomString(30), busOwner.getIdValue(), "100", "50000");

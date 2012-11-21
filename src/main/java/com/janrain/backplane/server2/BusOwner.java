@@ -9,7 +9,14 @@ public class BusOwner extends User {
 
     public BusOwner() { }
 
-    public BusOwner(String name, String secret) {
+    // PACKAGE
+
+    BusOwner(String name, String secret) {
         super(name, secret);
     }
+
+    // PRIVATE
+
+    private static final long serialVersionUID = -6311958895910030506L;
+
 }

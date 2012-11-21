@@ -19,17 +19,17 @@ package com.janrain.backplane.server2.provision;
 import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.common.HmacHashUtils;
 import com.janrain.backplane.common.RandomUtils;
-import com.janrain.backplane.common.User;
 import com.janrain.backplane.config.Admin;
 import com.janrain.backplane.config.BackplaneConfig;
 import com.janrain.backplane.dao.ServerDAOs;
 import com.janrain.backplane.provision.ProvisioningController2;
 import com.janrain.backplane.server2.BackplaneMessage;
-import com.janrain.backplane.server2.Scope;
+import com.janrain.backplane.server2.BusOwner;
 import com.janrain.backplane.server2.Client;
+import com.janrain.backplane.server2.Scope;
 import com.janrain.backplane.server2.dao.BP2DAOs;
-import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.backplane.server2.oauth2.TokenException;
+import com.janrain.commons.supersimpledb.SimpleDBException;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.type.MapType;
@@ -72,15 +72,15 @@ public class ProvisioningController2Test {
         // create temporary admin user account to enable the tests to work
         admin = new Admin();
         pw = RandomUtils.randomString(10);
-        admin.put(User.Field.USER.getFieldName(), RandomUtils.randomString(20));
-        admin.put(User.Field.PWDHASH.getFieldName(), HmacHashUtils.hmacHash(pw));
+        admin.put(Admin.Field.USER.getFieldName(), RandomUtils.randomString(20));
+        admin.put(Admin.Field.PWDHASH.getFieldName(), HmacHashUtils.hmacHash(pw));
 
         //superSimpleDB.store(bpConfig.getTableName(BackplaneConfig.SimpleDBTables.BP_ADMIN_AUTH), admin.class, user);
         ServerDAOs.getAdminDAO().persist(admin);
 
-        busOwner = new User();
-        busOwner.put(User.Field.USER.getFieldName(), RandomUtils.randomString(20));
-        busOwner.put(User.Field.PWDHASH.getFieldName(), HmacHashUtils.hmacHash(pw));
+        busOwner = new BusOwner();
+        busOwner.put(BusOwner.Field.USER.getFieldName(), RandomUtils.randomString(20));
+        busOwner.put(BusOwner.Field.PWDHASH.getFieldName(), HmacHashUtils.hmacHash(pw));
         try {
             client = new Client( RandomUtils.randomString(20), pw, "http://source.com", "http://redirect.com" );
             BP2DAOs.getClientDAO().persist(client);
@@ -103,8 +103,8 @@ public class ProvisioningController2Test {
 
         refreshRequestAndResponse();
         // create bus owner
-        String jsonUpdateBusOwner = "{ \"admin\": \"" + admin.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\"," +
-                " \"configs\": [ { \"USER\":\"" + busOwner.get(User.Field.USER) + "\", \"PWDHASH\":\"" + busOwner.get(User.Field.PWDHASH) + "\"} ] }";
+        String jsonUpdateBusOwner = "{ \"admin\": \"" + admin.get(Admin.Field.USER) + "\", \"secret\": \"" + pw + "\"," +
+                " \"configs\": [ { \"USER\":\"" + busOwner.get(Admin.Field.USER) + "\", \"PWDHASH\":\"" + busOwner.get(Admin.Field.PWDHASH) + "\"} ] }";
         logger.info("passing in json " + jsonUpdateBusOwner);
         request.setContent(jsonUpdateBusOwner.getBytes());
         request.addHeader("Content-type", "application/json");
@@ -115,7 +115,7 @@ public class ProvisioningController2Test {
         assertTrue(response.getStatus() == HttpServletResponse.SC_OK);
 
         refreshRequestAndResponse();
-        String listJson = "{ \"admin\": \"" + admin.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\", \"entities\": [] }";
+        String listJson = "{ \"admin\": \"" + admin.get(Admin.Field.USER) + "\", \"secret\": \"" + pw + "\", \"entities\": [] }";
         logger.info("passing in json " + listJson);
         request.setContent(listJson.getBytes());
         request.addHeader("Content-type", "application/json");
@@ -123,11 +123,11 @@ public class ProvisioningController2Test {
         request.setMethod("POST");
         handlerAdapter.handle(request, response, controller);
         logger.info("testClientList() => " + response.getContentAsString());
-        assertTrue(response.getContentAsString().contains(busOwner.get(User.Field.USER)));
+        assertTrue(response.getContentAsString().contains(busOwner.get(BusOwner.Field.USER)));
 
         refreshRequestAndResponse();
-        String deleteJson = "{ \"admin\": \"" + admin.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\", " +
-                            "\"entities\": [\"" + busOwner.get(User.Field.USER)+ "\"] }";
+        String deleteJson = "{ \"admin\": \"" + admin.get(Admin.Field.USER) + "\", \"secret\": \"" + pw + "\", " +
+                            "\"entities\": [\"" + busOwner.get(BusOwner.Field.USER)+ "\"] }";
         logger.info("passing in json " + deleteJson);
         request.setContent(deleteJson.getBytes());
         request.addHeader("Content-type", "application/json");
@@ -135,7 +135,7 @@ public class ProvisioningController2Test {
         request.setMethod("POST");
         handlerAdapter.handle(request, response, controller);
         logger.info("testClientList() => " + response.getContentAsString());
-        assertTrue(response.getContentAsString().contains(busOwner.get(User.Field.USER)));
+        assertTrue(response.getContentAsString().contains(busOwner.get(BusOwner.Field.USER)));
 
         refreshRequestAndResponse();
         logger.info("passing in json " + listJson);
@@ -145,7 +145,7 @@ public class ProvisioningController2Test {
         request.setMethod("POST");
         handlerAdapter.handle(request, response, controller);
         logger.info("testClientList() => " + response.getContentAsString());
-        assertFalse(response.getContentAsString().contains(busOwner.get(User.Field.USER)));
+        assertFalse(response.getContentAsString().contains(busOwner.get(BusOwner.Field.USER)));
     }
 
     @Test
@@ -157,7 +157,7 @@ public class ProvisioningController2Test {
         BP2DAOs.getClientDAO().delete(client.getClientId());
 
         // create client
-        String jsonUpdateClient = "{ \"admin\": \"" + admin.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\"," +
+        String jsonUpdateClient = "{ \"admin\": \"" + admin.get(Admin.Field.USER) + "\", \"secret\": \"" + pw + "\"," +
                 " \"configs\": [ { \"USER\":\"" + client.getClientId() + "\", \"PWDHASH\":\"" + pw + "\"," +
                 "\"SOURCE_URL\":\"" + client.getSourceUrl() + "\"," +
                 "\"REDIRECT_URI\":\"" + client.getRedirectUri() + "\"} ] }";
@@ -172,7 +172,7 @@ public class ProvisioningController2Test {
         assertTrue("client create failed: " + response.getContentAsString(), response.getContentAsString().matches("\\{\\s*\"" + client.getClientId() + "\"\\s*:\\s*\"BACKPLANE_UPDATE_SUCCESS\"\\s*\\}"));
 
         refreshRequestAndResponse();
-        String listJson = "{ \"admin\": \"" + admin.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\", \"entities\": [] }";
+        String listJson = "{ \"admin\": \"" + admin.get(Admin.Field.USER) + "\", \"secret\": \"" + pw + "\", \"entities\": [] }";
         logger.info("passing in json " + listJson);
         request.setContent(listJson.getBytes());
         request.addHeader("Content-type", "application/json");
@@ -184,7 +184,7 @@ public class ProvisioningController2Test {
         assertTrue(response.getContentAsString().contains(client.getClientId()));
 
         refreshRequestAndResponse();
-        String deleteJson = "{ \"admin\": \"" + admin.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\", " +
+        String deleteJson = "{ \"admin\": \"" + admin.get(Admin.Field.USER) + "\", \"secret\": \"" + pw + "\", " +
                             "\"entities\": [\"" + client.getClientId()+ "\"] }";
         logger.info("passing in json " + deleteJson);
         request.setContent(deleteJson.getBytes());
@@ -212,7 +212,7 @@ public class ProvisioningController2Test {
     public void testBusCRUDinvalidBusOwner() throws Exception {
         // create client
         refreshRequestAndResponse();
-        String jsonUpdateBus = "{ \"admin\": \"" + admin.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\"," +
+        String jsonUpdateBus = "{ \"admin\": \"" + admin.get(Admin.Field.USER) + "\", \"secret\": \"" + pw + "\"," +
                 " \"configs\": [ {\n" +
                 "            \"BUS_NAME\": \"customer1\",\n" +
                 "            \"OWNER\": \"busowner1\",\n" +
@@ -238,8 +238,8 @@ public class ProvisioningController2Test {
         // create bus owner
         refreshRequestAndResponse();
 
-        String jsonUpdateBusOwner = "{ \"admin\": \"" + admin.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\"," +
-                " \"configs\": [ { \"USER\":\"" + busOwner.get(User.Field.USER) + "\", \"PWDHASH\":\"" + busOwner.get(User.Field.PWDHASH) + "\"} ] }";
+        String jsonUpdateBusOwner = "{ \"admin\": \"" + admin.get(Admin.Field.USER) + "\", \"secret\": \"" + pw + "\"," +
+                " \"configs\": [ { \"USER\":\"" + busOwner.get(BusOwner.Field.USER) + "\", \"PWDHASH\":\"" + busOwner.get(BusOwner.Field.PWDHASH) + "\"} ] }";
         logger.info("passing in json " + jsonUpdateBusOwner);
         request.setContent(jsonUpdateBusOwner.getBytes());
         request.addHeader("Content-type", "application/json");
@@ -248,14 +248,14 @@ public class ProvisioningController2Test {
         handlerAdapter.handle(request, response, controller);
         logger.info("testClientUpdate -> " + response.getContentAsString());
         assertTrue(response.getStatus() == HttpServletResponse.SC_OK);
-        assertTrue(response.getContentAsString().contains("{\"" + busOwner.get(User.Field.USER) + "\":\"BACKPLANE_UPDATE_SUCCESS\"}"));
+        assertTrue(response.getContentAsString().contains("{\"" + busOwner.get(BusOwner.Field.USER) + "\":\"BACKPLANE_UPDATE_SUCCESS\"}"));
 
         // create bus
         refreshRequestAndResponse();
-        String jsonUpdateBus = "{ \"admin\": \"" + admin.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\"," +
+        String jsonUpdateBus = "{ \"admin\": \"" + admin.get(Admin.Field.USER) + "\", \"secret\": \"" + pw + "\"," +
                 " \"configs\": [ {\n" +
                 "            \"BUS_NAME\": \"customer1\",\n" +
-                "            \"OWNER\": \"" + busOwner.get(User.Field.USER) + "\",\n" +
+                "            \"OWNER\": \"" + busOwner.get(BusOwner.Field.USER) + "\",\n" +
                 "            \"RETENTION_TIME_SECONDS\": \"600\",\n" +
                 "            \"RETENTION_STICKY_TIME_SECONDS\": \"28800\"\n" +
                 "        } ] }";
@@ -270,7 +270,7 @@ public class ProvisioningController2Test {
         assertTrue("Failed: " + response.getContentAsString(), response.getContentAsString().contains("{\"customer1\":\"BACKPLANE_UPDATE_SUCCESS\"}"));
 
         refreshRequestAndResponse();
-        String listJson = "{ \"admin\": \"" + admin.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\", \"entities\": [] }";
+        String listJson = "{ \"admin\": \"" + admin.get(Admin.Field.USER) + "\", \"secret\": \"" + pw + "\", \"entities\": [] }";
         logger.info("passing in json " + listJson);
         request.setContent(listJson.getBytes());
         request.addHeader("Content-type", "application/json");
@@ -279,10 +279,10 @@ public class ProvisioningController2Test {
         handlerAdapter.handle(request, response, controller);
         logger.info("testBusList() => " + response.getContentAsString());
         assertTrue(response.getContentAsString().contains("customer1"));
-        assertTrue(response.getContentAsString().contains(busOwner.get(User.Field.USER)));
+        assertTrue(response.getContentAsString().contains(busOwner.get(BusOwner.Field.USER)));
 
         refreshRequestAndResponse();
-        String deleteJson = "{ \"admin\": \"" + admin.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\", " +
+        String deleteJson = "{ \"admin\": \"" + admin.get(Admin.Field.USER) + "\", \"secret\": \"" + pw + "\", " +
                             "\"entities\": [\"customer1\"] }";
         logger.info("passing in json " + deleteJson);
         request.setContent(deleteJson.getBytes());
@@ -303,7 +303,7 @@ public class ProvisioningController2Test {
         logger.info("testBusCRUD() => " + response.getContentAsString());
         assertFalse(response.getContentAsString().contains("customer1"));
 
-        BP2DAOs.getBusOwnerDAO().delete(busOwner.get(User.Field.USER));
+        BP2DAOs.getBusOwnerDAO().delete(busOwner.get(BusOwner.Field.USER));
 
 
     }
@@ -311,10 +311,10 @@ public class ProvisioningController2Test {
     @Test
     public void testProvisioningCreateDelete() throws Exception {
         refreshRequestAndResponse();
-        String jsonUpdateClient = "{ \"admin\": \"" + admin.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\"," +
+        String jsonUpdateClient = "{ \"admin\": \"" + admin.get(Admin.Field.USER) + "\", \"secret\": \"" + pw + "\"," +
                 " \"configs\": [ { \"USER\":\"" + client.getClientId() + "\", \"PWDHASH\":\"" + pw + "\"} ] }";
 
-        String addBusOwner = "{ \"admin\": \"" + admin.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\"," +
+        String addBusOwner = "{ \"admin\": \"" + admin.get(Admin.Field.USER) + "\", \"secret\": \"" + pw + "\"," +
                 " \"entities\": [ \"" + client.getClientId() + "\", \"PWDHASH\":\"" + pw + "\"} ] }";
     }
 
@@ -323,7 +323,7 @@ public class ProvisioningController2Test {
 
         refreshRequestAndResponse();
 
-        String delete = "{ \"entities\":[\"does\", \"not\", \"exist\"], \"admin\":\"" + admin.get(User.Field.USER) + "\", \"secret\":\"" + pw + "\"}";
+        String delete = "{ \"entities\":[\"does\", \"not\", \"exist\"], \"admin\":\"" + admin.get(Admin.Field.USER) + "\", \"secret\":\"" + pw + "\"}";
         request.setContent(delete.getBytes());
         request.addHeader("Content-type", "application/json");
         request.setRequestURI("/v2/provision/user/delete");
@@ -360,7 +360,7 @@ public class ProvisioningController2Test {
 
         refreshRequestAndResponse();
 
-        String addGrant = "{\"grants\":{\"" + client.getClientId() + "\":\"qa-test-bus\"},\"admin\":\"" + admin.get(User.Field.USER) + "\", \"secret\":\"" + pw + "\"}";
+        String addGrant = "{\"grants\":{\"" + client.getClientId() + "\":\"qa-test-bus\"},\"admin\":\"" + admin.get(Admin.Field.USER) + "\", \"secret\":\"" + pw + "\"}";
         request.setContent(addGrant.getBytes());
         request.addHeader("Content-type", "application/json");
         request.setRequestURI("/v2/provision/grant/add");
@@ -370,7 +370,7 @@ public class ProvisioningController2Test {
         assertTrue("Invalid response", response.getContentAsString().equals("{\"" + client.getClientId() + "\":\"GRANT_UPDATE_SUCCESS\"}"));
         
         refreshRequestAndResponse();
-        String listGrants = "{ \"admin\": \"" + admin.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\", \"entities\": [ \"" + client.getClientId() + "\" ] }";
+        String listGrants = "{ \"admin\": \"" + admin.get(Admin.Field.USER) + "\", \"secret\": \"" + pw + "\", \"entities\": [ \"" + client.getClientId() + "\" ] }";
         request.setContent(listGrants.getBytes());
         request.addHeader("Content-type", "application/json");
         request.setRequestURI("/v2/provision/grant/list");
@@ -403,7 +403,7 @@ public class ProvisioningController2Test {
 
         refreshRequestAndResponse();
 
-        String grantRequestString = "{\"grants\":{\"" + client.getClientId() + "\":\"qa-test-bus1 qa-test-bus2\"},\"admin\":\"" + admin.get(User.Field.USER) + "\", \"secret\":\"" + pw + "\"}";
+        String grantRequestString = "{\"grants\":{\"" + client.getClientId() + "\":\"qa-test-bus1 qa-test-bus2\"},\"admin\":\"" + admin.get(Admin.Field.USER) + "\", \"secret\":\"" + pw + "\"}";
         request.setContent(grantRequestString.getBytes());
         request.addHeader("Content-type", "application/json");
         request.setRequestURI("/v2/provision/grant/add");
@@ -413,7 +413,7 @@ public class ProvisioningController2Test {
         assertTrue("Invalid response", response.getContentAsString().equals("{\"" + client.getClientId() + "\":\"GRANT_UPDATE_SUCCESS\"}"));
         
         refreshRequestAndResponse();
-        String listGrants = "{ \"admin\": \"" + admin.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\", \"entities\": [ \"" + client.getClientId() + "\" ] }";
+        String listGrants = "{ \"admin\": \"" + admin.get(Admin.Field.USER) + "\", \"secret\": \"" + pw + "\", \"entities\": [ \"" + client.getClientId() + "\" ] }";
         request.setContent(listGrants.getBytes());
         request.addHeader("Content-type", "application/json");
         request.setRequestURI("/v2/provision/grant/list");
@@ -450,7 +450,7 @@ public class ProvisioningController2Test {
 
         refreshRequestAndResponse();
 
-        String grantRequestString = "{\"grants\":{\"" + client.getClientId() + "\":\"qa-test-bus1 qa-test-bus2\"},\"admin\":\"" + admin.get(User.Field.USER) + "\", \"secret\":\"" + pw + "\"}";
+        String grantRequestString = "{\"grants\":{\"" + client.getClientId() + "\":\"qa-test-bus1 qa-test-bus2\"},\"admin\":\"" + admin.get(Admin.Field.USER) + "\", \"secret\":\"" + pw + "\"}";
         request.setContent(grantRequestString.getBytes());
         request.addHeader("Content-type", "application/json");
         request.setRequestURI("/v2/provision/grant/add");
@@ -460,7 +460,7 @@ public class ProvisioningController2Test {
         assertTrue("Invalid response", response.getContentAsString().equals("{\"" + client.getClientId() + "\":\"GRANT_UPDATE_SUCCESS\"}"));
         
         refreshRequestAndResponse();
-        String listGrants = "{ \"admin\": \"" + admin.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\", \"entities\": [ \"" + client.getClientId() + "\" ] }";
+        String listGrants = "{ \"admin\": \"" + admin.get(Admin.Field.USER) + "\", \"secret\": \"" + pw + "\", \"entities\": [ \"" + client.getClientId() + "\" ] }";
         request.setContent(listGrants.getBytes());
         request.addHeader("Content-type", "application/json");
         request.setRequestURI("/v2/provision/grant/list");
@@ -473,7 +473,7 @@ public class ProvisioningController2Test {
         }}));
 
         refreshRequestAndResponse();
-        String revoke1request = "{\"grants\":{\"" + client.getClientId() + "\":\"qa-test-bus1\"},\"admin\":\"" + admin.get(User.Field.USER) + "\", \"secret\":\"" + pw + "\"}";
+        String revoke1request = "{\"grants\":{\"" + client.getClientId() + "\":\"qa-test-bus1\"},\"admin\":\"" + admin.get(Admin.Field.USER) + "\", \"secret\":\"" + pw + "\"}";
         request.setContent(revoke1request.getBytes());
         request.addHeader("Content-type", "application/json");
         request.setRequestURI("/v2/provision/grant/revoke");
@@ -497,7 +497,7 @@ public class ProvisioningController2Test {
         }}));
 
         refreshRequestAndResponse();
-        String revoke2request = "{\"grants\":{\"" + client.getClientId() + "\":\"qa-test-bus2\"},\"admin\":\"" + admin.get(User.Field.USER) + "\", \"secret\":\"" + pw + "\"}";
+        String revoke2request = "{\"grants\":{\"" + client.getClientId() + "\":\"qa-test-bus2\"},\"admin\":\"" + admin.get(Admin.Field.USER) + "\", \"secret\":\"" + pw + "\"}";
         request.setContent(revoke2request.getBytes());
         request.addHeader("Content-type", "application/json");
         request.setRequestURI("/v2/provision/grant/revoke");
@@ -537,7 +537,7 @@ public class ProvisioningController2Test {
 
     private static final Logger logger = Logger.getLogger(ProvisioningController2Test.class);
     private Admin admin;
-    private User busOwner;
+    private BusOwner busOwner;
     private Client client;
     private String pw;
 

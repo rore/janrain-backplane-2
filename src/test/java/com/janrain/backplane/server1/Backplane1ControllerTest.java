@@ -18,8 +18,6 @@ package com.janrain.backplane.server1;
 
 import com.janrain.backplane.config.BackplaneConfig;
 import com.janrain.backplane.server1.dao.BP1DAOs;
-import com.janrain.backplane.common.User;
-import junit.framework.TestCase;
 import org.apache.catalina.util.Base64;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -37,13 +35,15 @@ import org.springframework.web.servlet.HandlerAdapter;
 import javax.inject.Inject;
 import java.util.Map;
 
+import static org.junit.Assert.*;
+
 /**
  * @author Tom Raney
  */
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(locations = { "classpath:/spring/app-config.xml", "classpath:/spring/mvc-config.xml" })
-public class Backplane1ControllerTest extends TestCase {
+public class Backplane1ControllerTest {
 
     private static final Logger logger = Logger.getLogger(Backplane1ControllerTest.class);
 
@@ -110,7 +110,7 @@ public class Backplane1ControllerTest extends TestCase {
 
         try {
 
-            BP1DAOs.getUserDao().persist(new User("testBusOwner", "busOwnerSecret"));
+            BP1DAOs.getUserDao().persist(new BP1User("testBusOwner", "busOwnerSecret"));
             BP1DAOs.getBusDao().persist(new BusConfig1("test", "testBusOwner", "60", "28800"));
 
             // encode un:pw

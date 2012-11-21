@@ -16,10 +16,10 @@
 
 package com.janrain.backplane.server1;
 
+import com.janrain.backplane.cache.CachedL1;
 import com.janrain.backplane.common.AuthException;
 import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.common.HmacHashUtils;
-import com.janrain.backplane.common.User;
 import com.janrain.backplane.config.Admin;
 import com.janrain.backplane.config.BackplaneConfig;
 import com.janrain.backplane.config.BackplaneSystemProps;
@@ -27,9 +27,8 @@ import com.janrain.backplane.config.BpServerConfig;
 import com.janrain.backplane.dao.ServerDAOs;
 import com.janrain.backplane.server1.dao.BP1DAOs;
 import com.janrain.backplane.server1.dao.BP1MessageDao;
-import com.janrain.backplane.cache.CachedL1;
-import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.backplane.servlet.ServletUtil;
+import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Histogram;
 import com.yammer.metrics.core.MetricName;
@@ -80,7 +79,7 @@ public class Backplane1Controller {
         boolean adminUserExists = true;
 
         // check to see if an admin record already exists, if it does, do not allow an update
-        User admin = ServerDAOs.getAdminDAO().get(BackplaneSystemProps.ADMIN_USER);
+        Admin admin = ServerDAOs.getAdminDAO().get(BackplaneSystemProps.ADMIN_USER);
         if (admin == null) {
             adminUserExists = false;
         }
@@ -376,14 +375,14 @@ public class Backplane1Controller {
         String user = userPass.substring(0, delim);
         String pass = userPass.substring(delim + 1);
 
-        User userEntry;
+        BP1User userEntry;
 
         //userEntry = superSimpleDb.retrieve(bpConfig.getTableName(Backplane1Config.SimpleDBTables.BP1_USERS), User.class, user);
         userEntry = BP1DAOs.getUserDao().get(user);
 
         if (userEntry == null) {
             authError("User not found: " + user);
-        } else if ( ! HmacHashUtils.checkHmacHash(pass, userEntry.get(User.Field.PWDHASH)) ) {
+        } else if ( ! HmacHashUtils.checkHmacHash(pass, userEntry.get(BP1User.Field.PWDHASH)) ) {
             authError("Incorrect password for user " + user);
         }
 

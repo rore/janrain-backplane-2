@@ -2,8 +2,8 @@ package com.janrain.backplane.server2.dao;
 
 import com.janrain.backplane.dao.DAO;
 import com.janrain.backplane.server2.BusConfig2;
+import com.janrain.backplane.server2.BusOwner;
 import com.janrain.backplane.server2.Client;
-import com.janrain.backplane.common.User;
 import com.janrain.backplane.server2.dao.redis.*;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
@@ -59,7 +59,7 @@ public class BP2DAOs {
     public static DAO getDaoByObjectType(Class<?> obj) {
         if (Client.class.isAssignableFrom(obj)) {
             return getClientDAO();
-        } else if (User.class.isAssignableFrom(obj)) {
+        } else if (BusOwner.class.isAssignableFrom(obj)) {
             return getBusOwnerDAO();
         } else if (BusConfig2.class.isAssignableFrom(obj)) {
             return getBusDao();
