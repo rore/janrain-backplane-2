@@ -2,6 +2,7 @@ package com.janrain.backplane.server2.dao.redis;
 
 import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.common.BpSerialUtils;
+import com.janrain.backplane.common.User;
 import com.janrain.backplane.redis.Redis;
 import com.janrain.backplane.server2.BusOwner;
 import com.janrain.backplane.server2.dao.BusDAO;
@@ -31,7 +32,7 @@ public class RedisBusOwnerDAO implements BusOwnerDAO {
     public BusOwner get(String id) throws BackplaneServerException {
         byte[] bytes = Redis.getInstance().get(getKey(id));
         if (bytes != null) {
-            return (BusOwner) BpSerialUtils.deserialize(bytes);
+            return User.asDaoType(BpSerialUtils.<User>deserialize(bytes), BusOwner.class);
         } else {
             return null;
         }
@@ -43,7 +44,7 @@ public class RedisBusOwnerDAO implements BusOwnerDAO {
         List<byte[]> bytesList = Redis.getInstance().lrange(getKey("list"), 0, -1);
         for (byte [] bytes : bytesList) {
             if (bytes != null) {
-                users.add((BusOwner) BpSerialUtils.deserialize(bytes));
+                users.add(User.asDaoType(BpSerialUtils.<User>deserialize(bytes), BusOwner.class));
             }
         }
         return users;

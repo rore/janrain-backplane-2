@@ -2,6 +2,7 @@ package com.janrain.backplane.dao.redis;
 
 import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.common.BpSerialUtils;
+import com.janrain.backplane.common.User;
 import com.janrain.backplane.config.Admin;
 import com.janrain.backplane.dao.DAO;
 import com.janrain.backplane.redis.Redis;
@@ -16,6 +17,7 @@ import java.util.List;
 public class RedisAdminDAO implements DAO<Admin> {
 
     public static byte[] getAdminAdminKey(String userId) {
+        // todo: admins are cross-version, key should not be labelled "v2"
         return ("v2_admin_" + userId).getBytes();
     }
 
@@ -33,10 +35,10 @@ public class RedisAdminDAO implements DAO<Admin> {
     }
 
     @Override
-    public Admin get(String key) {
+    public Admin get(String key) throws BackplaneServerException {
         byte[] bytes = Redis.getInstance().get(getAdminAdminKey(key));
         if (bytes != null) {
-            return (Admin) BpSerialUtils.deserialize(bytes);
+            return User.asDaoType(BpSerialUtils.<User>deserialize(bytes), Admin.class);
         } else {
             return null;
         }

@@ -2,6 +2,7 @@ package com.janrain.backplane.server1.dao.redis;
 
 import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.common.BpSerialUtils;
+import com.janrain.backplane.common.User;
 import com.janrain.backplane.dao.DAO;
 import com.janrain.backplane.redis.Redis;
 import com.janrain.backplane.server1.BP1User;
@@ -61,7 +62,7 @@ public class RedisBP1UserDAO implements DAO<BP1User> {
     public BP1User get(String key) throws BackplaneServerException {
         byte[] bytes = Redis.getInstance().get(getKey(key));
         if (bytes != null) {
-            return (BP1User) BpSerialUtils.deserialize(bytes);
+            return User.asDaoType(BpSerialUtils.<User>deserialize(bytes), BP1User.class);
         } else {
             return null;
         }
@@ -73,7 +74,7 @@ public class RedisBP1UserDAO implements DAO<BP1User> {
         List<byte[]> bytesList = Redis.getInstance().lrange(getKey("list"), 0, -1);
         for (byte[] bytes : bytesList) {
             if (bytes != null) {
-                users.add((BP1User) BpSerialUtils.deserialize(bytes));
+                users.add(User.asDaoType(BpSerialUtils.<User>deserialize(bytes), BP1User.class));
             }
         }
         return users;

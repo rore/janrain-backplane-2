@@ -50,6 +50,21 @@ public class User extends ExternalizableCore {
         this.put(Field.PWDHASH.getFieldName(), password);
     }
 
+    /** Hack for backwards compatibility of User subclasses with previously serialized User bytes/streams. */
+    public static <UT extends User> UT asDaoType(User deserialized, Class<UT> userType) throws BackplaneServerException {
+        try {
+            return userType.cast(deserialized);
+        } catch (ClassCastException cce) {
+            try {
+                UT subUser = userType.newInstance();
+                subUser.init(deserialized.getIdValue(), deserialized);
+                return subUser;
+            } catch (Exception ie) {
+                throw new BackplaneServerException("Error deserializing " + userType, ie);
+            }
+        }
+    }
+
     public static enum Field implements MessageField {
 
         // - PUBLIC
