@@ -144,7 +144,7 @@ public class V2MessageProcessor implements LeaderSelectorListener {
                 logger.info("flushed " + insertionTimes.size() + " v2 messages");
                 long now = System.currentTimeMillis();
                 for (String insertionId : insertionTimes) {
-                    long diff = now - com.janrain.backplane.server1.BackplaneMessage.getDateFromId(insertionId).getTime();
+                    long diff = now - com.janrain.backplane.server2.BackplaneMessage.getDateFromId(insertionId).getTime();
                     timeInQueue.update(diff);
                     if (diff < 0 || diff > 2880000) {
                         logger.warn("time diff is bizarre at: " + diff);
