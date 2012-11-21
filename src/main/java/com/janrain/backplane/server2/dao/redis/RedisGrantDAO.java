@@ -1,14 +1,14 @@
 package com.janrain.backplane.server2.dao.redis;
 
-import com.janrain.backplane.server2.BackplaneMessage;
 import com.janrain.backplane.common.BackplaneServerException;
+import com.janrain.backplane.common.BpSerialUtils;
+import com.janrain.backplane.redis.Redis;
+import com.janrain.backplane.server2.BackplaneMessage;
 import com.janrain.backplane.server2.Grant;
 import com.janrain.backplane.server2.Scope;
 import com.janrain.backplane.server2.dao.GrantDAO;
 import com.janrain.backplane.server2.dao.TokenDAO;
 import com.janrain.backplane.server2.oauth2.TokenException;
-import com.janrain.backplane.redis.Redis;
-import org.apache.commons.lang.SerializationUtils;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import redis.clients.jedis.Jedis;
@@ -69,7 +69,7 @@ public class RedisGrantDAO implements GrantDAO {
     public Grant get(String id) throws BackplaneServerException {
         byte[] bytes = Redis.getInstance().get(getKey(id));
         if (bytes != null) {
-            return (Grant) SerializationUtils.deserialize(bytes);
+            return (Grant) BpSerialUtils.deserialize(bytes);
         } else {
             return null;
         }
@@ -81,7 +81,7 @@ public class RedisGrantDAO implements GrantDAO {
         List<Grant> grants = new ArrayList<Grant>();
         for (byte[] bytes : listOfBytes) {
             if (bytes != null) {
-                grants.add((Grant) SerializationUtils.deserialize(bytes));
+                grants.add((Grant) BpSerialUtils.deserialize(bytes));
             }
         }
         return grants;
@@ -89,7 +89,7 @@ public class RedisGrantDAO implements GrantDAO {
 
     @Override
     public void persist(Grant obj) throws BackplaneServerException {
-        byte[] bytes = SerializationUtils.serialize(obj);
+        byte[] bytes = BpSerialUtils.serialize(obj);
         logger.info("adding grant " + obj.getIdValue() + " to redis");
         // todo: one hash object instead of top level entries + a separate list?
         Redis.getInstance().rpush(getKey("list"), bytes);
@@ -102,7 +102,7 @@ public class RedisGrantDAO implements GrantDAO {
         try {
             tokenDAO.revokeTokenByGrant(existing.getIdValue());
             jedis = Redis.getInstance().getWriteJedis();
-            byte[] newBytes = SerializationUtils.serialize(updated);
+            byte[] newBytes = BpSerialUtils.serialize(updated);
             byte[] oldBytes = jedis.get(getKey(existing.getIdValue()));
             Transaction t = jedis.multi();
             t.lrem(getKey("list"), 0, oldBytes);

@@ -16,18 +16,18 @@
 
 package com.janrain.backplane.server2;
 
+import com.janrain.backplane.common.BpSerialUtils;
 import com.janrain.backplane.common.DateTimeUtils;
+import com.janrain.backplane.redis.Redis;
 import com.janrain.backplane.server2.dao.BP2DAOs;
 import com.janrain.backplane.server2.dao.redis.RedisBackplaneMessageDAO;
 import com.janrain.commons.util.Pair;
-import com.janrain.backplane.redis.Redis;
 import com.netflix.curator.framework.CuratorFramework;
 import com.netflix.curator.framework.recipes.leader.LeaderSelectorListener;
 import com.netflix.curator.framework.state.ConnectionState;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Histogram;
 import com.yammer.metrics.core.MetricName;
-import org.apache.commons.lang.SerializationUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import redis.clients.jedis.Jedis;
@@ -125,7 +125,7 @@ public class V2MessageProcessor implements LeaderSelectorListener {
                 for (byte[] messageBytes : messagesToProcess) {
 
                     if (messageBytes != null) {
-                        BackplaneMessage backplaneMessage = (BackplaneMessage) SerializationUtils.deserialize(messageBytes);
+                        BackplaneMessage backplaneMessage = (BackplaneMessage) BpSerialUtils.deserialize(messageBytes);
 
                         if (backplaneMessage != null) {
                             processSingleMessage(backplaneMessage, transaction, insertionTimes, lastIdAndDate);
@@ -194,7 +194,7 @@ public class V2MessageProcessor implements LeaderSelectorListener {
             // save the individual message by key & TTL
             transaction.setex(RedisBackplaneMessageDAO.getKey(newId),
                     DateTimeUtils.getExpireSeconds(backplaneMessage.getIdValue(), backplaneMessage.get(BackplaneMessage.Field.EXPIRE), backplaneMessage.isSticky()),
-                    SerializationUtils.serialize(backplaneMessage));
+                    BpSerialUtils.serialize(backplaneMessage));
 
             // channel and bus sorted set index
             transaction.zadd(RedisBackplaneMessageDAO.getChannelKey(backplaneMessage.getChannel()), messageTime,

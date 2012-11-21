@@ -17,15 +17,15 @@
 package com.janrain.backplane.server2.dao.redis;
 
 import com.janrain.backplane.common.BackplaneServerException;
+import com.janrain.backplane.common.BpSerialUtils;
 import com.janrain.backplane.common.RandomUtils;
+import com.janrain.backplane.redis.Redis;
 import com.janrain.backplane.server2.BackplaneMessage;
 import com.janrain.backplane.server2.MessagesResponse;
 import com.janrain.backplane.server2.Scope;
 import com.janrain.backplane.server2.Token;
 import com.janrain.backplane.server2.dao.BackplaneMessageDAO;
 import com.janrain.backplane.server2.oauth2.TokenException;
-import com.janrain.backplane.redis.Redis;
-import org.apache.commons.lang.SerializationUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
@@ -67,7 +67,7 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
                 String args[] = new String(bytesList.iterator().next()).split(" ");
                 byte[] bytes = jedis.get(getKey(args[2]));
                 if (bytes != null) {
-                    return (BackplaneMessage) SerializationUtils.deserialize(bytes);
+                    return (BackplaneMessage) BpSerialUtils.deserialize(bytes);
                 }
             }
             return null;
@@ -154,7 +154,7 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
                         idBytes.add(getKey(msgId));
                     }
                     for(byte[] messageBytes : jedis.mget(idBytes.toArray(new byte[idBytes.size()][]))) {
-                        if (messageBytes != null) messages.add((BackplaneMessage) SerializationUtils.deserialize(messageBytes));
+                        if (messageBytes != null) messages.add((BackplaneMessage) BpSerialUtils.deserialize(messageBytes));
                     }
 
                 }
@@ -211,7 +211,7 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
                 pipeline.sync();
                 for (Response<byte[]> response : responses) {
                     if (response.get() != null) {
-                        BackplaneMessage backplaneMessage = (BackplaneMessage) SerializationUtils.deserialize(response.get());
+                        BackplaneMessage backplaneMessage = (BackplaneMessage) BpSerialUtils.deserialize(response.get());
                         messages.add(backplaneMessage);
                     } else {
                         logger.warn("failed to retrieve a message");
@@ -255,7 +255,7 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
                 pipeline.sync();
                 for (Response<byte[]> response : responses) {
                     if (response.get() != null) {
-                        BackplaneMessage backplaneMessage = (BackplaneMessage) SerializationUtils.deserialize(response.get());
+                        BackplaneMessage backplaneMessage = (BackplaneMessage) BpSerialUtils.deserialize(response.get());
                         messages.add(backplaneMessage);
                     } else {
                         logger.warn("failed to retrieve a message");
@@ -315,7 +315,7 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
     public BackplaneMessage get(String id) throws BackplaneServerException {
         byte[] messageBytes = Redis.getInstance().get(getKey(id));
         if (messageBytes != null) {
-            return (BackplaneMessage) SerializationUtils.deserialize(messageBytes);
+            return (BackplaneMessage) BpSerialUtils.deserialize(messageBytes);
         }
         return null;
     }
@@ -329,7 +329,7 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
     public void persist(BackplaneMessage obj) throws BackplaneServerException {
         // the messages will not be immediately available for reading until they
         // are inserted by the message processing thread.
-        Redis.getInstance().rpush(V2_MESSAGE_QUEUE.getBytes(), SerializationUtils.serialize(obj));
+        Redis.getInstance().rpush(V2_MESSAGE_QUEUE.getBytes(), BpSerialUtils.serialize(obj));
     }
 
     @Override

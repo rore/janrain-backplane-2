@@ -1,11 +1,11 @@
 package com.janrain.backplane.server2.dao.redis;
 
 import com.janrain.backplane.common.BackplaneServerException;
+import com.janrain.backplane.common.BpSerialUtils;
+import com.janrain.backplane.redis.Redis;
 import com.janrain.backplane.server2.BusOwner;
 import com.janrain.backplane.server2.dao.BusDAO;
 import com.janrain.backplane.server2.dao.BusOwnerDAO;
-import com.janrain.backplane.redis.Redis;
-import org.apache.commons.lang.SerializationUtils;
 import org.apache.log4j.Logger;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Response;
@@ -31,7 +31,7 @@ public class RedisBusOwnerDAO implements BusOwnerDAO {
     public BusOwner get(String id) throws BackplaneServerException {
         byte[] bytes = Redis.getInstance().get(getKey(id));
         if (bytes != null) {
-            return (BusOwner) SerializationUtils.deserialize(bytes);
+            return (BusOwner) BpSerialUtils.deserialize(bytes);
         } else {
             return null;
         }
@@ -43,7 +43,7 @@ public class RedisBusOwnerDAO implements BusOwnerDAO {
         List<byte[]> bytesList = Redis.getInstance().lrange(getKey("list"), 0, -1);
         for (byte [] bytes : bytesList) {
             if (bytes != null) {
-                users.add((BusOwner) SerializationUtils.deserialize(bytes));
+                users.add((BusOwner) BpSerialUtils.deserialize(bytes));
             }
         }
         return users;
@@ -56,7 +56,7 @@ public class RedisBusOwnerDAO implements BusOwnerDAO {
 
         try {
             jedis = Redis.getInstance().getWriteJedis();
-            byte[] bytes = SerializationUtils.serialize(obj);
+            byte[] bytes = BpSerialUtils.serialize(obj);
             Transaction t = jedis.multi();
 
             t.set(getKey(obj.getIdValue()), bytes);

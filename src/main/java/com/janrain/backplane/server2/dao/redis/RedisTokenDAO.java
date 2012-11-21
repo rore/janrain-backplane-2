@@ -1,11 +1,11 @@
 package com.janrain.backplane.server2.dao.redis;
 
 import com.janrain.backplane.common.BackplaneServerException;
+import com.janrain.backplane.common.BpSerialUtils;
+import com.janrain.backplane.redis.Redis;
 import com.janrain.backplane.server2.Token;
 import com.janrain.backplane.server2.dao.TokenDAO;
 import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.backplane.redis.Redis;
-import org.apache.commons.lang.SerializationUtils;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import redis.clients.jedis.Jedis;
@@ -26,7 +26,7 @@ public class RedisTokenDAO implements TokenDAO {
     public Token get(String id) throws BackplaneServerException {
         byte[] bytes = Redis.getInstance().get(getKey(id));
         if (bytes != null) {
-            return (Token) SerializationUtils.deserialize(bytes);
+            return (Token) BpSerialUtils.deserialize(bytes);
         } else {
             return null;
         }
@@ -38,7 +38,7 @@ public class RedisTokenDAO implements TokenDAO {
         List<byte[]> byteList = Redis.getInstance().lrange(getKey("list"), 0, -1);
         for (byte[] bytes : byteList) {
             if (bytes != null) {
-                tokens.add((Token) SerializationUtils.deserialize(bytes));
+                tokens.add((Token) BpSerialUtils.deserialize(bytes));
             }
         }
         return tokens;
@@ -49,7 +49,7 @@ public class RedisTokenDAO implements TokenDAO {
         Jedis jedis = null;
         try {
             jedis = Redis.getInstance().getWriteJedis();
-            byte[] bytes = SerializationUtils.serialize(token);
+            byte[] bytes = BpSerialUtils.serialize(token);
             jedis.rpush(getKey("list"), bytes);
             jedis.set(getKey(token.getIdValue()), bytes);
             // set a TTL
@@ -116,7 +116,7 @@ public class RedisTokenDAO implements TokenDAO {
                 for (Token token : tokens) {
                     if (Redis.getInstance().get(getKey(token.getIdValue())) == null) {
                         // remove from list
-                        jedis.lrem(getKey("list"), 0, SerializationUtils.serialize(token));
+                        jedis.lrem(getKey("list"), 0, BpSerialUtils.serialize(token));
                         logger.info("removed expired token " + token.getIdValue());
                     }
                 }

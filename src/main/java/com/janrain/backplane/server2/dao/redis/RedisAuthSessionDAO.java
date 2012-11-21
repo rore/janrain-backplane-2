@@ -1,11 +1,11 @@
 package com.janrain.backplane.server2.dao.redis;
 
-import com.janrain.backplane.server2.AuthSession;
 import com.janrain.backplane.common.BackplaneServerException;
-import com.janrain.backplane.server2.dao.AuthSessionDAO;
+import com.janrain.backplane.common.BpSerialUtils;
 import com.janrain.backplane.redis.Redis;
+import com.janrain.backplane.server2.AuthSession;
+import com.janrain.backplane.server2.dao.AuthSessionDAO;
 import org.apache.commons.lang.NotImplementedException;
-import org.apache.commons.lang.SerializationUtils;
 
 import java.util.List;
 
@@ -22,7 +22,7 @@ public class RedisAuthSessionDAO implements AuthSessionDAO {
     public AuthSession get(String id) throws BackplaneServerException {
         byte[] bytes = Redis.getInstance().get(getKey(id));
         if (bytes != null) {
-            return (AuthSession) SerializationUtils.deserialize(bytes);
+            return (AuthSession) BpSerialUtils.deserialize(bytes);
         } else {
             return null;
         }
@@ -35,7 +35,7 @@ public class RedisAuthSessionDAO implements AuthSessionDAO {
 
     @Override
     public void persist(AuthSession authSession) throws BackplaneServerException {
-        Redis.getInstance().set(getKey(authSession.getIdValue()), SerializationUtils.serialize(authSession));
+        Redis.getInstance().set(getKey(authSession.getIdValue()), BpSerialUtils.serialize(authSession));
     }
 
     @Override

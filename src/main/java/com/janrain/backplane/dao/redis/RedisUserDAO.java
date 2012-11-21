@@ -1,10 +1,10 @@
 package com.janrain.backplane.dao.redis;
 
 import com.janrain.backplane.common.BackplaneServerException;
-import com.janrain.backplane.dao.DAO;
+import com.janrain.backplane.common.BpSerialUtils;
 import com.janrain.backplane.common.User;
+import com.janrain.backplane.dao.DAO;
 import com.janrain.backplane.redis.Redis;
-import org.apache.commons.lang.SerializationUtils;
 import org.apache.log4j.Logger;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Response;
@@ -25,7 +25,7 @@ public class RedisUserDAO implements DAO<User> {
     @Override
     public void persist(User user) {
         logger.info("writing key to redis: " + new String(getKey(user.getIdValue())));
-        byte[] bytes = SerializationUtils.serialize(user);
+        byte[] bytes = BpSerialUtils.serialize(user);
         Redis.getInstance().set(getKey(user.getIdValue()), bytes);
         Redis.getInstance().rpush(getKey("list"), bytes);
     }
@@ -61,7 +61,7 @@ public class RedisUserDAO implements DAO<User> {
     public User get(String key) {
         byte[] bytes = Redis.getInstance().get(getKey(key));
         if (bytes != null) {
-            return (User) SerializationUtils.deserialize(bytes);
+            return (User) BpSerialUtils.deserialize(bytes);
         } else {
             return null;
         }
@@ -73,7 +73,7 @@ public class RedisUserDAO implements DAO<User> {
         List<byte[]> bytesList = Redis.getInstance().lrange(getKey("list"), 0, -1);
         for (byte[] bytes : bytesList) {
             if (bytes != null) {
-                users.add((User) SerializationUtils.deserialize(bytes));
+                users.add((User) BpSerialUtils.deserialize(bytes));
             }
         }
         return users;

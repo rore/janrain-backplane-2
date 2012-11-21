@@ -1,10 +1,10 @@
 package com.janrain.backplane.server2.dao.redis;
 
 import com.janrain.backplane.common.BackplaneServerException;
+import com.janrain.backplane.common.BpSerialUtils;
+import com.janrain.backplane.redis.Redis;
 import com.janrain.backplane.server2.Channel;
 import com.janrain.backplane.server2.dao.ChannelDAO;
-import com.janrain.backplane.redis.Redis;
-import org.apache.commons.lang.SerializationUtils;
 
 import java.util.List;
 
@@ -21,7 +21,7 @@ public class RedisChannelDAO implements ChannelDAO {
     public Channel get(String id) throws BackplaneServerException {
         byte[] bytes = Redis.getInstance().get(getKey(id));
         if (bytes != null) {
-            return (Channel) SerializationUtils.deserialize(bytes);
+            return (Channel) BpSerialUtils.deserialize(bytes);
         } else {
             return null;
         }
@@ -36,7 +36,7 @@ public class RedisChannelDAO implements ChannelDAO {
     public void persist(Channel channelId) throws BackplaneServerException {
         Redis.getInstance().set(
                 getKey(channelId.getIdValue()),
-                SerializationUtils.serialize(channelId),
+                BpSerialUtils.serialize(channelId),
                 Integer.parseInt(channelId.get(Channel.ChannelField.EXPIRE_SECONDS))
         );
     }

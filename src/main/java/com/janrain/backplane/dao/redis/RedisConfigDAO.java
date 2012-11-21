@@ -1,9 +1,9 @@
 package com.janrain.backplane.dao.redis;
 
 import com.janrain.backplane.common.BackplaneServerException;
+import com.janrain.backplane.common.BpSerialUtils;
 import com.janrain.backplane.config.BpServerConfig;
 import com.janrain.backplane.dao.DAO;
-import com.janrain.commons.util.SerializationUtils;
 import com.janrain.backplane.redis.Redis;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.log4j.Logger;
@@ -23,7 +23,7 @@ public class RedisConfigDAO implements DAO<BpServerConfig> {
     @Override
     public BpServerConfig get(@Nullable String id)  {
         if (id != null) {
-            return SerializationUtils.fromBytes(Redis.getInstance().get(getKey(id)));
+            return BpSerialUtils.deserialize(Redis.getInstance().get(getKey(id)));
         } else {
             return null;
         }
@@ -38,7 +38,7 @@ public class RedisConfigDAO implements DAO<BpServerConfig> {
     public void persist(BpServerConfig obj) throws BackplaneServerException {
 
         logger.info("writing key to redis: " + new String(getKey(obj.getIdValue())));
-        byte[] bytes = org.apache.commons.lang.SerializationUtils.serialize(obj);
+        byte[] bytes = BpSerialUtils.serialize(obj);
         Redis.getInstance().set(getKey(obj.getIdValue()), bytes);
     }
 

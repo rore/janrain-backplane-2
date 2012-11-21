@@ -16,25 +16,28 @@
 
 package com.janrain.backplane.server1;
 
+import com.janrain.backplane.common.BpSerialUtils;
 import com.janrain.backplane.common.DateTimeUtils;
+import com.janrain.backplane.config.BackplaneSystemProps;
+import com.janrain.backplane.redis.Redis;
 import com.janrain.backplane.server1.redisdao.BP1DAOs;
 import com.janrain.backplane.server1.redisdao.RedisBackplaneMessageDAO;
 import com.janrain.commons.util.Pair;
-import com.janrain.backplane.redis.Redis;
-import com.janrain.backplane.config.BackplaneSystemProps;
 import com.netflix.curator.framework.CuratorFramework;
 import com.netflix.curator.framework.recipes.leader.LeaderSelectorListener;
 import com.netflix.curator.framework.state.ConnectionState;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Histogram;
 import com.yammer.metrics.core.MetricName;
-import org.apache.commons.lang.SerializationUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Transaction;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Set;
 
 /**
  * @author Tom Raney
@@ -113,7 +116,7 @@ public class MessageProcessor implements LeaderSelectorListener {
                         for (byte[] messageBytes : messagesToProcess) {
 
                             if (messageBytes != null) {
-                                BackplaneMessage backplaneMessage = (BackplaneMessage) SerializationUtils.deserialize(messageBytes);
+                                BackplaneMessage backplaneMessage = (BackplaneMessage) BpSerialUtils.deserialize(messageBytes);
 
                                 if (backplaneMessage != null) {
 
@@ -145,7 +148,7 @@ public class MessageProcessor implements LeaderSelectorListener {
 
                                     // <ATOMIC>
                                     // save the individual message by key
-                                    transaction.set(RedisBackplaneMessageDAO.getKey(newId), SerializationUtils.serialize(backplaneMessage));
+                                    transaction.set(RedisBackplaneMessageDAO.getKey(newId), BpSerialUtils.serialize(backplaneMessage));
                                     // set the message TTL
                                     if (backplaneMessage.isSticky()) {
                                         transaction.expire(RedisBackplaneMessageDAO.getKey(newId), retentionTimeStickySeconds);

@@ -1,11 +1,11 @@
 package com.janrain.backplane.server2.dao.redis;
 
 import com.janrain.backplane.common.BackplaneServerException;
+import com.janrain.backplane.common.BpSerialUtils;
+import com.janrain.backplane.redis.Redis;
 import com.janrain.backplane.server2.dao.AuthorizationDecisionKeyDAO;
 import com.janrain.backplane.server2.oauth2.AuthorizationDecisionKey;
-import com.janrain.backplane.redis.Redis;
 import org.apache.commons.lang.NotImplementedException;
-import org.apache.commons.lang.SerializationUtils;
 
 import java.util.List;
 
@@ -22,7 +22,7 @@ public class RedisAuthorizationDecisionKeyDAO implements AuthorizationDecisionKe
     public AuthorizationDecisionKey get(String id) throws BackplaneServerException {
         byte[] bytes = Redis.getInstance().get(getKey(id));
         if (bytes != null) {
-            return (AuthorizationDecisionKey) SerializationUtils.deserialize(bytes);
+            return (AuthorizationDecisionKey) BpSerialUtils.deserialize(bytes);
         } else {
             return null;
         }
@@ -35,7 +35,7 @@ public class RedisAuthorizationDecisionKeyDAO implements AuthorizationDecisionKe
 
     @Override
     public void persist(AuthorizationDecisionKey authorizationDecisionKey) throws BackplaneServerException {
-        Redis.getInstance().set(getKey(authorizationDecisionKey.getIdValue()), SerializationUtils.serialize(authorizationDecisionKey));
+        Redis.getInstance().set(getKey(authorizationDecisionKey.getIdValue()), BpSerialUtils.serialize(authorizationDecisionKey));
     }
 
     @Override

@@ -1,10 +1,10 @@
 package com.janrain.backplane.server2.dao.redis;
 
 import com.janrain.backplane.common.BackplaneServerException;
+import com.janrain.backplane.common.BpSerialUtils;
+import com.janrain.backplane.redis.Redis;
 import com.janrain.backplane.server2.Client;
 import com.janrain.backplane.server2.dao.ClientDAO;
-import com.janrain.backplane.redis.Redis;
-import org.apache.commons.lang.SerializationUtils;
 import org.apache.log4j.Logger;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Response;
@@ -26,7 +26,7 @@ public class RedisClientDAO implements ClientDAO {
     public Client get(String id) throws BackplaneServerException {
         byte[] bytes = Redis.getInstance().get(getKey(id));
         if (bytes != null) {
-            return (Client) SerializationUtils.deserialize(bytes);
+            return (Client) BpSerialUtils.deserialize(bytes);
         } else {
             return null;
         }
@@ -38,7 +38,7 @@ public class RedisClientDAO implements ClientDAO {
         List<byte[]> byteList = Redis.getInstance().lrange(getKey("list"), 0, -1);
         for (byte [] bytes: byteList) {
             if (bytes != null) {
-                clients.add((Client) SerializationUtils.deserialize(bytes));
+                clients.add((Client) BpSerialUtils.deserialize(bytes));
             }
         }
         return clients;
@@ -48,7 +48,7 @@ public class RedisClientDAO implements ClientDAO {
     public void persist(Client obj) throws BackplaneServerException {
         Jedis jedis = null;
         try {
-            byte[] bytes = SerializationUtils.serialize(obj);
+            byte[] bytes = BpSerialUtils.serialize(obj);
             jedis = Redis.getInstance().getWriteJedis();
 
             Transaction t = jedis.multi();

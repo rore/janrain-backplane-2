@@ -17,14 +17,14 @@
 package com.janrain.backplane.server1.redisdao;
 
 import com.janrain.backplane.common.BackplaneServerException;
+import com.janrain.backplane.common.BpSerialUtils;
+import com.janrain.backplane.redis.Redis;
 import com.janrain.backplane.server1.BackplaneMessage;
 import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.backplane.redis.Redis;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Histogram;
 import com.yammer.metrics.core.MetricName;
 import org.apache.commons.lang.NotImplementedException;
-import org.apache.commons.lang.SerializationUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import redis.clients.jedis.Jedis;
@@ -63,7 +63,7 @@ public class RedisBackplaneMessageDAO implements BP1MessageDao {
 
     @Override
     public void persist(BackplaneMessage message) throws BackplaneServerException {
-        Redis.getInstance().rpush(V1_MESSAGE_QUEUE.getBytes(), SerializationUtils.serialize(message));
+        Redis.getInstance().rpush(V1_MESSAGE_QUEUE.getBytes(), BpSerialUtils.serialize(message));
     }
 
     @Override
@@ -143,7 +143,7 @@ public class RedisBackplaneMessageDAO implements BP1MessageDao {
     public BackplaneMessage get(String key) {
         byte[] messageBytes = Redis.getInstance().get(key.getBytes());
         if (messageBytes != null) {
-            return (BackplaneMessage) SerializationUtils.deserialize(messageBytes);
+            return (BackplaneMessage) BpSerialUtils.deserialize(messageBytes);
         }
         return null;
     }
@@ -190,7 +190,7 @@ public class RedisBackplaneMessageDAO implements BP1MessageDao {
                 List<byte[]> responses = jedis.mget(messageIdBytes.toArray(new byte[messageIdBytes.size()][]));
                 for (byte[] response : responses) {
                     if (response != null) {
-                        messages.add((BackplaneMessage) SerializationUtils.deserialize(response));
+                        messages.add((BackplaneMessage) BpSerialUtils.deserialize(response));
                     }
                 }
             }
@@ -250,7 +250,7 @@ public class RedisBackplaneMessageDAO implements BP1MessageDao {
                 for (Response<byte[]> response: responses) {
                     byte[] bytes = response.get();
                     if (bytes != null) {
-                        BackplaneMessage backplaneMessage = (BackplaneMessage) SerializationUtils.deserialize(bytes);
+                        BackplaneMessage backplaneMessage = (BackplaneMessage) BpSerialUtils.deserialize(bytes);
                         messages.add(backplaneMessage);
                     }
                 }

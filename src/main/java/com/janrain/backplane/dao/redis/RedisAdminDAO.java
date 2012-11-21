@@ -1,11 +1,11 @@
 package com.janrain.backplane.dao.redis;
 
 import com.janrain.backplane.common.BackplaneServerException;
+import com.janrain.backplane.common.BpSerialUtils;
 import com.janrain.backplane.config.Admin;
 import com.janrain.backplane.dao.DAO;
 import com.janrain.backplane.redis.Redis;
 import org.apache.commons.lang.NotImplementedException;
-import org.apache.commons.lang.SerializationUtils;
 import org.apache.log4j.Logger;
 
 import java.util.List;
@@ -23,7 +23,7 @@ public class RedisAdminDAO implements DAO<Admin> {
     public void persist(Admin user) throws BackplaneServerException {
         byte[] key = getAdminAdminKey(user.getIdValue());
         logger.info("writing key to redis: " + new String(key));
-        Redis.getInstance().set(getAdminAdminKey(user.getIdValue()), SerializationUtils.serialize(user));
+        Redis.getInstance().set(getAdminAdminKey(user.getIdValue()), BpSerialUtils.serialize(user));
     }
 
     @Override
@@ -36,7 +36,7 @@ public class RedisAdminDAO implements DAO<Admin> {
     public Admin get(String key) {
         byte[] bytes = Redis.getInstance().get(getAdminAdminKey(key));
         if (bytes != null) {
-            return (Admin) SerializationUtils.deserialize(bytes);
+            return (Admin) BpSerialUtils.deserialize(bytes);
         } else {
             return null;
         }

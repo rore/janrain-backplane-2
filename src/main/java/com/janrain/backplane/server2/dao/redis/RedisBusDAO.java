@@ -17,12 +17,12 @@
 package com.janrain.backplane.server2.dao.redis;
 
 import com.janrain.backplane.common.BackplaneServerException;
+import com.janrain.backplane.common.BpSerialUtils;
+import com.janrain.backplane.redis.Redis;
 import com.janrain.backplane.server2.BusConfig2;
 import com.janrain.backplane.server2.dao.BusDAO;
 import com.janrain.backplane.server2.dao.GrantDAO;
 import com.janrain.backplane.server2.oauth2.TokenException;
-import com.janrain.backplane.redis.Redis;
-import org.apache.commons.lang.SerializationUtils;
 import org.apache.log4j.Logger;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Response;
@@ -70,7 +70,7 @@ public class RedisBusDAO implements BusDAO {
     public BusConfig2 get(String id) throws BackplaneServerException {
         byte[] bytes = Redis.getInstance().get(getKey(id));
         if (bytes != null) {
-            return (BusConfig2) SerializationUtils.deserialize(bytes);
+            return (BusConfig2) BpSerialUtils.deserialize(bytes);
         } else {
             return null;
         }
@@ -82,7 +82,7 @@ public class RedisBusDAO implements BusDAO {
         List<byte[]> bytesList = Redis.getInstance().lrange(getKey("list"), 0, -1);
         for (byte[] bytes : bytesList) {
             if (bytes != null) {
-                buses.add((BusConfig2) SerializationUtils.deserialize(bytes));
+                buses.add((BusConfig2) BpSerialUtils.deserialize(bytes));
             }
         }
         return buses;
@@ -90,7 +90,7 @@ public class RedisBusDAO implements BusDAO {
 
     @Override
     public void persist(BusConfig2 obj) throws BackplaneServerException {
-        byte[] bytes = SerializationUtils.serialize(obj);
+        byte[] bytes = BpSerialUtils.serialize(obj);
         Redis.getInstance().rpush(getKey("list"), bytes);
         Redis.getInstance().set(getKey(obj.getIdValue()), bytes);
     }
