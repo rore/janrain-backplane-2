@@ -23,8 +23,8 @@ import com.janrain.backplane.config.BackplaneConfig;
 import com.janrain.backplane.server1.BP1User;
 import com.janrain.backplane.server1.BusConfig1;
 import com.janrain.backplane.server1.dao.BP1DAOs;
-import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.commons.supersimpledb.message.AbstractMessage;
+import com.janrain.commons.message.AbstractMessage;
+import com.janrain.commons.message.MessageException;
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
@@ -78,13 +78,13 @@ public class ProvisioningController {
 
     @RequestMapping(value = "/bus/update", method = RequestMethod.POST)
     @ResponseBody
-    public Map<String, String> busUpdate(@RequestBody BusUpdateRequest updateRequest) throws AuthException, SimpleDBException {
+    public Map<String, String> busUpdate(@RequestBody BusUpdateRequest updateRequest) throws AuthException, MessageException {
         return doUpdate(BusConfig1.class, updateRequest);
     }
 
     @RequestMapping(value = "/user/update", method = RequestMethod.POST)
     @ResponseBody
-    public Map<String, String> userUpdate(@RequestBody UserUpdateRequest updateRequest) throws AuthException, SimpleDBException {
+    public Map<String, String> userUpdate(@RequestBody UserUpdateRequest updateRequest) throws AuthException, MessageException {
         return doUpdate(BP1User.class, updateRequest);
     }
 
@@ -102,11 +102,11 @@ public class ProvisioningController {
     }
 
     /**
-     * Handle auth SimpleDB errors
+     * Handle message/validation errors
      */
     @ExceptionHandler
     @ResponseBody
-    public Map<String, String> handle(final SimpleDBException e, HttpServletResponse response) {
+    public Map<String, String> handle(final MessageException e, HttpServletResponse response) {
         logger.error("Provisioning authentication error: " + e.getMessage());
         response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         return new HashMap<String,String>() {{
@@ -188,13 +188,13 @@ public class ProvisioningController {
         return result;
     }
 
-    private <T extends AbstractMessage> Map<String, String> doUpdate(Class<T> entityType, UpdateRequest<T> updateRequest) throws AuthException, SimpleDBException {
+    private <T extends AbstractMessage> Map<String, String> doUpdate(Class<T> entityType, UpdateRequest<T> updateRequest) throws AuthException, MessageException {
         bpConfig.checkAdminAuth(updateRequest.getAdmin(), updateRequest.getSecret());
         validateConfigs(entityType, updateRequest);
         return updateConfigs(entityType, updateRequest.getConfigs());
     }
 
-    private <T extends AbstractMessage> void validateConfigs(Class<T> entityType, UpdateRequest<T> updateRequest) throws SimpleDBException {
+    private <T extends AbstractMessage> void validateConfigs(Class<T> entityType, UpdateRequest<T> updateRequest) throws MessageException {
         for(T config : updateRequest.getConfigs()) {
             config.validate();
         }

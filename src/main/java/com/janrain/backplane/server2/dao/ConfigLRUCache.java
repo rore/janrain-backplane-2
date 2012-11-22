@@ -1,6 +1,7 @@
 package com.janrain.backplane.server2.dao;
 
-import com.janrain.commons.supersimpledb.message.Message;
+
+import com.janrain.commons.message.Message;
 import org.apache.log4j.Logger;
 
 import java.util.Iterator;

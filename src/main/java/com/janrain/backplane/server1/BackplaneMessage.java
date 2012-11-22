@@ -17,11 +17,11 @@
 package com.janrain.backplane.server1;
 
 import com.janrain.backplane.common.BackplaneServerException;
+import com.janrain.backplane.common.DateTimeUtils;
 import com.janrain.backplane.common.ExternalizableCore;
 import com.janrain.backplane.common.RandomUtils;
-import com.janrain.backplane.common.DateTimeUtils;
-import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.commons.supersimpledb.message.MessageField;
+import com.janrain.commons.message.MessageException;
+import com.janrain.commons.message.MessageField;
 import com.janrain.commons.util.Pair;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -42,7 +42,7 @@ public class BackplaneMessage extends ExternalizableCore {
 
     public BackplaneMessage() { }
 
-    public BackplaneMessage(String bus, String channel, int defaultExpireSeconds, int maxExpireSeconds, Map<String, Object> data) throws BackplaneServerException, SimpleDBException {
+    public BackplaneMessage(String bus, String channel, int defaultExpireSeconds, int maxExpireSeconds, Map<String, Object> data) throws BackplaneServerException, MessageException {
         Map<String,String> d = new LinkedHashMap<String, String>(toStringMap(data));
         String id = generateMessageId(new Date());
         d.put(Field.ID.getFieldName(), id);
@@ -135,7 +135,7 @@ public class BackplaneMessage extends ExternalizableCore {
         BUS("bus"),
         STICKY("sticky", false) {
             @Override
-            public void validate(String value) throws SimpleDBException {
+            public void validate(String value) throws MessageException {
                 super.validate(value);
                 if (value != null && ! Boolean.TRUE.toString().equalsIgnoreCase(value) && ! Boolean.FALSE.toString().equalsIgnoreCase(value)) {
                     throw new IllegalArgumentException("Invalid boolean value for " + getFieldName() + ": " + value);
@@ -143,7 +143,7 @@ public class BackplaneMessage extends ExternalizableCore {
             }},
         EXPIRE("expire", true) {
             @Override
-            public void validate(String value) throws SimpleDBException {
+            public void validate(String value) throws MessageException {
                 super.validate(value);
                 try {
                     DateTimeUtils.INTERNETDATE.get().parse(value);
@@ -153,7 +153,7 @@ public class BackplaneMessage extends ExternalizableCore {
             }},
         SOURCE("source") {
             @Override
-            public void validate(String value) throws SimpleDBException {
+            public void validate(String value) throws MessageException {
                 super.validate(value);
                 try {
                     new URL(value);
@@ -176,7 +176,7 @@ public class BackplaneMessage extends ExternalizableCore {
         }
 
         @Override
-        public void validate(String value) throws SimpleDBException {
+        public void validate(String value) throws MessageException {
             if (isRequired()) validateNotBlank(getFieldName(), value);
         }
 

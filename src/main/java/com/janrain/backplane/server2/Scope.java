@@ -16,10 +16,11 @@
 
 package com.janrain.backplane.server2;
 
-import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.commons.util.Pair;
+
 import com.janrain.backplane.server2.oauth2.OAuth2;
 import com.janrain.backplane.server2.oauth2.TokenException;
+import com.janrain.commons.message.MessageException;
+import com.janrain.commons.util.Pair;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
@@ -314,7 +315,7 @@ public class Scope {
         String value = token.substring(delimiterIndex+1);
         try {
             key.validate(value);
-        } catch (SimpleDBException e) {
+        } catch (MessageException e) {
             throw new TokenException(OAuth2.OAUTH2_TOKEN_INVALID_SCOPE, "invalid scope value in token: " + token);
         }
         if (StringUtils.isBlank(value)) {

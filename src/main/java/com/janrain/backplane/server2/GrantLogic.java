@@ -2,8 +2,8 @@ package com.janrain.backplane.server2;
 
 import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.server2.dao.BP2DAOs;
-import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.backplane.server2.oauth2.TokenException;
+import com.janrain.commons.message.MessageException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
@@ -109,7 +109,7 @@ public class GrantLogic {
           Grant updated; // no expiration
           try {
               updated = new Grant.Builder(existing, updatedState).buildGrant();
-          } catch (SimpleDBException e) {
+          } catch (MessageException e) {
               throw new BackplaneServerException(e.getMessage());
           }
 

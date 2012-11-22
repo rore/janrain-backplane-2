@@ -18,8 +18,8 @@ package com.janrain.backplane.server2;
 
 import com.janrain.backplane.common.DateTimeUtils;
 import com.janrain.backplane.common.ExternalizableCore;
-import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.commons.supersimpledb.message.MessageField;
+import com.janrain.commons.message.MessageException;
+import com.janrain.commons.message.MessageField;
 
 import java.util.*;
 
@@ -35,7 +35,7 @@ public class AuthSession extends ExternalizableCore {
      */
     public AuthSession() { }
     
-    public AuthSession(String authUser, String cookie) throws SimpleDBException {
+    public AuthSession(String authUser, String cookie) throws MessageException {
         Map<String,String> data = new LinkedHashMap<String, String>();
         data.put(Field.AUTH_USER.getFieldName(), authUser);
         data.put(Field.COOKIE.getFieldName(), cookie);
@@ -72,7 +72,7 @@ public class AuthSession extends ExternalizableCore {
         }
 
         @Override
-        public void validate(String value) throws SimpleDBException {
+        public void validate(String value) throws MessageException {
             if (isRequired()) validateNotBlank(name(), value);
         }
     }

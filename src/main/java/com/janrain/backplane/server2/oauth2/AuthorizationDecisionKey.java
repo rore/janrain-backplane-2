@@ -16,11 +16,11 @@
 
 package com.janrain.backplane.server2.oauth2;
 
-import com.janrain.backplane.common.RandomUtils;
 import com.janrain.backplane.common.DateTimeUtils;
 import com.janrain.backplane.common.ExternalizableCore;
-import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.commons.supersimpledb.message.MessageField;
+import com.janrain.backplane.common.RandomUtils;
+import com.janrain.commons.message.MessageException;
+import com.janrain.commons.message.MessageField;
 
 import java.util.*;
 
@@ -36,7 +36,7 @@ public class AuthorizationDecisionKey extends ExternalizableCore {
      */
     public AuthorizationDecisionKey() { }
 
-    public AuthorizationDecisionKey(String authCookie) throws SimpleDBException {
+    public AuthorizationDecisionKey(String authCookie) throws MessageException {
         Map<String,String> data = new LinkedHashMap<String, String>();
         String key = RandomUtils.randomString(AUTHORIZATION_DECISION_KEY_LENGTH);
         data.put(Field.KEY.getFieldName(), key);
@@ -72,7 +72,7 @@ public class AuthorizationDecisionKey extends ExternalizableCore {
         }
 
         @Override
-        public void validate(String value) throws SimpleDBException {
+        public void validate(String value) throws MessageException {
             if (isRequired()) validateNotBlank(name(), value);
         }
     }

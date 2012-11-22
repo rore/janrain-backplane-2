@@ -68,7 +68,7 @@ public class BackplaneConfig {
 
     /**
      * @return the server default max message value per channel
-     * @throws SimpleDBException
+     * @throws MessageException
      */
     public long getDefaultMaxMessageLimit() {
         Long max = Long.valueOf(cachedGet(BpServerConfig.Field.DEFAULT_MESSAGES_MAX));

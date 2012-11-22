@@ -28,7 +28,7 @@ import com.janrain.backplane.dao.ServerDAOs;
 import com.janrain.backplane.server1.dao.BP1DAOs;
 import com.janrain.backplane.server1.dao.BP1MessageDao;
 import com.janrain.backplane.servlet.ServletUtil;
-import com.janrain.commons.supersimpledb.SimpleDBException;
+import com.janrain.commons.message.MessageException;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Histogram;
 import com.yammer.metrics.core.MetricName;
@@ -185,7 +185,7 @@ public class Backplane1Controller {
             @PathVariable String bus,
             @RequestParam(value = "since", defaultValue = "") String since,
             @RequestParam(value = "sticky", required = false) String sticky )
-            throws AuthException, SimpleDBException, BackplaneServerException {
+            throws AuthException, MessageException, BackplaneServerException {
 
         final TimerContext context = getBusMessagesTime.time();
 
@@ -214,7 +214,7 @@ public class Backplane1Controller {
             @RequestParam(required = false) String callback,
             @RequestParam(value = "since", required = false) String since,
             @RequestParam(value = "sticky", required = false) String sticky )
-            throws SimpleDBException, AuthException, BackplaneServerException {
+            throws MessageException, AuthException, BackplaneServerException {
 
         logger.debug("request started");
 
@@ -238,7 +238,7 @@ public class Backplane1Controller {
             @RequestHeader(value = "Authorization", required = false) String basicAuth,
             @RequestBody List<Map<String,Object>> messages,
             @PathVariable String bus,
-            @PathVariable String channel) throws AuthException, SimpleDBException, BackplaneServerException {
+            @PathVariable String channel) throws AuthException, MessageException, BackplaneServerException {
 
         checkAuth(basicAuth, bus, BusConfig1.BUS_PERMISSION.POST);
 
@@ -377,7 +377,6 @@ public class Backplane1Controller {
 
         BP1User userEntry;
 
-        //userEntry = superSimpleDb.retrieve(bpConfig.getTableName(Backplane1Config.SimpleDBTables.BP1_USERS), User.class, user);
         userEntry = BP1DAOs.getUserDao().get(user);
 
         if (userEntry == null) {
@@ -389,7 +388,6 @@ public class Backplane1Controller {
         // authZ
         BusConfig1 busConfig;
 
-        //busConfig = superSimpleDb.retrieve(bpConfig.getTableName(BP1_BUS_CONFIG), BusConfig1.class, bus);
         busConfig = BP1DAOs.getBusDao().get(bus);
 
         if (busConfig == null) {
@@ -415,7 +413,7 @@ public class Backplane1Controller {
     	return newChannel;
     }
 
-    private String getChannelMessages(final String bus, final String channel, final String since, final String sticky) throws SimpleDBException, BackplaneServerException {
+    private String getChannelMessages(final String bus, final String channel, final String since, final String sticky) throws MessageException, BackplaneServerException {
 
         final TimerContext context = getChannelMessagesTime.time();
 
@@ -437,7 +435,7 @@ public class Backplane1Controller {
                 logger.error(errMsg, bpConfig.getDebugException(e));
                 throw new BackplaneServerException(errMsg, e);
             }
-        } catch (SimpleDBException sdbe) {
+        } catch (MessageException sdbe) {
             throw sdbe;
         } catch (BackplaneServerException bse) {
             throw bse;

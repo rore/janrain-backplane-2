@@ -16,7 +16,8 @@
 
 package com.janrain.backplane.provision;
 
-import com.janrain.commons.supersimpledb.message.AbstractMessage;
+
+import com.janrain.commons.message.AbstractMessage;
 
 import java.util.Collections;
 import java.util.List;

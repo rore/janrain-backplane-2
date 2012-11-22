@@ -26,7 +26,7 @@ import com.janrain.backplane.server2.dao.BackplaneMessageDAO;
 import com.janrain.backplane.server2.dao.TokenDAO;
 import com.janrain.backplane.server2.oauth2.*;
 import com.janrain.backplane.servlet.InvalidRequestException;
-import com.janrain.commons.supersimpledb.SimpleDBException;
+import com.janrain.commons.message.MessageException;
 import org.apache.catalina.util.Base64;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -163,7 +163,6 @@ public class Backplane2ControllerTest {
             for (String key:this.createdMessageKeys) {
                 logger.info("deleting Message " + key);
                 BP2DAOs.getBackplaneMessageDAO().delete(key);
-                //superSimpleDB.delete(bpConfig.getTableName(BP_MESSAGES), key);
             }
 
             try {
@@ -211,7 +210,7 @@ public class Backplane2ControllerTest {
 
             BP2DAOs.getClientDAO().persist(client);
             return client;
-        } catch (SimpleDBException e) {
+        } catch (MessageException e) {
             throw new BackplaneServerException(e.getMessage());
         }
     }

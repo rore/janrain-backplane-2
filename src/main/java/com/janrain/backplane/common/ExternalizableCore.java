@@ -1,6 +1,6 @@
 package com.janrain.backplane.common;
 
-import com.janrain.commons.supersimpledb.message.AbstractMessage;
+import com.janrain.commons.message.AbstractMessage;
 
 import java.io.Externalizable;
 import java.io.IOException;

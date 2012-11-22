@@ -18,16 +18,16 @@ package com.janrain.backplane.server2;
 
 import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.common.DateTimeUtils;
-import com.janrain.backplane.common.RandomUtils;
 import com.janrain.backplane.common.ExternalizableCore;
+import com.janrain.backplane.common.RandomUtils;
 import com.janrain.backplane.server2.dao.BP2DAOs;
-import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.commons.supersimpledb.message.AbstractMessage;
-import com.janrain.commons.supersimpledb.message.MessageField;
-import com.janrain.commons.util.Pair;
 import com.janrain.backplane.server2.oauth2.OAuth2;
 import com.janrain.backplane.server2.oauth2.TokenException;
 import com.janrain.backplane.servlet.InvalidRequestException;
+import com.janrain.commons.message.AbstractMessage;
+import com.janrain.commons.message.MessageException;
+import com.janrain.commons.message.MessageField;
+import com.janrain.commons.util.Pair;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
@@ -62,7 +62,7 @@ public class Token extends ExternalizableCore {
     }
 
     @Override
-    public void validate() throws SimpleDBException {
+    public void validate() throws MessageException {
         super.validate();
         if (getType().isPrivileged()) {
             AbstractMessage.validateNotBlank(TokenField.ISSUED_TO_CLIENT_ID.getFieldName(), get(TokenField.ISSUED_TO_CLIENT_ID));
@@ -73,7 +73,7 @@ public class Token extends ExternalizableCore {
             LinkedHashSet<String> buses = anonScope.getScopeMap().get(BackplaneMessage.Field.BUS);
             LinkedHashSet<String> channels = anonScope.getScopeMap().get(BackplaneMessage.Field.CHANNEL);
             if (buses == null || buses.size() > 1 || channels == null || channels.size() > 1) {
-                throw new SimpleDBException("invalid scope for anonymous token, must have exactly one bus and one channel specified: " + anonScope);
+                throw new MessageException("invalid scope for anonymous token, must have exactly one bus and one channel specified: " + anonScope);
             }
         }
     }
@@ -177,33 +177,33 @@ public class Token extends ExternalizableCore {
 
         TYPE("type", true) {
             @Override
-            public void validate(String value) throws SimpleDBException {
+            public void validate(String value) throws MessageException {
                 super.validate(value);
                 try {
                     GrantType.valueOf(value);
                 } catch (IllegalArgumentException e) {
-                    throw new SimpleDBException("Invalid token type: " + value);
+                    throw new MessageException("Invalid token type: " + value);
                 }
             }
         },
 
         EXPIRES("expires", false) {
             @Override
-            public void validate(String value) throws SimpleDBException {
+            public void validate(String value) throws MessageException {
                 super.validate(value);
                 try {
                     if (StringUtils.isNotEmpty(value)) {
                         DateTimeUtils.ISO8601.get().parse(value);
                     }
                 } catch (ParseException e) {
-                    throw new SimpleDBException("Invalid token expiration date: " + value, e);
+                    throw new MessageException("Invalid token expiration date: " + value, e);
                 }
             }
         },
 
         SCOPE("scope", true) {
             @Override
-            public void validate(String value) throws SimpleDBException {
+            public void validate(String value) throws MessageException {
                 super.validate(value);
                 try {
                     new Scope(value);
@@ -217,7 +217,7 @@ public class Token extends ExternalizableCore {
         
         CLIENT_SOURCE_URL("client_source_url", false) {
             @Override
-            public void validate(String value) throws SimpleDBException {
+            public void validate(String value) throws MessageException {
                 super.validate(value);
                 if (StringUtils.isNotEmpty(value)) {
                     AbstractMessage.validateUrl(getFieldName(), value);
@@ -238,7 +238,7 @@ public class Token extends ExternalizableCore {
         }
 
         @Override
-        public void validate(String value) throws SimpleDBException {
+        public void validate(String value) throws MessageException {
             if (isRequired()) validateNotBlank(getFieldName(), value);
         }
 
@@ -282,7 +282,7 @@ public class Token extends ExternalizableCore {
             return this;
         }
         
-        public Token buildToken() throws SimpleDBException {
+        public Token buildToken() throws MessageException {
             String id = type.getTokenPrefix() + RandomUtils.randomString(TOKEN_LENGTH);
             data.put(TokenField.ID.getFieldName(), id);
             return new Token(id, data);
@@ -304,7 +304,7 @@ public class Token extends ExternalizableCore {
 
     private static final String GRANTS_SEPARATOR = " ";
 
-    private Token(String id, Map<String,String> data) throws SimpleDBException {
+    private Token(String id, Map<String,String> data) throws MessageException {
         super.init(id, data);
         logger.debug("created token: " + this.toString());
     }

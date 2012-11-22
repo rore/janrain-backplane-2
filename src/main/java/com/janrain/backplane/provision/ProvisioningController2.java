@@ -19,17 +19,15 @@ package com.janrain.backplane.provision;
 import com.janrain.backplane.common.AuthException;
 import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.common.HmacHashUtils;
+import com.janrain.backplane.common.User;
 import com.janrain.backplane.config.BackplaneConfig;
 import com.janrain.backplane.server2.*;
-import com.janrain.backplane.server2.BusConfig2;
-import com.janrain.backplane.server2.Client;
-import com.janrain.backplane.common.User;
 import com.janrain.backplane.server2.dao.BP2DAOs;
-import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.commons.supersimpledb.message.AbstractMessage;
-import com.janrain.commons.supersimpledb.message.MessageField;
 import com.janrain.backplane.server2.oauth2.TokenException;
 import com.janrain.backplane.servlet.ServletUtil;
+import com.janrain.commons.message.AbstractMessage;
+import com.janrain.commons.message.MessageException;
+import com.janrain.commons.message.MessageField;
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
@@ -320,7 +318,7 @@ public class ProvisioningController2 {
         return result;
     }
 
-    private void addGrant(String issuer, String clientId, String buses) throws SimpleDBException, BackplaneServerException {
+    private void addGrant(String issuer, String clientId, String buses) throws MessageException, BackplaneServerException {
         Grant grant = new Grant.Builder(
                 GrantType.CLIENT_CREDENTIALS,
                 GrantState.ACTIVE,
@@ -331,7 +329,7 @@ public class ProvisioningController2 {
         BP2DAOs.getGrantDao().persist(grant);
     }
 
-    private void revokeBuses(String clientId, String buses) throws TokenException, SimpleDBException, BackplaneServerException {
+    private void revokeBuses(String clientId, String buses) throws TokenException, MessageException, BackplaneServerException {
         boolean updated = false;
         Scope busesToRevoke = new Scope(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, buses));
         if ( ! BP2DAOs.getGrantDao().revokeBuses(BP2DAOs.getGrantDao().getByClientId(clientId), buses) ) {

@@ -21,12 +21,12 @@ import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.common.HmacHashUtils;
 import com.janrain.backplane.common.RandomUtils;
 import com.janrain.backplane.config.BackplaneConfig;
-import com.janrain.backplane.server2.dao.BP2DAOs;
-import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.backplane.server2.oauth2.*;
 import com.janrain.backplane.redis.Redis;
+import com.janrain.backplane.server2.dao.BP2DAOs;
+import com.janrain.backplane.server2.oauth2.*;
 import com.janrain.backplane.servlet.InvalidRequestException;
 import com.janrain.backplane.servlet.ServletUtil;
+import com.janrain.commons.message.MessageException;
 import com.yammer.metrics.core.MetricName;
 import com.yammer.metrics.core.TimerContext;
 import org.apache.commons.codec.binary.Base64;
@@ -137,7 +137,7 @@ public class Backplane2Controller {
     }
 
     /**
-     * Authenticates a bus owner and stores the authenticated session (cookie) to simpleDB.
+     * Authenticates a bus owner and persists the authenticated session (cookie).
      *
      * GET: displays authentication form
      * POST: processes authentication and returns to /authorize
@@ -172,7 +172,7 @@ public class Backplane2Controller {
      * @param callback  required
      * @return
      * @throws AuthException
-     * @throws SimpleDBException
+     * @throws MessageException
      * @throws BackplaneServerException
      */
 
@@ -210,7 +210,7 @@ public class Backplane2Controller {
      * @param scope
      * @return
      * @throws AuthException
-     * @throws SimpleDBException
+     * @throws MessageException
      * @throws BackplaneServerException
      */
 
@@ -257,7 +257,7 @@ public class Backplane2Controller {
      * @param callback     optional
      * @param since        optional
      * @return json object
-     * @throws SimpleDBException
+     * @throws MessageException
      * @throws BackplaneServerException
      */
 
@@ -268,7 +268,7 @@ public class Backplane2Controller {
                                                      @RequestParam(required = false) String callback,
                                                      @RequestParam(value = "since", required = false) String since,
                                                      @RequestHeader(value = "Authorization", required = false) final String authorizationHeader)
-            throws SimpleDBException, BackplaneServerException {
+            throws MessageException, BackplaneServerException {
 
         ServletUtil.checkSecure(request);
 
@@ -332,7 +332,7 @@ public class Backplane2Controller {
                                 @RequestParam(value = OAUTH2_ACCESS_TOKEN_PARAM_NAME, required = false) String access_token,
                                 @RequestParam(required = false) String callback,
                                 @RequestHeader(value = "Authorization", required = false) String authorizationHeader)
-            throws BackplaneServerException, SimpleDBException {
+            throws BackplaneServerException, MessageException {
 
         ServletUtil.checkSecure(request);
 
@@ -377,7 +377,7 @@ public class Backplane2Controller {
             @RequestBody Map<String,Map<String,Object>> messagePostBody,
             @RequestParam(value = OAUTH2_ACCESS_TOKEN_PARAM_NAME, required = false) String access_token,
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader)
-            throws SimpleDBException, BackplaneServerException {
+            throws MessageException, BackplaneServerException {
 
         ServletUtil.checkSecure(request);
 
@@ -556,7 +556,7 @@ public class Backplane2Controller {
             String authCookie = RandomUtils.randomString(AUTH_SESSION_COOKIE_LENGTH);
             BP2DAOs.getAuthSessionDAO().persist(new AuthSession(busOwner, authCookie));
             response.addCookie(new Cookie(AUTH_SESSION_COOKIE, authCookie));
-        } catch (SimpleDBException e) {
+        } catch (MessageException e) {
             throw new BackplaneServerException(e.getMessage());
         }
     }
@@ -870,7 +870,7 @@ public class Backplane2Controller {
             if (busConfig != null) {
                 try {
                     channel = new Channel(channelId, busConfig, 0);
-                } catch (SimpleDBException e) {
+                } catch (MessageException e) {
                     // shouldn't happen
                     throw new BackplaneServerException("", e);
                 }

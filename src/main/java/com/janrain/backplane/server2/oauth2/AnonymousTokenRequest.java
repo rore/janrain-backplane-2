@@ -2,9 +2,8 @@ package com.janrain.backplane.server2.oauth2;
 
 import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.server2.*;
-import com.janrain.backplane.server2.BusConfig2;
 import com.janrain.backplane.server2.dao.BP2DAOs;
-import com.janrain.commons.supersimpledb.SimpleDBException;
+import com.janrain.commons.message.MessageException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
@@ -103,14 +102,14 @@ public class AnonymousTokenRequest implements TokenRequest {
     private Token refreshToken;
     private BusConfig2 busConfig;
 
-    private static String generateRefreshToken(GrantType refreshType, Scope scope) throws SimpleDBException, BackplaneServerException {
+    private static String generateRefreshToken(GrantType refreshType, Scope scope) throws MessageException, BackplaneServerException {
         if (refreshType == null || ! refreshType.isRefresh()) return null;
         Token refreshToken = new Token.Builder(refreshType, scope.toString()).buildToken();
         BP2DAOs.getTokenDao().persist(refreshToken);
         return refreshToken.getIdValue();
     }
 
-    private Channel createOrRefreshChannel(int expireSeconds) throws TokenException, SimpleDBException, BackplaneServerException {
+    private Channel createOrRefreshChannel(int expireSeconds) throws TokenException, MessageException, BackplaneServerException {
         String channelId = null;
         BusConfig2 config;
         if (refreshToken != null ) {

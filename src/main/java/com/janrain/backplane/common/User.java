@@ -16,10 +16,12 @@
 
 package com.janrain.backplane.common;
 
-import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.commons.supersimpledb.message.MessageField;
 
-import java.util.*;
+import com.janrain.commons.message.MessageException;
+import com.janrain.commons.message.MessageField;
+
+import java.util.EnumSet;
+import java.util.Set;
 
 /**
  * @author Johnny Bufu
@@ -83,7 +85,7 @@ public class User extends ExternalizableCore {
         }
 
         @Override
-        public void validate(String value) throws SimpleDBException {
+        public void validate(String value) throws MessageException {
             if (isRequired()) validateNotBlank(name(), value);
         }
     }

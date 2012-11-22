@@ -16,14 +16,14 @@
 
 package com.janrain.backplane.server2.oauth2;
 
+import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.common.DateTimeUtils;
 import com.janrain.backplane.common.ExternalizableCore;
-import com.janrain.backplane.common.BackplaneServerException;
-import com.janrain.backplane.servlet.InvalidRequestException;
 import com.janrain.backplane.server2.Client;
 import com.janrain.backplane.server2.dao.ClientDAO;
-import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.commons.supersimpledb.message.MessageField;
+import com.janrain.backplane.servlet.InvalidRequestException;
+import com.janrain.commons.message.MessageException;
+import com.janrain.commons.message.MessageField;
 import org.apache.commons.lang.StringUtils;
 
 import java.util.*;
@@ -40,7 +40,7 @@ public class AuthorizationRequest extends ExternalizableCore {
      */
     public AuthorizationRequest() { }
 
-    public AuthorizationRequest(String cookie, Map parameterMap) throws SimpleDBException {
+    public AuthorizationRequest(String cookie, Map parameterMap) throws MessageException {
         Map<String,String> data = new LinkedHashMap<String, String>();
         for(Field f: EnumSet.allOf(Field.class)) {
             Object value = parameterMap.get(f.getFieldName().toLowerCase());
@@ -98,7 +98,7 @@ public class AuthorizationRequest extends ExternalizableCore {
         CLIENT_ID,
         RESPONSE_TYPE {
             @Override
-            public void validate(String value) throws SimpleDBException {
+            public void validate(String value) throws MessageException {
                 super.validate(value);
                 if ( ! OAuth2.OAUTH2_TOKEN_RESPONSE_TYPE_CODE.equals(value)) {
                     throw new IllegalArgumentException("Unsupported OAuth2 response_type: " + value);
@@ -107,7 +107,7 @@ public class AuthorizationRequest extends ExternalizableCore {
         },
         REDIRECT_URI(false) {
             @Override
-            public void validate(String value) throws SimpleDBException {
+            public void validate(String value) throws MessageException {
                 super.validate(value);
                 try {
                     OAuth2.validateRedirectUri(value);
@@ -130,7 +130,7 @@ public class AuthorizationRequest extends ExternalizableCore {
         }
 
         @Override
-        public void validate(String value) throws SimpleDBException {
+        public void validate(String value) throws MessageException {
             if (isRequired()) validateNotBlank(getFieldName().toLowerCase(), value);
         }
 

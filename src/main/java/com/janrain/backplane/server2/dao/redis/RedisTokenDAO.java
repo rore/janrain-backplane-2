@@ -5,7 +5,7 @@ import com.janrain.backplane.common.BpSerialUtils;
 import com.janrain.backplane.redis.Redis;
 import com.janrain.backplane.server2.Token;
 import com.janrain.backplane.server2.dao.TokenDAO;
-import com.janrain.commons.supersimpledb.SimpleDBException;
+import com.janrain.commons.message.MessageException;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import redis.clients.jedis.Jedis;
@@ -131,7 +131,7 @@ public class RedisTokenDAO implements TokenDAO {
     }
 
     @Override
-    public void cacheRevokedCleanup() throws SimpleDBException {
+    public void cacheRevokedCleanup() throws MessageException {
         // no-op
     }
 

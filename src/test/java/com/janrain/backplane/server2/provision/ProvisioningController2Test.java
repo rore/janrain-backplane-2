@@ -29,7 +29,7 @@ import com.janrain.backplane.server2.Client;
 import com.janrain.backplane.server2.Scope;
 import com.janrain.backplane.server2.dao.BP2DAOs;
 import com.janrain.backplane.server2.oauth2.TokenException;
-import com.janrain.commons.supersimpledb.SimpleDBException;
+import com.janrain.commons.message.MessageException;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.type.MapType;
@@ -75,7 +75,6 @@ public class ProvisioningController2Test {
         admin.put(Admin.Field.USER.getFieldName(), RandomUtils.randomString(20));
         admin.put(Admin.Field.PWDHASH.getFieldName(), HmacHashUtils.hmacHash(pw));
 
-        //superSimpleDB.store(bpConfig.getTableName(BackplaneConfig.SimpleDBTables.BP_ADMIN_AUTH), admin.class, user);
         ServerDAOs.getAdminDAO().persist(admin);
 
         busOwner = new BusOwner();
@@ -85,16 +84,14 @@ public class ProvisioningController2Test {
             client = new Client( RandomUtils.randomString(20), pw, "http://source.com", "http://redirect.com" );
             BP2DAOs.getClientDAO().persist(client);
             logger.info("Created test client: " + client.getClientId());
-        } catch (SimpleDBException e) {
+        } catch (MessageException e) {
             throw new BackplaneServerException(e.getMessage());
         }
     }
 
     @After
     public void cleanup() throws BackplaneServerException, TokenException {
-        //superSimpleDB.delete(bpConfig.getTableName(BackplaneConfig.SimpleDBTables.BP_ADMIN_AUTH), admin.getIdValue());
         ServerDAOs.getAdminDAO().delete(admin.getIdValue());
-        //superSimpleDB.delete(bpConfig.getTableName(BackplaneConfig.SimpleDBTables.BP_CLIENTS), client.getIdValue());
         BP2DAOs.getClientDAO().delete(client.getClientId());
     }
 
@@ -524,9 +521,6 @@ public class ProvisioningController2Test {
 
     @Inject
     private ProvisioningController2 controller;
-
-   // @Inject
-  //  private SuperSimpleDB superSimpleDB;
 
     @Inject
     private BackplaneConfig bpConfig;
