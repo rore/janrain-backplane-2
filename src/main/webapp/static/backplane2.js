@@ -464,7 +464,7 @@ Backplane.response = function(messageFrame) {
         }
         // stash message in cache
         if (this.cacheMax > 0) {
-            if (!this.cachedMessages.hasOwnProperty(messageFrame.messages[messages[i].messageURL])) {
+            if (!this.cachedMessages.hasOwnProperty(messageFrame.messages[messageFrame.messages[i].messageURL])) {
                 this.cachedMessages[messageFrame.messages[i].messageURL] = messageFrame.messages[i];
                 this.cachedMessagesIndex.push(messageFrame.messages[i].messageURL);
             }
