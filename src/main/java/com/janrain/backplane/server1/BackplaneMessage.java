@@ -95,7 +95,7 @@ public class BackplaneMessage extends ExternalizableCore {
         return "true".equalsIgnoreCase(get(Field.STICKY));
     }
 
-    public HashMap<String, Object> asFrame() throws BackplaneServerException {
+    public HashMap<String, Object> asFrame(String version) throws BackplaneServerException {
 
         HashMap<String, Object> frame = new LinkedHashMap<String, Object>();
 
@@ -114,7 +114,9 @@ public class BackplaneMessage extends ExternalizableCore {
             // print sticky as a (json) boolean
             msg.put(Field.STICKY.getFieldName(), Boolean.valueOf(sticky));
         }
-        msg.put(Field.EXPIRE.getFieldName(), get(Field.EXPIRE));
+        if ("v1.3".equalsIgnoreCase(version)) {
+            msg.put(Field.EXPIRE.getFieldName(), get(Field.EXPIRE));
+        }
         try {
             msg.put(
                 BackplaneMessage.Field.PAYLOAD.getFieldName(),

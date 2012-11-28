@@ -179,8 +179,9 @@ public class Backplane1Controller {
 
 
 
-    @RequestMapping(value = "/bus/{bus}", method = RequestMethod.GET)
+    @RequestMapping(value = "/{version}/bus/{bus}", method = RequestMethod.GET)
     public @ResponseBody List<HashMap<String,Object>> getBusMessages(
+            @PathVariable String version,
             @RequestHeader(value = "Authorization", required = false) String basicAuth,
             @PathVariable String bus,
             @RequestParam(value = "since", defaultValue = "") String since,
@@ -197,7 +198,7 @@ public class Backplane1Controller {
 
             List<HashMap<String,Object>> frames = new ArrayList<HashMap<String, Object>>();
             for (BackplaneMessage message : messages) {
-                frames.add(message.asFrame());
+                frames.add(message.asFrame(version));
             }
             return frames;
 
@@ -207,8 +208,9 @@ public class Backplane1Controller {
 
     }
 
-    @RequestMapping(value = "/bus/{bus}/channel/{channel}", method = RequestMethod.GET)
+    @RequestMapping(value = "/{version}/bus/{bus}/channel/{channel}", method = RequestMethod.GET)
     public ResponseEntity<String> getChannel(
+            @PathVariable String version,
             @PathVariable String bus,
             @PathVariable String channel,
             @RequestParam(required = false) String callback,
@@ -221,7 +223,7 @@ public class Backplane1Controller {
         try {
 
             return new ResponseEntity<String>(
-                    NEW_CHANNEL_LAST_PATH.equals(channel) ? newChannel() : getChannelMessages(bus, channel, since, sticky),
+                    NEW_CHANNEL_LAST_PATH.equals(channel) ? newChannel() : getChannelMessages(bus, channel, since, sticky, version),
                     new HttpHeaders() {{
                         add("Content-Type", "application/json");
                     }},
@@ -233,8 +235,9 @@ public class Backplane1Controller {
 
     }
 
-    @RequestMapping(value = "/bus/{bus}/channel/{channel}", method = RequestMethod.POST)
+    @RequestMapping(value = "/{version}/bus/{bus}/channel/{channel}", method = RequestMethod.POST)
     public @ResponseBody String postToChannel(
+            @PathVariable String version,
             @RequestHeader(value = "Authorization", required = false) String basicAuth,
             @RequestBody List<Map<String,Object>> messages,
             @PathVariable String bus,
@@ -413,7 +416,7 @@ public class Backplane1Controller {
     	return newChannel;
     }
 
-    private String getChannelMessages(final String bus, final String channel, final String since, final String sticky) throws MessageException, BackplaneServerException {
+    private String getChannelMessages(final String bus, final String channel, final String since, final String sticky, final String version) throws MessageException, BackplaneServerException {
 
         final TimerContext context = getChannelMessagesTime.time();
 
@@ -422,7 +425,7 @@ public class Backplane1Controller {
             List<Map<String,Object>> frames = new ArrayList<Map<String, Object>>();
 
             for (BackplaneMessage message : messages) {
-                frames.add(message.asFrame());
+                frames.add(message.asFrame(version));
             }
 
             ObjectMapper mapper = new ObjectMapper();
