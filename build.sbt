@@ -67,8 +67,7 @@ libraryDependencies ++= Seq(
   "com.yammer.metrics" % "metrics-log4j" % "2.1.2",
   "com.yammer.metrics" % "metrics-graphite" % "2.1.2",
   "org.scala-lang" % "scala-library" % "2.9.2",
-  // supersimpledb
-  "com.janrain.commons.supersimpledb" % "commons-supersimpledb" % "1.0.27",
+  "com.janrain" % "federate-utils" % "1.2.0",
   // intellij annotations library for @NotNull and @Nullable
   "org.kohsuke.jetbrains" % "annotations" % "9.0",
   "net.sf.ehcache" % "ehcache" % "2.5.2" pomOnly(),
@@ -85,7 +84,7 @@ resolvers ++= Seq(
   "Java.net Repository for Maven" at "http://download.java.net/maven/2/",
   // Coda Hale's Metrics repo
   "repo.codahale.com" at "http://repo.codahale.com",
-  // Janrain's supersimpledb dependency
+  // Janrain's dependencies
   "janrain-repo" at "https://repository-janrain.forge.cloudbees.com/release",
   "Spy Repository" at "http://files.couchbase.com/maven2/",
   "codehaus-release" at "http://repository.codehaus.org",
