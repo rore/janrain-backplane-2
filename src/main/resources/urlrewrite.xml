@@ -22,18 +22,9 @@
         <to>/static/identity-services.js</to>
     </rule>
     <rule>
-        <from>/v1/**</from>
-        <to>/app/$1</to>
+        <from>/bus/**</from>
+        <to>/app/v1/bus/$1</to>
     </rule>
-    <rule>
-        <from>/v1.1/**</from>
-        <to>/app/$1</to>
-    </rule>
-    <rule>
-        <from>/v1.2/**</from>
-        <to>/app/$1</to>
-    </rule>
-
     <rule>
         <from>/**</from>
         <to>/app/$1</to>
