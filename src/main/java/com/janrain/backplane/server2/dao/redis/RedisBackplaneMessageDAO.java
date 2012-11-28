@@ -301,7 +301,7 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
                         }
                         String metaData = new String(b);
                         String[] segs = metaData.split(" ");
-                        if (jedis.get(getKey(segs[2])) == null) {
+                        if (!jedis.exists(getKey(segs[2]))) {
                             delete(segs[2]);
                         }
                     } catch (Exception e) {
