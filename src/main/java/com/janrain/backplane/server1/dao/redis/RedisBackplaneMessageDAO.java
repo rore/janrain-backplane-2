@@ -120,8 +120,14 @@ public class RedisBackplaneMessageDAO implements BP1MessageDao {
             jedis = Redis.getInstance().getWriteJedis();
 
             Set<byte[]> messageMetaBytes = jedis.zrangeByScore(RedisBackplaneMessageDAO.V1_MESSAGES.getBytes(), 0, Double.MAX_VALUE);
+
             if (messageMetaBytes != null) {
+                logger.info("scanning " + messageMetaBytes.size() + " v1 messages");
+                int messageCounter = 0;
                 for (byte[] b : messageMetaBytes) {
+                    if (messageCounter++ % 100 == 0) {
+                        logger.info("still scanning v1 messages...");
+                    }
                     String metaData = new String(b);
                     String[] segs = metaData.split(" ");
                     String key = segs[2];
@@ -131,8 +137,12 @@ public class RedisBackplaneMessageDAO implements BP1MessageDao {
                     }
                 }
             }
+        } catch (JedisConnectionException jce) {
+            logger.warn("exited message cleanup: "+ jce.getMessage());
+            Redis.getInstance().releaseBrokenResourceToPool(jedis);
+            jedis=null;
         } catch (Exception e) {
-            logger.error(e);
+            logger.warn(e);
         } finally {
             logger.info("exiting v1 message cleanup");
             Redis.getInstance().releaseToPool(jedis);

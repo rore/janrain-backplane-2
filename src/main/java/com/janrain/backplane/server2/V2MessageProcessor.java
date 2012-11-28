@@ -16,8 +16,11 @@
 
 package com.janrain.backplane.server2;
 
+
 import com.janrain.backplane.common.BpSerialUtils;
 import com.janrain.backplane.common.DateTimeUtils;
+import com.janrain.backplane.config.BackplaneConfig;
+import com.janrain.backplane.config.BackplaneSystemProps;
 import com.janrain.backplane.redis.Redis;
 import com.janrain.backplane.server2.dao.BP2DAOs;
 import com.janrain.backplane.server2.dao.redis.RedisBackplaneMessageDAO;
@@ -32,26 +35,31 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Transaction;
-
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author Tom Raney
  */
 public class V2MessageProcessor implements LeaderSelectorListener {
 
-    /**
-     * Processor to remove expired messages
-     */
-    public void cleanupMessages() {
-        try {
-            BP2DAOs.getBackplaneMessageDAO().deleteExpiredMessages();
-        } catch (Exception e) {
-            logger.error(e);
-        }
+    public void scheduleCleanupMessage() {
+        logger.info("creating v2 message cleanup thread");
+        ScheduledExecutorService messageWorkerTask = Executors.newScheduledThreadPool(1);
+        messageWorkerTask.scheduleAtFixedRate(new Runnable() {
+            @Override
+            public void run() {
+                cleanupMessages();
+            }
+        }, 1, 2, TimeUnit.HOURS);
+
+        // register worker
+        BackplaneConfig.addToBackgroundServices("v2 cleanup", messageWorkerTask);
     }
 
     /**
@@ -78,6 +86,17 @@ public class V2MessageProcessor implements LeaderSelectorListener {
         } finally {
             // very bad if we get here...
             logger.error("method exited but it should NEVER do so");
+        }
+    }
+
+    /**
+     * Processor to remove expired messages
+     */
+    private void cleanupMessages() {
+        try {
+            BP2DAOs.getBackplaneMessageDAO().deleteExpiredMessages();
+        } catch (Exception e) {
+            logger.warn(e);
         }
     }
 
@@ -226,12 +245,14 @@ public class V2MessageProcessor implements LeaderSelectorListener {
 
     private static final Logger logger = Logger.getLogger(V2MessageProcessor.class);
 
-    private final Histogram timeInQueue = Metrics.newHistogram(new MetricName("v2", this.getClass().getName().replace(".","_"), "time_in_queue"));
+    private final Histogram timeInQueue = Metrics.newHistogram(new MetricName("v2", this.getClass().getName().replace(".", "_"), "time_in_queue"));
 
     @Override
     public void takeLeadership(CuratorFramework curatorFramework) throws Exception {
-        logger.info("v2 leader elected");
+        logger.info("[" + BackplaneSystemProps.getMachineName() + "] v2 leader elected for message processing");
+        scheduleCleanupMessage();
         insertMessages();
+        logger.info("[" + BackplaneSystemProps.getMachineName() + "] v2 leader ended message processing");
     }
 
     @Override

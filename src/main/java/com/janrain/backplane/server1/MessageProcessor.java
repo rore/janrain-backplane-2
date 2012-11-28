@@ -18,6 +18,7 @@ package com.janrain.backplane.server1;
 
 import com.janrain.backplane.common.BpSerialUtils;
 import com.janrain.backplane.common.DateTimeUtils;
+import com.janrain.backplane.config.BackplaneConfig;
 import com.janrain.backplane.config.BackplaneSystemProps;
 import com.janrain.backplane.redis.Redis;
 import com.janrain.backplane.server1.dao.BP1DAOs;
@@ -33,11 +34,13 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Transaction;
-
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author Tom Raney
@@ -46,15 +49,18 @@ public class MessageProcessor implements LeaderSelectorListener {
 
     public MessageProcessor() {}
 
-        /**
-     * Processor to remove expired messages
-     */
-    public void cleanupMessages() {
-        try {
-            BP1DAOs.getMessageDao().deleteExpiredMessages();
-        } catch (Exception e) {
-            logger.error(e);
-        }
+    public void scheduleCleanupMessage() {
+        logger.info("creating v1 message cleanup thread");
+        ScheduledExecutorService messageWorkerTask = Executors.newScheduledThreadPool(1);
+        messageWorkerTask.scheduleAtFixedRate(new Runnable() {
+            @Override
+            public void run() {
+                cleanupMessages();
+            }
+        }, 2, 2, TimeUnit.HOURS);
+
+        // register worker
+        BackplaneConfig.addToBackgroundServices("v1 cleanup", messageWorkerTask);
     }
 
     /**
@@ -229,11 +235,15 @@ public class MessageProcessor implements LeaderSelectorListener {
 
     private static final Logger logger = Logger.getLogger(MessageProcessor.class);
 
-    private final Histogram timeInQueue = Metrics.newHistogram(new MetricName("v1", this.getClass().getName().replace(".","_"), "time_in_queue"));
+    private final Histogram timeInQueue = Metrics.newHistogram(new MetricName("v1", this.getClass().getName().replace(".", "_"), "time_in_queue"));
 
     @Override
     public void takeLeadership(CuratorFramework curatorFramework) throws Exception {
         logger.info("[" + BackplaneSystemProps.getMachineName() + "] v1 leader elected for message processing");
+
+        // start cleanup message thread
+        scheduleCleanupMessage();
+
         insertMessages(true);
         logger.info("[" + BackplaneSystemProps.getMachineName() + "] v1 leader ended message processing");
     }
@@ -241,5 +251,16 @@ public class MessageProcessor implements LeaderSelectorListener {
     @Override
     public void stateChanged(CuratorFramework curatorFramework, ConnectionState connectionState) {
         logger.info("state changed");
+    }
+
+    /**
+     * Processor to remove expired messages
+     */
+    private void cleanupMessages() {
+        try {
+            BP1DAOs.getMessageDao().deleteExpiredMessages();
+        } catch (Exception e) {
+            logger.warn(e);
+        }
     }
 }

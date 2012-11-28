@@ -16,6 +16,7 @@
 
 package com.janrain.backplane.config;
 
+
 import com.janrain.backplane.cache.CachedL1;
 import com.janrain.backplane.common.AuthException;
 import com.janrain.backplane.common.BackplaneServerException;
@@ -40,14 +41,11 @@ import org.springframework.context.annotation.Scope;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-
 
 /**
  * Holds configuration settings for the Backplane server
@@ -96,6 +94,10 @@ public class BackplaneConfig {
         return EC2InstanceId;
     }
 
+    public static void addToBackgroundServices(String key, ScheduledExecutorService messageWorkerTask) {
+        backgroundServices.put(key, messageWorkerTask);
+    }
+
     // - PACKAGE
 
     BackplaneConfig(String instanceId) {
@@ -124,9 +126,9 @@ public class BackplaneConfig {
     private static final String BUILD_VERSION_PROPERTY = "build.version";
     private static final Properties buildProperties = new Properties();
     private static final long BP_MAX_MESSAGES_DEFAULT = 100;
-    private final String bpInstanceId;
+    private static final Map<String, ExecutorService> backgroundServices = new HashMap<String, ExecutorService>();
 
-    private final Map<String, ExecutorService> backgroundServices = new HashMap<String, ExecutorService>();
+    private final String bpInstanceId;
 
     final MessageProcessor v1messageProcessor = new MessageProcessor();
     final V2MessageProcessor v2messageProcessor = new V2MessageProcessor();
@@ -147,7 +149,7 @@ public class BackplaneConfig {
                 String args[] = graphiteServer.split(":");
                 String server = args[0];
                 int port = Integer.parseInt(args[1]);
-                GraphiteReporter.enable(10, TimeUnit.SECONDS, server, port, BackplaneSystemProps.getMachineName().replace(".","_") + "_" + bpInstanceId);
+                GraphiteReporter.enable(10, TimeUnit.SECONDS, server, port, BackplaneSystemProps.getMachineName().replace(".", "_") + "_" + bpInstanceId);
                 logger.info("Graphite server enabled at " + graphiteServer);
             } catch (Exception e) {
                 logger.warn("could not enable Graphite from " + graphiteServer + " must be in the form SERVER:PORT");
@@ -163,41 +165,6 @@ public class BackplaneConfig {
         }
 
         logger.info("Configured Backplane Server instance: " + bpInstanceId);
-    }
-
-    private Pair<String, ExecutorService> createV1messageCleanupTask() {
-        final String label = "v1 message cleanup";
-        logger.info("calling create for " + label);
-
-        ScheduledExecutorService messageWorkerTask = Executors.newScheduledThreadPool(1);
-
-        messageWorkerTask.scheduleAtFixedRate(new Runnable() {
-            @Override
-            public void run() {
-                logger.info("creating " + label + " thread");
-                v1messageProcessor.cleanupMessages();
-            }
-        }, 0, 1, TimeUnit.MINUTES);
-
-        return new Pair<String, ExecutorService>(label, messageWorkerTask);
-    }
-
-    private Pair<String, ExecutorService> createV2messageCleanupTask() {
-
-        final String label = "v2 message cleanup";
-        logger.info("calling create for " + label);
-
-        ScheduledExecutorService maintenanceTask = Executors.newScheduledThreadPool(1);
-
-        maintenanceTask.scheduleAtFixedRate(new Runnable() {
-            @Override
-            public void run() {
-                logger.info("creating " + label + " thread");
-                v2messageProcessor.cleanupMessages();
-            }
-        }, 0, 1, TimeUnit.MINUTES);
-
-        return new Pair<String, ExecutorService>(label, maintenanceTask);
     }
 
     private Pair<String, ExecutorService> createPingTask() {
@@ -218,15 +185,13 @@ public class BackplaneConfig {
 
     @PostConstruct
     private void init() {
-        addTask(backgroundServices, createV1messageCleanupTask());
-        addTask(backgroundServices, createV2messageCleanupTask());
         addTask(backgroundServices, createPingTask());
         initZk("/v1_worker", v1messageProcessor);
         initZk("/v2_worker", v2messageProcessor);
     }
 
     private void initZk(String leaderPath, LeaderSelectorListener listener) {
-        try {
+       try {
             String zkServerConfig = System.getProperty(BackplaneSystemProps.ZOOKEEPER_SERVERS);
             if (StringUtils.isEmpty(zkServerConfig)) {
                 logger.error("Cannot find configuration entry for ZooKeeper server");
