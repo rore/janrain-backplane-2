@@ -41,7 +41,7 @@ import java.util.Map;
  * @author Johnny Bufu
  */
 @Controller
-@RequestMapping(value="/provision/*")
+@RequestMapping(value="/v1*/provision/*")
 @SuppressWarnings({"UnusedDeclaration"})
 public class ProvisioningController {
 
