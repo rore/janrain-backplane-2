@@ -17,10 +17,12 @@
 package com.janrain.backplane2.server;
 
 import com.janrain.backplane.DateTimeUtils;
+import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.backplane2.server.dao.DAOFactory;
 import com.janrain.backplane2.server.dao.redis.RedisBackplaneMessageDAO;
 import com.janrain.commons.util.Pair;
 import com.janrain.redis.Redis;
+import com.janrain.utils.BackplaneSystemProps;
 import com.netflix.curator.framework.CuratorFramework;
 import com.netflix.curator.framework.recipes.leader.LeaderSelectorListener;
 import com.netflix.curator.framework.state.ConnectionState;
@@ -37,6 +39,9 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author Tom Raney
@@ -47,6 +52,20 @@ public class V2MessageProcessor implements LeaderSelectorListener {
         this.daoFactory = daoFactory;
     }
 
+    public void scheduleCleanupMessage() {
+        logger.info("creating v2 message cleanup thread");
+        ScheduledExecutorService messageWorkerTask = Executors.newScheduledThreadPool(1);
+        messageWorkerTask.scheduleAtFixedRate(new Runnable() {
+            @Override
+            public void run() {
+                cleanupMessages();
+            }
+        }, 1, 2, TimeUnit.HOURS);
+
+        // register worker
+        Backplane2Config.addToBackgroundServices(messageWorkerTask);
+    }
+
     /**
      * Processor to remove expired messages
      */
@@ -54,7 +73,7 @@ public class V2MessageProcessor implements LeaderSelectorListener {
         try {
             daoFactory.getBackplaneMessageDAO().deleteExpiredMessages();
         } catch (Exception e) {
-            logger.error(e);
+            logger.warn(e);
         }
     }
 
@@ -236,8 +255,10 @@ public class V2MessageProcessor implements LeaderSelectorListener {
 
     @Override
     public void takeLeadership(CuratorFramework curatorFramework) throws Exception {
-        logger.info("v2 leader elected");
+        logger.info("[" + BackplaneSystemProps.getMachineName() + "] v2 leader elected for message processing");
+        scheduleCleanupMessage();
         insertMessages();
+        logger.info("[" + BackplaneSystemProps.getMachineName() + "] v2 leader ended message processing");
     }
 
     @Override

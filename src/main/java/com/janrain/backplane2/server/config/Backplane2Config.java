@@ -43,6 +43,8 @@ import javax.annotation.PreDestroy;
 import javax.inject.Inject;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 import java.util.TimeZone;
 import java.util.concurrent.ExecutorService;
@@ -98,6 +100,10 @@ public class Backplane2Config {
         return EC2InstanceId;
     }
 
+    public static void addToBackgroundServices(ScheduledExecutorService messageWorkerTask) {
+        backgroundServices.add(messageWorkerTask);
+    }
+
     // - PACKAGE
 
 
@@ -127,8 +133,10 @@ public class Backplane2Config {
     private static final String BUILD_VERSION_PROPERTY = "build.version";
     private static final Properties buildProperties = new Properties();
     private static final long BP_MAX_MESSAGES_DEFAULT = 100;
+    private static final List<ExecutorService> backgroundServices = new ArrayList<ExecutorService>();
+
     private final String bpInstanceId;
-    private ScheduledExecutorService cleanup;
+
     private ExecutorService pingRedis;
 
 
@@ -169,26 +177,7 @@ public class Backplane2Config {
         logger.info("Configured Backplane Server instance: " + bpInstanceId);
     }
 
-    private ScheduledExecutorService createMaintenanceTask() {
-
-        logger.info("calling v2 createMaintenanceTask()");
-
-        final V2MessageProcessor messageProcessor = new V2MessageProcessor(daoFactory);
-
-        ScheduledExecutorService maintenanceTask = Executors.newScheduledThreadPool(1);
-
-        maintenanceTask.scheduleAtFixedRate(new Runnable() {
-            @Override
-            public void run() {
-                logger.info("creating v2 message cleanup thread");
-                messageProcessor.cleanupMessages();
-            }
-        }, 0, 1, TimeUnit.MINUTES);
-
-        return maintenanceTask;
-    }
-
-    private ExecutorService createPingTask() {
+    private ScheduledExecutorService createPingTask() {
         ScheduledExecutorService ping = Executors.newScheduledThreadPool(1);
         ping.scheduleWithFixedDelay(new Runnable() {
             @Override
@@ -202,8 +191,7 @@ public class Backplane2Config {
     @PostConstruct
     private void init() {
 
-        this.cleanup = createMaintenanceTask();
-        this.pingRedis = createPingTask();
+        backgroundServices.add(createPingTask());
 
         try {
             String zkServerConfig = System.getProperty(BackplaneSystemProps.ZOOKEEPER_SERVERS);
@@ -225,25 +213,23 @@ public class Backplane2Config {
     @PreDestroy
     private void cleanup() {
         Metrics.shutdown();
-        shutdownExecutor(cleanup);
-        shutdownExecutor(pingRedis);
-    }
 
-    private void shutdownExecutor(ExecutorService executor) {
-        try {
-            executor.shutdown();
-            if (executor.awaitTermination(10, TimeUnit.SECONDS)) {
-                logger.info("Background thread shutdown properly");
-            } else {
-                executor.shutdownNow();
-                if (!executor.awaitTermination(10, TimeUnit.SECONDS)) {
-                    logger.error("Background thread did not terminate");
+        for (ExecutorService executor : backgroundServices) {
+            try {
+                executor.shutdown();
+                if (executor.awaitTermination(10, TimeUnit.SECONDS)) {
+                    logger.info("Background thread shutdown properly");
+                } else {
+                    executor.shutdownNow();
+                    if (!executor.awaitTermination(10, TimeUnit.SECONDS)) {
+                        logger.error("Background thread did not terminate");
+                    }
                 }
+            } catch (InterruptedException e) {
+                logger.error("error shutting down background service", e);
+                executor.shutdownNow();
+                Thread.currentThread().interrupt();
             }
-        } catch (InterruptedException e) {
-            logger.error("cleanup() threw an exception", e);
-            executor.shutdownNow();
-            Thread.currentThread().interrupt();
         }
     }
 

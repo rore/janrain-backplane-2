@@ -91,6 +91,10 @@ public class Backplane1Config {
         return EC2InstanceId;
     }
 
+    public static void addToBackgroundServices(ScheduledExecutorService messageWorkerTask) {
+        backgroundServices.add(messageWorkerTask);
+    }
+
     // - PACKAGE
 
 
@@ -121,9 +125,9 @@ public class Backplane1Config {
     private static final String BP_CONFIG_ENTRY_NAME = "bpserverconfig";
     private static final long BP_MAX_MESSAGES_DEFAULT = 100;
     private static final Properties buildProperties = new Properties();
+    private static final List<ExecutorService> backgroundServices = new ArrayList<ExecutorService>();
 
     private final String bpInstanceId;
-    private final List<ExecutorService> backgroundServices = new ArrayList<ExecutorService>();
 
     // Amazon specific instance-id value
     private static String EC2InstanceId = AwsUtility.retrieveEC2InstanceId();
@@ -145,38 +149,9 @@ public class Backplane1Config {
         logger.info("Configured Backplane Server instance: " + bpInstanceId);
     }
 
-    private ScheduledExecutorService createMessageWorker() {
-
-        logger.info("calling createMessageWorker()");
-
-        final MessageProcessor messageProcessor = new MessageProcessor();
-
-        ScheduledExecutorService messageWorkerTask = Executors.newScheduledThreadPool(1);
-
-//        messageWorkerTask.scheduleAtFixedRate(new Runnable() {
-//            @Override
-//            public void run() {
-//                logger.info("creating subscriber thread");
-//                messageProcessor.subscribe();
-//            }
-//        }, 0, 1, TimeUnit.MINUTES);
-
-        messageWorkerTask.scheduleAtFixedRate(new Runnable() {
-            @Override
-            public void run() {
-                logger.info("creating message cleanup thread");
-                messageProcessor.cleanupMessages();
-            }
-        }, 0, 1, TimeUnit.MINUTES);
-
-        return messageWorkerTask;
-
-    }
 
     @PostConstruct
     private void init() {
-        backgroundServices.add(createMessageWorker());
-
         try {
             String zkServerConfig = System.getProperty(BackplaneSystemProps.ZOOKEEPER_SERVERS);
             if (StringUtils.isEmpty(zkServerConfig)) {

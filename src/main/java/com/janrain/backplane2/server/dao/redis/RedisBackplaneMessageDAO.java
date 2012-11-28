@@ -27,6 +27,7 @@ import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import redis.clients.jedis.*;
+import redis.clients.jedis.exceptions.JedisConnectionException;
 
 import javax.servlet.http.HttpServletResponse;
 import java.util.*;
@@ -287,8 +288,13 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
 
             Set<byte[]> messageMetaBytes = jedis.zrangeByScore(V2_MESSAGES.getBytes(), 0, Double.MAX_VALUE);
             if (messageMetaBytes != null) {
+                logger.info("scanning " + messageMetaBytes.size() + " v2 messages");
+                int messageCounter=0;
                 for (byte[] b : messageMetaBytes) {
                     try {
+                        if (messageCounter++ % 100 == 0) {
+                            logger.info("still scanning v2 messages...");
+                        }
                         String metaData = new String(b);
                         String[] segs = metaData.split(" ");
                         if (jedis.get(getKey(segs[2])) == null) {
@@ -299,8 +305,12 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
                     }
                 }
             }
+        } catch (JedisConnectionException jce) {
+            logger.warn("exited v2 message cleanup: "+ jce.getMessage());
+            Redis.getInstance().releaseBrokenResourceToPool(jedis);
+            jedis=null;
         } catch (Exception e) {
-            logger.error(e);
+            logger.warn(e);
         } finally {
             logger.info("exiting v2 message cleanup");
             Redis.getInstance().releaseToPool(jedis);

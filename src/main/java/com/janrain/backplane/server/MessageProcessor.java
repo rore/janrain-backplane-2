@@ -17,6 +17,7 @@
 package com.janrain.backplane.server;
 
 import com.janrain.backplane.DateTimeUtils;
+import com.janrain.backplane.server.config.Backplane1Config;
 import com.janrain.backplane.server.dao.redis.RedisBackplaneMessageDAO;
 import com.janrain.backplane.server.dao.DaoFactory;
 import com.janrain.commons.util.Pair;
@@ -35,6 +36,9 @@ import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Transaction;
 
 import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author Tom Raney
@@ -43,14 +47,28 @@ public class MessageProcessor implements LeaderSelectorListener {
 
     public MessageProcessor() {}
 
-        /**
+    public void scheduleCleanupMessage() {
+        logger.info("creating v1 message cleanup thread");
+        ScheduledExecutorService messageWorkerTask = Executors.newScheduledThreadPool(1);
+        messageWorkerTask.scheduleAtFixedRate(new Runnable() {
+            @Override
+            public void run() {
+                cleanupMessages();
+            }
+        }, 2, 2, TimeUnit.HOURS);
+
+        // register worker
+        Backplane1Config.addToBackgroundServices(messageWorkerTask);
+    }
+
+    /**
      * Processor to remove expired messages
      */
     public void cleanupMessages() {
         try {
             DaoFactory.getBackplaneMessageDAO().deleteExpiredMessages();
         } catch (Exception e) {
-            logger.error(e);
+            logger.warn(e);
         }
     }
 
@@ -231,6 +249,10 @@ public class MessageProcessor implements LeaderSelectorListener {
     @Override
     public void takeLeadership(CuratorFramework curatorFramework) throws Exception {
         logger.info("[" + BackplaneSystemProps.getMachineName() + "] v1 leader elected for message processing");
+
+        // start cleanup message thread
+        scheduleCleanupMessage();
+
         insertMessages(true);
         logger.info("[" + BackplaneSystemProps.getMachineName() + "] v1 leader ended message processing");
     }
