@@ -8,3 +8,5 @@
 workspace.xml
 test.html
 *.DS_Store
+project/target/
+*/project/target/
