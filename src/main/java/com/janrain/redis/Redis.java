@@ -358,7 +358,7 @@ public class Redis implements PathChildrenCacheListener {
         jedisPoolConfig.setMaxWait(REDIS_MAX_WAIT_SECONDS*1000l);
         jedisPoolConfig.setWhenExhaustedAction(GenericObjectPool.WHEN_EXHAUSTED_BLOCK);
         jedisPoolConfig.setMaxIdle(-1);
-        jedisPoolConfig.setMinIdle(20);
+        jedisPoolConfig.setMinIdle(50);
 
         String redisServerConfig = System.getProperty(BackplaneSystemProps.REDIS_SERVER_PRIMARY);
         if (StringUtils.isEmpty(redisServerConfig)) {
