@@ -19,6 +19,7 @@ package com.janrain.backplane2.server.provision;
 import com.janrain.backplane2.server.BackplaneMessage;
 import com.janrain.backplane2.server.BackplaneServerException;
 import com.janrain.backplane2.server.Scope;
+import com.janrain.backplane2.server.config.BusConfig2;
 import com.janrain.backplane2.server.config.Backplane2Config;
 import com.janrain.backplane2.server.config.Client;
 import com.janrain.backplane2.server.config.User;
@@ -85,6 +86,18 @@ public class ProvisioningController2Test {
         } catch (SimpleDBException e) {
             throw new BackplaneServerException(e.getMessage());
         }
+        try {
+            bus1 = "qa-test-bus1";
+            bus2 = "qa-test-bus2";
+            BusConfig2 busConfig1 = new BusConfig2(bus1, busOwner.getIdValue(), "100", "50000");
+            BusConfig2 busConfig2 = new BusConfig2(bus2, busOwner.getIdValue(), "100", "50000");
+            daoFactory.getBusDao().persist(busConfig1);
+            logger.info("Created test bus: " + bus1);
+            daoFactory.getBusDao().persist(busConfig2);
+            logger.info("Created test bus: " + bus2);
+        } catch (SimpleDBException e) {
+            throw new BackplaneServerException(e.getMessage());
+        }
     }
 
     @After
@@ -93,6 +106,8 @@ public class ProvisioningController2Test {
         daoFactory.getAdminDAO().delete(user.getIdValue());
         //superSimpleDB.delete(bpConfig.getTableName(Backplane2Config.SimpleDBTables.BP_CLIENTS), client.getIdValue());
         daoFactory.getClientDAO().delete(client.getClientId());
+        daoFactory.getBusDao().delete(bus1);
+        daoFactory.getBusDao().delete(bus2);
     }
 
     @Test
@@ -356,8 +371,7 @@ public class ProvisioningController2Test {
     public void testProvisioningGrant() throws Exception {
 
         refreshRequestAndResponse();
-
-        String addGrant = "{\"grants\":{\"" + client.getClientId() + "\":\"qa-test-bus\"},\"admin\":\"" + user.get(User.Field.USER) + "\", \"secret\":\"" + pw + "\"}";
+        String addGrant = "{\"grants\":{\"" + client.getClientId() + "\":\"" + bus1 + "\"},\"admin\":\"" + user.get(User.Field.USER) + "\", \"secret\":\"" + pw + "\"}";
         request.setContent(addGrant.getBytes());
         request.addHeader("Content-type", "application/json");
         request.setRequestURI("/v2/provision/grant/add");
@@ -365,7 +379,7 @@ public class ProvisioningController2Test {
         handlerAdapter.handle(request, response, controller);
         logger.info("testProvisioningGrant()/add -> " + response.getContentAsString());
         assertTrue("Invalid response", response.getContentAsString().equals("{\"" + client.getClientId() + "\":\"GRANT_UPDATE_SUCCESS\"}"));
-        
+
         refreshRequestAndResponse();
         String listGrants = "{ \"admin\": \"" + user.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\", \"entities\": [ \"" + client.getClientId() + "\" ] }";
         request.setContent(listGrants.getBytes());
@@ -374,7 +388,7 @@ public class ProvisioningController2Test {
         request.setMethod("POST");
         handlerAdapter.handle(request, response, controller);
         logger.info("testProvisioningGrant()/checkExists -> " + response.getContentAsString());
-        assertTrue("Invalid response", checkGrantExists(response, client.getClientId(), new ArrayList<String>() {{ add("qa-test-bus");}}));
+        assertTrue("Invalid response", checkGrantExists(response, client.getClientId(), new ArrayList<String>() {{ add(bus1);}}));
 
         refreshRequestAndResponse();
         request.setContent(addGrant.getBytes());
@@ -392,15 +406,33 @@ public class ProvisioningController2Test {
         request.setMethod("POST");
         handlerAdapter.handle(request, response, controller);
         logger.info("testProvisioningGrant()/checkNonExists -> " + response.getContentAsString());
-        assertFalse("Invalid response", checkGrantExists(response, client.getClientId(), new ArrayList<String>() {{ add("qa-test-bus");}}));
+        assertFalse("Invalid response", checkGrantExists(response, client.getClientId(), new ArrayList<String>() {{ add(bus1);}}));
+
+        refreshRequestAndResponse();
+        String addGrantWithBogusBus = "{\"grants\":{\"" + client.getClientId() + "\":\"bogus_bus\"},\"admin\":\"" + user.get(User.Field.USER) + "\", \"secret\":\"" + pw + "\"}";
+        request.setContent(addGrantWithBogusBus.getBytes());
+        request.addHeader("Content-type", "application/json");
+        request.setRequestURI("/v2/provision/grant/add");
+        request.setMethod("POST");
+        handlerAdapter.handle(request, response, controller);
+        logger.info("testProvisioningGrant()/add -> " + response.getContentAsString());
+        assertTrue("Invalid response", response.getContentAsString().equals("{\"" + client.getClientId() + "\":\"Invalid bus: bogus_bus\"}"));
+
+        refreshRequestAndResponse();
+        request.setContent(addGrantWithBogusBus.getBytes());
+        request.addHeader("Content-type", "application/json");
+        request.setRequestURI("/v2/provision/grant/revoke");
+        request.setMethod("POST");
+        handlerAdapter.handle(request, response, controller);
+        logger.info("testProvisioningGrant()/revoke -> " + response.getContentAsString());
+        assertTrue(response.getContentAsString().contains("Invalid bus"));
     }
-    
+
     @Test
     public void testProvisioningGrantMultipleBuses() throws Exception {
 
         refreshRequestAndResponse();
-
-        String grantRequestString = "{\"grants\":{\"" + client.getClientId() + "\":\"qa-test-bus1 qa-test-bus2\"},\"admin\":\"" + user.get(User.Field.USER) + "\", \"secret\":\"" + pw + "\"}";
+        String grantRequestString = "{\"grants\":{\"" + client.getClientId() + "\":\"" + bus1 + " " + bus2 + "\"},\"admin\":\"" + user.get(User.Field.USER) + "\", \"secret\":\"" + pw + "\"}";
         request.setContent(grantRequestString.getBytes());
         request.addHeader("Content-type", "application/json");
         request.setRequestURI("/v2/provision/grant/add");
@@ -408,7 +440,7 @@ public class ProvisioningController2Test {
         handlerAdapter.handle(request, response, controller);
         logger.info("testProvisioningGrant()/add -> " + response.getContentAsString());
         assertTrue("Invalid response", response.getContentAsString().equals("{\"" + client.getClientId() + "\":\"GRANT_UPDATE_SUCCESS\"}"));
-        
+
         refreshRequestAndResponse();
         String listGrants = "{ \"admin\": \"" + user.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\", \"entities\": [ \"" + client.getClientId() + "\" ] }";
         request.setContent(listGrants.getBytes());
@@ -418,8 +450,8 @@ public class ProvisioningController2Test {
         handlerAdapter.handle(request, response, controller);
         logger.info("testProvisioningGrant()/checkExists -> " + response.getContentAsString());
         assertTrue("Invalid response", checkGrantExists(response, client.getClientId(), new ArrayList<String>() {{
-            add("qa-test-bus1");
-            add("qa-test-bus2");
+            add(bus1);
+            add(bus2);
         }}));
 
         refreshRequestAndResponse();
@@ -438,16 +470,39 @@ public class ProvisioningController2Test {
         request.setMethod("POST");
         handlerAdapter.handle(request, response, controller);
         logger.info("testProvisioningGrant()/checkNonExists -> " + response.getContentAsString());
-        assertFalse("Invalid response", checkGrantExists(response, client.getClientId(), new ArrayList<String>() {{ add("qa-test-bus1");}}));
-        assertFalse("Invalid response", checkGrantExists(response, client.getClientId(), new ArrayList<String>() {{ add("qa-test-bus2");}}));
+        assertFalse("Invalid response", checkGrantExists(response, client.getClientId(), new ArrayList<String>() {{ add(bus1);}}));
+        assertFalse("Invalid response", checkGrantExists(response, client.getClientId(), new ArrayList<String>() {{ add(bus2);}}));
+
+        refreshRequestAndResponse();
+        String grantRequestStringWithBogusBus = "{\"grants\":{\"" + client.getClientId() + "\":\"" + bus1 + " bogus_bus " + bus2 + "\"},\"admin\":\"" + user.get(User.Field.USER) + "\", \"secret\":\"" + pw + "\"}";
+        request.setContent(grantRequestStringWithBogusBus.getBytes());
+        request.addHeader("Content-type", "application/json");
+        request.setRequestURI("/v2/provision/grant/add");
+        request.setMethod("POST");
+        handlerAdapter.handle(request, response, controller);
+        logger.info("testProvisioningGrant()/add -> " + response.getContentAsString());
+        assertTrue("Invalid response", response.getContentAsString().equals("{\"" + client.getClientId() + "\":\"Invalid bus: bogus_bus\"}"));
+
+        refreshRequestAndResponse();
+        String listGrantsWithBogusBus = "{ \"admin\": \"" + user.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\", \"entities\": [ \"" + client.getClientId() + "\" ] }";
+        request.setContent(listGrantsWithBogusBus.getBytes());
+        request.addHeader("Content-type", "application/json");
+        request.setRequestURI("/v2/provision/grant/list");
+        request.setMethod("POST");
+        handlerAdapter.handle(request, response, controller);
+        logger.info("testProvisioningGrant()/checkNoneExists -> " + response.getContentAsString());
+        assertFalse("Invalid response", checkGrantExists(response, client.getClientId(), new ArrayList<String>() {{
+            add(bus1);
+            add(bus2);
+        }}));
     }
-    
+
     @Test
     public void testProvisioningGrantMultipleBusesRevokeOneAtATime() throws Exception {
 
         refreshRequestAndResponse();
 
-        String grantRequestString = "{\"grants\":{\"" + client.getClientId() + "\":\"qa-test-bus1 qa-test-bus2\"},\"admin\":\"" + user.get(User.Field.USER) + "\", \"secret\":\"" + pw + "\"}";
+        String grantRequestString = "{\"grants\":{\"" + client.getClientId() + "\":\"" + bus1 + " " + bus2 + "\"},\"admin\":\"" + user.get(User.Field.USER) + "\", \"secret\":\"" + pw + "\"}";
         request.setContent(grantRequestString.getBytes());
         request.addHeader("Content-type", "application/json");
         request.setRequestURI("/v2/provision/grant/add");
@@ -455,7 +510,7 @@ public class ProvisioningController2Test {
         handlerAdapter.handle(request, response, controller);
         logger.info("testProvisioningGrant()/add -> " + response.getContentAsString());
         assertTrue("Invalid response", response.getContentAsString().equals("{\"" + client.getClientId() + "\":\"GRANT_UPDATE_SUCCESS\"}"));
-        
+
         refreshRequestAndResponse();
         String listGrants = "{ \"admin\": \"" + user.get(User.Field.USER) + "\", \"secret\": \"" + pw + "\", \"entities\": [ \"" + client.getClientId() + "\" ] }";
         request.setContent(listGrants.getBytes());
@@ -465,12 +520,12 @@ public class ProvisioningController2Test {
         handlerAdapter.handle(request, response, controller);
         logger.info("testProvisioningGrant()/checkExists -> " + response.getContentAsString());
         assertTrue("Invalid response", checkGrantExists(response, client.getClientId(), new ArrayList<String>() {{
-            add("qa-test-bus1");
-            add("qa-test-bus2");
+            add(bus1);
+            add(bus2);
         }}));
 
         refreshRequestAndResponse();
-        String revoke1request = "{\"grants\":{\"" + client.getClientId() + "\":\"qa-test-bus1\"},\"admin\":\"" + user.get(User.Field.USER) + "\", \"secret\":\"" + pw + "\"}";
+        String revoke1request = "{\"grants\":{\"" + client.getClientId() + "\":\"" + bus1 + "\"},\"admin\":\"" + user.get(User.Field.USER) + "\", \"secret\":\"" + pw + "\"}";
         request.setContent(revoke1request.getBytes());
         request.addHeader("Content-type", "application/json");
         request.setRequestURI("/v2/provision/grant/revoke");
@@ -486,11 +541,15 @@ public class ProvisioningController2Test {
         request.setMethod("POST");
         handlerAdapter.handle(request, response, controller);
         logger.info("testProvisioningGrant()/checkNonExists -> " + response.getContentAsString());
-        assertFalse("Invalid response", checkGrantExists(response, client.getClientId(), new ArrayList<String>() {{ add("qa-test-bus1");}}));
-        assertTrue("Invalid response", checkGrantExists(response, client.getClientId(), new ArrayList<String>() {{ add("qa-test-bus2");}}));
+        assertFalse("Invalid response", checkGrantExists(response, client.getClientId(), new ArrayList<String>() {{
+            add(bus1);
+        }}));
+        assertTrue("Invalid response", checkGrantExists(response, client.getClientId(), new ArrayList<String>() {{
+            add(bus2);
+        }}));
 
         refreshRequestAndResponse();
-        String revoke2request = "{\"grants\":{\"" + client.getClientId() + "\":\"qa-test-bus2\"},\"admin\":\"" + user.get(User.Field.USER) + "\", \"secret\":\"" + pw + "\"}";
+        String revoke2request = "{\"grants\":{\"" + client.getClientId() + "\":\"" + bus2 + "\"},\"admin\":\"" + user.get(User.Field.USER) + "\", \"secret\":\"" + pw + "\"}";
         request.setContent(revoke2request.getBytes());
         request.addHeader("Content-type", "application/json");
         request.setRequestURI("/v2/provision/grant/revoke");
@@ -506,10 +565,10 @@ public class ProvisioningController2Test {
         request.setMethod("POST");
         handlerAdapter.handle(request, response, controller);
         logger.info("testProvisioningGrant()/checkNonExists -> " + response.getContentAsString());
-        assertFalse("Invalid response", checkGrantExists(response, client.getClientId(), new ArrayList<String>() {{ add("qa-test-bus1");}}));
-        assertFalse("Invalid response", checkGrantExists(response, client.getClientId(), new ArrayList<String>() {{ add("qa-test-bus2");}}));
+        assertFalse("Invalid response", checkGrantExists(response, client.getClientId(), new ArrayList<String>() {{ add(bus1);}}));
+        assertFalse("Invalid response", checkGrantExists(response, client.getClientId(), new ArrayList<String>() {{ add(bus2);}}));
     }
-    
+
     // - PRIVATE
 
     @Inject
@@ -536,6 +595,8 @@ public class ProvisioningController2Test {
     private User busOwner;
     private Client client;
     private String pw;
+    private String bus1;
+    private String bus2;
 
 
     private void refreshRequestAndResponse() {
