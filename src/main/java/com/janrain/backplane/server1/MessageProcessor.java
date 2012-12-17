@@ -169,8 +169,6 @@ public class MessageProcessor implements LeaderSelectorListener {
 
                         transaction.set(V1_LAST_ID, newId);
 
-                        Thread.sleep(150);
-
                         logger.info("processing transaction with " + insertionTimes.size() + " message(s)");
                         if (transaction.exec() == null) {
                             // the transaction failed
@@ -188,6 +186,8 @@ public class MessageProcessor implements LeaderSelectorListener {
                             }
                         }
                     } // messagesToProcess > 0
+
+                    Thread.sleep(150);
 
                 } catch (Exception e) {
                     try {
