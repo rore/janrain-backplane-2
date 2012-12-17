@@ -111,7 +111,7 @@ public class V2MessageProcessor implements LeaderSelectorListener {
 
             List<String> insertionTimes = new ArrayList<String>();
 
-            // set watch on the messages sorted set of keys,
+            // set watch on V1_LAST_ID
             // needs to be set before retrieving the value stored at this key
             jedis.watch(V2_LAST_ID);
 
@@ -128,6 +128,7 @@ public class V2MessageProcessor implements LeaderSelectorListener {
 
                 insertionTimes.clear();
 
+                // <ATOMIC> - redis transaction
                 for (byte[] messageBytes : messagesToProcess) {
 
                     if (messageBytes != null) {
@@ -148,6 +149,7 @@ public class V2MessageProcessor implements LeaderSelectorListener {
                     logger.warn("transaction failed! - halting work for now");
                     return;
                 }
+                // </ATOMIC> - redis transaction
 
                 logger.info("flushed " + insertionTimes.size() + " v2 messages");
                 long now = System.currentTimeMillis();

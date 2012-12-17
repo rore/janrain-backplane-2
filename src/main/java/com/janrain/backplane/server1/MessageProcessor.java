@@ -84,7 +84,7 @@ public class MessageProcessor implements LeaderSelectorListener {
                     jedis = Redis.getInstance().getWriteJedis();
                     logger.debug("retrieved jedis connection: " + jedis.toString());
 
-                    // set watch on the messages sorted set of keys,
+                    // set watch on V1_LAST_ID
                     // needs to be set before retrieving the value stored at this key
                     jedis.watch(V1_LAST_ID);
 
@@ -103,6 +103,7 @@ public class MessageProcessor implements LeaderSelectorListener {
 
                         insertionTimes.clear();
 
+                        // <ATOMIC> - redis transaction
                         for (byte[] messageBytes : messagesToProcess) {
 
                             if (messageBytes != null) {
@@ -136,7 +137,6 @@ public class MessageProcessor implements LeaderSelectorListener {
                                     // because of the TOTAL ORDER mechanism above
                                     long messageTime = BackplaneMessage.getDateFromId(newId).getTime();
 
-                                    // <ATOMIC>
                                     // save the individual message by key
                                     transaction.set(RedisBackplaneMessageDAO.getKey(newId), BpSerialUtils.serialize(backplaneMessage));
                                     // set the message TTL
@@ -161,7 +161,6 @@ public class MessageProcessor implements LeaderSelectorListener {
 
                                     // pop one message off the queue - which will only happen if this transaction is successful
                                     transaction.lpop(RedisBackplaneMessageDAO.V1_MESSAGE_QUEUE);
-                                    // </ATOMIC>
 
                                     logger.info("pipelined message " + oldId + " -> " + newId);
                                 }
@@ -177,6 +176,7 @@ public class MessageProcessor implements LeaderSelectorListener {
                             // the transaction failed
                             continue;
                         }
+                        // </ATOMIC> - redis transaction
 
                         logger.info("flushed " + insertionTimes.size() + " messages");
                         long now = System.currentTimeMillis();
