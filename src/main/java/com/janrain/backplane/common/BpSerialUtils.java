@@ -121,7 +121,7 @@ public class BpSerialUtils {
             throw new IllegalArgumentException("The byte[] must not be null");
         }
         ByteArrayInputStream bais = new ByteArrayInputStream(objectData);
-        return deserialize(bais);
+        return BpSerialUtils.<T>deserialize(bais);
     }
 
     private static class BpCompatObjectInputStream extends ObjectInputStream {
