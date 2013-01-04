@@ -254,6 +254,10 @@
             <artifactId>annotations</artifactId>
             <version>9.0</version>
         </dependency>
+	<!-- as of this writing, terracota's maven repository is
+	down, and we've copied up the artifacts to the janrain repo.
+	Keep this in mind if you change the version or otherwise
+	work with the ehcache dependency -->
         <dependency>
             <groupId>net.sf.ehcache</groupId>
             <artifactId>ehcache</artifactId>
