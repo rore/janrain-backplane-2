@@ -134,25 +134,25 @@ public class BpSerialUtils {
         protected ObjectStreamClass readClassDescriptor() throws IOException, ClassNotFoundException {
             ObjectStreamClass classDesc = super.readClassDescriptor();
             String className = classDesc.getName();
-            return renamedClasses.containsKey(className) ? ObjectStreamClass.lookup(renamedClasses.get(className)) : classDesc;
+            return renamedClasses.containsKey(className) ? renamedClasses.get(className) : classDesc;
         }
 
         // - PRIVATE
 
-        private static Map<String,Class<?>> renamedClasses = new HashMap<String, Class<?>>() {{
-            put("com.janrain.backplane.server.config.BpServerConfig", BpServerConfig.class);
-            put("com.janrain.backplane.server.BackplaneMessage", com.janrain.backplane.server1.BackplaneMessage.class);
-            put("com.janrain.backplane.server.BusConfig1", BusConfig1.class);
-            put("com.janrain.backplane2.server.config.Client", Client.class);
-            put("com.janrain.backplane2.server.Token", Token.class);
-            put("com.janrain.backplane2.server.config.BusConfig2", BusConfig2.class);
-            put("com.janrain.backplane2.server.config.User", User.class);
-            put("com.janrain.backplane2.server.AuthSession", AuthSession.class);
-            put("com.janrain.backplane2.server.BackplaneMessage", com.janrain.backplane.server2.BackplaneMessage.class);
-            put("com.janrain.backplane2.server.Channel", Channel.class);
-            put("com.janrain.backplane2.server.Grant", Grant.class);
-            put("com.janrain.oauth2.AuthorizationRequest", AuthorizationRequest.class);
-            put("com.janrain.oauth2.AuthorizationDecisionKey", AuthorizationDecisionKey.class);
+        private static Map<String,ObjectStreamClass> renamedClasses = new HashMap<String, ObjectStreamClass>() {{
+            put("com.janrain.backplane.server.config.BpServerConfig", ObjectStreamClass.lookup(BpServerConfig.class));
+            put("com.janrain.backplane.server.BackplaneMessage", ObjectStreamClass.lookup(com.janrain.backplane.server1.BackplaneMessage.class));
+            put("com.janrain.backplane.server.BusConfig1", ObjectStreamClass.lookup(BusConfig1.class));
+            put("com.janrain.backplane2.server.config.Client", ObjectStreamClass.lookup(Client.class));
+            put("com.janrain.backplane2.server.Token", ObjectStreamClass.lookup(Token.class));
+            put("com.janrain.backplane2.server.config.BusConfig2", ObjectStreamClass.lookup(BusConfig2.class));
+            put("com.janrain.backplane2.server.config.User", ObjectStreamClass.lookup(User.class));
+            put("com.janrain.backplane2.server.AuthSession", ObjectStreamClass.lookup(AuthSession.class));
+            put("com.janrain.backplane2.server.BackplaneMessage", ObjectStreamClass.lookup(com.janrain.backplane.server2.BackplaneMessage.class));
+            put("com.janrain.backplane2.server.Channel", ObjectStreamClass.lookup(Channel.class));
+            put("com.janrain.backplane2.server.Grant", ObjectStreamClass.lookup(Grant.class));
+            put("com.janrain.oauth2.AuthorizationRequest", ObjectStreamClass.lookup(AuthorizationRequest.class));
+            put("com.janrain.oauth2.AuthorizationDecisionKey", ObjectStreamClass.lookup(AuthorizationDecisionKey.class));
         }};
     }
 
