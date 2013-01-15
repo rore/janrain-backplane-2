@@ -214,10 +214,10 @@ Backplane.finishInit = function (channelName) {
         this.channelByBus[this.config.busName] = channelName;
     }
 
+    this.initialized = true;
     this.setCookieChannels();
     this.config.channelName = this.getChannelName();
     this.config.channelID = this.generateChannelID();
-    this.initialized = true;
     this.onInit();
     this.request();
 };
@@ -228,7 +228,7 @@ Backplane.generateChannelID = function() {
 
 Backplane.getChannelName = function() {
     if (!this.initialized) return false;
-    if (!this.channelByBus[this.config.busName]) {
+    if (!this.channelByBus[this.config.busName] || this.channelByBus[this.config.busName] === 'false') {
         if (this.serverChannel) {
             return false;
         } else {
