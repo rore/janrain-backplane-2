@@ -79,6 +79,7 @@ window.Backplane = window.Backplane || (function() {
 Backplane.init = function(config) {
     config = config || {};
     if (this.initialized || !config.serverBaseURL || !config.busName) return false;
+    this.initialized = true;
     this.timers = {};
     this.config = config;
     this.config.serverBaseURL = this.normalizeURL(config.serverBaseURL);
@@ -214,7 +215,6 @@ Backplane.finishInit = function (channelName) {
         this.channelByBus[this.config.busName] = channelName;
     }
 
-    this.initialized = true;
     this.setCookieChannels();
     this.config.channelName = this.getChannelName();
     this.config.channelID = this.generateChannelID();
