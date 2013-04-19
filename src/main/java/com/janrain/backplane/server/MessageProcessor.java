@@ -269,18 +269,19 @@ public class MessageProcessor implements LeaderSelectorListener {
     private static final String V1_LAST_ID = "v1_last_id";
 
     @Override
-    public void takeLeadership(CuratorFramework curatorFramework) throws Exception {
+    public synchronized void takeLeadership(CuratorFramework curatorFramework) throws Exception {
         logger.info("[" + BackplaneSystemProps.getMachineName() + "] v1 leader elected for message processing");
 
         // start cleanup message thread
         scheduleCleanupMessage();
 
+        setLeader(true);
         insertMessages();
         logger.info("[" + BackplaneSystemProps.getMachineName() + "] v1 leader ended message processing");
     }
 
     @Override
-    public void stateChanged(CuratorFramework curatorFramework, ConnectionState connectionState) {
+    public synchronized void stateChanged(CuratorFramework curatorFramework, ConnectionState connectionState) {
         logger.info("v1 leader selector state changed to " + connectionState);
         if (ConnectionState.LOST == connectionState || ConnectionState.SUSPENDED == connectionState) {
             logger.info("v1 leader relinquishing leadership...");

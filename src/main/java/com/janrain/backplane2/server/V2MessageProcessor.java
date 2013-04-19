@@ -282,15 +282,16 @@ public class V2MessageProcessor implements LeaderSelectorListener {
     private DAOFactory daoFactory;
 
     @Override
-    public void takeLeadership(CuratorFramework curatorFramework) throws Exception {
+    public synchronized void takeLeadership(CuratorFramework curatorFramework) throws Exception {
         logger.info("[" + BackplaneSystemProps.getMachineName() + "] v2 leader elected for message processing");
         scheduleCleanupMessage();
+        setLeader(true);
         insertMessages();
         logger.info("[" + BackplaneSystemProps.getMachineName() + "] v2 leader ended message processing");
     }
 
     @Override
-    public void stateChanged(CuratorFramework curatorFramework, ConnectionState connectionState) {
+    public synchronized void stateChanged(CuratorFramework curatorFramework, ConnectionState connectionState) {
         logger.info("v2 leader selector state changed to " + connectionState);
         if (ConnectionState.LOST == connectionState || ConnectionState.SUSPENDED == connectionState) {
             logger.info("v2 leader relinquishing leadership...");
