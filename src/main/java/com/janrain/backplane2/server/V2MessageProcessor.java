@@ -85,7 +85,7 @@ public class V2MessageProcessor implements LeaderSelectorListener {
 
         try {
             logger.info("v2 message processor started");
-            while (true) {
+            while (isLeader()) {
                 try {
                     processSingleBatchOfPendingMessages();
                     Thread.sleep(150);
@@ -148,7 +148,6 @@ public class V2MessageProcessor implements LeaderSelectorListener {
                 logger.info("processing transaction with " + insertionTimes.size() + " v2 message(s)");
                 List<Object> results = transaction.exec();
                 if (results == null || results.size() == 0) {
-                    // the transaction failed
                     logger.warn("transaction failed! - halting work for now");
                     return;
                 }
@@ -292,6 +291,20 @@ public class V2MessageProcessor implements LeaderSelectorListener {
 
     @Override
     public void stateChanged(CuratorFramework curatorFramework, ConnectionState connectionState) {
-        logger.info("state changed");
+        logger.info("v2 leader selector state changed to " + connectionState);
+        if (ConnectionState.LOST == connectionState || ConnectionState.SUSPENDED == connectionState) {
+            logger.info("v2 leader relinquishing leadership...");
+            setLeader(false);
+        }
     }
+
+    private synchronized void setLeader(boolean leader) {
+        this.leader = leader;
+    }
+
+    private synchronized boolean isLeader() {
+        return leader;
+    }
+
+    private boolean leader = false;
 }

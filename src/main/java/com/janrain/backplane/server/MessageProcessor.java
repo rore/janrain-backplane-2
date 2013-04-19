@@ -76,7 +76,7 @@ public class MessageProcessor implements LeaderSelectorListener {
      * Processor to pull messages off queue and make them available
      *
      */
-    public void insertMessages(boolean loop) {
+    public void insertMessages() {
 
         try {
             logger.info("v1 message processor started");
@@ -221,7 +221,7 @@ public class MessageProcessor implements LeaderSelectorListener {
                     }
                 }
 
-            } while (loop);
+            } while (isLeader());
 
         } catch (Exception e) {
             logger.warn("exception thrown in message processor thread: " + e.getMessage());
@@ -275,12 +275,26 @@ public class MessageProcessor implements LeaderSelectorListener {
         // start cleanup message thread
         scheduleCleanupMessage();
 
-        insertMessages(true);
+        insertMessages();
         logger.info("[" + BackplaneSystemProps.getMachineName() + "] v1 leader ended message processing");
     }
 
     @Override
     public void stateChanged(CuratorFramework curatorFramework, ConnectionState connectionState) {
-        logger.info("state changed");
+        logger.info("v1 leader selector state changed to " + connectionState);
+        if (ConnectionState.LOST == connectionState || ConnectionState.SUSPENDED == connectionState) {
+            logger.info("v1 leader relinquishing leadership...");
+            setLeader(false);
+        }
     }
+
+    private synchronized void setLeader(boolean leader) {
+        this.leader = leader;
+    }
+
+    private synchronized boolean isLeader() {
+        return leader;
+    }
+
+    private boolean leader = false;
 }
