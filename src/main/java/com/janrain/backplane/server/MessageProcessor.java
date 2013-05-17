@@ -18,8 +18,8 @@ package com.janrain.backplane.server;
 
 import com.janrain.backplane.DateTimeUtils;
 import com.janrain.backplane.server.config.Backplane1Config;
-import com.janrain.backplane.server.dao.redis.RedisBackplaneMessageDAO;
 import com.janrain.backplane.server.dao.DaoFactory;
+import com.janrain.backplane.server.dao.redis.RedisBackplaneMessageDAO;
 import com.janrain.commons.util.Pair;
 import com.janrain.redis.Redis;
 import com.janrain.utils.BackplaneSystemProps;
@@ -35,7 +35,10 @@ import org.apache.log4j.Logger;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Transaction;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -187,10 +190,13 @@ public class MessageProcessor implements LeaderSelectorListener {
                         logger.info("flushed " + insertionTimes.size() + " messages");
                         long now = System.currentTimeMillis();
                         for (String insertionId : insertionTimes) {
-                            long diff = now - BackplaneMessage.getDateFromId(insertionId).getTime();
+                            Date oldIdDate = BackplaneMessage.getDateFromId(insertionId);
+                            long diff = now - oldIdDate.getTime();
                             timeInQueue.update(diff);
                             if (diff < 0 || diff > 2880000) {
-                                logger.warn("time diff is bizarre at: " + diff);
+                                logger.warn("time diff is bizarre at: " + diff
+                                    + "; now: " + DateTimeUtils.ISO8601.get().format(new Date(now))
+                                    + ", oldId: " + DateTimeUtils.ISO8601.get().format(oldIdDate));
                             }
                         }
 
@@ -269,23 +275,23 @@ public class MessageProcessor implements LeaderSelectorListener {
     private static final String V1_LAST_ID = "v1_last_id";
 
     @Override
-    public synchronized void takeLeadership(CuratorFramework curatorFramework) throws Exception {
+    public void takeLeadership(CuratorFramework curatorFramework) throws Exception {
+        setLeader(true);
         logger.info("[" + BackplaneSystemProps.getMachineName() + "] v1 leader elected for message processing");
 
         // start cleanup message thread
         scheduleCleanupMessage();
 
-        setLeader(true);
         insertMessages();
         logger.info("[" + BackplaneSystemProps.getMachineName() + "] v1 leader ended message processing");
     }
 
     @Override
-    public synchronized void stateChanged(CuratorFramework curatorFramework, ConnectionState connectionState) {
+    public void stateChanged(CuratorFramework curatorFramework, ConnectionState connectionState) {
         logger.info("v1 leader selector state changed to " + connectionState);
-        if (ConnectionState.LOST == connectionState || ConnectionState.SUSPENDED == connectionState) {
-            logger.info("v1 leader relinquishing leadership...");
+        if (isLeader() && (ConnectionState.LOST == connectionState || ConnectionState.SUSPENDED == connectionState)) {
             setLeader(false);
+            logger.info("v1 leader lost connection, giving up leadership");
         }
     }
 
@@ -294,7 +300,7 @@ public class MessageProcessor implements LeaderSelectorListener {
     }
 
     private synchronized boolean isLeader() {
-        return leader;
+        return leader && ! Backplane1Config.isLeaderDisabled();
     }
 
     private boolean leader = false;

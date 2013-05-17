@@ -48,7 +48,8 @@ import java.util.concurrent.TimeUnit;
  */
 public class V2MessageProcessor implements LeaderSelectorListener {
 
-    public V2MessageProcessor(DAOFactory daoFactory) {
+    public V2MessageProcessor(Backplane2Config backplane2Config, DAOFactory daoFactory) {
+        this.config = backplane2Config;
         this.daoFactory = daoFactory;
     }
 
@@ -279,23 +280,25 @@ public class V2MessageProcessor implements LeaderSelectorListener {
 
     private final Histogram timeInQueue = Metrics.newHistogram(new MetricName("v2", this.getClass().getName().replace(".","_"), "time_in_queue"));
 
-    private DAOFactory daoFactory;
+    private final Backplane2Config config;
+
+    private final DAOFactory daoFactory;
 
     @Override
-    public synchronized void takeLeadership(CuratorFramework curatorFramework) throws Exception {
+    public void takeLeadership(CuratorFramework curatorFramework) throws Exception {
+        setLeader(true);
         logger.info("[" + BackplaneSystemProps.getMachineName() + "] v2 leader elected for message processing");
         scheduleCleanupMessage();
-        setLeader(true);
         insertMessages();
         logger.info("[" + BackplaneSystemProps.getMachineName() + "] v2 leader ended message processing");
     }
 
     @Override
-    public synchronized void stateChanged(CuratorFramework curatorFramework, ConnectionState connectionState) {
+    public void stateChanged(CuratorFramework curatorFramework, ConnectionState connectionState) {
         logger.info("v2 leader selector state changed to " + connectionState);
-        if (ConnectionState.LOST == connectionState || ConnectionState.SUSPENDED == connectionState) {
-            logger.info("v2 leader relinquishing leadership...");
+        if ( isLeader() && (ConnectionState.LOST == connectionState || ConnectionState.SUSPENDED == connectionState)) {
             setLeader(false);
+            logger.info("v2 leader lost connection, giving up leadership");
         }
     }
 
@@ -304,7 +307,7 @@ public class V2MessageProcessor implements LeaderSelectorListener {
     }
 
     private synchronized boolean isLeader() {
-        return leader;
+        return leader && ! config.isLeaderDisabled();
     }
 
     private boolean leader = false;
