@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -48,41 +49,75 @@ import java.util.concurrent.TimeUnit;
  */
 public class V2MessageProcessor implements LeaderSelectorListener {
 
-    public V2MessageProcessor(Backplane2Config backplane2Config, DAOFactory daoFactory) {
-        this.config = backplane2Config;
-        this.daoFactory = daoFactory;
-    }
+    // - PUBLIC
 
-    public void scheduleCleanupMessage() {
-        logger.info("creating v2 message cleanup thread");
-        ScheduledExecutorService messageWorkerTask = Executors.newScheduledThreadPool(1);
-        messageWorkerTask.scheduleAtFixedRate(new Runnable() {
+    public V2MessageProcessor(Backplane2Config backplane2Config, final DAOFactory daoFactory) {
+        this.config = backplane2Config;
+        cleanupRunnable = new Runnable() {
             @Override
             public void run() {
-                cleanupMessages();
+                try {
+                    daoFactory.getBackplaneMessageDAO().deleteExpiredMessages();
+                } catch (Exception e) {
+                    logger.warn(e);
+                }
             }
-        }, 1, 2, TimeUnit.HOURS);
-
-        // register worker
-        Backplane2Config.addToBackgroundServices(messageWorkerTask);
+        };
     }
 
-    /**
-     * Processor to remove expired messages
-     */
-    public void cleanupMessages() {
-        try {
-            daoFactory.getBackplaneMessageDAO().deleteExpiredMessages();
-        } catch (Exception e) {
-            logger.warn(e);
+    @Override
+    public void takeLeadership(CuratorFramework curatorFramework) throws Exception {
+        setLeader(true);
+        logger.info("[" + BackplaneSystemProps.getMachineName() + "] v2 leader elected for message processing");
+
+        ScheduledFuture<?> cleanupTask = scheduledExecutor.scheduleAtFixedRate(cleanupRunnable, 1, 2, TimeUnit.HOURS);
+        insertMessages();
+        cleanupTask.cancel(false);
+
+        logger.info("[" + BackplaneSystemProps.getMachineName() + "] v2 leader ended message processing");
+    }
+
+    @Override
+    public void stateChanged(CuratorFramework curatorFramework, ConnectionState connectionState) {
+        logger.info("v2 leader selector state changed to " + connectionState);
+        if ( isLeader() && (ConnectionState.LOST == connectionState || ConnectionState.SUSPENDED == connectionState)) {
+            setLeader(false);
+            logger.info("v2 leader lost connection, giving up leadership");
         }
     }
+
+    // - PRIVATE
+
+    private static final Logger logger = Logger.getLogger(V2MessageProcessor.class);
+
+    private static final String V2_LAST_ID = "v2_last_id";
+
+    private static ScheduledExecutorService scheduledExecutor = Executors.newScheduledThreadPool(1);
+    static {
+        Backplane2Config.addToBackgroundServices(scheduledExecutor);
+    }
+
+    private final Runnable cleanupRunnable;
+
+    private final Histogram timeInQueue = Metrics.newHistogram(new MetricName("v2", this.getClass().getName().replace(".","_"), "time_in_queue"));
+
+    private final Backplane2Config config;
+
+    private synchronized void setLeader(boolean leader) {
+        this.leader = leader;
+    }
+
+    private synchronized boolean isLeader() {
+        return leader && ! config.isLeaderDisabled();
+    }
+
+    private boolean leader = false;
 
     /**
      * Processor to pull messages off queue and make them available
      *
      */
-    public void insertMessages() {
+    private void insertMessages() {
 
         try {
             logger.info("v2 message processor started");
@@ -217,10 +252,9 @@ public class V2MessageProcessor implements LeaderSelectorListener {
         return lastIdAndDate;
     }
 
-
     private String processSingleMessage(BackplaneMessage backplaneMessage,
-                                 Transaction transaction, List<String> insertionTimes,
-                                 Pair<String, Date> lastIdAndDate) throws Exception {
+                                        Transaction transaction, List<String> insertionTimes,
+                                        Pair<String, Date> lastIdAndDate) throws Exception {
 
         try {
             String oldId = backplaneMessage.getIdValue();
@@ -273,42 +307,4 @@ public class V2MessageProcessor implements LeaderSelectorListener {
         }
 
     }
-
-    private static final Logger logger = Logger.getLogger(V2MessageProcessor.class);
-
-    private static final String V2_LAST_ID = "v2_last_id";
-
-    private final Histogram timeInQueue = Metrics.newHistogram(new MetricName("v2", this.getClass().getName().replace(".","_"), "time_in_queue"));
-
-    private final Backplane2Config config;
-
-    private final DAOFactory daoFactory;
-
-    @Override
-    public void takeLeadership(CuratorFramework curatorFramework) throws Exception {
-        setLeader(true);
-        logger.info("[" + BackplaneSystemProps.getMachineName() + "] v2 leader elected for message processing");
-        scheduleCleanupMessage();
-        insertMessages();
-        logger.info("[" + BackplaneSystemProps.getMachineName() + "] v2 leader ended message processing");
-    }
-
-    @Override
-    public void stateChanged(CuratorFramework curatorFramework, ConnectionState connectionState) {
-        logger.info("v2 leader selector state changed to " + connectionState);
-        if ( isLeader() && (ConnectionState.LOST == connectionState || ConnectionState.SUSPENDED == connectionState)) {
-            setLeader(false);
-            logger.info("v2 leader lost connection, giving up leadership");
-        }
-    }
-
-    private synchronized void setLeader(boolean leader) {
-        this.leader = leader;
-    }
-
-    private synchronized boolean isLeader() {
-        return leader && ! config.isLeaderDisabled();
-    }
-
-    private boolean leader = false;
 }
