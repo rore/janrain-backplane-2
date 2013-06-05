@@ -2,8 +2,8 @@ package com.janrain.backplane.dao.redis
 
 import com.janrain.backplane.Message
 import com.janrain.backplane.dao.{DaoException, Dao}
-import com.janrain.util.SystemProperties
 import com.janrain.util.Loggable
+import com.janrain.backplane.config.SystemProperties
 
 
 /**
@@ -22,13 +22,13 @@ abstract class RedisMessageDao[MT <: Message[_]](val keyPrefix: String) extends 
   }
 
   def expire(seconds: Int, id: String) {
-    if (! Redis.pool.withClient(_.expire(getKey(id), seconds)) )
+    if (! Redis.writePool.withClient(_.expire(getKey(id), seconds)) )
       throw new DaoException("expire failed for %s : redis returned false".format(getKey(id)))
   }
 
   def expire(seconds: Int, ids: String*): List[(String, Boolean)] =
     ids.zip(
-      Redis.pool.withClient( _.pipeline( p => {
+      Redis.writePool.withClient( _.pipeline( p => {
         for (id <- ids)
           p.expire(getKey(id), seconds)
       }))
@@ -41,13 +41,13 @@ abstract class RedisMessageDao[MT <: Message[_]](val keyPrefix: String) extends 
     ).toList
 
   def store(item: MT) {
-    if (! Redis.pool.withClient(_.hmset(getKey(item.id), item)))
+    if (! Redis.writePool.withClient(_.hmset(getKey(item.id), item)))
       throw new DaoException("store failed for %s : redis returned false".format(getKey(item.id)))
   }
 
   def store(items: MT*): List[(String, Boolean)] =
     items.map(_.id).zip( // one pipeline response entry per pipelined request
-      Redis.pool.withClient( _.pipeline {
+      Redis.writePool.withClient( _.pipeline {
         p => {
           for (item <- items)
             p.hmset(getKey(item.id), item)
@@ -62,11 +62,11 @@ abstract class RedisMessageDao[MT <: Message[_]](val keyPrefix: String) extends 
     ).toList
 
   override def get(id: String): Option[MT] =
-    instantiateEmpty(Redis.pool.withClient(_.hgetall(getKey(id))))
+    instantiateEmpty(Redis.readPool.withClient(_.hgetall(getKey(id))))
 
   def get(ids: String*): List[(String,Option[MT])] =
     ids.zip(
-      Redis.pool.withClient(_.pipeline {
+      Redis.readPool.withClient(_.pipeline {
         p => ids.foreach(id => p.hgetall(getKey(id)))
       })
       .getOrElse(throw new DaoException("multi-get failed for key prefix %s  items: [%s]".format(keyPrefix, ids.mkString(","))))
@@ -84,13 +84,13 @@ abstract class RedisMessageDao[MT <: Message[_]](val keyPrefix: String) extends 
 
   def update(items: MT*) = store(items: _*)
 
-  def delete(id: String) = Redis.pool.withClient(_.del(getKey(id)))
+  def delete(id: String) = Redis.writePool.withClient(_.del(getKey(id)))
     .getOrElse(throw new DaoException(("deleted failed for key %s".format("")))) == 1L
 
   def delete(ids: String*) =
     ids.zip(
       // redis del(id*) returns the total number of deletes, but we need to return whether each id was deleted or not
-      Redis.pool.withClient( _.pipeline {
+      Redis.writePool.withClient( _.pipeline {
         p => ids.foreach(id => p.del(getKey(id)))
       })
       .getOrElse(throw new DaoException("error attempting to delete keys: [%s]".format(ids.mkString(", "))))
@@ -103,7 +103,7 @@ abstract class RedisMessageDao[MT <: Message[_]](val keyPrefix: String) extends 
 
   def retrieveAndDelete(itemId: String) = {
     val itemKey = getKey(itemId)
-    val pipelineResponse = Redis.pool.withClient(_.pipeline {
+    val pipelineResponse = Redis.writePool.withClient(_.pipeline {
       p => {
         p.hgetall(itemKey)
         p.del(itemKey)

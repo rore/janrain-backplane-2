@@ -18,6 +18,7 @@ package com.janrain.servlet;
 
 
 import com.janrain.backplane.config.BackplaneConfig;
+import com.janrain.backplane.config.SystemProperties;
 import org.apache.log4j.Logger;
 
 import javax.inject.Inject;
@@ -46,7 +47,7 @@ public class InstanceIdFilter implements Filter {
     @Override
     public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain) throws IOException, ServletException {
         HttpServletResponse response = (HttpServletResponse) res;
-        response.addHeader(SSO_ID_HEADER, bpConfig.getInstanceId() + "-" + bpConfig.getBuildVersion());
+        response.addHeader(SSO_ID_HEADER, SystemProperties.INSTANCE_ID() + "-" + bpConfig.getBuildVersion());
 
         //add EC2 instance id
         response.addHeader("EC2-instance-id", BackplaneConfig.getEC2InstanceId());

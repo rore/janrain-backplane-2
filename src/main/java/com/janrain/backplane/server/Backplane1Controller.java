@@ -20,7 +20,6 @@ import com.janrain.backplane.common.AuthException;
 import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.common.HmacHashUtils;
 import com.janrain.backplane.config.BackplaneConfig;
-import com.janrain.backplane.config.BackplaneSystemProps;
 import com.janrain.backplane.config.BpServerConfig;
 import com.janrain.backplane.dao.ServerDAOs;
 import com.janrain.backplane.server.redisdao.BP1DAOs;
@@ -52,6 +51,8 @@ import java.security.SecureRandom;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
+import static com.janrain.backplane.config.BackplaneConfig.BPSERVER_CONFIG_KEY;
+
 /**
  * Backplane API implementation.
  *
@@ -79,7 +80,7 @@ public class Backplane1Controller {
         boolean adminUserExists = true;
 
         // check to see if an admin record already exists, if it does, do not allow an update
-        User admin = ServerDAOs.getAdminDAO().get(BackplaneSystemProps.ADMIN_USER);
+        User admin = ServerDAOs.getAdminDAO().get(ADMIN_USER);
         if (admin == null) {
             adminUserExists = false;
         }
@@ -88,12 +89,12 @@ public class Backplane1Controller {
             response.setContentLength(0);
         }
 
-        BpServerConfig bpServerConfig = ServerDAOs.getConfigDAO().get(BackplaneSystemProps.BPSERVER_CONFIG_KEY);
+        BpServerConfig bpServerConfig = ServerDAOs.getConfigDAO().get(BPSERVER_CONFIG_KEY);
         if (bpServerConfig == null) {
             bpServerConfig = new BpServerConfig();
         }
         // add it to the L1 cache
-        CachedL1.getInstance().setObject(BackplaneSystemProps.BPSERVER_CONFIG_KEY, -1, bpServerConfig);
+        CachedL1.getInstance().setObject(BPSERVER_CONFIG_KEY, -1, bpServerConfig);
 
         ModelAndView view = new ModelAndView("admin");
         view.addObject("adminUserExists", adminUserExists);
@@ -110,7 +111,7 @@ public class Backplane1Controller {
         ServletUtil.checkSecure(request);
 
         BpServerConfig bpServerConfig =
-                ServerDAOs.getConfigDAO().get(BackplaneSystemProps.BPSERVER_CONFIG_KEY);
+                ServerDAOs.getConfigDAO().get(BPSERVER_CONFIG_KEY);
         if (bpServerConfig == null) {
             bpServerConfig = new BpServerConfig();
         }
@@ -124,7 +125,7 @@ public class Backplane1Controller {
             bpServerConfig.validate();
             ServerDAOs.getConfigDAO().persist(bpServerConfig);
             // add it to the L1 cache
-            CachedL1.getInstance().setObject(BackplaneSystemProps.BPSERVER_CONFIG_KEY, -1, bpServerConfig);
+            CachedL1.getInstance().setObject(BPSERVER_CONFIG_KEY, -1, bpServerConfig);
             logger.info(bpServerConfig.toString());
         } catch (Exception e) {
             logger.error(e);
@@ -147,11 +148,11 @@ public class Backplane1Controller {
 
             ModelAndView view = new ModelAndView("adminadd");
             // be sure no record exists
-            User admin = ServerDAOs.getAdminDAO().get(BackplaneSystemProps.ADMIN_USER);
+            User admin = ServerDAOs.getAdminDAO().get(ADMIN_USER);
             if (admin == null) {
                 String name = request.getParameter("username");
-                if (!name.equals(BackplaneSystemProps.ADMIN_USER)) {
-                    view.addObject("message", "Admin user name must be " + BackplaneSystemProps.ADMIN_USER);
+                if (!name.equals(ADMIN_USER)) {
+                    view.addObject("message", "Admin user name must be " + ADMIN_USER);
                     return view;
                 }
                 String password = request.getParameter("password");
@@ -338,6 +339,7 @@ public class Backplane1Controller {
     private static final String NEW_CHANNEL_LAST_PATH = "new";
     private static final String ERR_MSG_FIELD = "ERR_MSG";
     private static final int CHANNEL_NAME_LENGTH = 32;
+    private static final String ADMIN_USER = "bpadmin";
 
     private final com.yammer.metrics.core.Timer getBusMessagesTime =
             Metrics.newTimer(new MetricName("v1", this.getClass().getName().replace(".","_"), "get_bus_messages_time"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);

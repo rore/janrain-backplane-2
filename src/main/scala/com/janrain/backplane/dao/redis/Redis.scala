@@ -1,28 +1,39 @@
 package com.janrain.backplane.dao.redis
 
 import com.redis.RedisClientPool
-import com.janrain.util.{SystemProperties, Utils, Loggable}
+import com.janrain.util.{Utils, Loggable}
+import com.janrain.backplane.config.SystemProperties
+import scala.util.Random
 
 /**
  * @author Johnny Bufu
  */
 object Redis extends Loggable {
   private final val REDIS_DEFAULT_PORT = 6379
-  private final val REDIS_DEFAULT_DB = 0
-  private final val REDIS_CLIENTS_DEFAULT_MAX_IDLE = 30
+  private final val REDIS_DEFAULT_MAX_IDLE_CLIENTS = 100
 
-  val (host, port, maxIdleConnections, redisDb) = (
-    Utils.getRequiredSystemProperty(SystemProperties.REDIS_HOST),
-    REDIS_DEFAULT_PORT,
-    REDIS_CLIENTS_DEFAULT_MAX_IDLE,
+  private val (writeRedisHost, writeRedisPort) = redisHostAndPort(Utils.getRequiredSystemProperty(SystemProperties.REDIS_SERVER_PRIMARY))
+
+  val writePool = new RedisClientPool(writeRedisHost, writeRedisPort, REDIS_DEFAULT_MAX_IDLE_CLIENTS)
+  logger.info("initialized redis write pool for %s:%s, max idle connections: %s)".format(writeRedisHost, writeRedisPort, REDIS_DEFAULT_MAX_IDLE_CLIENTS))
+
+  private val readPools: Array[(String,RedisClientPool)] =
+    Utils.getRequiredSystemProperty(SystemProperties.REDIS_SERVER_READS)
+    .split(",").map(r => redisHostAndPort(r))
+    .map( hostAndPort => hostAndPort.toString() -> new RedisClientPool(hostAndPort._1, hostAndPort._2, REDIS_DEFAULT_MAX_IDLE_CLIENTS) )
+
+  def readPool: RedisClientPool = readPools(Random.nextInt(readPools.size))._2
+
+  logger.info("initialized redis read pool(s) for %s, max idle connections per server: %s)".format(readPools.map(_._1), REDIS_DEFAULT_MAX_IDLE_CLIENTS))
+
+
+  private def redisHostAndPort(hostAndPort: String) = {
+    val (host,port) = hostAndPort.span(_ != ':')
     try {
-      Utils.getOptionalSystemProperty(SystemProperties.REDIS_DB).map(_.toInt).getOrElse(REDIS_DEFAULT_DB)
+      (host, port.drop(1).toInt)
     } catch {
-      case e: Exception => REDIS_DEFAULT_DB
-    })
-
-  val isDefaultDb = redisDb == REDIS_DEFAULT_DB
-
-  val pool = new RedisClientPool(host, port, maxIdleConnections, redisDb)
-  logger.info("initialized redis pool for %s:%s (database# %s, max idle connections# %s)".format(host, port, redisDb, maxIdleConnections))
+      case e: Throwable =>
+        (host, REDIS_DEFAULT_PORT)
+    }
+  }
 }

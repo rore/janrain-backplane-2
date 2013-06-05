@@ -20,7 +20,7 @@ public class BpServerConfig extends ExternalizableCore {
     public BpServerConfig() {
         Map<String,String> d = new LinkedHashMap<String, String>();
 
-        d.put(Field.ID.getFieldName(), BackplaneSystemProps.BPSERVER_CONFIG_KEY);
+        d.put(Field.ID.getFieldName(), BackplaneConfig.BPSERVER_CONFIG_KEY);
         d.put(Field.DEBUG_MODE.getFieldName(), Field.DEBUG_MODE_DEFAULT.toString() );
         d.put(Field.CLEANUP_INTERVAL_MINUTES.getFieldName(), Long.toString(Field.CLEANUP_INTERVAL_MINUTES_DEFAULT));
         d.put(Field.DEFAULT_MESSAGES_MAX.getFieldName(), Long.toString(Field.MESSAGES_MAX_DEFAULT));
@@ -28,7 +28,7 @@ public class BpServerConfig extends ExternalizableCore {
         d.put(Field.TOKEN_CACHE_MAX_MB.getFieldName(), Long.toString(Field.TOKEN_CACHE_MAX_MB_DEFAULT));
 
         try {
-            super.init(BackplaneSystemProps.BPSERVER_CONFIG_KEY, d);
+            super.init(BackplaneConfig.BPSERVER_CONFIG_KEY, d);
         } catch (SimpleDBException e) {
             logger.error(e);
         }

@@ -25,7 +25,6 @@ import com.janrain.backplane2.server.V2MessageProcessor;
 import com.janrain.backplane2.server.config.User;
 import com.janrain.cache.CachedL1;
 import com.janrain.commons.util.AwsUtility;
-import com.janrain.commons.util.InitSystemProps;
 import com.janrain.commons.util.Pair;
 import com.janrain.redis.Redis;
 import com.netflix.curator.framework.CuratorFramework;
@@ -50,8 +49,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import static com.janrain.backplane.config.BackplaneSystemProps.ZOOKEEPER_SERVERS;
-
 
 /**
  * Holds configuration settings for the Backplane server
@@ -62,6 +59,8 @@ import static com.janrain.backplane.config.BackplaneSystemProps.ZOOKEEPER_SERVER
 public class BackplaneConfig {
 
     // - PUBLIC
+
+    public static final String BPSERVER_CONFIG_KEY = "bpserverconfig";
 
     /**
 	 * @return the debugMode
@@ -84,7 +83,7 @@ public class BackplaneConfig {
         return isDebugMode() && Redis.getInstance().get(EC2InstanceId) != null;
     }
 
-    public static Exception getDebugException(Exception e) {
+    public static Throwable getDebugException(Throwable e) {
         return isDebugMode() ? e: null;
      }
 
@@ -98,10 +97,6 @@ public class BackplaneConfig {
 
     public static void addToBackgroundServices(String workerName, ScheduledExecutorService messageWorkerTask) {
         backgroundServices.put(workerName, messageWorkerTask);
-    }
-
-    public String getInstanceId() {
-        return bpInstanceId;
     }
 
     public String getBuildVersion() {
@@ -122,12 +117,6 @@ public class BackplaneConfig {
         }
     }
 
-    // - PACKAGE
-
-    BackplaneConfig(String instanceId) {
-        this.bpInstanceId = instanceId;
-    }
-
     // - PRIVATE
 
     private static final Logger logger = Logger.getLogger(BackplaneConfig.class);
@@ -136,8 +125,6 @@ public class BackplaneConfig {
     private static final String BUILD_VERSION_PROPERTY = "build.version";
     private static final Properties buildProperties = new Properties();
     private static final long BP_MAX_MESSAGES_DEFAULT = 100;
-
-    private final String bpInstanceId;
 
     private static final Map<String, ExecutorService> backgroundServices = new HashMap<String, ExecutorService>();
 
@@ -149,18 +136,16 @@ public class BackplaneConfig {
 
     @SuppressWarnings({"UnusedDeclaration"})
     private BackplaneConfig() {
-        bpInstanceId = getAwsProp(InitSystemProps.AWS_INSTANCE_ID);
-
         ConsoleReporter.enable(10, TimeUnit.MINUTES);
 
         // Dump metrics to graphite server
-        String graphiteServer = System.getProperty(BackplaneSystemProps.GRAPHITE_SERVER);
+        String graphiteServer = System.getProperty(SystemProperties.GRAPHITE_SERVER());
         if (StringUtils.isNotBlank(graphiteServer)) {
             try {
                 String args[] = graphiteServer.split(":");
                 String server = args[0];
                 int port = Integer.parseInt(args[1]);
-                GraphiteReporter.enable(10, TimeUnit.SECONDS, server, port, BackplaneSystemProps.getMachineName().replace(".","_") + "_" + bpInstanceId);
+                GraphiteReporter.enable(10, TimeUnit.SECONDS, server, port, SystemProperties.machineName().replace(".","_") + "_" + SystemProperties.INSTANCE_ID());
                 logger.info("Graphite server enabled at " + graphiteServer);
             } catch (Exception e) {
                 logger.warn("could not enable Graphite from " + graphiteServer + " must be in the form SERVER:PORT");
@@ -175,7 +160,7 @@ public class BackplaneConfig {
             throw new RuntimeException(err, e);
         }
 
-        logger.info("Configured Backplane Server instance: " + bpInstanceId);
+        logger.info("Configured Backplane Server instance: " + SystemProperties.INSTANCE_ID());
     }
 
     private Pair<String, ExecutorService> createPingTask() {
@@ -203,9 +188,9 @@ public class BackplaneConfig {
 
     private void initZk(String leaderPath, LeaderSelectorListener listener) {
         try {
-            String zkServerConfig = System.getProperty(ZOOKEEPER_SERVERS);
+            String zkServerConfig = System.getProperty(SystemProperties.ZOOKEEPER_SERVERS());
             if (StringUtils.isEmpty(zkServerConfig)) {
-                logger.error("Cannot find configuration entry for ZooKeeper server ('" + ZOOKEEPER_SERVERS + "' system property)" );
+                logger.error("Cannot find configuration entry for ZooKeeper server ('" + SystemProperties.ZOOKEEPER_SERVERS() + "' system property)" );
                 System.exit(1);
             }
             CuratorFramework client = CuratorFrameworkFactory.newClient(zkServerConfig, new ExponentialBackoffRetry(50, 20));
@@ -245,26 +230,13 @@ public class BackplaneConfig {
         }
     }
 
-    /**
-     * Load system property
-     * @param propParamName
-     * @return
-     */
-    private static String getAwsProp(String propParamName) {
-        String result = System.getProperty(propParamName);
-        if (StringUtils.isBlank(result)) {
-            throw new RuntimeException("Required system property configuration missing: " + propParamName);
-        }
-        return result;
-    }
-
     private static String cachedGet(BpServerConfig.Field property) {
         try {
-            BpServerConfig bpServerConfigCache = (BpServerConfig) CachedL1.getInstance().getObject(BackplaneSystemProps.BPSERVER_CONFIG_KEY);
+            BpServerConfig bpServerConfigCache = (BpServerConfig) CachedL1.getInstance().getObject(BPSERVER_CONFIG_KEY);
             if (bpServerConfigCache == null) {
                 // pull from db if not found in cache
                 try {
-                    bpServerConfigCache = ServerDAOs.getConfigDAO().get(BackplaneSystemProps.BPSERVER_CONFIG_KEY);
+                    bpServerConfigCache = ServerDAOs.getConfigDAO().get(BPSERVER_CONFIG_KEY);
                 } catch (Exception e) {
                     // if we get an error from the db, create a new object
                 }
@@ -274,7 +246,7 @@ public class BackplaneConfig {
                     bpServerConfigCache = new BpServerConfig();
                 }
                 // add it to the L1 cache
-                CachedL1.getInstance().setObject(BackplaneSystemProps.BPSERVER_CONFIG_KEY, -1, bpServerConfigCache);
+                CachedL1.getInstance().setObject(BPSERVER_CONFIG_KEY, -1, bpServerConfigCache);
             }
 
             return bpServerConfigCache.get(property);
