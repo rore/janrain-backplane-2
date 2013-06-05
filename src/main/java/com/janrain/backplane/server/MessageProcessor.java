@@ -18,7 +18,7 @@ package com.janrain.backplane.server;
 
 import com.janrain.backplane.common.DateTimeUtils;
 import com.janrain.backplane.config.BackplaneConfig;
-import com.janrain.backplane.config.BackplaneSystemProps;
+import com.janrain.backplane.config.SystemProperties;
 import com.janrain.backplane.server.redisdao.BP1DAOs;
 import com.janrain.backplane.server.redisdao.RedisBackplaneMessageDAO;
 import com.janrain.commons.util.Pair;
@@ -56,13 +56,13 @@ public class MessageProcessor implements LeaderSelectorListener {
     @Override
     public void takeLeadership(CuratorFramework curatorFramework) throws Exception {
         setLeader(true);
-        logger.info("[" + BackplaneSystemProps.getMachineName() + "] v1 leader elected for message processing");
+        logger.info("[" + SystemProperties.machineName() + "] v1 leader elected for message processing");
 
         ScheduledFuture<?> cleanupTask = scheduledExecutor.scheduleAtFixedRate(cleanupRunnable, 2, 2, TimeUnit.HOURS);
         insertMessages();
         cleanupTask.cancel(false);
 
-        logger.info("[" + BackplaneSystemProps.getMachineName() + "] v1 leader ended message processing");
+        logger.info("[" + SystemProperties.machineName() + "] v1 leader ended message processing");
     }
 
     @Override
