@@ -20,6 +20,7 @@ import com.janrain.backplane.common.AuthException;
 import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.common.HmacHashUtils;
 import com.janrain.backplane.config.BackplaneConfig;
+import com.janrain.backplane.config.dao.ConfigDAOs;
 import com.janrain.backplane2.server.*;
 import com.janrain.backplane2.server.config.BusConfig2;
 import com.janrain.backplane2.server.config.Client;
@@ -56,7 +57,7 @@ public class ProvisioningController2 {
     @ResponseBody
     public Map<String, Map<String, String>> busList(HttpServletRequest request, @RequestBody ListRequest listRequest) throws AuthException {
         ServletUtil.checkSecure(request);
-        bpConfig.checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
+        ConfigDAOs.adminDao().checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
         return doList(BusConfig2.class, listRequest.getEntities(), BusConfig2.Field.BUS_NAME);
     }
 
@@ -64,7 +65,7 @@ public class ProvisioningController2 {
     @ResponseBody
     public Map<String, Map<String, String>> userList(HttpServletRequest request, @RequestBody ListRequest listRequest) throws AuthException {
         ServletUtil.checkSecure(request);
-        bpConfig.checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
+        ConfigDAOs.adminDao().checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
         return doList(User.class, listRequest.getEntities(), User.Field.USER);
     }
 
@@ -72,7 +73,7 @@ public class ProvisioningController2 {
     @ResponseBody
     public Map<String, Map<String, String>> clientList(HttpServletRequest request, @RequestBody ListRequest listRequest) throws AuthException {
         ServletUtil.checkSecure(request);
-        bpConfig.checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
+        ConfigDAOs.adminDao().checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
         return doList(Client.class, listRequest.getEntities(), Client.Field.USER);
     }
 
@@ -80,7 +81,7 @@ public class ProvisioningController2 {
     @ResponseBody
     public Map<String, String> busDelete(HttpServletRequest request, @RequestBody ListRequest deleteRequest) throws AuthException {
         ServletUtil.checkSecure(request);
-        bpConfig.checkAdminAuth(deleteRequest.getAdmin(), deleteRequest.getSecret());
+        ConfigDAOs.adminDao().checkAdminAuth(deleteRequest.getAdmin(), deleteRequest.getSecret());
         return doDelete(BusConfig2.class, deleteRequest.getEntities());
     }
 
@@ -88,7 +89,7 @@ public class ProvisioningController2 {
     @ResponseBody
     public Map<String, String> userDelete(HttpServletRequest request, @RequestBody ListRequest deleteRequest) throws AuthException {
         ServletUtil.checkSecure(request);
-        bpConfig.checkAdminAuth(deleteRequest.getAdmin(), deleteRequest.getSecret());
+        ConfigDAOs.adminDao().checkAdminAuth(deleteRequest.getAdmin(), deleteRequest.getSecret());
         return doDelete(User.class, deleteRequest.getEntities());
     }
 
@@ -96,7 +97,7 @@ public class ProvisioningController2 {
     @ResponseBody
     public Map<String, String> clientDelete(HttpServletRequest request, @RequestBody ListRequest deleteRequest) throws AuthException {
         ServletUtil.checkSecure(request);
-        bpConfig.checkAdminAuth(deleteRequest.getAdmin(), deleteRequest.getSecret());
+        ConfigDAOs.adminDao().checkAdminAuth(deleteRequest.getAdmin(), deleteRequest.getSecret());
         return doDelete(Client.class, deleteRequest.getEntities());
     }
 
@@ -126,7 +127,7 @@ public class ProvisioningController2 {
     @ResponseBody
     public Map<String, Map<String, String>> grantList(HttpServletRequest request, @RequestBody ListRequest listRequest) throws AuthException {
         ServletUtil.checkSecure(request);
-        bpConfig.checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
+        ConfigDAOs.adminDao().checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
 
         Map<String,Map<String,String>> result = new LinkedHashMap<String, Map<String, String>>();
 
@@ -263,7 +264,7 @@ public class ProvisioningController2 {
     }
 
     private <T extends AbstractMessage> Map<String, String> doUpdate(Class<T> entityType, UpdateRequest<T> updateRequest) throws AuthException {
-        bpConfig.checkAdminAuth(updateRequest.getAdmin(), updateRequest.getSecret());
+        ConfigDAOs.adminDao().checkAdminAuth(updateRequest.getAdmin(), updateRequest.getSecret());
         return updateConfigs(entityType, updateRequest.getConfigs());
     }
 
@@ -296,7 +297,7 @@ public class ProvisioningController2 {
 
     private Map<String, String> doGrant(GrantRequest grantRequest, boolean addRevoke) throws AuthException {
         Map<String,String> result = new LinkedHashMap<String, String>();
-        bpConfig.checkAdminAuth(grantRequest.getAdmin(), grantRequest.getSecret());
+        ConfigDAOs.adminDao().checkAdminAuth(grantRequest.getAdmin(), grantRequest.getSecret());
 
         for(Map.Entry<String,String> newGrantEntry : grantRequest.getGrants().entrySet()) {
             String clientId = newGrantEntry.getKey();

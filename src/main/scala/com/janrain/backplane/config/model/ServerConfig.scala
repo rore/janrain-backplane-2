@@ -1,7 +1,7 @@
 package com.janrain.backplane.config.model
 
 import com.janrain.backplane.{MessageField, MessageFieldEnum, Message}
-import com.janrain.backplane.config.BackplaneConfig
+import com.janrain.backplane.config.SystemProperties
 
 /**
  * @author Johnny Bufu
@@ -13,7 +13,7 @@ class ServerConfig(data: Map[String,String]) extends Message(ServerConfig.DEFAUL
 object ServerConfig {
 
   final val DEFAULT = Map(
-    ServerConfigFields.ID.name -> BackplaneConfig.BPSERVER_CONFIG_KEY,
+    ServerConfigFields.ID.name -> SystemProperties.INSTANCE_ID,
     ServerConfigFields.DEBUG_MODE.name -> false.toString,
     ServerConfigFields.CONFIG_CACHE_AGE_SECONDS.name -> 10.toString,
     ServerConfigFields.CLEANUP_INTERVAL_MINUTES.name -> 2.toString,

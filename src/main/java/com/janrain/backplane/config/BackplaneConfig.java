@@ -16,14 +16,10 @@
 
 package com.janrain.backplane.config;
 
-import com.janrain.backplane.common.AuthException;
-import com.janrain.backplane.common.BackplaneServerException;
-import com.janrain.backplane.common.HmacHashUtils;
-import com.janrain.backplane.dao.ServerDAOs;
+import com.janrain.backplane.config.dao.ConfigDAOs;
+import com.janrain.backplane.config.model.ServerConfigFields;
 import com.janrain.backplane.server.MessageProcessor;
 import com.janrain.backplane2.server.V2MessageProcessor;
-import com.janrain.backplane2.server.config.User;
-import com.janrain.cache.CachedL1;
 import com.janrain.commons.util.AwsUtility;
 import com.janrain.commons.util.Pair;
 import com.janrain.redis.Redis;
@@ -60,13 +56,11 @@ public class BackplaneConfig {
 
     // - PUBLIC
 
-    public static final String BPSERVER_CONFIG_KEY = "bpserverconfig";
-
     /**
 	 * @return the debugMode
 	 */
 	public static boolean isDebugMode() {
-        return Boolean.valueOf(cachedGet(BpServerConfig.Field.DEBUG_MODE));
+        return Boolean.valueOf(ConfigDAOs.serverConfigDao().oneServerConfig().get().get(ServerConfigFields.DEBUG_MODE()).get());
 	}
 
     /**
@@ -74,7 +68,7 @@ public class BackplaneConfig {
      * @throws SimpleDBException
      */
     public static long getDefaultMaxMessageLimit() {
-        Long max = Long.valueOf(cachedGet(BpServerConfig.Field.DEFAULT_MESSAGES_MAX));
+        Long max = Long.valueOf(ConfigDAOs.serverConfigDao().oneServerConfig().get().get(ServerConfigFields.DEFAULT_MESSAGES_MAX()).get());
         return max == null ? BackplaneConfig.BP_MAX_MESSAGES_DEFAULT : max;
     }
 
@@ -101,20 +95,6 @@ public class BackplaneConfig {
 
     public String getBuildVersion() {
         return buildProperties.getProperty(BUILD_VERSION_PROPERTY);
-    }
-
-    public void checkAdminAuth(String user, String password) throws AuthException {
-        try {
-            User userEntry = ServerDAOs.getAdminDAO().get(user);
-            String authKey = userEntry == null ? null : userEntry.get(User.Field.PWDHASH);
-            if ( ! HmacHashUtils.checkHmacHash(password, authKey) ) {
-                logger.error("User " + user + " not authorized");
-                throw new AuthException("Access denied");
-            }
-        } catch (BackplaneServerException e) {
-            logger.error("Error authenticating user " + user + " : " + e.getMessage(), getDebugException(e));
-            throw new AuthException("User " + user + " not authorized, " + e.getMessage(), getDebugException(e));
-        }
     }
 
     // - PRIVATE
@@ -227,33 +207,6 @@ public class BackplaneConfig {
             logger.error(serviceName + " termination threw an exception", e);
             executor.shutdownNow();
             Thread.currentThread().interrupt();
-        }
-    }
-
-    private static String cachedGet(BpServerConfig.Field property) {
-        try {
-            BpServerConfig bpServerConfigCache = (BpServerConfig) CachedL1.getInstance().getObject(BPSERVER_CONFIG_KEY);
-            if (bpServerConfigCache == null) {
-                // pull from db if not found in cache
-                try {
-                    bpServerConfigCache = ServerDAOs.getConfigDAO().get(BPSERVER_CONFIG_KEY);
-                } catch (Exception e) {
-                    // if we get an error from the db, create a new object
-                }
-
-                if (bpServerConfigCache == null) {
-                    // no instance found in cache or the db, so let's use the default record
-                    bpServerConfigCache = new BpServerConfig();
-                }
-                // add it to the L1 cache
-                CachedL1.getInstance().setObject(BPSERVER_CONFIG_KEY, -1, bpServerConfigCache);
-            }
-
-            return bpServerConfigCache.get(property);
-
-        } catch (Exception e) {
-            logger.error(e);
-            return null;
         }
     }
 }
