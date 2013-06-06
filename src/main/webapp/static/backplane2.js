@@ -334,7 +334,7 @@ Backplane.finishInit = function (initPayload) {
     var scopes, k, channel;
     this.log("received access token and channel from server");
     if (initPayload.error != null) {
-      this.error("Error initializing backlane token: " + initPayload.error);
+      this.error("Error initializing backplane token: " + initPayload.error);
       return;
     }
     this.token = initPayload.access_token;
