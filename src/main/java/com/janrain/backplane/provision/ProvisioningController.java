@@ -19,6 +19,7 @@ package com.janrain.backplane.provision;
 import com.janrain.backplane.common.AuthException;
 import com.janrain.backplane.common.HmacHashUtils;
 import com.janrain.backplane.config.BackplaneConfig;
+import com.janrain.backplane.config.dao.ConfigDAOs;
 import com.janrain.backplane.server.BusConfig1;
 import com.janrain.backplane.server.redisdao.BP1DAOs;
 import com.janrain.backplane2.server.config.User;
@@ -50,28 +51,28 @@ public class ProvisioningController {
     @RequestMapping(value = "/bus/list", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, Map<String, String>> busList(@RequestBody ListRequest listRequest) throws AuthException {
-        bpConfig.checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
+        ConfigDAOs.adminDao().checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
         return doList(BusConfig1.class, listRequest.getEntities());
     }
 
     @RequestMapping(value = "/user/list", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, Map<String, String>> userList(@RequestBody ListRequest listRequest) throws AuthException {
-        bpConfig.checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
+        ConfigDAOs.adminDao().checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
         return doList(User.class, listRequest.getEntities());
     }
 
     @RequestMapping(value = "/bus/delete", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, String> busDelete(@RequestBody ListRequest deleteRequest) throws AuthException {
-        bpConfig.checkAdminAuth(deleteRequest.getAdmin(), deleteRequest.getSecret());
+        ConfigDAOs.adminDao().checkAdminAuth(deleteRequest.getAdmin(), deleteRequest.getSecret());
         return doDelete(BusConfig1.class, deleteRequest.getEntities());
     }
 
     @RequestMapping(value = "/user/delete", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, String> userDelete(@RequestBody ListRequest deleteRequest) throws AuthException {
-        bpConfig.checkAdminAuth(deleteRequest.getAdmin(), deleteRequest.getSecret());
+        ConfigDAOs.adminDao().checkAdminAuth(deleteRequest.getAdmin(), deleteRequest.getSecret());
         return doDelete(User.class, deleteRequest.getEntities());
     }
 
@@ -188,7 +189,7 @@ public class ProvisioningController {
     }
 
     private <T extends AbstractMessage> Map<String, String> doUpdate(Class<T> entityType, UpdateRequest<T> updateRequest) throws AuthException, SimpleDBException {
-        bpConfig.checkAdminAuth(updateRequest.getAdmin(), updateRequest.getSecret());
+        ConfigDAOs.adminDao().checkAdminAuth(updateRequest.getAdmin(), updateRequest.getSecret());
         validateConfigs(entityType, updateRequest);
         return updateConfigs(entityType, updateRequest.getConfigs());
     }

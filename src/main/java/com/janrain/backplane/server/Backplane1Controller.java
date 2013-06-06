@@ -20,13 +20,10 @@ import com.janrain.backplane.common.AuthException;
 import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.common.HmacHashUtils;
 import com.janrain.backplane.config.BackplaneConfig;
-import com.janrain.backplane.config.BpServerConfig;
-import com.janrain.backplane.dao.ServerDAOs;
 import com.janrain.backplane.server.redisdao.BP1DAOs;
 import com.janrain.backplane.server.redisdao.BP1MessageDao;
 import com.janrain.backplane2.server.config.User;
 import com.janrain.backplane.common.DateTimeUtils;
-import com.janrain.cache.CachedL1;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.servlet.ServletUtil;
 import com.janrain.utils.AnalyticsLogger;
@@ -53,8 +50,6 @@ import java.security.SecureRandom;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-import static com.janrain.backplane.config.BackplaneConfig.BPSERVER_CONFIG_KEY;
-
 /**
  * Backplane API implementation.
  *
@@ -74,113 +69,6 @@ public class Backplane1Controller {
         }
         return new ModelAndView("welcome");
     }
-
-    @RequestMapping(value = "/admin", method = { RequestMethod.GET, RequestMethod.HEAD })
-    public ModelAndView admin(HttpServletRequest request, HttpServletResponse response) throws BackplaneServerException {
-
-        ServletUtil.checkSecure(request);
-        boolean adminUserExists = true;
-
-        // check to see if an admin record already exists, if it does, do not allow an update
-        User admin = ServerDAOs.getAdminDAO().get(ADMIN_USER);
-        if (admin == null) {
-            adminUserExists = false;
-        }
-
-        if (RequestMethod.HEAD.toString().equals(request.getMethod())) {
-            response.setContentLength(0);
-        }
-
-        BpServerConfig bpServerConfig = ServerDAOs.getConfigDAO().get(BPSERVER_CONFIG_KEY);
-        if (bpServerConfig == null) {
-            bpServerConfig = new BpServerConfig();
-        }
-        // add it to the L1 cache
-        CachedL1.getInstance().setObject(BPSERVER_CONFIG_KEY, -1, bpServerConfig);
-
-        ModelAndView view = new ModelAndView("admin");
-        view.addObject("adminUserExists", adminUserExists);
-        view.addObject("configKey", bpServerConfig.getIdValue());
-        view.addObject("debugMode", bpConfig.isDebugMode());
-        view.addObject("defaultMessagesMax", bpServerConfig.get(BpServerConfig.Field.DEFAULT_MESSAGES_MAX));
-
-        return view;
-    }
-
-    @RequestMapping(value = "/adminupdate", method = { RequestMethod.POST })
-    public ModelAndView updateConfiguration(HttpServletRequest request, HttpServletResponse response) throws BackplaneServerException {
-
-        ServletUtil.checkSecure(request);
-
-        BpServerConfig bpServerConfig =
-                ServerDAOs.getConfigDAO().get(BPSERVER_CONFIG_KEY);
-        if (bpServerConfig == null) {
-            bpServerConfig = new BpServerConfig();
-        }
-        ModelAndView view = new ModelAndView("adminadd");
-        String debugModeString = request.getParameter("debug_mode");
-        String defaultMessagesMax = request.getParameter("default_messages_max");
-        bpServerConfig.put(BpServerConfig.Field.DEBUG_MODE.getFieldName(), Boolean.valueOf(debugModeString).toString());
-        bpServerConfig.put(BpServerConfig.Field.DEFAULT_MESSAGES_MAX.getFieldName(), defaultMessagesMax);
-
-        try {
-            bpServerConfig.validate();
-            ServerDAOs.getConfigDAO().persist(bpServerConfig);
-            // add it to the L1 cache
-            CachedL1.getInstance().setObject(BPSERVER_CONFIG_KEY, -1, bpServerConfig);
-            logger.info(bpServerConfig.toString());
-        } catch (Exception e) {
-            logger.error(e);
-            view.addObject("message", "An error has occurred " + e.getMessage());
-            return view;
-        }
-
-        view.addObject("message", "Configuration updated");
-        return view;
-
-    }
-
-
-
-    @RequestMapping(value = "/adminadd", method = { RequestMethod.POST })
-    public ModelAndView addAdmin(HttpServletRequest request, HttpServletResponse response) {
-
-        try {
-            ServletUtil.checkSecure(request);
-
-            ModelAndView view = new ModelAndView("adminadd");
-            // be sure no record exists
-            User admin = ServerDAOs.getAdminDAO().get(ADMIN_USER);
-            if (admin == null) {
-                String name = request.getParameter("username");
-                if (!name.equals(ADMIN_USER)) {
-                    view.addObject("message", "Admin user name must be " + ADMIN_USER);
-                    return view;
-                }
-                String password = request.getParameter("password");
-                // hash password
-                password = HmacHashUtils.hmacHash(password);
-                User user = new User();
-                user.setUserNamePassword(name, password);
-                ServerDAOs.getAdminDAO().persist(user);
-                view.addObject("message", "Admin user " + name + " updated");
-            } else {
-                view.addObject("message", "Admin user already exists.  You must delete the entry from the database before submitting a new admin user.");
-            }
-
-            if (RequestMethod.HEAD.toString().equals(request.getMethod())) {
-                response.setContentLength(0);
-            }
-
-            return view;
-
-        } catch (Exception e) {
-            logger.error(e);
-            throw new RuntimeException(e);
-        }
-    }
-
-
 
     @RequestMapping(value = "/{version}/bus/{bus}", method = RequestMethod.GET)
     public @ResponseBody List<HashMap<String,Object>> getBusMessages(
@@ -361,7 +249,6 @@ public class Backplane1Controller {
     private static final String NEW_CHANNEL_LAST_PATH = "new";
     private static final String ERR_MSG_FIELD = "ERR_MSG";
     private static final int CHANNEL_NAME_LENGTH = 32;
-    private static final String ADMIN_USER = "bpadmin";
 
     private final com.yammer.metrics.core.Timer getBusMessagesTime =
             Metrics.newTimer(new MetricName("v1", this.getClass().getName().replace(".","_"), "get_bus_messages_time"), TimeUnit.MILLISECONDS, TimeUnit.MINUTES);
