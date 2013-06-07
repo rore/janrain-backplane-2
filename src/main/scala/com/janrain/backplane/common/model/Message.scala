@@ -1,4 +1,4 @@
-package com.janrain.backplane
+package com.janrain.backplane.common.model
 
 import com.janrain.util.{Utils, Loggable, RandomUtils, Enum}
 import org.apache.commons.codec.binary.Base64._
@@ -8,6 +8,7 @@ import java.util.Date
 import org.apache.commons.lang.StringUtils
 import java.text.ParseException
 import org.apache.commons.codec.binary.Base64
+import com.janrain.backplane.common.MessageException
 
 /**
  * @author Johnny Bufu

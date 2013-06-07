@@ -1,9 +1,9 @@
 package com.janrain.backplane.dao.redis
 
-import com.janrain.backplane.Message
 import com.janrain.backplane.dao.{DaoException, Dao}
 import com.janrain.util.Loggable
 import com.janrain.backplane.config.SystemProperties
+import com.janrain.backplane.common.model.Message
 
 
 /**

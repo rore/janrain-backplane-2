@@ -1,8 +1,8 @@
 package com.janrain.backplane.server2.model
 
-import com.janrain.backplane.{MessageField, MessageFieldEnum, Message}
 import com.janrain.backplane.common.DateTimeUtils
 import java.util.Date
+import com.janrain.backplane.common.model.{MessageField, MessageFieldEnum, Message}
 
 /**
  * @author Johnny Bufu

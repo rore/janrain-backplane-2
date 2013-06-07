@@ -1,7 +1,7 @@
 package com.janrain.backplane.config.model
 
-import com.janrain.backplane.{MessageField, MessageFieldEnum, Message}
 import com.janrain.backplane.config.SystemProperties
+import com.janrain.backplane.common.model.{MessageField, MessageFieldEnum, Message}
 
 /**
  * @author Johnny Bufu
