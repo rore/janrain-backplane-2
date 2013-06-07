@@ -1,6 +1,7 @@
 package com.janrain.backplane.config.model
 
 import org.springframework.aop.interceptor.AbstractMonitoringInterceptor
+import com.janrain.backplane.common.model.{UserFieldEnum, User}
 
 /**
  * @author Johnny Bufu

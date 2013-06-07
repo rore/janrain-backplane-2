@@ -1,4 +1,4 @@
-package com.janrain.backplane.config.model
+package com.janrain.backplane.common.model
 
 import com.janrain.backplane._
 

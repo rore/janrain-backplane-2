@@ -1,4 +1,4 @@
-package com.janrain.backplane
+package com.janrain.backplane.common
 
 /**
  * @author Johnny Bufu
