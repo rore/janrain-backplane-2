@@ -1,9 +1,8 @@
 package com.janrain.backplane.config
 
 import org.springframework.web.bind.annotation.{RequestMethod, RequestMapping}
-import com.janrain.util.Loggable
+import com.janrain.util.{ServletUtil, Loggable}
 import org.springframework.web.servlet.ModelAndView
-import com.janrain.servlet.ServletUtil
 import javax.servlet.http.{HttpServletResponse, HttpServletRequest}
 import com.janrain.backplane.config.dao.ConfigDAOs
 import com.janrain.backplane.config.model.{AdminFields, Admin, ServerConfig, ServerConfigFields}

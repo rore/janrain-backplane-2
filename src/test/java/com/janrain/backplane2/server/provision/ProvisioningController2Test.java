@@ -71,13 +71,10 @@ public class ProvisioningController2Test {
         handlerAdapter = applicationContext.getBean("handlerAdapter", HandlerAdapter.class);
         refreshRequestAndResponse();
 
-        // create temporary admin adminUser account to enable the tests to work
-        Map<String,String> adminUserData = new HashMap <String, String>() {{
-            put(AdminFields.USER().name(), RandomUtils.randomString(20));
-            put(User.Field.PWDHASH.getFieldName(), HmacHashUtils.hmacHash(pw));
-        }}; 
-        adminUser = new Admin(adminUser);
         pw = RandomUtils.randomString(10);
+
+        // create temporary admin adminUser account to enable the tests to work
+        adminUser = new Admin(RandomUtils.randomString(20), HmacHashUtils.hmacHash(pw));
 
         //superSimpleDB.store(bpConfig.getTableName(BackplaneConfig.SimpleDBTables.BP_ADMIN_AUTH), User.class, adminUser);
         ConfigDAOs.adminDao().store(adminUser);
