@@ -44,18 +44,6 @@ public class BP2DAOs {
         return messageDao;
     }
 
-    public static AuthSessionDAO getAuthSessionDAO() {
-        return authSessionDao;
-    }
-
-    public static AuthorizationRequestDAO getAuthorizationRequestDAO() {
-        return authorizationRequestDao;
-    }
-
-    public static AuthorizationDecisionKeyDAO getAuthorizationDecisionKeyDAO() {
-        return authorizationDecisionKeyDao;
-    }
-
     public static DAO getDaoByObjectType(Class<?> obj) {
         if (Client.class.isAssignableFrom(obj)) {
             return getClientDAO();
@@ -77,8 +65,5 @@ public class BP2DAOs {
     private static final BusOwnerDAO busOwnerDao = new RedisBusOwnerDAO(busDao);
     private static final ClientDAO clientDao = new RedisClientDAO();
     private static final BackplaneMessageDAO messageDao = new RedisBackplaneMessageDAO();
-    private static final AuthSessionDAO authSessionDao = new RedisAuthSessionDAO();
-    private static final AuthorizationRequestDAO authorizationRequestDao = new RedisAuthorizationRequestDAO();
-    private static final AuthorizationDecisionKeyDAO authorizationDecisionKeyDao = new RedisAuthorizationDecisionKeyDAO();
 
 }

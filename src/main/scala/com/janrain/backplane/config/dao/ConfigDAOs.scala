@@ -7,7 +7,7 @@ import com.janrain.backplane.config.SystemProperties
 
 object ConfigDAOs {
 
-  val DEFAULT_CONFIG_CACHE_SECONDS = 60L // 1 min
+  private val DEFAULT_CONFIG_CACHE_SECONDS = 60L // 1 min
 
   val adminDao: AdminDao = new RedisMessageDao[Admin]("admin:") with AdminDao {
     protected def instantiate(data: Map[_, _]) = new Admin( data.map( kv => (kv._1.toString -> kv._2.toString) ))

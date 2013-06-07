@@ -21,6 +21,13 @@ import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.common.HmacHashUtils;
 import com.janrain.backplane.common.RandomUtils;
 import com.janrain.backplane.config.BackplaneConfig;
+import com.janrain.backplane.dao.DaoException;
+import com.janrain.backplane.server2.model.AuthSession;
+import com.janrain.backplane.server2.model.AuthSessionFields;
+import com.janrain.backplane.server2.oauth2.model.AuthorizationDecisionKey;
+import com.janrain.backplane.server2.oauth2.model.AuthorizationDecisionKeyFields;
+import com.janrain.backplane.server2.oauth2.model.AuthorizationRequest;
+import com.janrain.backplane.server2.oauth2.model.AuthorizationRequestFields;
 import com.janrain.backplane2.server.config.BusConfig2;
 import com.janrain.backplane2.server.config.Client;
 import com.janrain.backplane2.server.config.User;
@@ -29,7 +36,7 @@ import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.oauth2.*;
 import com.janrain.redis.Redis;
 import com.janrain.servlet.InvalidRequestException;
-import com.janrain.servlet.ServletUtil;
+import com.janrain.util.ServletUtil;
 import com.yammer.metrics.core.MetricName;
 import com.yammer.metrics.core.TimerContext;
 import org.apache.commons.codec.binary.Base64;
@@ -85,7 +92,7 @@ public class Backplane2Controller {
                             HttpServletResponse response,
                             @CookieValue( value = AUTH_SESSION_COOKIE, required = false) String authSessionCookie,
                             @CookieValue( value = AUTHORIZATION_REQUEST_COOKIE, required = false) String authorizationRequestCookie)
-            throws AuthorizationException {
+            throws AuthorizationException, DaoException {
 
         AuthorizationRequest authzRequest = null;
         String httpMethod = request.getMethod();
@@ -104,11 +111,11 @@ public class Backplane2Controller {
         if (null == authenticatedBusOwner) {
             if (null != authzRequest) {
                 try {
-                    logger.info("Persisting authorization request for client: " + authzRequest.get(AuthorizationRequest.Field.CLIENT_ID) +
-                                "[" + authzRequest.get(AuthorizationRequest.Field.COOKIE)+"]");
-                    BP2DAOs.getAuthorizationRequestDAO().persist(authzRequest);
-                    response.addCookie(new Cookie(AUTHORIZATION_REQUEST_COOKIE, authzRequest.get(AuthorizationRequest.Field.COOKIE)));
-                } catch (BackplaneServerException e) {
+                    logger.info("Persisting authorization request for client: " + authzRequest.get(AuthorizationRequestFields.CLIENT_ID()) +
+                                "[" + authzRequest.get(AuthorizationRequestFields.COOKIE())+"]");
+                    com.janrain.backplane.server2.dao.BP2DAOs.authorizationRequestDao().store(authzRequest);
+                    response.addCookie(new Cookie(AUTHORIZATION_REQUEST_COOKIE, authzRequest.get(AuthorizationRequestFields.COOKIE()).get()));
+                } catch (Exception e) {
                     throw new AuthorizationException(OAuth2.OAUTH2_AUTHZ_SERVER_ERROR, e.getMessage(), request, e);
                 }
             }
@@ -122,10 +129,10 @@ public class Backplane2Controller {
                 // return from /authenticate
                 try {
                     logger.debug("bp2.authorization.request cookie = " + authorizationRequestCookie);
-                    authzRequest = BP2DAOs.getAuthorizationRequestDAO().get(authorizationRequestCookie);
-                    logger.info("Retrieved authorization request for client:" + authzRequest.get(AuthorizationRequest.Field.CLIENT_ID) +
-                                "[" + authzRequest.get(AuthorizationRequest.Field.COOKIE)+"]");
-                } catch (BackplaneServerException e) {
+                    authzRequest = com.janrain.backplane.server2.dao.BP2DAOs.authorizationRequestDao().get(authorizationRequestCookie).get();
+                    logger.info("Retrieved authorization request for client:" + authzRequest.get(AuthorizationRequestFields.CLIENT_ID()) +
+                                "[" + authzRequest.get(AuthorizationRequestFields.COOKIE())+"]");
+                } catch (Exception e) {
                     throw new AuthorizationException(OAuth2.OAUTH2_AUTHZ_SERVER_ERROR, e.getMessage(), request, e);
                 }
             }
@@ -150,7 +157,7 @@ public class Backplane2Controller {
                           HttpServletRequest request,
                           HttpServletResponse response,
                           @RequestParam(required = false) String busOwner,
-                          @RequestParam(required = false) String password) throws AuthException, BackplaneServerException {
+                          @RequestParam(required = false) String password) throws AuthException, BackplaneServerException, DaoException {
 
         ServletUtil.checkSecure(request);
 
@@ -554,24 +561,28 @@ public class Backplane2Controller {
         logger.info("Authenticated bus owner: " + busOwner);
     }
 
-    private void persistAuthenticatedSession(HttpServletResponse response, String busOwner) throws BackplaneServerException {
+    private void persistAuthenticatedSession(HttpServletResponse response, String busOwner) throws BackplaneServerException, DaoException {
         try {
             String authCookie = RandomUtils.randomString(AUTH_SESSION_COOKIE_LENGTH);
-            BP2DAOs.getAuthSessionDAO().persist(new AuthSession(busOwner, authCookie));
+            com.janrain.backplane.server2.dao.BP2DAOs.authSessionDao().store(new AuthSession(busOwner, authCookie));
             response.addCookie(new Cookie(AUTH_SESSION_COOKIE, authCookie));
-        } catch (SimpleDBException e) {
+        } catch (Exception e) {
             throw new BackplaneServerException(e.getMessage());
         }
     }
 
-    private String getAuthenticatedBusOwner(HttpServletRequest request, String authSessionCookie) {
+    private String getAuthenticatedBusOwner(HttpServletRequest request, String authSessionCookie) throws DaoException {
         if (authSessionCookie == null) return null;
         try {
-            AuthSession authSession = BP2DAOs.getAuthSessionDAO().get(authSessionCookie);
-            String authenticatedOwner = authSession.get(AuthSession.Field.AUTH_USER);
-            logger.info("Session found for previously authenticated bus owner: " + authenticatedOwner);
-            return authenticatedOwner;
-        } catch (BackplaneServerException e) {
+            AuthSession authSession = com.janrain.backplane.server2.dao.BP2DAOs.authSessionDao().get(authSessionCookie).getOrElse(null);
+            if (authSession == null) {
+                return null;
+            } else {
+                String authenticatedOwner = authSession.get(AuthSessionFields.AUTH_USER()).get();
+                logger.info("Session found for previously authenticated bus owner: " + authenticatedOwner);
+                return authenticatedOwner;
+            }
+        } catch (Exception e) {
             logger.error("Error looking up session for cookie: " + authSessionCookie, e);
             return null;
         }
@@ -601,7 +612,7 @@ public class Backplane2Controller {
             // parse authz request
             AuthorizationRequest authorizationRequest = new AuthorizationRequest(
                     RandomUtils.randomString(AUTHORIZATION_REQUEST_COOKIE_LENGTH),
-                    request.getParameterMap());
+                    ServletUtil.singleValueRequestParams(request));
             logger.info("Parsed authorization request: " + authorizationRequest);
             return authorizationRequest;
         } catch (Exception e) {
@@ -656,18 +667,18 @@ public class Backplane2Controller {
         logger.debug("generate & persist authZdecisionKey");
         try {
             AuthorizationDecisionKey authorizationDecisionKey = new AuthorizationDecisionKey(authSessionCookie);
-            BP2DAOs.getAuthorizationDecisionKeyDAO().persist(authorizationDecisionKey);
+            com.janrain.backplane.server2.dao.BP2DAOs.authorizationDecisionKeyDao().store(authorizationDecisionKey);
 
-            model.put("auth_key", authorizationDecisionKey.get(AuthorizationDecisionKey.Field.KEY));
-            model.put(AuthorizationRequest.Field.CLIENT_ID.getFieldName().toLowerCase(), authzRequest.get(AuthorizationRequest.Field.CLIENT_ID));
-            model.put(AuthorizationRequest.Field.REDIRECT_URI.getFieldName().toLowerCase(), authzRequest.getRedirectUri(BP2DAOs.getClientDAO()));
+            model.put("auth_key", authorizationDecisionKey.get(AuthorizationDecisionKeyFields.KEY()).get());
+            model.put(AuthorizationRequestFields.CLIENT_ID().name().toLowerCase(), (String) authzRequest.getOrElse(AuthorizationRequestFields.CLIENT_ID().name(), null));
+            model.put(AuthorizationRequestFields.REDIRECT_URI().name().toLowerCase(), authzRequest.getRedirectUri());
 
-            String scope = authzRequest.get(AuthorizationRequest.Field.SCOPE);
-            model.put(AuthorizationRequest.Field.SCOPE.getFieldName().toLowerCase(), checkScope(scope, authenticatedBusOwner) );
+            String scope = (String) authzRequest.getOrElse(AuthorizationRequestFields.SCOPE().name(), null);
+            model.put(AuthorizationRequestFields.SCOPE().name().toLowerCase(), checkScope(scope, authenticatedBusOwner) );
 
             // return authZ form
-            logger.info("Requesting bus owner authorization for :" + authzRequest.get(AuthorizationRequest.Field.CLIENT_ID) +
-                    "[" + authzRequest.get(AuthorizationRequest.Field.COOKIE)+"]");
+            logger.info("Requesting bus owner authorization for :" + authzRequest.get(AuthorizationRequestFields.CLIENT_ID()) +
+                    "[" + authzRequest.get(AuthorizationRequestFields.COOKIE())+"]");
             return new ModelAndView(CLIENT_AUTHORIZATION_FORM_JSP, model);
 
         } catch (Exception e) {
@@ -719,11 +730,11 @@ public class Backplane2Controller {
 
         try {
             // retrieve authorization request
-            authorizationRequest = BP2DAOs.getAuthorizationRequestDAO().get(authorizationRequestCookie);
+            authorizationRequest = com.janrain.backplane.server2.dao.BP2DAOs.authorizationRequestDao().get(authorizationRequestCookie).get();
 
             // check authZdecisionKey
-            AuthorizationDecisionKey authZdecisionKeyEntry = BP2DAOs.getAuthorizationDecisionKeyDAO().get(authZdecisionKey);
-            if (null == authZdecisionKeyEntry || ! authSessionCookie.equals(authZdecisionKeyEntry.get(AuthorizationDecisionKey.Field.AUTH_COOKIE))) {
+            AuthorizationDecisionKey authZdecisionKeyEntry = com.janrain.backplane.server2.dao.BP2DAOs.authorizationDecisionKeyDao().get(authZdecisionKey).getOrElse(null);
+            if (null == authZdecisionKeyEntry || ! authSessionCookie.equals(authZdecisionKeyEntry.get(AuthorizationDecisionKeyFields.AUTH_COOKIE()))) {
                 throw new AuthorizationException(OAuth2.OAUTH2_AUTHZ_ACCESS_DENIED, "Presented authorization key was issued to a different authenticated bus owner.", authorizationRequest);
             }
 
@@ -731,24 +742,24 @@ public class Backplane2Controller {
                 throw new AuthorizationException(OAuth2.OAUTH2_AUTHZ_ACCESS_DENIED, "Bus owner denied authorization.", authorizationRequest);
             } else {
                 // todo: use (and check) scope posted back by bus owner
-                String scopeString = checkScope(authorizationRequest.get(AuthorizationRequest.Field.SCOPE), authenticatedBusOwner);
+                String scopeString = checkScope((String)authorizationRequest.get(AuthorizationRequestFields.SCOPE()).getOrElse(null), authenticatedBusOwner);
                 // create grant/code
                 Grant grant =  new Grant.Builder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE,
                             authenticatedBusOwner,
-                            authorizationRequest.get(AuthorizationRequest.Field.CLIENT_ID),
+                            authorizationRequest.get(AuthorizationRequestFields.CLIENT_ID()).get(),
                             scopeString).buildGrant();
                 BP2DAOs.getGrantDao().persist(grant);
-                
-                logger.info("Authorized " + authorizationRequest.get(AuthorizationRequest.Field.CLIENT_ID)+
-                        "[" + authorizationRequest.get(AuthorizationRequest.Field.COOKIE)+"]" + "grant ID: " + grant.getIdValue());
+
+                logger.info("Authorized " + authorizationRequest.get(AuthorizationRequestFields.CLIENT_ID())+
+                        "[" + authorizationRequest.get(AuthorizationRequestFields.COOKIE())+"]" + "grant ID: " + grant.getIdValue());
 
                 // return OAuth2 authz response
                 final String code = grant.getIdValue();
-                final String state = authorizationRequest.get(AuthorizationRequest.Field.STATE);
+                final String state = authorizationRequest.get(AuthorizationRequestFields.STATE()).getOrElse(null);
 
                 try {
                     return new ModelAndView("redirect:" + UrlResponseFormat.QUERY.encode(
-                            authorizationRequest.getRedirectUri(BP2DAOs.getClientDAO()),
+                            authorizationRequest.getRedirectUri(),
                             new HashMap<String, String>() {{
                                 put(OAuth2.OAUTH2_AUTHZ_RESPONSE_CODE, code);
                                 if (StringUtils.isNotEmpty(state)) {
@@ -759,8 +770,8 @@ public class Backplane2Controller {
                     String errMsg = "Error building (positive) authorization response: " + ve.getMessage();
                     logger.error(errMsg, ve);
                     return authzRequestError(OAuth2.OAUTH2_AUTHZ_DIRECT_ERROR, errMsg,
-                            authorizationRequest.getRedirectUri(BP2DAOs.getClientDAO()),
-                            authorizationRequest.get(AuthorizationRequest.Field.STATE));
+                            authorizationRequest.getRedirectUri(),
+                            (String)authorizationRequest.get(AuthorizationRequestFields.STATE()).getOrElse(null));
                 }
             }
         } catch (Exception e) {
@@ -784,7 +795,7 @@ public class Backplane2Controller {
                             put(OAuth2.OAUTH2_AUTHZ_ERROR_FIELD_NAME, oauthErrCode);
                             put(OAuth2.OAUTH2_AUTHZ_ERROR_DESC_FIELD_NAME, errMsg);
                             if (StringUtils.isNotEmpty(state)) {
-                                put(AuthorizationRequest.Field.STATE.getFieldName(), state);
+                                put(AuthorizationRequestFields.STATE().name(), state);
                             }
                         }}));
 
