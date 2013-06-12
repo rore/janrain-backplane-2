@@ -51,28 +51,28 @@ public class ProvisioningController {
     @RequestMapping(value = "/bus/list", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, Map<String, String>> busList(@RequestBody ListRequest listRequest) throws AuthException {
-        ConfigDAOs.adminDao().checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
+        ConfigDAOs.adminDao().checkAuth(listRequest.getAdmin(), listRequest.getSecret());
         return doList(BusConfig1.class, listRequest.getEntities());
     }
 
     @RequestMapping(value = "/user/list", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, Map<String, String>> userList(@RequestBody ListRequest listRequest) throws AuthException {
-        ConfigDAOs.adminDao().checkAdminAuth(listRequest.getAdmin(), listRequest.getSecret());
+        ConfigDAOs.adminDao().checkAuth(listRequest.getAdmin(), listRequest.getSecret());
         return doList(User.class, listRequest.getEntities());
     }
 
     @RequestMapping(value = "/bus/delete", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, String> busDelete(@RequestBody ListRequest deleteRequest) throws AuthException {
-        ConfigDAOs.adminDao().checkAdminAuth(deleteRequest.getAdmin(), deleteRequest.getSecret());
+        ConfigDAOs.adminDao().checkAuth(deleteRequest.getAdmin(), deleteRequest.getSecret());
         return doDelete(BusConfig1.class, deleteRequest.getEntities());
     }
 
     @RequestMapping(value = "/user/delete", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, String> userDelete(@RequestBody ListRequest deleteRequest) throws AuthException {
-        ConfigDAOs.adminDao().checkAdminAuth(deleteRequest.getAdmin(), deleteRequest.getSecret());
+        ConfigDAOs.adminDao().checkAuth(deleteRequest.getAdmin(), deleteRequest.getSecret());
         return doDelete(User.class, deleteRequest.getEntities());
     }
 
@@ -189,7 +189,7 @@ public class ProvisioningController {
     }
 
     private <T extends AbstractMessage> Map<String, String> doUpdate(Class<T> entityType, UpdateRequest<T> updateRequest) throws AuthException, SimpleDBException {
-        ConfigDAOs.adminDao().checkAdminAuth(updateRequest.getAdmin(), updateRequest.getSecret());
+        ConfigDAOs.adminDao().checkAuth(updateRequest.getAdmin(), updateRequest.getSecret());
         validateConfigs(entityType, updateRequest);
         return updateConfigs(entityType, updateRequest.getConfigs());
     }

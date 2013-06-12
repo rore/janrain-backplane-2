@@ -41,7 +41,7 @@ abstract class Message[MF <: MessageField](private val data: Map[String,String],
 
   /** each base64: key:val,key:val... */
   final def serialize: String = map( entry =>
-    (base64.encodeToString(entry._1.getBytes(UTF8)) + Message.SERIAL_KEY_VAL_SEP + base64.encodeToString(entry._2.getBytes))).mkString(Message.SERIAL_ENTRY_SEP)
+    base64.encodeToString(entry._1.getBytes(UTF8)) + Message.SERIAL_KEY_VAL_SEP + base64.encodeToString(entry._2.getBytes)).mkString(Message.SERIAL_ENTRY_SEP)
 
   private lazy val base64 = new Base64
 }
