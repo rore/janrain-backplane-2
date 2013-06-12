@@ -1,7 +1,5 @@
 package com.janrain.backplane.common.model
 
-import com.janrain.backplane._
-
 /**
  * Base class for user types.
  *
