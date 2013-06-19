@@ -1,4 +1,4 @@
-package com.janrain.backplane.server2.model
+package com.janrain.backplane.server2.oauth2.model
 
 import com.janrain.backplane.common.model.{Message, UserFieldEnum, User}
 import com.janrain.oauth2.{ValidationException, OAuth2}

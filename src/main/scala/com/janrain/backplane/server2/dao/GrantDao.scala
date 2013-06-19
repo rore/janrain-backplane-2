@@ -1,10 +1,10 @@
 package com.janrain.backplane.server2.dao
 
 import com.janrain.backplane.dao.DaoAll
-import com.janrain.backplane.server2.model.{GrantFields, Grant}
 import com.janrain.backplane2.server.{GrantBuilder, BackplaneMessage, Scope}
 import scala.collection.JavaConversions
 import com.janrain.util.Loggable
+import com.janrain.backplane.server2.oauth2.model.{GrantFields, Grant}
 
 /**
  * @author Johnny Bufu

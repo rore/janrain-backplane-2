@@ -1,4 +1,4 @@
-package com.janrain.backplane.server2.model
+package com.janrain.backplane.server2.oauth2.model
 
 import com.janrain.backplane.common.model.{Message, MessageField, MessageFieldEnum}
 import com.janrain.backplane2.server.{GrantState, Scope, GrantType}

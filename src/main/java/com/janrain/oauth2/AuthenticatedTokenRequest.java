@@ -2,9 +2,9 @@ package com.janrain.oauth2;
 
 import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.dao.DaoException;
-import com.janrain.backplane.server2.model.Client;
-import com.janrain.backplane.server2.model.ClientFields;
-import com.janrain.backplane.server2.model.Grant;
+import com.janrain.backplane.server2.oauth2.model.Client;
+import com.janrain.backplane.server2.oauth2.model.ClientFields;
+import com.janrain.backplane.server2.oauth2.model.Grant;
 import com.janrain.backplane2.server.GrantLogic;
 import com.janrain.backplane2.server.GrantType;
 import com.janrain.backplane2.server.Scope;

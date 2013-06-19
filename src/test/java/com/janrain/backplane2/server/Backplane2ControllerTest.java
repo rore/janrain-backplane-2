@@ -22,7 +22,9 @@ import com.janrain.backplane.common.HmacHashUtils;
 import com.janrain.backplane.config.BackplaneConfig;
 import com.janrain.backplane.dao.DaoException;
 import com.janrain.backplane.server2.dao.BP2DAOs;
-import com.janrain.backplane.server2.model.*;
+import com.janrain.backplane.server2.model.BusConfig2;
+import com.janrain.backplane.server2.model.BusConfig2Fields;
+import com.janrain.backplane.server2.oauth2.model.*;
 import com.janrain.backplane2.server.dao.BackplaneMessageDAO;
 import com.janrain.backplane2.server.dao.TokenDAO;
 import com.janrain.oauth2.*;
@@ -1499,8 +1501,8 @@ public class Backplane2ControllerTest {
             Grant grant = BP2DAOs.grantDao().get(code).getOrElse(null);
             Token token = com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao().get(tokenId);
 
-            assertTrue(grant.get(GrantFields.ISSUED_TO_CLIENT_ID()).equals(token.get(Token.TokenField.ISSUED_TO_CLIENT_ID)));
-            assertTrue(grant.get(GrantFields.ISSUED_BY_USER_ID()).equals(busOwner.id()));
+            assertTrue(grant.get(GrantFields.ISSUED_TO_CLIENT_ID()).getOrElse(null).equals(token.get(Token.TokenField.ISSUED_TO_CLIENT_ID)));
+            assertTrue(grant.get(GrantFields.ISSUED_BY_USER_ID()).getOrElse(null).equals(busOwner.id()));
 
 
         } finally {

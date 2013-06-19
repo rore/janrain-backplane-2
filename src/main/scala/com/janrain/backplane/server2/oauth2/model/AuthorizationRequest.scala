@@ -7,7 +7,6 @@ import com.janrain.backplane.common.DateTimeUtils
 import java.util.Date
 import com.janrain.backplane.common.model.{MessageField, MessageFieldEnum, Message}
 import com.janrain.backplane.server2.dao.BP2DAOs
-import com.janrain.backplane.server2.model.{ClientFields, Client}
 
 /**
  * @author Johnny Bufu

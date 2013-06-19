@@ -1,8 +1,8 @@
 package com.janrain.backplane2.server;
 
 import com.janrain.backplane.common.DateTimeUtils;
-import com.janrain.backplane.server2.model.Grant;
-import com.janrain.backplane.server2.model.GrantFields;
+import com.janrain.backplane.server2.oauth2.model.Grant;
+import com.janrain.backplane.server2.oauth2.model.GrantFields;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.util.RandomUtils;
 import scala.collection.JavaConversions;

@@ -1,7 +1,7 @@
 package com.janrain.backplane.server2.dao
 
 import com.janrain.backplane.dao.redis.RedisMessageDao
-import com.janrain.backplane.server2.oauth2.model.{AuthorizationDecisionKey, AuthorizationRequest}
+import com.janrain.backplane.server2.oauth2.model._
 import com.janrain.backplane.dao.{PasswordHasherDao, ExpiringDao}
 import com.janrain.backplane.server2.model._
 
