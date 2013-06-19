@@ -5,7 +5,8 @@ import com.janrain.backplane.common.model.{UserFieldEnum, User}
 /**
  * @author Johnny Bufu
  */
-class Admin(data: Map[String,String]) extends User("admin", data, AdminFields.values) {
+class Admin(data: Map[String,String]) extends User("admin", data, AdminFields.values)
+  with Password[AdminFields.EnumVal, Admin] {
 
   def this(username: String, pwdhash: String) = this(Map(
     AdminFields.USER.name -> username,
@@ -13,6 +14,8 @@ class Admin(data: Map[String,String]) extends User("admin", data, AdminFields.va
   ))
 
   def idField = AdminFields.USER
+
+  def pwdHashField = AdminFields.PWDHASH
 }
 
 object AdminFields extends UserFieldEnum {

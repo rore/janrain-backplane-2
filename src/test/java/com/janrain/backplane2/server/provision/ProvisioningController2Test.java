@@ -18,20 +18,17 @@ package com.janrain.backplane2.server.provision;
 
 import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.common.HmacHashUtils;
-import com.janrain.backplane.common.RandomUtils;
 import com.janrain.backplane.config.dao.ConfigDAOs;
 import com.janrain.backplane.config.model.Admin;
 import com.janrain.backplane.config.model.AdminFields;
 import com.janrain.backplane.dao.DaoException;
 import com.janrain.backplane.provision.ProvisioningController2;
+import com.janrain.backplane.server2.dao.BP2DAOs;
+import com.janrain.backplane.server2.model.*;
 import com.janrain.backplane2.server.BackplaneMessage;
 import com.janrain.backplane2.server.Scope;
-import com.janrain.backplane2.server.config.BusConfig2;
-import com.janrain.backplane2.server.config.Client;
-import com.janrain.backplane2.server.config.User;
-import com.janrain.backplane2.server.dao.BP2DAOs;
-import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.oauth2.TokenException;
+import com.janrain.util.RandomUtils;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.type.MapType;
@@ -71,36 +68,42 @@ public class ProvisioningController2Test {
         handlerAdapter = applicationContext.getBean("handlerAdapter", HandlerAdapter.class);
         refreshRequestAndResponse();
 
-        pw = RandomUtils.randomString(10);
-
         // create temporary admin adminUser account to enable the tests to work
-        adminUser = new Admin(RandomUtils.randomString(20), HmacHashUtils.hmacHash(pw));
+        adminpw = HmacHashUtils.hmacHash(RandomUtils.randomString(20)); 
+        adminUser = new Admin(RandomUtils.randomString(20), adminpw);
 
         //superSimpleDB.store(bpConfig.getTableName(BackplaneConfig.SimpleDBTables.BP_ADMIN_AUTH), User.class, adminUser);
         ConfigDAOs.adminDao().store(adminUser);
 
-        busOwner = new User();
-        busOwner.put(AdminFields.USER().name(), RandomUtils.randomString(20));
-        busOwner.put(User.Field.PWDHASH.getFieldName(), HmacHashUtils.hmacHash(pw));
-        try {
-            client = new Client( RandomUtils.randomString(20), pw, "http://source.com", "http://redirect.com" );
-            BP2DAOs.getClientDAO().persist(client);
-            logger.info("Created test client: " + client.getClientId());
-        } catch (SimpleDBException e) {
-            throw new BackplaneServerException(e.getMessage());
-        }
-        try {
-            bus1 = "qa-test-bus1";
-            bus2 = "qa-test-bus2";
-            BusConfig2 busConfig1 = new BusConfig2(bus1, busOwner.getIdValue(), "100", "50000");
-            BusConfig2 busConfig2 = new BusConfig2(bus2, busOwner.getIdValue(), "100", "50000");
-            BP2DAOs.getBusDao().persist(busConfig1);
-            logger.info("Created test bus: " + bus1);
-            BP2DAOs.getBusDao().persist(busConfig2);
-            logger.info("Created test bus: " + bus2);
-        } catch (SimpleDBException e) {
-            throw new BackplaneServerException(e.getMessage());
-        }
+        busOwner = new BusOwner(RandomUtils.randomString(20), RandomUtils.randomString(20));
+        Map<String,String> clientData = new HashMap<String,String>() {{
+            put(ClientFields.USER().name(), RandomUtils.randomString(20));
+            put(ClientFields.PWDHASH().name(), RandomUtils.randomString(20));
+            put(ClientFields.SOURCE_URL().name(), "http://source.com");
+            put(ClientFields.REDIRECT_URI().name(), "http://redirect.com");
+        }};
+        client = new Client(clientData);
+        BP2DAOs.clientDao().store(client);
+        logger.info("Created test client: " + client.id());
+        bus1 = "qa-test-bus1";
+        bus2 = "qa-test-bus2";
+
+        BusConfig2 busConfig1 = new BusConfig2(new HashMap<String,String>() {{
+            put(BusConfig2Fields.BUS_NAME().name(), bus1);
+            put(BusConfig2Fields.OWNER().name(), busOwner.id());
+            put(BusConfig2Fields.RETENTION_TIME_SECONDS().name(), "100");
+            put(BusConfig2Fields.RETENTION_STICKY_TIME_SECONDS().name(), "50000");
+        }});
+        BusConfig2 busConfig2 = new BusConfig2(new HashMap<String,String>() {{
+            put(BusConfig2Fields.BUS_NAME().name(), bus2);
+            put(BusConfig2Fields.OWNER().name(), busOwner.id());
+            put(BusConfig2Fields.RETENTION_TIME_SECONDS().name(), "100");
+            put(BusConfig2Fields.RETENTION_STICKY_TIME_SECONDS().name(), "50000");
+        }});
+        BP2DAOs.busDao().store(busConfig1);
+        logger.info("Created test bus: " + bus1);
+        BP2DAOs.busDao().store(busConfig2);
+        logger.info("Created test bus: " + bus2);
     }
 
     @After
@@ -108,7 +111,7 @@ public class ProvisioningController2Test {
         //superSimpleDB.delete(bpConfig.getTableName(BackplaneConfig.SimpleDBTables.BP_ADMIN_AUTH), adminUser.getIdValue());
         ConfigDAOs.adminDao().delete(adminUser.id());
         //superSimpleDB.delete(bpConfig.getTableName(BackplaneConfig.SimpleDBTables.BP_CLIENTS), client.getIdValue());
-        BP2DAOs.getClientDAO().delete(client.getClientId());
+        BP2DAOs.clientDao().delete(client.id());
     }
 
     @Test
@@ -116,8 +119,8 @@ public class ProvisioningController2Test {
 
         refreshRequestAndResponse();
         // create bus owner
-        String jsonUpdateBusOwner = "{ \"admin\": \"" + adminUser.get(AdminFields.USER()) + "\", \"secret\": \"" + pw + "\"," +
-                " \"configs\": [ { \"USER\":\"" + busOwner.get(AdminFields.USER()) + "\", \"PWDHASH\":\"" + busOwner.get(User.Field.PWDHASH) + "\"} ] }";
+        String jsonUpdateBusOwner = "{ \"admin\": \"" + adminUser.id() + "\", \"secret\": \"" + adminpw + "\"," +
+                " \"configs\": [ { \"USER\":\"" + busOwner.id() + "\", \"PWDHASH\":\"" + busOwner.get(BusOwnerFields.PWDHASH()).get() + "\"} ] }";
         logger.info("passing in json " + jsonUpdateBusOwner);
         request.setContent(jsonUpdateBusOwner.getBytes());
         request.addHeader("Content-type", "application/json");
@@ -128,7 +131,7 @@ public class ProvisioningController2Test {
         assertTrue(response.getStatus() == HttpServletResponse.SC_OK);
 
         refreshRequestAndResponse();
-        String listJson = "{ \"admin\": \"" + adminUser.get(AdminFields.USER()) + "\", \"secret\": \"" + pw + "\", \"entities\": [] }";
+        String listJson = "{ \"admin\": \"" + adminUser.id() + "\", \"secret\": \"" + adminpw + "\", \"entities\": [] }";
         logger.info("passing in json " + listJson);
         request.setContent(listJson.getBytes());
         request.addHeader("Content-type", "application/json");
@@ -136,10 +139,10 @@ public class ProvisioningController2Test {
         request.setMethod("POST");
         handlerAdapter.handle(request, response, controller);
         logger.info("testClientList() => " + response.getContentAsString());
-        assertTrue(response.getContentAsString().contains(busOwner.get(AdminFields.USER())));
+        assertTrue(response.getContentAsString().contains(busOwner.id()));
 
         refreshRequestAndResponse();
-        String deleteJson = "{ \"admin\": \"" + adminUser.get(AdminFields.USER()) + "\", \"secret\": \"" + pw + "\", " +
+        String deleteJson = "{ \"admin\": \"" + adminUser.id() + "\", \"secret\": \"" + adminpw + "\", " +
                             "\"entities\": [\"" + busOwner.get(AdminFields.USER())+ "\"] }";
         logger.info("passing in json " + deleteJson);
         request.setContent(deleteJson.getBytes());
@@ -148,7 +151,7 @@ public class ProvisioningController2Test {
         request.setMethod("POST");
         handlerAdapter.handle(request, response, controller);
         logger.info("testClientList() => " + response.getContentAsString());
-        assertTrue(response.getContentAsString().contains(busOwner.get(AdminFields.USER())));
+        assertTrue(response.getContentAsString().contains(busOwner.id()));
 
         refreshRequestAndResponse();
         logger.info("passing in json " + listJson);
@@ -158,7 +161,7 @@ public class ProvisioningController2Test {
         request.setMethod("POST");
         handlerAdapter.handle(request, response, controller);
         logger.info("testClientList() => " + response.getContentAsString());
-        assertFalse(response.getContentAsString().contains(busOwner.get(AdminFields.USER())));
+        assertFalse(response.getContentAsString().contains(busOwner.id()));
     }
 
     @Test
@@ -167,13 +170,13 @@ public class ProvisioningController2Test {
         refreshRequestAndResponse();
 
         // delete the default client
-        BP2DAOs.getClientDAO().delete(client.getClientId());
+        BP2DAOs.clientDao().delete(client.id());
 
         // create client
-        String jsonUpdateClient = "{ \"admin\": \"" + adminUser.get(AdminFields.USER()) + "\", \"secret\": \"" + pw + "\"," +
-                " \"configs\": [ { \"USER\":\"" + client.getClientId() + "\", \"PWDHASH\":\"" + pw + "\"," +
-                "\"SOURCE_URL\":\"" + client.getSourceUrl() + "\"," +
-                "\"REDIRECT_URI\":\"" + client.getRedirectUri() + "\"} ] }";
+        String jsonUpdateClient = "{ \"admin\": \"" + adminUser.id() + "\", \"secret\": \"" + adminpw + "\"," +
+                " \"configs\": [ { \"USER\":\"" + client.id() + "\", \"PWDHASH\":\"" + client.get(ClientFields.PWDHASH()).get() + "\"," +
+                "\"SOURCE_URL\":\"" + client.get(ClientFields.SOURCE_URL()).get() + "\"," +
+                "\"REDIRECT_URI\":\"" + client.get(ClientFields.REDIRECT_URI()).get() + "\"} ] }";
         logger.info("passing in json " + jsonUpdateClient);
         request.setContent(jsonUpdateClient.getBytes());
         request.addHeader("Content-type", "application/json");
@@ -182,10 +185,10 @@ public class ProvisioningController2Test {
         handlerAdapter.handle(request, response, controller);
         logger.info("testClientUpdate -> " + response.getContentAsString());
         assertTrue(response.getStatus() == HttpServletResponse.SC_OK);
-        assertTrue("client create failed: " + response.getContentAsString(), response.getContentAsString().matches("\\{\\s*\"" + client.getClientId() + "\"\\s*:\\s*\"BACKPLANE_UPDATE_SUCCESS\"\\s*\\}"));
+        assertTrue("client create failed: " + response.getContentAsString(), response.getContentAsString().matches("\\{\\s*\"" + client.id() + "\"\\s*:\\s*\"BACKPLANE_UPDATE_SUCCESS\"\\s*\\}"));
 
         refreshRequestAndResponse();
-        String listJson = "{ \"admin\": \"" + adminUser.get(AdminFields.USER()) + "\", \"secret\": \"" + pw + "\", \"entities\": [] }";
+        String listJson = "{ \"admin\": \"" + adminUser.id() + "\", \"secret\": \"" + adminpw + "\", \"entities\": [] }";
         logger.info("passing in json " + listJson);
         request.setContent(listJson.getBytes());
         request.addHeader("Content-type", "application/json");
@@ -194,11 +197,11 @@ public class ProvisioningController2Test {
         handlerAdapter.handle(request, response, controller);
         logger.info("testClientList() => " + response.getContentAsString());
         assertTrue(response.getStatus() == HttpServletResponse.SC_OK);
-        assertTrue(response.getContentAsString().contains(client.getClientId()));
+        assertTrue(response.getContentAsString().contains(client.id()));
 
         refreshRequestAndResponse();
-        String deleteJson = "{ \"admin\": \"" + adminUser.get(AdminFields.USER()) + "\", \"secret\": \"" + pw + "\", " +
-                            "\"entities\": [\"" + client.getClientId()+ "\"] }";
+        String deleteJson = "{ \"admin\": \"" + adminUser.id() + "\", \"secret\": \"" + adminpw + "\", " +
+                            "\"entities\": [\"" + client.id()+ "\"] }";
         logger.info("passing in json " + deleteJson);
         request.setContent(deleteJson.getBytes());
         request.addHeader("Content-type", "application/json");
@@ -207,7 +210,7 @@ public class ProvisioningController2Test {
         handlerAdapter.handle(request, response, controller);
         logger.info("testClientList() => " + response.getContentAsString());
         assertTrue(response.getStatus() == HttpServletResponse.SC_OK);
-        assertTrue("delete failed: " + response.getContentAsString(), response.getContentAsString().matches("\\{\\s*\"" + client.getClientId() + "\"\\s*:\\s*\"BACKPLANE_DELETE_SUCCESS\"\\s*\\}"));
+        assertTrue("delete failed: " + response.getContentAsString(), response.getContentAsString().matches("\\{\\s*\"" + client.id() + "\"\\s*:\\s*\"BACKPLANE_DELETE_SUCCESS\"\\s*\\}"));
 
         refreshRequestAndResponse();
         logger.info("passing in json " + listJson);
@@ -218,14 +221,14 @@ public class ProvisioningController2Test {
         handlerAdapter.handle(request, response, controller);
         logger.info("testClientList() => " + response.getContentAsString());
         assertTrue(response.getStatus() == HttpServletResponse.SC_OK);
-        assertFalse(response.getContentAsString().contains(client.getClientId()));
+        assertFalse(response.getContentAsString().contains(client.id()));
     }
 
     @Test
     public void testBusCRUDinvalidBusOwner() throws Exception {
         // create client
         refreshRequestAndResponse();
-        String jsonUpdateBus = "{ \"admin\": \"" + adminUser.get(AdminFields.USER()) + "\", \"secret\": \"" + pw + "\"," +
+        String jsonUpdateBus = "{ \"admin\": \"" + adminUser.id() + "\", \"secret\": \"" + adminpw + "\"," +
                 " \"configs\": [ {\n" +
                 "            \"BUS_NAME\": \"customer1\",\n" +
                 "            \"OWNER\": \"busowner1\",\n" +
@@ -242,7 +245,7 @@ public class ProvisioningController2Test {
         assertTrue(response.getStatus() == HttpServletResponse.SC_OK);
         assertTrue(response.getContentAsString().contains("Invalid bus owner: busowner1"));
 
-        BP2DAOs.getBusDao().delete("customer1");
+        BP2DAOs.busDao().delete("customer1");
     }
 
     @Test
@@ -251,8 +254,8 @@ public class ProvisioningController2Test {
         // create bus owner
         refreshRequestAndResponse();
 
-        String jsonUpdateBusOwner = "{ \"admin\": \"" + adminUser.get(AdminFields.USER()) + "\", \"secret\": \"" + pw + "\"," +
-                " \"configs\": [ { \"USER\":\"" + busOwner.get(AdminFields.USER()) + "\", \"PWDHASH\":\"" + busOwner.get(User.Field.PWDHASH) + "\"} ] }";
+        String jsonUpdateBusOwner = "{ \"admin\": \"" + adminUser.id() + "\", \"secret\": \"" + adminpw + "\"," +
+                " \"configs\": [ { \"USER\":\"" + busOwner.id() + "\", \"PWDHASH\":\"" + busOwner.get(BusOwnerFields.PWDHASH()).get() + "\"} ] }";
         logger.info("passing in json " + jsonUpdateBusOwner);
         request.setContent(jsonUpdateBusOwner.getBytes());
         request.addHeader("Content-type", "application/json");
@@ -261,14 +264,14 @@ public class ProvisioningController2Test {
         handlerAdapter.handle(request, response, controller);
         logger.info("testClientUpdate -> " + response.getContentAsString());
         assertTrue(response.getStatus() == HttpServletResponse.SC_OK);
-        assertTrue(response.getContentAsString().contains("{\"" + busOwner.get(AdminFields.USER()) + "\":\"BACKPLANE_UPDATE_SUCCESS\"}"));
+        assertTrue(response.getContentAsString().contains("{\"" + busOwner.id() + "\":\"BACKPLANE_UPDATE_SUCCESS\"}"));
 
         // create bus
         refreshRequestAndResponse();
-        String jsonUpdateBus = "{ \"admin\": \"" + adminUser.get(AdminFields.USER()) + "\", \"secret\": \"" + pw + "\"," +
+        String jsonUpdateBus = "{ \"admin\": \"" + adminUser.id() + "\", \"secret\": \"" + adminpw + "\"," +
                 " \"configs\": [ {\n" +
                 "            \"BUS_NAME\": \"customer1\",\n" +
-                "            \"OWNER\": \"" + busOwner.get(AdminFields.USER()) + "\",\n" +
+                "            \"OWNER\": \"" + busOwner.id() + "\",\n" +
                 "            \"RETENTION_TIME_SECONDS\": \"600\",\n" +
                 "            \"RETENTION_STICKY_TIME_SECONDS\": \"28800\"\n" +
                 "        } ] }";
@@ -283,7 +286,7 @@ public class ProvisioningController2Test {
         assertTrue("Failed: " + response.getContentAsString(), response.getContentAsString().contains("{\"customer1\":\"BACKPLANE_UPDATE_SUCCESS\"}"));
 
         refreshRequestAndResponse();
-        String listJson = "{ \"admin\": \"" + adminUser.get(AdminFields.USER()) + "\", \"secret\": \"" + pw + "\", \"entities\": [] }";
+        String listJson = "{ \"admin\": \"" + adminUser.id() + "\", \"secret\": \"" + adminpw + "\", \"entities\": [] }";
         logger.info("passing in json " + listJson);
         request.setContent(listJson.getBytes());
         request.addHeader("Content-type", "application/json");
@@ -292,10 +295,10 @@ public class ProvisioningController2Test {
         handlerAdapter.handle(request, response, controller);
         logger.info("testBusList() => " + response.getContentAsString());
         assertTrue(response.getContentAsString().contains("customer1"));
-        assertTrue(response.getContentAsString().contains(busOwner.get(AdminFields.USER())));
+        assertTrue(response.getContentAsString().contains(busOwner.id()));
 
         refreshRequestAndResponse();
-        String deleteJson = "{ \"admin\": \"" + adminUser.get(AdminFields.USER()) + "\", \"secret\": \"" + pw + "\", " +
+        String deleteJson = "{ \"admin\": \"" + adminUser.id() + "\", \"secret\": \"" + adminpw + "\", " +
                             "\"entities\": [\"customer1\"] }";
         logger.info("passing in json " + deleteJson);
         request.setContent(deleteJson.getBytes());
@@ -316,7 +319,7 @@ public class ProvisioningController2Test {
         logger.info("testBusCRUD() => " + response.getContentAsString());
         assertFalse(response.getContentAsString().contains("customer1"));
 
-        BP2DAOs.getBusOwnerDAO().delete(busOwner.get(AdminFields.USER()));
+        BP2DAOs.busOwnerDao().delete(busOwner.id());
 
 
     }
@@ -324,11 +327,11 @@ public class ProvisioningController2Test {
     @Test
     public void testProvisioningCreateDelete() throws Exception {
         refreshRequestAndResponse();
-        String jsonUpdateClient = "{ \"admin\": \"" + adminUser.get(AdminFields.USER()) + "\", \"secret\": \"" + pw + "\"," +
-                " \"configs\": [ { \"USER\":\"" + client.getClientId() + "\", \"PWDHASH\":\"" + pw + "\"} ] }";
+        String jsonUpdateClient = "{ \"admin\": \"" + adminUser.id() + "\", \"secret\": \"" + adminpw + "\"," +
+                " \"configs\": [ { \"USER\":\"" + client.id() + "\", \"PWDHASH\":\"" + client.get(ClientFields.PWDHASH()).get() + "\"} ] }";
 
-        String addBusOwner = "{ \"admin\": \"" + adminUser.get(AdminFields.USER()) + "\", \"secret\": \"" + pw + "\"," +
-                " \"entities\": [ \"" + client.getClientId() + "\", \"PWDHASH\":\"" + pw + "\"} ] }";
+        String addBusOwner = "{ \"admin\": \"" + adminUser.id() + "\", \"secret\": \"" + adminpw + "\"," +
+                " \"entities\": [ \"" + client.id() + "\", \"PWDHASH\":\"" + client.get(ClientFields.PWDHASH()).get() + "\"} ] }";
     }
 
     @Test
@@ -336,7 +339,7 @@ public class ProvisioningController2Test {
 
         refreshRequestAndResponse();
 
-        String delete = "{ \"entities\":[\"does\", \"not\", \"exist\"], \"admin\":\"" + adminUser.get(AdminFields.USER()) + "\", \"secret\":\"" + pw + "\"}";
+        String delete = "{ \"entities\":[\"does\", \"not\", \"exist\"], \"admin\":\"" + adminUser.id() + "\", \"secret\":\"" + adminpw + "\"}";
         request.setContent(delete.getBytes());
         request.addHeader("Content-type", "application/json");
         request.setRequestURI("/v2/provision/adminUser/delete");
@@ -372,24 +375,24 @@ public class ProvisioningController2Test {
     public void testProvisioningGrant() throws Exception {
 
         refreshRequestAndResponse();
-        String addGrant = "{\"grants\":{\"" + client.getClientId() + "\":\"" + bus1 + "\"},\"admin\":\"" + adminUser.get(AdminFields.USER()) + "\", \"secret\":\"" + pw + "\"}";
+        String addGrant = "{\"grants\":{\"" + client.id() + "\":\"" + bus1 + "\"},\"admin\":\"" + adminUser.id() + "\", \"secret\":\"" + adminpw + "\"}";
         request.setContent(addGrant.getBytes());
         request.addHeader("Content-type", "application/json");
         request.setRequestURI("/v2/provision/grant/add");
         request.setMethod("POST");
         handlerAdapter.handle(request, response, controller);
         logger.info("testProvisioningGrant()/add -> " + response.getContentAsString());
-        assertTrue("Invalid response", response.getContentAsString().equals("{\"" + client.getClientId() + "\":\"GRANT_UPDATE_SUCCESS\"}"));
+        assertTrue("Invalid response", response.getContentAsString().equals("{\"" + client.id() + "\":\"GRANT_UPDATE_SUCCESS\"}"));
 
         refreshRequestAndResponse();
-        String listGrants = "{ \"admin\": \"" + adminUser.get(AdminFields.USER()) + "\", \"secret\": \"" + pw + "\", \"entities\": [ \"" + client.getClientId() + "\" ] }";
+        String listGrants = "{ \"admin\": \"" + adminUser.id() + "\", \"secret\": \"" + adminpw + "\", \"entities\": [ \"" + client.id() + "\" ] }";
         request.setContent(listGrants.getBytes());
         request.addHeader("Content-type", "application/json");
         request.setRequestURI("/v2/provision/grant/list");
         request.setMethod("POST");
         handlerAdapter.handle(request, response, controller);
         logger.info("testProvisioningGrant()/checkExists -> " + response.getContentAsString());
-        assertTrue("Invalid response", checkGrantExists(response, client.getClientId(), new ArrayList<String>() {{
+        assertTrue("Invalid response", checkGrantExists(response, client.id(), new ArrayList<String>() {{
             add(bus1);
         }}));
 
@@ -409,19 +412,19 @@ public class ProvisioningController2Test {
         request.setMethod("POST");
         handlerAdapter.handle(request, response, controller);
         logger.info("testProvisioningGrant()/checkNonExists -> " + response.getContentAsString());
-        assertFalse("Invalid response", checkGrantExists(response, client.getClientId(), new ArrayList<String>() {{
+        assertFalse("Invalid response", checkGrantExists(response, client.id(), new ArrayList<String>() {{
             add(bus1);
         }}));
 
         refreshRequestAndResponse();
-        String addGrantWithBogusBus = "{\"grants\":{\"" + client.getClientId() + "\":\"bogus_bus\"},\"admin\":\"" + adminUser.get(AdminFields.USER()) + "\", \"secret\":\"" + pw + "\"}";
+        String addGrantWithBogusBus = "{\"grants\":{\"" + client.id() + "\":\"bogus_bus\"},\"admin\":\"" + adminUser.id() + "\", \"secret\":\"" + adminpw + "\"}";
         request.setContent(addGrantWithBogusBus.getBytes());
         request.addHeader("Content-type", "application/json");
         request.setRequestURI("/v2/provision/grant/add");
         request.setMethod("POST");
         handlerAdapter.handle(request, response, controller);
         logger.info("testProvisioningGrant()/add -> " + response.getContentAsString());
-        assertTrue("Invalid response", response.getContentAsString().equals("{\"" + client.getClientId() + "\":\"Invalid bus: bogus_bus\"}"));
+        assertTrue("Invalid response", response.getContentAsString().equals("{\"" + client.id() + "\":\"Invalid bus: bogus_bus\"}"));
 
         refreshRequestAndResponse();
         request.setContent(addGrantWithBogusBus.getBytes());
@@ -437,24 +440,24 @@ public class ProvisioningController2Test {
     public void testProvisioningGrantMultipleBuses() throws Exception {
 
         refreshRequestAndResponse();
-        String grantRequestString = "{\"grants\":{\"" + client.getClientId() + "\":\"" + bus1 + " " + bus2 + "\"},\"admin\":\"" + adminUser.get(AdminFields.USER()) + "\", \"secret\":\"" + pw + "\"}";
+        String grantRequestString = "{\"grants\":{\"" + client.id() + "\":\"" + bus1 + " " + bus2 + "\"},\"admin\":\"" + adminUser.id() + "\", \"secret\":\"" + adminpw + "\"}";
         request.setContent(grantRequestString.getBytes());
         request.addHeader("Content-type", "application/json");
         request.setRequestURI("/v2/provision/grant/add");
         request.setMethod("POST");
         handlerAdapter.handle(request, response, controller);
         logger.info("testProvisioningGrant()/add -> " + response.getContentAsString());
-        assertTrue("Invalid response", response.getContentAsString().equals("{\"" + client.getClientId() + "\":\"GRANT_UPDATE_SUCCESS\"}"));
+        assertTrue("Invalid response", response.getContentAsString().equals("{\"" + client.id() + "\":\"GRANT_UPDATE_SUCCESS\"}"));
 
         refreshRequestAndResponse();
-        String listGrants = "{ \"admin\": \"" + adminUser.get(AdminFields.USER()) + "\", \"secret\": \"" + pw + "\", \"entities\": [ \"" + client.getClientId() + "\" ] }";
+        String listGrants = "{ \"admin\": \"" + adminUser.id() + "\", \"secret\": \"" + adminpw + "\", \"entities\": [ \"" + client.id() + "\" ] }";
         request.setContent(listGrants.getBytes());
         request.addHeader("Content-type", "application/json");
         request.setRequestURI("/v2/provision/grant/list");
         request.setMethod("POST");
         handlerAdapter.handle(request, response, controller);
         logger.info("testProvisioningGrant()/checkExists -> " + response.getContentAsString());
-        assertTrue("Invalid response", checkGrantExists(response, client.getClientId(), new ArrayList<String>() {{
+        assertTrue("Invalid response", checkGrantExists(response, client.id(), new ArrayList<String>() {{
             add(bus1);
             add(bus2);
         }}));
@@ -475,32 +478,32 @@ public class ProvisioningController2Test {
         request.setMethod("POST");
         handlerAdapter.handle(request, response, controller);
         logger.info("testProvisioningGrant()/checkNonExists -> " + response.getContentAsString());
-        assertFalse("Invalid response", checkGrantExists(response, client.getClientId(), new ArrayList<String>() {{
+        assertFalse("Invalid response", checkGrantExists(response, client.id(), new ArrayList<String>() {{
             add(bus1);
         }}));
-        assertFalse("Invalid response", checkGrantExists(response, client.getClientId(), new ArrayList<String>() {{
+        assertFalse("Invalid response", checkGrantExists(response, client.id(), new ArrayList<String>() {{
             add(bus2);
         }}));
 
         refreshRequestAndResponse();
-        String grantRequestStringWithBogusBus = "{\"grants\":{\"" + client.getClientId() + "\":\"" + bus1 + " bogus_bus " + bus2 + "\"},\"admin\":\"" + adminUser.get(AdminFields.USER()) + "\", \"secret\":\"" + pw + "\"}";
+        String grantRequestStringWithBogusBus = "{\"grants\":{\"" + client.id() + "\":\"" + bus1 + " bogus_bus " + bus2 + "\"},\"admin\":\"" + adminUser.id() + "\", \"secret\":\"" + adminpw + "\"}";
         request.setContent(grantRequestStringWithBogusBus.getBytes());
         request.addHeader("Content-type", "application/json");
         request.setRequestURI("/v2/provision/grant/add");
         request.setMethod("POST");
         handlerAdapter.handle(request, response, controller);
         logger.info("testProvisioningGrant()/add -> " + response.getContentAsString());
-        assertTrue("Invalid response", response.getContentAsString().equals("{\"" + client.getClientId() + "\":\"Invalid bus: bogus_bus\"}"));
+        assertTrue("Invalid response", response.getContentAsString().equals("{\"" + client.id() + "\":\"Invalid bus: bogus_bus\"}"));
 
         refreshRequestAndResponse();
-        String listGrantsWithBogusBus = "{ \"admin\": \"" + adminUser.get(AdminFields.USER()) + "\", \"secret\": \"" + pw + "\", \"entities\": [ \"" + client.getClientId() + "\" ] }";
+        String listGrantsWithBogusBus = "{ \"admin\": \"" + adminUser.id() + "\", \"secret\": \"" + adminpw + "\", \"entities\": [ \"" + client.id() + "\" ] }";
         request.setContent(listGrantsWithBogusBus.getBytes());
         request.addHeader("Content-type", "application/json");
         request.setRequestURI("/v2/provision/grant/list");
         request.setMethod("POST");
         handlerAdapter.handle(request, response, controller);
         logger.info("testProvisioningGrant()/checkNoneExists -> " + response.getContentAsString());
-        assertFalse("Invalid response", checkGrantExists(response, client.getClientId(), new ArrayList<String>() {{
+        assertFalse("Invalid response", checkGrantExists(response, client.id(), new ArrayList<String>() {{
             add(bus1);
             add(bus2);
         }}));
@@ -511,30 +514,30 @@ public class ProvisioningController2Test {
 
         refreshRequestAndResponse();
 
-        String grantRequestString = "{\"grants\":{\"" + client.getClientId() + "\":\"" + bus1 + " " + bus2 + "\"},\"admin\":\"" + adminUser.get(AdminFields.USER()) + "\", \"secret\":\"" + pw + "\"}";
+        String grantRequestString = "{\"grants\":{\"" + client.id() + "\":\"" + bus1 + " " + bus2 + "\"},\"admin\":\"" + adminUser.id() + "\", \"secret\":\"" + adminpw + "\"}";
         request.setContent(grantRequestString.getBytes());
         request.addHeader("Content-type", "application/json");
         request.setRequestURI("/v2/provision/grant/add");
         request.setMethod("POST");
         handlerAdapter.handle(request, response, controller);
         logger.info("testProvisioningGrant()/add -> " + response.getContentAsString());
-        assertTrue("Invalid response", response.getContentAsString().equals("{\"" + client.getClientId() + "\":\"GRANT_UPDATE_SUCCESS\"}"));
+        assertTrue("Invalid response", response.getContentAsString().equals("{\"" + client.id() + "\":\"GRANT_UPDATE_SUCCESS\"}"));
 
         refreshRequestAndResponse();
-        String listGrants = "{ \"admin\": \"" + adminUser.get(AdminFields.USER()) + "\", \"secret\": \"" + pw + "\", \"entities\": [ \"" + client.getClientId() + "\" ] }";
+        String listGrants = "{ \"admin\": \"" + adminUser.id() + "\", \"secret\": \"" + adminpw + "\", \"entities\": [ \"" + client.id() + "\" ] }";
         request.setContent(listGrants.getBytes());
         request.addHeader("Content-type", "application/json");
         request.setRequestURI("/v2/provision/grant/list");
         request.setMethod("POST");
         handlerAdapter.handle(request, response, controller);
         logger.info("testProvisioningGrant()/checkExists -> " + response.getContentAsString());
-        assertTrue("Invalid response", checkGrantExists(response, client.getClientId(), new ArrayList<String>() {{
+        assertTrue("Invalid response", checkGrantExists(response, client.id(), new ArrayList<String>() {{
             add(bus1);
             add(bus2);
         }}));
 
         refreshRequestAndResponse();
-        String revoke1request = "{\"grants\":{\"" + client.getClientId() + "\":\"" + bus1 + "\"},\"admin\":\"" + adminUser.get(AdminFields.USER()) + "\", \"secret\":\"" + pw + "\"}";
+        String revoke1request = "{\"grants\":{\"" + client.id() + "\":\"" + bus1 + "\"},\"admin\":\"" + adminUser.id() + "\", \"secret\":\"" + adminpw + "\"}";
         request.setContent(revoke1request.getBytes());
         request.addHeader("Content-type", "application/json");
         request.setRequestURI("/v2/provision/grant/revoke");
@@ -550,15 +553,15 @@ public class ProvisioningController2Test {
         request.setMethod("POST");
         handlerAdapter.handle(request, response, controller);
         logger.info("testProvisioningGrant()/checkNonExists -> " + response.getContentAsString());
-        assertFalse("Invalid response", checkGrantExists(response, client.getClientId(), new ArrayList<String>() {{
+        assertFalse("Invalid response", checkGrantExists(response, client.id(), new ArrayList<String>() {{
             add(bus1);
         }}));
-        assertTrue("Invalid response", checkGrantExists(response, client.getClientId(), new ArrayList<String>() {{
+        assertTrue("Invalid response", checkGrantExists(response, client.id(), new ArrayList<String>() {{
             add(bus2);
         }}));
 
         refreshRequestAndResponse();
-        String revoke2request = "{\"grants\":{\"" + client.getClientId() + "\":\"" + bus2 + "\"},\"admin\":\"" + adminUser.get(AdminFields.USER()) + "\", \"secret\":\"" + pw + "\"}";
+        String revoke2request = "{\"grants\":{\"" + client.id() + "\":\"" + bus2 + "\"},\"admin\":\"" + adminUser.id() + "\", \"secret\":\"" + adminpw + "\"}";
         request.setContent(revoke2request.getBytes());
         request.addHeader("Content-type", "application/json");
         request.setRequestURI("/v2/provision/grant/revoke");
@@ -574,8 +577,8 @@ public class ProvisioningController2Test {
         request.setMethod("POST");
         handlerAdapter.handle(request, response, controller);
         logger.info("testProvisioningGrant()/checkNonExists -> " + response.getContentAsString());
-        assertFalse("Invalid response", checkGrantExists(response, client.getClientId(), new ArrayList<String>() {{ add(bus1);}}));
-        assertFalse("Invalid response", checkGrantExists(response, client.getClientId(), new ArrayList<String>() {{ add(bus2);}}));
+        assertFalse("Invalid response", checkGrantExists(response, client.id(), new ArrayList<String>() {{ add(bus1);}}));
+        assertFalse("Invalid response", checkGrantExists(response, client.id(), new ArrayList<String>() {{ add(bus2);}}));
     }
 
     // - PRIVATE
@@ -592,9 +595,9 @@ public class ProvisioningController2Test {
 
     private static final Logger logger = Logger.getLogger(ProvisioningController2Test.class);
     private Admin adminUser;
-    private User busOwner;
+    private String adminpw;
+    private BusOwner busOwner;
     private Client client;
-    private String pw;
     private String bus1;
     private String bus2;
 

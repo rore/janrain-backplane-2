@@ -1,8 +1,14 @@
 package com.janrain.oauth2;
 
 import com.janrain.backplane.common.BackplaneServerException;
-import com.janrain.backplane2.server.*;
-import com.janrain.backplane2.server.config.Client;
+import com.janrain.backplane.dao.DaoException;
+import com.janrain.backplane.server2.model.Client;
+import com.janrain.backplane.server2.model.ClientFields;
+import com.janrain.backplane.server2.model.Grant;
+import com.janrain.backplane2.server.GrantLogic;
+import com.janrain.backplane2.server.GrantType;
+import com.janrain.backplane2.server.Scope;
+import com.janrain.backplane2.server.Token;
 import com.janrain.backplane2.server.dao.BP2DAOs;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.util.Pair;
@@ -26,10 +32,10 @@ public class AuthenticatedTokenRequest implements TokenRequest {
 
     public AuthenticatedTokenRequest(String grantType, Client authenticatedClient, String code,
                                      String redirectUri, String refreshToken, String scope,
-                                     HttpServletRequest request, String authHeader) throws TokenException {
+                                     HttpServletRequest request, String authHeader) throws TokenException, DaoException {
 
-        this.authenticatedClientId = authenticatedClient.getClientId();
-        this.authenticatedClientSourceUrl = authenticatedClient.getSourceUrl();
+        this.authenticatedClientId = authenticatedClient.id();
+        this.authenticatedClientSourceUrl = authenticatedClient.get(ClientFields.SOURCE_URL()).getOrElse(null);
         try {
             // this must be done as early as possible in order to invalidate misused codes/grants, before any other failures
             if (StringUtils.isNotEmpty(code)) {
@@ -65,7 +71,7 @@ public class AuthenticatedTokenRequest implements TokenRequest {
             throw new TokenException("redirect_uri is required if and only if grant_type is authorization_code");
         }
         try {
-            OAuth2.validateRedirectUri(redirectUri, authenticatedClient.getRedirectUri());
+            OAuth2.validateRedirectUri(redirectUri, (String) authenticatedClient.get(ClientFields.REDIRECT_URI()).getOrElse(null));
         } catch (ValidationException e) {
             throw new TokenException(e.getCode(), "Invalid redirect_uri: " + redirectUri);
         }
@@ -130,7 +136,7 @@ public class AuthenticatedTokenRequest implements TokenRequest {
         }
 
         if (codeGrant != null) {
-            return new Pair<Scope, List<String>>(Scope.checkCombine(new Scope(codeGrant.get(Grant.GrantField.AUTHORIZED_SCOPES)),requestScope), new ArrayList<String>() {{add(codeGrant.getIdValue());}});
+            return new Pair<Scope, List<String>>(Scope.checkCombine(codeGrant.getAuthorizedScope(), requestScope), new ArrayList<String>() {{add(codeGrant.id());}});
         }
 
         // client credentials scope
@@ -139,7 +145,7 @@ public class AuthenticatedTokenRequest implements TokenRequest {
             List<String> allGrants = new ArrayList<String>();
             for(Set<Grant> grants : scopeGrantsMap.values()) {
                 for(Grant grant : grants) {
-                    allGrants.add(grant.getIdValue());
+                    allGrants.add(grant.id());
                 }
             }
 

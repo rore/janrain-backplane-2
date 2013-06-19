@@ -19,8 +19,9 @@ package com.janrain.backplane.server;
 import com.janrain.backplane.common.DateTimeUtils;
 import com.janrain.backplane.config.BackplaneConfig;
 import com.janrain.backplane.config.SystemProperties;
-import com.janrain.backplane.server.redisdao.BP1DAOs;
+import com.janrain.backplane.server1.dao.BP1DAOs;
 import com.janrain.backplane.server.redisdao.RedisBackplaneMessageDAO;
+import com.janrain.backplane.server1.model.BusConfig1;
 import com.janrain.commons.util.Pair;
 import com.janrain.redis.Redis;
 import com.netflix.curator.framework.CuratorFramework;
@@ -89,7 +90,7 @@ public class MessageProcessor implements LeaderSelectorListener {
         @Override
         public void run() {
             try {
-                BP1DAOs.getMessageDao().deleteExpiredMessages();
+                com.janrain.backplane.server.redisdao.BP1DAOs.getMessageDao().deleteExpiredMessages();
             } catch (Exception e) {
                 logger.warn(e);
             }
@@ -156,13 +157,13 @@ public class MessageProcessor implements LeaderSelectorListener {
                                 if (backplaneMessage != null) {
 
                                     // retrieve the expiration config per the bus
-                                    BusConfig1 busConfig1 = BP1DAOs.getBusDao().get(backplaneMessage.getBus());
+                                    BusConfig1 busConfig1 = BP1DAOs.busDao().get(backplaneMessage.getBus()).getOrElse(null);
                                     int retentionTimeSeconds = 60;
                                     int retentionTimeStickySeconds = 3600;
                                     if (busConfig1 != null) {
                                         // should be here in normal flow
-                                        retentionTimeSeconds = busConfig1.getRetentionTimeSeconds();
-                                        retentionTimeStickySeconds = busConfig1.getRetentionTimeStickySeconds();
+                                        retentionTimeSeconds = busConfig1.retentionTimeSeconds();
+                                        retentionTimeStickySeconds = busConfig1.retentionTimeStickySeconds();
                                     }
 
                                     String oldId = backplaneMessage.getIdValue();

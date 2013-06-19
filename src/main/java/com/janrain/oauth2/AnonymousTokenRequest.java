@@ -1,9 +1,10 @@
 package com.janrain.oauth2;
 
 import com.janrain.backplane.common.BackplaneServerException;
+import com.janrain.backplane.dao.DaoException;
+import com.janrain.backplane.server2.dao.BP2DAOs;
+import com.janrain.backplane.server2.model.BusConfig2;
 import com.janrain.backplane2.server.*;
-import com.janrain.backplane2.server.config.BusConfig2;
-import com.janrain.backplane2.server.dao.BP2DAOs;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -20,7 +21,7 @@ public class AnonymousTokenRequest implements TokenRequest {
     // - PUBLIC
 
     public AnonymousTokenRequest( String callback, String bus, String scope, String refreshToken,
-                                  HttpServletRequest request, String authHeader) throws TokenException {
+                                  HttpServletRequest request, String authHeader) throws TokenException, DaoException {
 
         this.grantType = StringUtils.isEmpty(refreshToken) ? GrantType.ANONYMOUS : GrantType.REFRESH_ANONYMOUS;
 
@@ -38,12 +39,12 @@ public class AnonymousTokenRequest implements TokenRequest {
 
         try {
             if (StringUtils.isNotEmpty(bus)) {
-                this.busConfig = BP2DAOs.getBusDao().get(bus);
+                this.busConfig = BP2DAOs.busDao().get(bus).getOrElse(null);
                 if ( this.busConfig == null) {
                     throw new TokenException("Invalid bus: " + bus);
                 }
             }
-        } catch (BackplaneServerException e) {
+        } catch (Exception e) {
             logger.error("error processing anonymous token request: " + e.getMessage(), e);
             throw new TokenException(OAuth2.OAUTH2_TOKEN_SERVER_ERROR, "error processing anonymous token request", HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         }
@@ -76,7 +77,7 @@ public class AnonymousTokenRequest implements TokenRequest {
             Channel channel = createOrRefreshChannel(10 * expiresIn);
             Scope processedScope = processScope(channel.getIdValue(), channel.get(Channel.ChannelField.BUS));
             accessToken = new Token.Builder(grantType.getAccessType(), processedScope.toString()).expires(expires).buildToken();
-            BP2DAOs.getTokenDao().persist(accessToken);
+            com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao().persist(accessToken);
             return accessToken.response(generateRefreshToken(grantType.getRefreshType(), processedScope));
         } catch (Exception e) {
             logger.error("error processing anonymous access token request: " + e.getMessage(), e);
@@ -85,7 +86,7 @@ public class AnonymousTokenRequest implements TokenRequest {
             logger.info("exiting anonymous token request");
             try {
                 if (this.refreshToken != null) {
-                    BP2DAOs.getTokenDao().delete(this.refreshToken.getIdValue());
+                    com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao().delete(this.refreshToken.getIdValue());
                 }
             } catch (BackplaneServerException e) {
                 logger.error("error deleting used refresh token: " + refreshToken.getIdValue(), e);
@@ -106,11 +107,11 @@ public class AnonymousTokenRequest implements TokenRequest {
     private static String generateRefreshToken(GrantType refreshType, Scope scope) throws SimpleDBException, BackplaneServerException {
         if (refreshType == null || ! refreshType.isRefresh()) return null;
         Token refreshToken = new Token.Builder(refreshType, scope.toString()).buildToken();
-        BP2DAOs.getTokenDao().persist(refreshToken);
+        com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao().persist(refreshToken);
         return refreshToken.getIdValue();
     }
 
-    private Channel createOrRefreshChannel(int expireSeconds) throws TokenException, SimpleDBException, BackplaneServerException {
+    private Channel createOrRefreshChannel(int expireSeconds) throws TokenException, SimpleDBException, BackplaneServerException, DaoException {
         String channelId = null;
         BusConfig2 config;
         if (refreshToken != null ) {
@@ -120,14 +121,14 @@ public class AnonymousTokenRequest implements TokenRequest {
                     buses == null || buses.isEmpty() || buses.size() > 1 ) {
                 throw new TokenException("invalid anonymous refresh token: " + refreshToken.getIdValue());
             } else {
-                config = BP2DAOs.getBusDao().get(buses.iterator().next());
+                config = BP2DAOs.busDao().get(buses.iterator().next()).getOrElse(null);
                 channelId = channels.iterator().next();
             }
         } else {
             config = busConfig;
         }
         Channel channel = new Channel(channelId, config, expireSeconds);
-        BP2DAOs.getChannelDao().persist(channel);
+        com.janrain.backplane2.server.dao.BP2DAOs.getChannelDao().persist(channel);
         return channel;
     }
 

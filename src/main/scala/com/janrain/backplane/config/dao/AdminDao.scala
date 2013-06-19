@@ -7,6 +7,4 @@ import com.janrain.backplane.common.UserPassAuth
 /**
  * @author Johnny Bufu
  */
-trait AdminDao extends Dao[Admin] with UserPassAuth[AdminFields.EnumVal, Admin] {
-  final override val pwdHashField = AdminFields.PWDHASH
-}
+trait AdminDao extends Dao[Admin] with UserPassAuth[AdminFields.EnumVal, Admin]

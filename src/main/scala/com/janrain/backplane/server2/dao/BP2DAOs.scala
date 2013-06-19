@@ -2,7 +2,7 @@ package com.janrain.backplane.server2.dao
 
 import com.janrain.backplane.dao.redis.RedisMessageDao
 import com.janrain.backplane.server2.oauth2.model.{AuthorizationDecisionKey, AuthorizationRequest}
-import com.janrain.backplane.dao.ExpiringDao
+import com.janrain.backplane.dao.{PasswordHasherDao, ExpiringDao}
 import com.janrain.backplane.server2.model._
 
 /**
@@ -35,13 +35,25 @@ object BP2DAOs {
 
   val busDao: BusDao = new RedisMessageDao[BusConfig2]("bp2Bus:") with BusDao {
     protected def instantiate(data: Map[_, _]) = new BusConfig2( data.map( kv => kv._1.toString -> kv._2.toString ))
+
+    override def delete(id: String): Boolean = {
+      val busDeleteSuccess = super.delete(id)
+      grantDao.deleteByBus(List(id)) // throws
+      busDeleteSuccess
+    }
   }
 
-  val busOwnerDao: BusOwnerDao = new RedisMessageDao[BusOwner]("bp2BusOwner:") with BusOwnerDao {
+  val busOwnerDao: BusOwnerDao = new RedisMessageDao[BusOwner]("bp2BusOwner:") with BusOwnerDao with PasswordHasherDao[BusOwnerFields.EnumVal,BusOwner] {
     protected def instantiate(data: Map[_, _]) = new BusOwner( data.map( kv => kv._1.toString -> kv._2.toString ))
+
+    override def delete(id: String): Boolean = {
+      val busOwnerDeleteSuccess = super.delete(id)
+      busDao.deleteByOwner(id) // throws if not success
+      busOwnerDeleteSuccess
+    }
   }
 
-  val clientDao: ClientDao = new RedisMessageDao[Client]("bp2Client:") with ClientDao {
+  val clientDao: ClientDao = new RedisMessageDao[Client]("bp2Client:") with ClientDao with PasswordHasherDao[ClientFields.EnumVal,Client] {
     protected def instantiate(data: Map[_, _]) = new Client( data.map( kv => kv._1.toString -> kv._2.toString ))
   }
 

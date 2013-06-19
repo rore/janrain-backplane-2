@@ -2,12 +2,20 @@ package com.janrain.backplane.server2.model
 
 import com.janrain.backplane.common.model.{MessageField, MessageFieldEnum, Message}
 import com.janrain.backplane.common.MessageException
+import scala.collection.JavaConversions._
 
 /**
  * @author Johnny Bufu
  */
 class BusConfig2(data: Map[String,String]) extends Message(data, BusConfig2Fields.values) {
+
+  def this(javaData: java.util.Map[String,String]) = this(javaData.toMap)
+
   def idField = BusConfig2Fields.BUS_NAME
+
+  def retentionTimeSeconds: Int = get(BusConfig2Fields.RETENTION_TIME_SECONDS).getOrElse(BusConfig2.RETENTION_MIN_SECONDS.toString).toInt
+
+  def retentionTimeStickySeconds: Int = get(BusConfig2Fields.RETENTION_STICKY_TIME_SECONDS).getOrElse(BusConfig2.RETENTION_STICKY_MIN_SECONDS.toString).toInt
 }
 
 object BusConfig2 {

@@ -17,7 +17,6 @@
 package com.janrain.backplane2.server.dao.redis;
 
 import com.janrain.backplane.common.BackplaneServerException;
-import com.janrain.backplane.common.RandomUtils;
 import com.janrain.backplane2.server.BackplaneMessage;
 import com.janrain.backplane2.server.MessagesResponse;
 import com.janrain.backplane2.server.Scope;
@@ -25,6 +24,7 @@ import com.janrain.backplane2.server.Token;
 import com.janrain.backplane2.server.dao.BackplaneMessageDAO;
 import com.janrain.oauth2.TokenException;
 import com.janrain.redis.Redis;
+import com.janrain.util.RandomUtils;
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;

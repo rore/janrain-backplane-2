@@ -17,17 +17,19 @@
 package com.janrain.backplane.provision;
 
 import com.janrain.backplane.common.AuthException;
-import com.janrain.backplane.common.HmacHashUtils;
+import com.janrain.backplane.common.model.Message;
+import com.janrain.backplane.common.model.MessageField;
 import com.janrain.backplane.config.BackplaneConfig;
 import com.janrain.backplane.config.dao.ConfigDAOs;
-import com.janrain.backplane.server.BusConfig1;
-import com.janrain.backplane.server.redisdao.BP1DAOs;
-import com.janrain.backplane2.server.config.User;
+import com.janrain.backplane.dao.DaoAll;
+import com.janrain.backplane.server1.dao.BP1DAOs;
+import com.janrain.backplane.server1.model.BusConfig1;
+import com.janrain.backplane.server1.model.BusUser;
 import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
+import scala.collection.JavaConversions;
 
 import javax.inject.Inject;
 import javax.servlet.http.HttpServletResponse;
@@ -51,29 +53,29 @@ public class ProvisioningController {
     @RequestMapping(value = "/bus/list", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, Map<String, String>> busList(@RequestBody ListRequest listRequest) throws AuthException {
-        ConfigDAOs.adminDao().checkAuth(listRequest.getAdmin(), listRequest.getSecret());
+        ConfigDAOs.adminDao().getAuthenticated(listRequest.getAdmin(), listRequest.getSecret());
         return doList(BusConfig1.class, listRequest.getEntities());
     }
 
     @RequestMapping(value = "/user/list", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, Map<String, String>> userList(@RequestBody ListRequest listRequest) throws AuthException {
-        ConfigDAOs.adminDao().checkAuth(listRequest.getAdmin(), listRequest.getSecret());
-        return doList(User.class, listRequest.getEntities());
+        ConfigDAOs.adminDao().getAuthenticated(listRequest.getAdmin(), listRequest.getSecret());
+        return doList(BusUser.class, listRequest.getEntities());
     }
 
     @RequestMapping(value = "/bus/delete", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, String> busDelete(@RequestBody ListRequest deleteRequest) throws AuthException {
-        ConfigDAOs.adminDao().checkAuth(deleteRequest.getAdmin(), deleteRequest.getSecret());
+        ConfigDAOs.adminDao().getAuthenticated(deleteRequest.getAdmin(), deleteRequest.getSecret());
         return doDelete(BusConfig1.class, deleteRequest.getEntities());
     }
 
     @RequestMapping(value = "/user/delete", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, String> userDelete(@RequestBody ListRequest deleteRequest) throws AuthException {
-        ConfigDAOs.adminDao().checkAuth(deleteRequest.getAdmin(), deleteRequest.getSecret());
-        return doDelete(User.class, deleteRequest.getEntities());
+        ConfigDAOs.adminDao().getAuthenticated(deleteRequest.getAdmin(), deleteRequest.getSecret());
+        return doDelete(BusUser.class, deleteRequest.getEntities());
     }
 
     @RequestMapping(value = "/bus/update", method = RequestMethod.POST)
@@ -85,7 +87,7 @@ public class ProvisioningController {
     @RequestMapping(value = "/user/update", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, String> userUpdate(@RequestBody UserUpdateRequest updateRequest) throws AuthException, SimpleDBException {
-        return doUpdate(User.class, updateRequest);
+        return doUpdate(BusUser.class, updateRequest);
     }
 
     /**
@@ -139,7 +141,7 @@ public class ProvisioningController {
     @Inject
     private BackplaneConfig bpConfig;
 
-    private <T extends AbstractMessage> Map<String, Map<String, String>> doList(Class<T> entityType, List<String> entityNames) {
+    private <T extends Message, F extends MessageField> Map<String, Map<String, String>> doList(Class<T> entityType, List<String> entityNames) {
 
         if (entityNames.size() == 0) return doListAll(entityType);
 
@@ -148,7 +150,7 @@ public class ProvisioningController {
             T config = null;
             Exception thrown = null;
             try {
-                config = (T) BP1DAOs.getDaoByObjectType(entityType).get(entityName);
+                config = (T) getDaoByObjectType(entityType).get(entityName).getOrElse(null);
             } catch (Exception e) {
                 thrown = e;
             }
@@ -156,17 +158,17 @@ public class ProvisioningController {
 
             result.put(entityName,
                 errMgs != null ? new HashMap<String, String>() {{ put(ERR_MSG_FIELD, errMgs); }} :
-                config);
+                JavaConversions.mapAsJavaMap(config));
         }
         return result;
     }
 
-    private <T extends AbstractMessage> Map<String, Map<String, String>> doListAll(Class<T> entityType) {
+    private <T extends Message> Map<String, Map<String, String>> doListAll(Class<T> entityType) {
         Map<String,Map<String,String>> result = new LinkedHashMap<String, Map<String, String>>();
         try {
-            List<T> items = BP1DAOs.getDaoByObjectType(entityType).getAll();
-            for(T config : items) {
-                result.put(config.getIdValue(), config);
+            List items = JavaConversions.seqAsJavaList(getDaoByObjectType(entityType).getAll());
+            for(Object config : items) {
+                result.put( ((T)config).id(), JavaConversions.mapAsJavaMap((T)config));
             }
         } catch (final Exception e) {
             result.put(ERR_MSG_FIELD, new HashMap<String, String>() {{ put(ERR_MSG_FIELD, e.getMessage()); }});
@@ -174,12 +176,12 @@ public class ProvisioningController {
         return result;
     }
 
-    private <T extends AbstractMessage> Map<String, String> doDelete(Class<T> entityType, List<String> entityNames) {
+    private <T extends Message> Map<String, String> doDelete(Class<T> entityType, List<String> entityNames) {
         Map<String,String> result = new LinkedHashMap<String, String>();
         for(String entityName : entityNames) {
             String deleteStatus = BACKPLANE_DELETE_SUCCESS;
             try {
-                BP1DAOs.getDaoByObjectType(entityType).delete(entityName);
+                getDaoByObjectType(entityType).delete(entityName);
             } catch (Exception e) {
                 deleteStatus = e.getMessage();
             }
@@ -188,38 +190,36 @@ public class ProvisioningController {
         return result;
     }
 
-    private <T extends AbstractMessage> Map<String, String> doUpdate(Class<T> entityType, UpdateRequest<T> updateRequest) throws AuthException, SimpleDBException {
-        ConfigDAOs.adminDao().checkAuth(updateRequest.getAdmin(), updateRequest.getSecret());
-        validateConfigs(entityType, updateRequest);
+    private <T extends Message> Map<String, String> doUpdate(Class<T> entityType, UpdateRequest<T> updateRequest) throws AuthException, SimpleDBException {
+        ConfigDAOs.adminDao().getAuthenticated(updateRequest.getAdmin(), updateRequest.getSecret());
         return updateConfigs(entityType, updateRequest.getConfigs());
     }
 
-    private <T extends AbstractMessage> void validateConfigs(Class<T> entityType, UpdateRequest<T> updateRequest) throws SimpleDBException {
-        for(T config : updateRequest.getConfigs()) {
-            config.validate();
-        }
-    }
-
-    private <T extends AbstractMessage> Map<String, String> updateConfigs(Class<T> customerConfigType, List<T> bpConfigs) {
+    private <T extends Message> Map<String, String> updateConfigs(Class<T> customerConfigType, List<T> bpConfigs) {
         Map<String,String> result = new LinkedHashMap<String, String>();
         for(T config : bpConfigs) {
-            if (config instanceof User) {
-                // hash the new user password
-                User user = (User) config;
-                user.put(User.Field.PWDHASH.getFieldName(), HmacHashUtils.hmacHash(user.get(User.Field.PWDHASH)));
-            }
             String updateStatus = BACKPLANE_UPDATE_SUCCESS;
             try {
-                BP1DAOs.getDaoByObjectType(customerConfigType).persist(config);
+                getDaoByObjectType(customerConfigType).store(config);
             } catch (Exception e) {
                 updateStatus = e.getMessage();
             }
-            result.put(config.getIdValue(), updateStatus);
+            result.put(config.id(), updateStatus);
         }
         return result;
     }
 
+    private static DaoAll getDaoByObjectType(Class<?> obj) {
+        if (BusConfig1.class.isAssignableFrom(obj)) {
+            return BP1DAOs.busDao();
+        } else if (BusUser.class.isAssignableFrom(obj)) {
+            return BP1DAOs.userDao();
+        }
+
+        return null;
+    }
+
     // type helper classes for JSON mapper
     private static class BusUpdateRequest extends UpdateRequest<BusConfig1> {}
-    private static class UserUpdateRequest extends UpdateRequest<User> {}
+    private static class UserUpdateRequest extends UpdateRequest<BusUser> {}
 }

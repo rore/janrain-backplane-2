@@ -1,6 +1,6 @@
 package com.janrain.backplane.dao.redis
 
-import com.janrain.backplane.dao.{DaoException, Dao}
+import com.janrain.backplane.dao.{MessageDao, DaoAll, DaoException}
 import com.janrain.util.Loggable
 import com.janrain.backplane.config.SystemProperties
 import com.janrain.backplane.common.model.Message
@@ -9,11 +9,9 @@ import com.janrain.backplane.common.model.Message
 /**
  * @author Johnny Bufu
  */
-abstract class RedisMessageDao[MT <: Message[_]](val keyPrefix: String) extends Dao[MT] with Loggable {
+abstract class RedisMessageDao[MT <: Message[_]](val keyPrefix: String) extends MessageDao[MT] with DaoAll[MT] with Loggable {
 
   protected def getKey(itemId: String) = SystemProperties.INSTANCE_ID + ":" + keyPrefix + itemId
-
-  protected def instantiate(data: Map[_,_]): MT
 
   // redis lib returns Some(Map()) instead of None, so:
   private def instantiateEmpty(data: Option[Map[_,_]]): Option[MT] = data match {
@@ -77,6 +75,17 @@ abstract class RedisMessageDao[MT <: Message[_]](val keyPrefix: String) extends 
       })
     ).toList
 
+  def getAll: List[MT] = {
+    val keys: Seq[String] = Redis.readPool.withClient(c => {
+      c.keys[String](getKey("*"))
+    })
+      .flatten.flatten
+      .collect { case s: String if s.length > keyPrefix.length =>  s.substring(keyPrefix.length) }
+      .toSeq
+
+    get(keys: _*).map(_._2).flatten
+  }
+
   // todo: update same as store, should throw if item does not exist in db?
   def update(item: MT) {
     store(item)
@@ -85,7 +94,7 @@ abstract class RedisMessageDao[MT <: Message[_]](val keyPrefix: String) extends 
   def update(items: MT*) = store(items: _*)
 
   def delete(id: String) = Redis.writePool.withClient(_.del(getKey(id)))
-    .getOrElse(throw new DaoException(("deleted failed for key %s".format("")))) == 1L
+    .getOrElse(throw new DaoException("deleted failed for key %s".format(""))) == 1L
 
   def delete(ids: String*) =
     ids.zip(
@@ -116,7 +125,7 @@ abstract class RedisMessageDao[MT <: Message[_]](val keyPrefix: String) extends 
         Some(instantiate(mapResponse))
 
       case (false, _) =>
-        logger.warn("retieve-and-delete for item ID %s failed, delete result different than 1L".format(itemKey))
+        logger.warn("retrieve-and-delete for item ID %s failed, delete result different than 1L".format(itemKey))
         None
 
       case _ =>

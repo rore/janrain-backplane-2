@@ -12,6 +12,7 @@ javacOptions += "-g"
 //javacOptions += "-Xlint:unchecked"
 
 //compileOrder := CompileOrder.ScalaThenJava
+compileOrder := CompileOrder.Mixed
 
 seq(webSettings :_*)
 
@@ -78,7 +79,7 @@ libraryDependencies ++= Seq(
   "com.janrain.commons.supersimpledb" % "commons-supersimpledb" % "1.0.27",
   // intellij annotations library for @NotNull and @Nullable
   "org.kohsuke.jetbrains" % "annotations" % "9.0",
-  "net.sf.ehcache" % "ehcache" % "2.5.2" pomOnly(),
+  "net.sf.ehcache" % "ehcache" % "2.5.2",
   // Redis
   "net.debasishg" % "redisclient_2.9.2" % "2.7",
   "redis.clients" % "jedis" % "2.1.0.a",

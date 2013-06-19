@@ -18,18 +18,16 @@ package com.janrain.backplane2.server;
 
 
 import com.janrain.backplane.common.BackplaneServerException;
-import com.janrain.backplane.common.RandomUtils;
 import com.janrain.backplane.common.HmacHashUtils;
 import com.janrain.backplane.config.BackplaneConfig;
-import com.janrain.backplane2.server.config.BusConfig2;
-import com.janrain.backplane2.server.config.Client;
-import com.janrain.backplane2.server.config.User;
-import com.janrain.backplane2.server.dao.BP2DAOs;
+import com.janrain.backplane.dao.DaoException;
+import com.janrain.backplane.server2.dao.BP2DAOs;
+import com.janrain.backplane.server2.model.*;
 import com.janrain.backplane2.server.dao.BackplaneMessageDAO;
 import com.janrain.backplane2.server.dao.TokenDAO;
-import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.oauth2.*;
 import com.janrain.servlet.InvalidRequestException;
+import com.janrain.util.RandomUtils;
 import org.apache.catalina.util.Base64;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -149,7 +147,7 @@ public class Backplane2ControllerTest {
 	 * Initialize before every individual test method
 	 */
 	@Before
-	public void init() throws BackplaneServerException {
+	public void init() throws BackplaneServerException, DaoException {
         assertNotNull(applicationContext);
         handlerAdapter = applicationContext.getBean("handlerAdapter", HandlerAdapter.class);
         this.testClient = this.createTestBusAndClient();
@@ -157,7 +155,7 @@ public class Backplane2ControllerTest {
 	}
 
     @After
-    public void cleanup() throws TokenException {
+    public void cleanup() throws TokenException, DaoException {
 
         logger.info("Tearing down test writes to db");
 
@@ -165,12 +163,12 @@ public class Backplane2ControllerTest {
 
             for (String key:this.createdMessageKeys) {
                 logger.info("deleting Message " + key);
-                BP2DAOs.getBackplaneMessageDAO().delete(key);
+                com.janrain.backplane2.server.dao.BP2DAOs.getBackplaneMessageDAO().delete(key);
                 //superSimpleDB.delete(bpConfig.getTableName(BP_MESSAGES), key);
             }
 
             try {
-                BackplaneMessageDAO backplaneMessageDAO = BP2DAOs.getBackplaneMessageDAO();
+                BackplaneMessageDAO backplaneMessageDAO = com.janrain.backplane2.server.dao.BP2DAOs.getBackplaneMessageDAO();
                 List<BackplaneMessage> testMsgs = backplaneMessageDAO.retrieveMessagesByChannel("testchannel");
 
                 for (BackplaneMessage msg : testMsgs) {
@@ -184,16 +182,16 @@ public class Backplane2ControllerTest {
             logger.info("checking for tokens to delete...");
             for (String key:this.createdTokenKeys) {
                 logger.info("deleting Token " + key);
-                BP2DAOs.getTokenDao().delete(key);
+                com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao().delete(key);
             }
 
             for (String key:this.createdGrantsKeys) {
                 logger.info("deleting Grant " + key);
-                Grant grant = BP2DAOs.getGrantDao().get(key);
+                Grant grant = BP2DAOs.grantDao().get(key).getOrElse(null);
                 if (grant != null) {
-                    BP2DAOs.getTokenDao().revokeTokenByGrant(grant.getIdValue());
+                    com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao().revokeTokenByGrant(grant.id());
                 }
-                BP2DAOs.getGrantDao().delete(key);
+                BP2DAOs.grantDao().delete(key);
             }
 
             deleteTestBusAndClient();
@@ -205,24 +203,30 @@ public class Backplane2ControllerTest {
 
 
 
-    private Client createTestBusAndClient() throws BackplaneServerException {
-        BP2DAOs.getBusOwnerDAO().persist(new User("testBusOwner", "busOwnerSecret"));
-        try {
-            BP2DAOs.getBusDao().persist(new BusConfig2("testbus", "testBusOwner", "600", "28800"));
+    private Client createTestBusAndClient() throws BackplaneServerException, DaoException {
+        BP2DAOs.busOwnerDao().store(new BusOwner("testBusOwner", "busOwnerSecret"));
+        
+        BP2DAOs.busDao().store(new BusConfig2(new HashMap<String,String>() {{
+            put(BusConfig2Fields.BUS_NAME().name(), "testbus");
+            put(BusConfig2Fields.OWNER().name(), "testBusOwner");
+            put(BusConfig2Fields.RETENTION_TIME_SECONDS().name(), "600");
+            put(BusConfig2Fields.RETENTION_STICKY_TIME_SECONDS().name(), "28800");
+        }}));
 
-            Client client = new Client(RandomUtils.randomString(15), HmacHashUtils.hmacHash("secret"), "http://source_url.com", "http://redirect.com");
-
-            BP2DAOs.getClientDAO().persist(client);
-            return client;
-        } catch (SimpleDBException e) {
-            throw new BackplaneServerException(e.getMessage());
-        }
+        Client client = new Client(new HashMap<String,String>() {{
+            put(ClientFields.USER().name(), RandomUtils.randomString(15));
+            put(ClientFields.PWDHASH().name(), HmacHashUtils.hmacHash("secret"));
+            put(ClientFields.SOURCE_URL().name(), "http://source_url.com");
+            put(ClientFields.REDIRECT_URI().name(), "http://redirect.com");
+        }});
+        BP2DAOs.clientDao().store(client);
+        return client;
     }
 
-    private void deleteTestBusAndClient() throws BackplaneServerException, TokenException {
-        BP2DAOs.getBusOwnerDAO().delete("testBusOwner");
-        BP2DAOs.getBusDao().delete("testbus");
-        BP2DAOs.getClientDAO().delete(this.testClient.getClientId());
+    private void deleteTestBusAndClient() throws BackplaneServerException, TokenException, DaoException {
+        BP2DAOs.busOwnerDao().delete("testBusOwner");
+        BP2DAOs.busDao().delete("testbus");
+        BP2DAOs.clientDao().delete(this.testClient.id());
     }
 
     private void refreshRequestAndResponse() {
@@ -233,19 +237,19 @@ public class Backplane2ControllerTest {
 	}
 
     private void saveMessage(BackplaneMessage message) throws BackplaneServerException {
-        BP2DAOs.getBackplaneMessageDAO().persist(message);
+        com.janrain.backplane2.server.dao.BP2DAOs.getBackplaneMessageDAO().persist(message);
         this.createdMessageKeys.add(message.getIdValue());
         logger.info("created Message " + message.getIdValue());
     }
 
-    private void saveGrant(Grant grant) throws BackplaneServerException {
-        BP2DAOs.getGrantDao().persist(grant);
-        logger.info("saved grant: " + grant.getIdValue());
-        this.createdGrantsKeys.add(grant.getIdValue());
+    private void saveGrant(Grant grant) throws BackplaneServerException, DaoException {
+        BP2DAOs.grantDao().store(grant);
+        logger.info("saved grant: " + grant.id());
+        this.createdGrantsKeys.add(grant.id());
     }
 
     private void saveToken(Token token) throws BackplaneServerException {
-        BP2DAOs.getTokenDao().persist(token);
+        com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao().persist(token);
         logger.info("saved token: " + token.getIdValue());
         this.createdTokenKeys.add(token.getIdValue());
     }
@@ -282,7 +286,7 @@ public class Backplane2ControllerTest {
         request.setRequestURI("/v2/token");
         request.setMethod("POST");
         request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS);
-        setOAuthBasicAuthentication(request, testClient.get(User.Field.USER), "wrong_secret");
+        setOAuthBasicAuthentication(request, testClient.id(), "wrong_secret");
         handlerAdapter.handle(request, response, controller);
         logger.info("testTokenEndPointAuthenticationFailure() => " + response.getContentAsString());
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
@@ -325,8 +329,8 @@ public class Backplane2ControllerTest {
         // cleanup test tokens
         String result = response.getContentAsString();
         Map<String,Object> returnedBody = new ObjectMapper().readValue(result, new TypeReference<Map<String,Object>>() {});
-        BP2DAOs.getTokenDao().delete((String)returnedBody.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME));
-        BP2DAOs.getTokenDao().delete((String)returnedBody.get(OAUTH2_REFRESH_TOKEN_PARAM_NAME));
+        com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao().delete((String)returnedBody.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME));
+        com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao().delete((String)returnedBody.get(OAUTH2_REFRESH_TOKEN_PARAM_NAME));
 
 
     }
@@ -442,8 +446,8 @@ public class Backplane2ControllerTest {
         assertTrue(scope.contains("channel:"));
 
         // remove test tokens
-        BP2DAOs.getTokenDao().delete((String)msg.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME));
-        BP2DAOs.getTokenDao().delete((String)msg.get(OAUTH2_REFRESH_TOKEN_PARAM_NAME));
+        com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao().delete((String)msg.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME));
+        com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao().delete((String)msg.get(OAUTH2_REFRESH_TOKEN_PARAM_NAME));
     }
 
 
@@ -458,8 +462,8 @@ public class Backplane2ControllerTest {
 
         //will fail because the code below is not valid
         request.setParameter("code", "meh");
-        request.setParameter("redirect_uri", testClient.get(Client.ClientField.REDIRECT_URI));
-        setOAuthBasicAuthentication(request, testClient.get(User.Field.USER), "secret");
+        request.setParameter("redirect_uri", testClient.get(ClientFields.REDIRECT_URI()).get());
+        setOAuthBasicAuthentication(request, testClient.id(), "secret");
         handlerAdapter.handle(request, response, controller);
         logger.info("testTokenEndPointClientTokenRequestInvalidCode() => " + request.toString() + " => " + response.getContentAsString());
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
@@ -476,16 +480,16 @@ public class Backplane2ControllerTest {
 
         //create grant for test
 
-        Grant grant = new Grant.Builder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE, "fakeOwnerId", testClient.getClientId(),"bus:test").buildGrant();
+        Grant grant = new GrantBuilder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE, "fakeOwnerId", testClient.id(),"bus:test").buildGrant();
         this.saveGrant(grant);
 
         // because we didn't specify a bus in the "scope" parameter, the server will
         // return the scope it determined from the grant
 
         request.setParameter("scope", "sticky:true");
-        request.setParameter("code", grant.getIdValue());
-        request.setParameter("redirect_uri", testClient.get(Client.ClientField.REDIRECT_URI));
-        setOAuthBasicAuthentication(request, testClient.get(User.Field.USER), "secret");
+        request.setParameter("code", grant.id());
+        request.setParameter("redirect_uri", testClient.get(ClientFields.REDIRECT_URI()).get());
+        setOAuthBasicAuthentication(request, testClient.id(), "secret");
 
         handlerAdapter.handle(request, response, controller);
         logger.info("testTokenEndPointClientTokenRequest() => " + response.getContentAsString());
@@ -514,14 +518,14 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
 
         //create grant for test
-        Grant grant1 = new Grant.Builder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE, "fakeOwnerId", testClient.getClientId(),"bus:foo").buildGrant();
+        Grant grant1 = new GrantBuilder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE, "fakeOwnerId", testClient.id(),"bus:foo").buildGrant();
         this.saveGrant(grant1);
 
-        Grant grant2 = new Grant.Builder(GrantType.AUTHORIZATION_CODE, GrantState.ACTIVE, "fakeOwnerId", testClient.getClientId(), "bus:bar").buildGrant();
+        Grant grant2 = new GrantBuilder(GrantType.AUTHORIZATION_CODE, GrantState.ACTIVE, "fakeOwnerId", testClient.id(), "bus:bar").buildGrant();
         this.saveGrant(grant2);
 
         // add grant with duplicate bus
-        Grant grant3 = new Grant.Builder(GrantType.AUTHORIZATION_CODE, GrantState.ACTIVE, "fakeOwernId", testClient.getClientId(), "bus:foo").buildGrant();
+        Grant grant3 = new GrantBuilder(GrantType.AUTHORIZATION_CODE, GrantState.ACTIVE, "fakeOwernId", testClient.id(), "bus:foo").buildGrant();
         this.saveGrant(grant3);
 
         request.setRequestURI("/v2/token");
@@ -531,9 +535,9 @@ public class Backplane2ControllerTest {
         // because we didn't specify the "scope" parameter, the server will
         // return the scope it determined from grant1 but not grant2
 
-        request.setParameter("code", grant1.getIdValue());
-        request.setParameter("redirect_uri", testClient.get(Client.ClientField.REDIRECT_URI));
-        setOAuthBasicAuthentication(request, testClient.get(User.Field.USER), "secret");
+        request.setParameter("code", grant1.id());
+        request.setParameter("redirect_uri", testClient.get(ClientFields.REDIRECT_URI()).get());
+        setOAuthBasicAuthentication(request, testClient.id(), "secret");
 
         handlerAdapter.handle(request, response, controller);
         logger.info("testTokenGrantByCodeScopeIsolation() => " + response.getContentAsString());
@@ -561,7 +565,7 @@ public class Backplane2ControllerTest {
         request.setMethod("POST");
         request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS);
 
-        setOAuthBasicAuthentication(request, testClient.get(User.Field.USER), "secret");
+        setOAuthBasicAuthentication(request, testClient.id(), "secret");
         // because we didn't use a "code", the server will
         // return the scope it determined from grant1 and grant2
         handlerAdapter.handle(request, response, controller);
@@ -602,17 +606,17 @@ public class Backplane2ControllerTest {
 
         String buses = org.springframework.util.StringUtils.collectionToDelimitedString(randomBuses, " ");
 
-        Grant grant = new Grant.Builder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE, "fakeOwnerId", testClient.getClientId(),
+        Grant grant = new GrantBuilder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE, "fakeOwnerId", testClient.id(),
                 Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, buses)).buildGrant();
         this.saveGrant(grant);
 
         request.setRequestURI("/v2/token");
         request.setMethod("POST");
         request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_AUTH_CODE);
-        request.setParameter("code", grant.getIdValue());
-        request.setParameter("scope", "sticky:false sticky:true source:" + testClient.getSourceUrl());
-        request.setParameter("redirect_uri", testClient.get(Client.ClientField.REDIRECT_URI));
-        setOAuthBasicAuthentication(request, testClient.getClientId(), "secret");
+        request.setParameter("code", grant.id());
+        request.setParameter("scope", "sticky:false sticky:true source:" + testClient.get(ClientFields.SOURCE_URL()).get());
+        request.setParameter("redirect_uri", testClient.get(ClientFields.REDIRECT_URI()).get());
+        setOAuthBasicAuthentication(request, testClient.id(), "secret");
         handlerAdapter.handle(request, response, controller);
         logger.info("testTokenGrantByCodeScopeComplexity() get token => " + response.getContentAsString());
         //assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
@@ -635,7 +639,7 @@ public class Backplane2ControllerTest {
         Map<String,Object> msg = mapper.readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {});
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), randomBuses.get(randomBuses.size()-1));
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), "randomchannel");
-        BackplaneMessage message1 = new BackplaneMessage(testClient.getSourceUrl(), DEFAULT_MESSAGE_RETENTION_SECONDS, MAX_MESSAGE_RETENTION_SECONDS, msg);
+        BackplaneMessage message1 = new BackplaneMessage(testClient.get(ClientFields.SOURCE_URL()).get(), DEFAULT_MESSAGE_RETENTION_SECONDS, MAX_MESSAGE_RETENTION_SECONDS, msg);
         this.saveMessage(message1);
 
         // make sure the processor runs
@@ -663,16 +667,16 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
 
         //create grant for test
-        Grant grant = new Grant.Builder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE, "fakeOwnerId", testClient.getClientId(),"bus:test").buildGrant();
+        Grant grant = new GrantBuilder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE, "fakeOwnerId", testClient.id(),"bus:test").buildGrant();
         this.saveGrant(grant);
-        logger.info("issued AuthCode " + grant.getIdValue());
+        logger.info("issued AuthCode " + grant.id());
 
         request.setRequestURI("/v2/token");
         request.setMethod("POST");
         request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_AUTH_CODE);
-        request.setParameter("code", grant.getIdValue());
-        request.setParameter("redirect_uri", testClient.get(Client.ClientField.REDIRECT_URI));
-        setOAuthBasicAuthentication(request, testClient.get(User.Field.USER), "secret");
+        request.setParameter("code", grant.id());
+        request.setParameter("redirect_uri", testClient.get(ClientFields.REDIRECT_URI()).get());
+        setOAuthBasicAuthentication(request, testClient.id(), "secret");
 
         handlerAdapter.handle(request, response, controller);
         logger.info("testTokenEndPointClientUsedCode() => " + response.getContentAsString());
@@ -690,13 +694,13 @@ public class Backplane2ControllerTest {
         request.setRequestURI("/v2/token");
         request.setMethod("POST");
         request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_AUTH_CODE);
-        request.setParameter("code", grant.getIdValue());
-        request.setParameter("redirect_uri", testClient.get(Client.ClientField.REDIRECT_URI));
-        setOAuthBasicAuthentication(request, testClient.get(User.Field.USER), testClient.get(User.Field.PWDHASH));
+        request.setParameter("code", grant.id());
+        request.setParameter("redirect_uri", testClient.get(ClientFields.REDIRECT_URI()).get());
+        setOAuthBasicAuthentication(request, testClient.id(), testClient.get(ClientFields.PWDHASH()).get());
         handlerAdapter.handle(request, response, controller);
         logger.info("testTokenEndPointClientUsedCode() ====> " + response.getContentAsString());
 
-        assertTrue(BP2DAOs.getGrantDao().get(grant.getIdValue()).getState() == GrantState.ACTIVE);
+        assertTrue(BP2DAOs.grantDao().get(grant.id()).get().getState() == GrantState.ACTIVE);
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
 
 
@@ -712,12 +716,12 @@ public class Backplane2ControllerTest {
         request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_AUTH_CODE);
 
         //create grant for test
-        Grant grant = new Grant.Builder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE, "fakeOwnerId", testClient.getClientId(),"bus:test").buildGrant();
+        Grant grant = new GrantBuilder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE, "fakeOwnerId", testClient.id(),"bus:test").buildGrant();
         this.saveGrant(grant);
 
-        request.setParameter("code", grant.getIdValue());
-        request.setParameter("redirect_uri", testClient.get(Client.ClientField.REDIRECT_URI));
-        setOAuthBasicAuthentication(request, testClient.get(User.Field.USER), "secret");
+        request.setParameter("code", grant.id());
+        request.setParameter("redirect_uri", testClient.get(ClientFields.REDIRECT_URI()).get());
+        setOAuthBasicAuthentication(request, testClient.id(), "secret");
         request.setParameter("scope", "bus;mybus.com bus:yourbus.com");
         handlerAdapter.handle(request, response, controller);
         logger.info("TryToUseMalformedScopeTest() => " + response.getContentAsString());
@@ -742,12 +746,12 @@ public class Backplane2ControllerTest {
         request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_AUTH_CODE);
 
         //create grant for test
-        Grant grant = new Grant.Builder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE, "fakeOwnerId", testClient.getClientId(),"bus:mybus.com").buildGrant();
+        Grant grant = new GrantBuilder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE, "fakeOwnerId", testClient.id(),"bus:mybus.com").buildGrant();
         this.saveGrant(grant);
 
-        request.setParameter("code", grant.getIdValue());
-        request.setParameter("redirect_uri", testClient.get(Client.ClientField.REDIRECT_URI));
-        setOAuthBasicAuthentication(request, testClient.get(User.Field.USER), "secret");
+        request.setParameter("code", grant.id());
+        request.setParameter("redirect_uri", testClient.get(ClientFields.REDIRECT_URI()).get());
+        setOAuthBasicAuthentication(request, testClient.id(), "secret");
 
         request.setParameter("scope", "bus:mybus.com bus:yourbus.com");
         handlerAdapter.handle(request, response, controller);
@@ -762,7 +766,7 @@ public class Backplane2ControllerTest {
         request.setMethod("POST");
         request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS);
         request.setParameter("scope", "bus:someunauthorized.bus");
-        setOAuthBasicAuthentication(request, testClient.get(User.Field.USER), "secret");
+        setOAuthBasicAuthentication(request, testClient.id(), "secret");
         handlerAdapter.handle(request, response, controller);
         logger.info("testClientCredentialsUnauthorizedScope() => " + response.getContentAsString());
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
@@ -778,10 +782,10 @@ public class Backplane2ControllerTest {
         request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_AUTH_CODE);
 
         //create grant for test
-        Grant grant = new Grant.Builder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE, "fakeOwnerId", testClient.getClientId(),"bus:test").buildGrant();
+        Grant grant = new GrantBuilder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE, "fakeOwnerId", testClient.id(),"bus:test").buildGrant();
         this.saveGrant(grant);
 
-        request.setParameter("code", grant.getIdValue());
+        request.setParameter("code", grant.id());
 
         //will fail because no redirect_uri value is included
         request.setParameter("redirect_uri","");
@@ -858,7 +862,7 @@ public class Backplane2ControllerTest {
         Map<String,Object> msg = mapper.readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {});
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), tokenBus);
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokensAndChannel.channel);
-        BackplaneMessage message = new BackplaneMessage(testClient.getSourceUrl(), DEFAULT_MESSAGE_RETENTION_SECONDS, MAX_MESSAGE_RETENTION_SECONDS, msg);
+        BackplaneMessage message = new BackplaneMessage(testClient.get(ClientFields.SOURCE_URL()).get(), DEFAULT_MESSAGE_RETENTION_SECONDS, MAX_MESSAGE_RETENTION_SECONDS, msg);
         this.saveMessage(message);
 
         Thread.sleep(1000);
@@ -893,7 +897,7 @@ public class Backplane2ControllerTest {
 
         assertTrue("Expected " + HttpServletResponse.SC_OK + " but received: " + response.getStatus(), response.getStatus() == HttpServletResponse.SC_OK);
 
-        TokenDAO tokenDAO = BP2DAOs.getTokenDao();
+        TokenDAO tokenDAO = com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao();
         tokenDAO.delete(tokensAndChannel.bearerToken);
         tokenDAO.delete(tokensAndChannel.refreshToken);
     }
@@ -903,7 +907,7 @@ public class Backplane2ControllerTest {
 
         // Create appropriate token
         String testBus = "testbus";
-        saveGrant(new Grant.Builder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.getClientId(),"bus:" + testBus).buildGrant());
+        saveGrant(new GrantBuilder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.id(),"bus:" + testBus).buildGrant());
         String token = privTokenRequest(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, testBus));
 
         // Seed message
@@ -911,7 +915,7 @@ public class Backplane2ControllerTest {
         Map<String,Object> msg = mapper.readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {});
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), testBus);
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), "randomchannel");
-        BackplaneMessage message = new BackplaneMessage(testClient.getSourceUrl(), DEFAULT_MESSAGE_RETENTION_SECONDS, MAX_MESSAGE_RETENTION_SECONDS, msg);
+        BackplaneMessage message = new BackplaneMessage(testClient.get(ClientFields.SOURCE_URL()).get(), DEFAULT_MESSAGE_RETENTION_SECONDS, MAX_MESSAGE_RETENTION_SECONDS, msg);
         this.saveMessage(message);
 
         Thread.sleep(1000);
@@ -957,7 +961,7 @@ public class Backplane2ControllerTest {
 
         // Create appropriate token
         String testBuses = "this.com that.com";
-        saveGrant(new Grant.Builder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.getClientId(),
+        saveGrant(new GrantBuilder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.id(),
                 Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, testBuses)).buildGrant());
         String token = privTokenRequest(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, testBuses));
 
@@ -967,12 +971,12 @@ public class Backplane2ControllerTest {
 
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), "this.com");
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), "qCDsQm3JTnhZ91RiPpri8R31ehJQ9lhp");
-        BackplaneMessage message1 = new BackplaneMessage(testClient.getSourceUrl(), DEFAULT_MESSAGE_RETENTION_SECONDS, MAX_MESSAGE_RETENTION_SECONDS, msg);
+        BackplaneMessage message1 = new BackplaneMessage(testClient.get(ClientFields.SOURCE_URL()).get(), DEFAULT_MESSAGE_RETENTION_SECONDS, MAX_MESSAGE_RETENTION_SECONDS, msg);
         this.saveMessage(message1);
 
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), "that.com");
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), "randomchannel");
-        BackplaneMessage message2 = new BackplaneMessage(testClient.getSourceUrl(), DEFAULT_MESSAGE_RETENTION_SECONDS, MAX_MESSAGE_RETENTION_SECONDS, msg);
+        BackplaneMessage message2 = new BackplaneMessage(testClient.get(ClientFields.SOURCE_URL()).get(), DEFAULT_MESSAGE_RETENTION_SECONDS, MAX_MESSAGE_RETENTION_SECONDS, msg);
         this.saveMessage(message2);
 
         Thread.sleep(1000);
@@ -1005,13 +1009,13 @@ public class Backplane2ControllerTest {
 
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), "otherbus");
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokensAndchannel.channel);
-        BackplaneMessage message1 = new BackplaneMessage(testClient.getSourceUrl(), DEFAULT_MESSAGE_RETENTION_SECONDS, MAX_MESSAGE_RETENTION_SECONDS, msg);
+        BackplaneMessage message1 = new BackplaneMessage(testClient.get(ClientFields.SOURCE_URL()).get(), DEFAULT_MESSAGE_RETENTION_SECONDS, MAX_MESSAGE_RETENTION_SECONDS, msg);
         this.saveMessage(message1);
 
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), "testbus");
         // same channel / different bus should never happen in production with true random, server-generated channel name
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokensAndchannel.channel);
-        BackplaneMessage message2 = new BackplaneMessage(testClient.getSourceUrl(), DEFAULT_MESSAGE_RETENTION_SECONDS, MAX_MESSAGE_RETENTION_SECONDS, msg);
+        BackplaneMessage message2 = new BackplaneMessage(testClient.get(ClientFields.SOURCE_URL()).get(), DEFAULT_MESSAGE_RETENTION_SECONDS, MAX_MESSAGE_RETENTION_SECONDS, msg);
         this.saveMessage(message2);
 
         Thread.sleep(1000);
@@ -1022,7 +1026,7 @@ public class Backplane2ControllerTest {
         request.setMethod("GET");
         request.setParameter("block", "15");
         request.setParameter(OAUTH2_ACCESS_TOKEN_PARAM_NAME, tokensAndchannel.bearerToken);
-        //request.setParameter("since", message1.getIdValue());
+        //request.setParameter("since", message1.id());
         handlerAdapter.handle(request, response, controller);
         logger.info("testMessagesEndPointRegular() => " + response.getContentAsString());
 
@@ -1033,7 +1037,7 @@ public class Backplane2ControllerTest {
         List<Map<String,Object>> returnedMsgs = (List<Map<String, Object>>) returnedBody.get("messages");
         assertTrue("Expected 1 message, received "  + returnedMsgs.size(), returnedMsgs.size() == 1);
 
-        TokenDAO tokenDAO = BP2DAOs.getTokenDao();
+        TokenDAO tokenDAO = com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao();
         tokenDAO.delete(tokensAndchannel.bearerToken);
         tokenDAO.delete(tokensAndchannel.refreshToken);
 
@@ -1066,7 +1070,7 @@ public class Backplane2ControllerTest {
         logger.info("created one anon token");
 
         // Create appropriate token
-        saveGrant(new Grant.Builder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.getClientId(),
+        saveGrant(new GrantBuilder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.id(),
                 Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, "testbus otherbus")).buildGrant());
         String token2 = privTokenRequest(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, "testbus otherbus"));
 
@@ -1092,12 +1096,12 @@ public class Backplane2ControllerTest {
 
         Thread.sleep(1000);
 
-        List<BackplaneMessage> messages = BP2DAOs.getBackplaneMessageDAO().retrieveMessagesByChannel(tokensAndChannel.channel);
+        List<BackplaneMessage> messages = com.janrain.backplane2.server.dao.BP2DAOs.getBackplaneMessageDAO().retrieveMessagesByChannel(tokensAndChannel.channel);
         for (BackplaneMessage message: messages) {
-            BP2DAOs.getBackplaneMessageDAO().delete(message.getIdValue());
+            com.janrain.backplane2.server.dao.BP2DAOs.getBackplaneMessageDAO().delete(message.getIdValue());
         }
 
-        TokenDAO tokenDAO = BP2DAOs.getTokenDao();
+        TokenDAO tokenDAO = com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao();
         tokenDAO.delete(tokensAndChannel.bearerToken);
         tokenDAO.delete(tokensAndChannel.refreshToken);
 
@@ -1115,7 +1119,7 @@ public class Backplane2ControllerTest {
         TokensAndChannel tokensAndChannelAndChannel = anonTokenRequest("testbus");
 
         // Create appropriate token
-        saveGrant(new Grant.Builder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.getClientId(),
+        saveGrant(new GrantBuilder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.id(),
                 Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, "testbus otherbus")).buildGrant());
         String token2 = privTokenRequest(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, "testbus otherbus"));
 
@@ -1171,7 +1175,7 @@ public class Backplane2ControllerTest {
             assertTrue(expected.getMessage().contains("Invalid bus - channel binding"));
         }
 
-        TokenDAO tokenDAO = BP2DAOs.getTokenDao();
+        TokenDAO tokenDAO = com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao();
         tokenDAO.delete(tokensAndChannelAndChannel.bearerToken);
         tokenDAO.delete(tokensAndChannelAndChannel.refreshToken);
     }
@@ -1189,7 +1193,7 @@ public class Backplane2ControllerTest {
         TokensAndChannel tokensAndChannel = anonTokenRequest(testBus);
 
         // Create appropriate token
-        saveGrant(new Grant.Builder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.getClientId(),
+        saveGrant(new GrantBuilder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.id(),
                 Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, "testbus otherbus")).buildGrant());
         String token2 = privTokenRequest(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, "testbus otherbus"));
 
@@ -1198,7 +1202,7 @@ public class Backplane2ControllerTest {
         Map<String,Object> msg = mapper.readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {});
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), testBus);
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), tokensAndChannel.channel);
-        BackplaneMessage message1 = new BackplaneMessage(testClient.getSourceUrl(), DEFAULT_MESSAGE_RETENTION_SECONDS, MAX_MESSAGE_RETENTION_SECONDS, msg);
+        BackplaneMessage message1 = new BackplaneMessage(testClient.get(ClientFields.SOURCE_URL()).get(), DEFAULT_MESSAGE_RETENTION_SECONDS, MAX_MESSAGE_RETENTION_SECONDS, msg);
         this.saveMessage(message1);
 
         Thread.sleep(1000);
@@ -1213,7 +1217,7 @@ public class Backplane2ControllerTest {
         logger.info(response.getContentAsString());
         assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
 
-        TokenDAO tokenDAO = BP2DAOs.getTokenDao();
+        TokenDAO tokenDAO = com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao();
         tokenDAO.delete(tokensAndChannel.bearerToken);
         tokenDAO.delete(tokensAndChannel.refreshToken);
 
@@ -1227,7 +1231,7 @@ public class Backplane2ControllerTest {
         TokensAndChannel tokensAndChannel = anonTokenRequest(testBus);
 
         // Create appropriate token
-        saveGrant(new Grant.Builder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.getClientId(),
+        saveGrant(new GrantBuilder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.id(),
                 Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, "testbus otherbus")).buildGrant());
         String token2 = privTokenRequest(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, "testbus otherbus"));
 
@@ -1276,7 +1280,7 @@ public class Backplane2ControllerTest {
 
         assertTrue("Limit should have been reached, but " + numberOfPostedMessages + "<=" + bpConfig.getDefaultMaxMessageLimit(), success);
 
-        TokenDAO tokenDAO = BP2DAOs.getTokenDao();
+        TokenDAO tokenDAO = com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao();
         tokenDAO.delete(tokensAndChannel.bearerToken);
         tokenDAO.delete(tokensAndChannel.refreshToken);
 
@@ -1292,8 +1296,8 @@ public class Backplane2ControllerTest {
 
         // Create auth
         ArrayList<Grant> grants = new ArrayList<Grant>();
-        Grant grant1 = new Grant.Builder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.getClientId(), "bus:mybus.com").buildGrant();
-        Grant grant2 = new Grant.Builder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.getClientId(), "bus:thisbus.com").buildGrant();
+        Grant grant1 = new GrantBuilder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.id(), "bus:mybus.com").buildGrant();
+        Grant grant2 = new GrantBuilder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.id(), "bus:thisbus.com").buildGrant();
         this.saveGrant(grant1);
         this.saveGrant(grant2);
         grants.add(grant1);
@@ -1303,7 +1307,7 @@ public class Backplane2ControllerTest {
         String  token = privTokenRequest(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, ""));
 
         // Revoke token based on one code
-        BP2DAOs.getTokenDao().revokeTokenByGrant(grant1.getIdValue());
+        com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao().revokeTokenByGrant(grant1.id());
 
         try {
             // Now the token should fail
@@ -1317,7 +1321,7 @@ public class Backplane2ControllerTest {
             assertTrue(HttpServletResponse.SC_FORBIDDEN == response.getStatus());
             assertTrue(response.getContentAsString().contains("invalid token"));
         } finally {
-            BP2DAOs.getTokenDao().delete(token);
+            com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao().delete(token);
         }
     }
 
@@ -1330,8 +1334,8 @@ public class Backplane2ControllerTest {
 
         // Create auth
         ArrayList<Grant> grants = new ArrayList<Grant>();
-        Grant grant1 = new Grant.Builder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.getClientId(), "bus:mybus.com").buildGrant();
-        Grant grant2 = new Grant.Builder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.getClientId(), "bus:thisbus.com").buildGrant();
+        Grant grant1 = new GrantBuilder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.id(), "bus:mybus.com").buildGrant();
+        Grant grant2 = new GrantBuilder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.id(), "bus:thisbus.com").buildGrant();
         this.saveGrant(grant1);
         this.saveGrant(grant2);
         grants.add(grant1);
@@ -1341,7 +1345,7 @@ public class Backplane2ControllerTest {
         String  token = privTokenRequest(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, ""));
 
         logger.info("revoken grants by bus: mybus.com");
-        BP2DAOs.getBusDao().delete("mybus.com");
+        BP2DAOs.busDao().delete("mybus.com");
 
         try {
             // Now the token should fail
@@ -1355,7 +1359,7 @@ public class Backplane2ControllerTest {
             assertTrue(HttpServletResponse.SC_FORBIDDEN == response.getStatus());
             assertTrue(response.getContentAsString().contains("invalid token"));
         } finally {
-            BP2DAOs.getTokenDao().delete(token);
+            com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao().delete(token);
         }
 
     }
@@ -1364,33 +1368,41 @@ public class Backplane2ControllerTest {
     @Test
     public void testAuthenticate() throws Exception {
 
-        User user = new User();
-        user.put(User.Field.USER.getFieldName(), RandomUtils.randomString(20));
-        user.put(User.Field.PWDHASH.getFieldName(), HmacHashUtils.hmacHash("foo"));
+        final BusOwner busOwner = new BusOwner(RandomUtils.randomString(20), HmacHashUtils.hmacHash("foo"));
 
-        BusConfig2 bus1 = new BusConfig2(RandomUtils.randomString(30), user.getIdValue(), "100", "50000");
-        BusConfig2 bus2 = new BusConfig2(RandomUtils.randomString(30), user.getIdValue(), "100", "50000");
+        BusConfig2 bus1 = new BusConfig2(new HashMap<String,String>() {{
+            put(BusConfig2Fields.BUS_NAME().name(), RandomUtils.randomString(30));
+            put(BusConfig2Fields.OWNER().name(), busOwner.id());
+            put(BusConfig2Fields.RETENTION_TIME_SECONDS().name(), "100");
+            put(BusConfig2Fields.RETENTION_STICKY_TIME_SECONDS().name(), "50000");
+        }});
+        BusConfig2 bus2 = new BusConfig2(new HashMap<String,String>() {{
+            put(BusConfig2Fields.BUS_NAME().name(), RandomUtils.randomString(30));
+            put(BusConfig2Fields.OWNER().name(), busOwner.id());
+            put(BusConfig2Fields.RETENTION_TIME_SECONDS().name(), "100");
+            put(BusConfig2Fields.RETENTION_STICKY_TIME_SECONDS().name(), "50000");
+        }});
 
         try {
-            BP2DAOs.getBusOwnerDAO().persist(user);
+            BP2DAOs.busOwnerDao().store(busOwner);
 
             // create a few buses
-            BP2DAOs.getBusDao().persist(bus1);
-            BP2DAOs.getBusDao().persist(bus2);
+            BP2DAOs.busDao().store(bus1);
+            BP2DAOs.busDao().store(bus2);
 
             refreshRequestAndResponse();
 
             // encode un:pw
-            String credentials = testClient.getIdValue() + ":" + "secret";
+            String credentials = testClient.id() + ":" + "secret";
             String encodedCredentials = new String(Base64.encode(credentials.getBytes()));
 
             logger.info("hit /authorize endpoint to get ball rolling");
             request.setRequestURI("/v2/authorize");
             request.setMethod("GET");
             request.setAuthType("BASIC");
-            request.addParameter("redirect_uri", testClient.getRedirectUri());
+            request.addParameter("redirect_uri", testClient.get(ClientFields.REDIRECT_URI()).get());
             request.addParameter("response_type", OAUTH2_TOKEN_RESPONSE_TYPE_CODE);
-            request.addParameter("client_id", testClient.getClientId());
+            request.addParameter("client_id", testClient.id());
             request.addHeader("Authorization", "Basic " + encodedCredentials);
             ModelAndView mv = handlerAdapter.handle(request, response, controller);
             logger.info("should be redirect view to authenticate => " + mv.getViewName());
@@ -1409,7 +1421,7 @@ public class Backplane2ControllerTest {
             refreshRequestAndResponse();
 
             request.setRequestURI("/v2/authenticate");
-            request.addParameter("busOwner", user.getIdValue());
+            request.addParameter("busOwner", busOwner.id());
             request.addParameter("password", "foo");
             request.setMethod("POST");
             mv = handlerAdapter.handle(request, response, controller);
@@ -1424,22 +1436,22 @@ public class Backplane2ControllerTest {
             request.setRequestURI("/v2/authorize");
             request.setMethod("POST");
             request.setAuthType("BASIC");
-            request.addParameter("redirect_uri", testClient.getRedirectUri());
+            request.addParameter("redirect_uri", testClient.get(ClientFields.REDIRECT_URI()).get());
             request.addParameter("response_type", OAUTH2_TOKEN_RESPONSE_TYPE_CODE);
-            request.addParameter("client_id", testClient.getClientId());
+            request.addParameter("client_id", testClient.id());
             request.setCookies(new Cookie[]{authNCookie, authZCookie});
 
             request.addHeader("Authorization", "Basic " + encodedCredentials);
             mv = handlerAdapter.handle(request, response, controller);
             Map<String, Object> model = mv.getModel();
             String authKey = (String) model.get("auth_key");
-            model.put("scope", bus1.getIdValue());
+            model.put("scope", bus1.id());
 
             assertNotNull(authKey);
             logger.info("auth_key=" + authKey);
-            logger.info("client_id=" + (String) model.get("client_id"));
-            logger.info("redirect_uri=" + (String) model.get("redirect_uri"));
-            logger.info("scope=" + (String) model.get("scope"));
+            logger.info("client_id=" + model.get("client_id"));
+            logger.info("redirect_uri=" + model.get("redirect_uri"));
+            logger.info("scope=" + model.get("scope"));
 
             logger.info("should be redirect to authorize view => " + mv.getViewName());
 
@@ -1473,8 +1485,8 @@ public class Backplane2ControllerTest {
             request.setMethod("POST");
             request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_AUTH_CODE);
             request.setParameter("code", code);
-            request.setParameter("redirect_uri", testClient.get(Client.ClientField.REDIRECT_URI));
-            setOAuthBasicAuthentication(request, testClient.getClientId(), "secret");
+            request.setParameter("redirect_uri", testClient.get(ClientFields.REDIRECT_URI()).get());
+            setOAuthBasicAuthentication(request, testClient.id(), "secret");
 
             handlerAdapter.handle(request, response, controller);
 
@@ -1484,17 +1496,17 @@ public class Backplane2ControllerTest {
             String tokenId = (String) returnedBody.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME);
             assertNotNull(tokenId);
 
-            Grant grant = BP2DAOs.getGrantDao().get(code);
-            Token token = BP2DAOs.getTokenDao().get(tokenId);
+            Grant grant = BP2DAOs.grantDao().get(code).getOrElse(null);
+            Token token = com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao().get(tokenId);
 
-            assertTrue(grant.get(Grant.GrantField.ISSUED_TO_CLIENT_ID).equals(token.get(Token.TokenField.ISSUED_TO_CLIENT_ID)));
-            assertTrue(grant.get(Grant.GrantField.ISSUED_BY_USER_ID).equals(user.getIdValue()));
+            assertTrue(grant.get(GrantFields.ISSUED_TO_CLIENT_ID()).equals(token.get(Token.TokenField.ISSUED_TO_CLIENT_ID)));
+            assertTrue(grant.get(GrantFields.ISSUED_BY_USER_ID()).equals(busOwner.id()));
 
 
         } finally {
-            BP2DAOs.getBusOwnerDAO().delete(user.getIdValue());
-            BP2DAOs.getBusDao().delete(bus1.getIdValue());
-            BP2DAOs.getBusDao().delete(bus2.getIdValue());
+            BP2DAOs.busOwnerDao().delete(busOwner.id());
+            BP2DAOs.busDao().delete(bus1.id());
+            BP2DAOs.busDao().delete(bus2.id());
         }
 
     }
@@ -1507,7 +1519,7 @@ public class Backplane2ControllerTest {
         TokensAndChannel tokensAndChannel = anonTokenRequest(testBus);
 
         // Create appropriate token
-        saveGrant(new Grant.Builder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.getClientId(),
+        saveGrant(new GrantBuilder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.id(),
                 Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, "testbus otherbus")).buildGrant());
         String token2 = privTokenRequest(Scope.getEncodedScopesAsString(BackplaneMessage.Field.CHANNEL, tokensAndChannel.channel));
 
@@ -1522,7 +1534,7 @@ public class Backplane2ControllerTest {
         ArrayList<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
 
         for (int i=0;i <= numMessages; i++) {
-            messages.add(new BackplaneMessage(testClient.getSourceUrl(), DEFAULT_MESSAGE_RETENTION_SECONDS, MAX_MESSAGE_RETENTION_SECONDS, msg));
+            messages.add(new BackplaneMessage(testClient.get(ClientFields.SOURCE_URL()).get(), DEFAULT_MESSAGE_RETENTION_SECONDS, MAX_MESSAGE_RETENTION_SECONDS, msg));
         }
 
         // use #0 to set the 'since' from server time, don't count #0
@@ -1574,7 +1586,7 @@ public class Backplane2ControllerTest {
             prev = (String)m.get("messageURL");
         }
 
-        TokenDAO tokenDAO = BP2DAOs.getTokenDao();
+        TokenDAO tokenDAO = com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao();
         tokenDAO.delete(tokensAndChannel.bearerToken);
         tokenDAO.delete(tokensAndChannel.refreshToken);
 
@@ -1606,9 +1618,9 @@ public class Backplane2ControllerTest {
     @Test
     public void testPrivilegedRefreshToken() throws Exception {
         refreshRequestAndResponse();
-        saveGrant(new Grant.Builder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.getClientId(),"bus:testbus").buildGrant());
+        saveGrant(new GrantBuilder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.id(),"bus:testbus").buildGrant());
         Scope scope1 = new Scope(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, "testbus"));
-        setOAuthBasicAuthentication(request, testClient.getClientId(), testClient.getClientSecret());
+        setOAuthBasicAuthentication(request, testClient.id(), testClient.get(ClientFields.PWDHASH()).get());
         Map<String, Object> tokenResponse = new AuthenticatedTokenRequest(OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS, testClient,
                 null, null, null, scope1.toString(), request, request.getHeader("Authorization")).tokenResponse();
         String accessToken = tokenResponse.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME).toString();
@@ -1617,7 +1629,7 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
         request.setRequestURI("/v2/token");
         request.setMethod("POST");
-        setOAuthBasicAuthentication(request, testClient.getClientId(), "secret");
+        setOAuthBasicAuthentication(request, testClient.id(), "secret");
         request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_REFRESH_TOKEN);
         request.setParameter(OAUTH2_REFRESH_TOKEN_PARAM_NAME, refreshToken);
         handlerAdapter.handle(request, response, controller);
@@ -1648,12 +1660,12 @@ public class Backplane2ControllerTest {
         Map<String,Object> msg = mapper.readValue(TEST_MSG_1, new TypeReference<Map<String,Object>>() {});
         msg.put(BackplaneMessage.Field.BUS.getFieldName(), "foo");
         msg.put(BackplaneMessage.Field.CHANNEL.getFieldName(), "bar");
-        BackplaneMessage message = new BackplaneMessage(testClient.getSourceUrl(), DEFAULT_MESSAGE_RETENTION_SECONDS, MAX_MESSAGE_RETENTION_SECONDS, msg);
+        BackplaneMessage message = new BackplaneMessage(testClient.get(ClientFields.SOURCE_URL()).get(), DEFAULT_MESSAGE_RETENTION_SECONDS, MAX_MESSAGE_RETENTION_SECONDS, msg);
         this.saveMessage(message);
 
         Thread.sleep(1000);
 
-        BackplaneMessage lastMessage = BP2DAOs.getBackplaneMessageDAO().getLatestMessage();
+        BackplaneMessage lastMessage = com.janrain.backplane2.server.dao.BP2DAOs.getBackplaneMessageDAO().getLatestMessage();
 
         assertTrue("messages not equal", lastMessage.getIdValue().equals(message.getIdValue()));
     }
@@ -1669,7 +1681,7 @@ public class Backplane2ControllerTest {
         request.addHeader("Authorization", "Bearer " + accessToken);
     }
 
-    private TokensAndChannel anonTokenRequest(String tokenBus) throws TokenException {
+    private TokensAndChannel anonTokenRequest(String tokenBus) throws TokenException, DaoException {
         refreshRequestAndResponse();
         TokenRequest req = new AnonymousTokenRequest("bla", tokenBus, null, null, request, null);
         Map<String, Object> tokenResponse = req.tokenResponse();
@@ -1683,10 +1695,10 @@ public class Backplane2ControllerTest {
         return tokensAndChannel;
     }
 
-    private String privTokenRequest(String scopeString) throws UnsupportedEncodingException, TokenException {
+    private String privTokenRequest(String scopeString) throws UnsupportedEncodingException, TokenException, DaoException {
         refreshRequestAndResponse();
         Scope scope = new Scope(scopeString);
-        setOAuthBasicAuthentication(request, testClient.getClientId(), testClient.getClientSecret());
+        setOAuthBasicAuthentication(request, testClient.id(), testClient.get(ClientFields.PWDHASH()).get());
         TokenRequest req = new AuthenticatedTokenRequest(OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS, testClient,
                 null, null, null, scope.toString(), request, request.getHeader("Authorization"));
         return req.tokenResponse().get(OAUTH2_ACCESS_TOKEN_PARAM_NAME).toString();

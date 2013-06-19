@@ -20,13 +20,18 @@ import com.janrain.backplane.common.AuthException;
 import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.common.HmacHashUtils;
 import com.janrain.backplane.config.BackplaneConfig;
-import com.janrain.backplane.server.redisdao.BP1DAOs;
+import com.janrain.backplane.dao.DaoException;
 import com.janrain.backplane.server.redisdao.BP1MessageDao;
-import com.janrain.backplane2.server.config.User;
 import com.janrain.backplane.common.DateTimeUtils;
 import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.servlet.ServletUtil;
+import com.janrain.util.ServletUtil;
 import com.janrain.utils.AnalyticsLogger;
+import com.janrain.backplane.server1.dao.BP1DAOs;
+import com.janrain.backplane.server1.model.BusConfig1;
+import com.janrain.backplane.server1.model.BusConfig1Fields;
+import com.janrain.backplane.server1.model.BusUser;
+import com.janrain.backplane.server1.model.BusUserFields;
+import com.janrain.util.RandomUtils;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Histogram;
 import com.yammer.metrics.core.MetricName;
@@ -46,7 +51,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.security.SecureRandom;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -77,15 +81,16 @@ public class Backplane1Controller {
             @PathVariable String bus,
             @RequestParam(value = "since", defaultValue = "") String since,
             @RequestParam(value = "sticky", required = false) String sticky )
-            throws AuthException, SimpleDBException, BackplaneServerException {
+            throws AuthException, SimpleDBException, BackplaneServerException, DaoException {
 
         final TimerContext context = getBusMessagesTime.time();
 
         try {
 
-            checkAuth(basicAuth, bus, BusConfig1.BUS_PERMISSION.GETALL);
+            checkAuth(basicAuth, bus, BusConfig1Fields.GETALL_USERS());
 
-            List<BackplaneMessage> messages = BP1DAOs.getMessageDao().getMessagesByBus(bus, since, sticky);
+            List<BackplaneMessage> messages =
+               com.janrain.backplane.server.redisdao.BP1DAOs.getMessageDao().getMessagesByBus(bus, since, sticky);
 
             List<HashMap<String,Object>> frames = new ArrayList<HashMap<String, Object>>();
             for (BackplaneMessage message : messages) {
@@ -147,33 +152,33 @@ public class Backplane1Controller {
             @RequestHeader(value = "Authorization", required = false) String basicAuth,
             @RequestBody List<Map<String,Object>> messages,
             @PathVariable String bus,
-            @PathVariable String channel) throws AuthException, SimpleDBException, BackplaneServerException {
+            @PathVariable String channel) throws AuthException, SimpleDBException, BackplaneServerException, DaoException {
 
-        User user = checkAuth(basicAuth, bus, BusConfig1.BUS_PERMISSION.POST);
+        BusUser user = checkAuth(basicAuth, bus, BusConfig1Fields.POST_USERS());
 
         final TimerContext context = postMessagesTime.time();
 
         try {
 
-            BP1MessageDao backplaneMessageDAO = BP1DAOs.getMessageDao();
+            BP1MessageDao backplaneMessageDAO = com.janrain.backplane.server.redisdao.BP1DAOs.getMessageDao();
 
             //Block post if the caller has exceeded the message post limit
-            if (backplaneMessageDAO.getMessageCount(bus, channel) >= bpConfig.getDefaultMaxMessageLimit()) {
+            if (backplaneMessageDAO.getMessageCount(bus, channel) >= BackplaneConfig.getDefaultMaxMessageLimit()) {
                 logger.warn("Channel " + bus + ":" + channel + " has reached the maximum of " +
-                        bpConfig.getDefaultMaxMessageLimit() + " messages");
+                        BackplaneConfig.getDefaultMaxMessageLimit() + " messages");
                 throw new BackplaneServerException("Message limit exceeded for this channel");
             }
 
-            BusConfig1 busConfig = BP1DAOs.getBusDao().get(bus);
+            BusConfig1 busConfig = BP1DAOs.busDao().get(bus).getOrElse(null);
 
             // For analytics.
             String channelId = "https://" + request.getServerName() + "/" + version + "/bus/" + bus + "/channel/" + channel;
-            String clientId = user.getIdValue();
+            String clientId = user.id();
 
             for(Map<String,Object> messageData : messages) {
                 BackplaneMessage message = new BackplaneMessage(bus, channel,
-                        busConfig.getRetentionTimeSeconds(),
-                        busConfig.getRetentionTimeStickySeconds(),
+                        busConfig.retentionTimeSeconds(),
+                        busConfig.retentionTimeStickySeconds(),
                         messageData);
                 backplaneMessageDAO.persist(message);
                 aniLogNewMessage(version, bus, channelId, clientId);
@@ -192,7 +197,7 @@ public class Backplane1Controller {
     @ExceptionHandler
     @ResponseBody
     public Map<String, String> handle(final AuthException e, HttpServletResponse response) {
-        logger.error("Backplane authentication error: " + e.getMessage(), bpConfig.getDebugException(e));
+        logger.error("Backplane authentication error: " + e.getMessage(), BackplaneConfig.getDebugException(e));
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         return new HashMap<String,String>() {{
             put(ERR_MSG_FIELD, e.getMessage());
@@ -202,10 +207,10 @@ public class Backplane1Controller {
     @ExceptionHandler
     @ResponseBody
     public Map<String, String> handle(final BackplaneServerException bse, HttpServletResponse response) {
-        logger.error("Backplane server error: " + bse.getMessage(), bpConfig.getDebugException(bse));
+        logger.error("Backplane server error: " + bse.getMessage(), BackplaneConfig.getDebugException(bse));
         response.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
         return new HashMap<String,String>() {{
-            put(ERR_MSG_FIELD, bpConfig.isDebugMode() ? bse.getMessage() : "Service unavailable");
+            put(ERR_MSG_FIELD, BackplaneConfig.isDebugMode() ? bse.getMessage() : "Service unavailable");
         }};
     }
 
@@ -216,32 +221,13 @@ public class Backplane1Controller {
     @ResponseBody
     public Map<String, String> handle(final Exception e, HttpServletRequest request, HttpServletResponse response) {
     	String path = request.getPathInfo();
-        logger.error("Error handling backplane request for " + path + ": " + e.getMessage(), bpConfig.getDebugException(e));
+        logger.error("Error handling backplane request for " + path + ": " + e.getMessage(), BackplaneConfig.getDebugException(e));
         response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
         return new HashMap<String,String>() {{
-            put(ERR_MSG_FIELD, bpConfig.isDebugMode() ? e.getMessage() : "Error processing request.");
+            put(ERR_MSG_FIELD, BackplaneConfig.isDebugMode() ? e.getMessage() : "Error processing request.");
         }};
     }
 
-    public static String randomString(int length) {
-        byte[] randomBytes = new byte[length];
-        random.nextBytes(randomBytes);
-        for (int i = 0; i < length; i++) {
-            byte b = randomBytes[i];
-            int c = Math.abs(b % 16);
-            if (c < 10) c += 48; // map (0..9) to '0' .. '9'
-            else c += (97 - 10);   // map (10..15) to 'a'..'f'
-            randomBytes[i] = (byte) c;
-        }
-        try {
-            return new String(randomBytes, "US-ASCII");
-        }
-        catch (UnsupportedEncodingException e) {
-            logger.error("US-ASCII character encoding not supported", e); // shouldn't happen
-            return null;
-        }
-    }
-    
     // - PRIVATE
 
     private static final Logger logger = Logger.getLogger(Backplane1Controller.class);
@@ -265,14 +251,9 @@ public class Backplane1Controller {
     private final Histogram payLoadSizesOnGets = Metrics.newHistogram(new MetricName("v1", this.getClass().getName().replace(".","_"), "payload_sizes_gets"));
 
     @Inject
-    private BackplaneConfig bpConfig;
-
-    @Inject
     private AnalyticsLogger anilogger;
 
-    private static final Random random = new SecureRandom();
-
-    private User checkAuth(String basicAuth, String bus, BusConfig1.BUS_PERMISSION permission) throws AuthException, BackplaneServerException {
+    private BusUser checkAuth(String basicAuth, String bus, BusConfig1Fields.EnumVal permissionField) throws AuthException, BackplaneServerException, DaoException {
         // authN
         String userPass = null;
         if ( basicAuth == null || ! basicAuth.startsWith("Basic ") || basicAuth.length() < 7) {
@@ -293,27 +274,21 @@ public class Backplane1Controller {
         String user = userPass.substring(0, delim);
         String pass = userPass.substring(delim + 1);
 
-        User userEntry;
-
-        //userEntry = superSimpleDb.retrieve(bpConfig.getTableName(Backplane1Config.SimpleDBTables.BP1_USERS), User.class, user);
-        userEntry = BP1DAOs.getUserDao().get(user);
+        BusUser userEntry = BP1DAOs.userDao().get(user).getOrElse(null);
 
         if (userEntry == null) {
             authError("User not found: " + user);
-        } else if ( ! HmacHashUtils.checkHmacHash(pass, userEntry.get(User.Field.PWDHASH)) ) {
+        } else if ( ! HmacHashUtils.checkHmacHash(pass, userEntry.get(BusUserFields.PWDHASH()).get()) ) {
             authError("Incorrect password for user " + user);
         }
 
         // authZ
-        BusConfig1 busConfig;
-
-        //busConfig = superSimpleDb.retrieve(bpConfig.getTableName(BP1_BUS_CONFIG), BusConfig1.class, bus);
-        busConfig = BP1DAOs.getBusDao().get(bus);
+        BusConfig1 busConfig = BP1DAOs.busDao().get(bus).getOrElse(null);
 
         if (busConfig == null) {
             authError("Bus configuration not found for " + bus);
-        } else if (!busConfig.getPermissions(user).contains(permission)) {
-            authError("User " + user + " denied " + permission + " to " + bus);
+        } else if (!busConfig.isAllowed(user, permissionField)) {
+            authError("User " + user + " not among the uses in " + permissionField + " on bus " + bus);
         }
 
         return userEntry;
@@ -322,7 +297,7 @@ public class Backplane1Controller {
     private void authError(String errMsg) throws AuthException {
         logger.error(errMsg);
         try {
-            throw new AuthException("Access denied. " + (bpConfig.isDebugMode() ? errMsg : ""));
+            throw new AuthException("Access denied. " + (BackplaneConfig.isDebugMode() ? errMsg : ""));
         } catch (Exception e) {
             throw new AuthException("Access denied.");
         }
@@ -330,7 +305,7 @@ public class Backplane1Controller {
 
     private String newChannel() {
     	final TimerContext context = getNewChannelTime.time();
-        String newChannel = "\"" + randomString(CHANNEL_NAME_LENGTH) +"\"";
+        String newChannel = "\"" + RandomUtils.randomString(CHANNEL_NAME_LENGTH) +"\"";
         context.stop();
     	return newChannel;
     }
@@ -340,7 +315,7 @@ public class Backplane1Controller {
         final TimerContext context = getChannelMessagesTime.time();
 
         try {
-            return BP1DAOs.getMessageDao().getMessagesByChannel(bus, channel, since, sticky);
+            return com.janrain.backplane.server.redisdao.BP1DAOs.getMessageDao().getMessagesByChannel(bus, channel, since, sticky);
         } catch (SimpleDBException sdbe) {
             throw sdbe;
         } catch (BackplaneServerException bse) {
@@ -367,7 +342,7 @@ public class Backplane1Controller {
                 return payload;
             } catch (IOException e) {
                 String errMsg = "Error converting frames to JSON: " + e.getMessage();
-                logger.error(errMsg, bpConfig.getDebugException(e));
+                logger.error(errMsg, BackplaneConfig.getDebugException(e));
                 throw new BackplaneServerException(errMsg, e);
             }
         } catch (BackplaneServerException bse) {
@@ -437,7 +412,7 @@ public class Backplane1Controller {
             anilogger.log(eventName, mapper.writeValueAsString(eventData));
         } catch (Exception e) {
             String errMsg = "Error sending analytics event: " + e.getMessage();
-            logger.error(errMsg, bpConfig.getDebugException(e));
+            logger.error(errMsg, BackplaneConfig.getDebugException(e));
         }
     }
 }

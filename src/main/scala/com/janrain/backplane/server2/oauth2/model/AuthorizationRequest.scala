@@ -5,9 +5,9 @@ import com.janrain.servlet.InvalidRequestException
 import org.apache.commons.lang.exception.ExceptionUtils
 import com.janrain.backplane.common.DateTimeUtils
 import java.util.Date
-import com.janrain.backplane2.server.dao.BP2DAOs
-import com.janrain.backplane2.server.config.Client
 import com.janrain.backplane.common.model.{MessageField, MessageFieldEnum, Message}
+import com.janrain.backplane.server2.dao.BP2DAOs
+import com.janrain.backplane.server2.model.{ClientFields, Client}
 
 /**
  * @author Johnny Bufu
@@ -25,24 +25,29 @@ class AuthorizationRequest(data: Map[String,String]) extends Message(data, Autho
   def getRedirectUri: String = {
     val client_id = get(AuthorizationRequestFields.CLIENT_ID)
     client_id
-      .map(BP2DAOs.getClientDAO.get(_))
+      .map(BP2DAOs.clientDao.get(_))
       .map(validRedirectUri(_, get(AuthorizationRequestFields.REDIRECT_URI)))
       .getOrElse(
        throw new AuthorizationException(OAuth2.OAUTH2_AUTHZ_DIRECT_ERROR, "invalid client_id: " + client_id, this)
       )
   }
 
-  private def validRedirectUri(client: Client, requestRedirectUri: Option[String]): String = {
-    val clientRedirectUri = client.get(Client.ClientField.REDIRECT_URI)
-    requestRedirectUri.map(rru => {
+  private def validRedirectUri(client: Option[Client], requestRedirectUri: Option[String]): String = {
+    val clientRedirectUri = client.flatMap(_.get(ClientFields.REDIRECT_URI))
+    (for {
+      configuredUri <- clientRedirectUri
+      requestedUri <- requestRedirectUri
+    } yield {
       try {
-        OAuth2.validateRedirectUri(rru, clientRedirectUri)
-        rru
+        OAuth2.validateRedirectUri(requestedUri, configuredUri)
+        requestedUri
       } catch {
         case e: ValidationException =>
           throw new AuthorizationException(OAuth2.OAUTH2_AUTHZ_DIRECT_ERROR, "invalid redirect_uri: " + e.getMessage, this)
       }
-    }).getOrElse(clientRedirectUri)
+    })
+    .getOrElse(clientRedirectUri.getOrElse(
+      throw new AuthorizationException(OAuth2.OAUTH2_AUTHZ_DIRECT_ERROR, "no redirect_uri configured for client_id: " + id, this)))
   }
 }
 

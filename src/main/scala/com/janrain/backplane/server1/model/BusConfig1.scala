@@ -2,18 +2,22 @@ package com.janrain.backplane.server1.model
 
 import com.janrain.backplane.common.model.{MessageField, MessageFieldEnum, Message}
 import com.janrain.backplane.common.MessageException
+import scala.collection.JavaConversions._
 
 /**
  * @author Johnny Bufu
  */
 class BusConfig1(data: Map[String,String]) extends Message(data, BusConfig1Fields.values) {
 
+  def this(javaData: java.util.Map[String,String]) = this(javaData.toMap)
+
   def idField = BusConfig1Fields.BUS_NAME
 
-  def isAllowedPost(user: String) = get(BusConfig1Fields.POST_USERS).exists(_.split(",").contains(user))
+  def isAllowed(user: String, permissionField: BusConfig1Fields.EnumVal) = get(permissionField).exists(_.split(",").contains(user))
 
-  def isAllowedGetAll(user: String) = get(BusConfig1Fields.GETALL_USERS).exists(_.split(",").contains(user))
+  def retentionTimeSeconds: Int = get(BusConfig1Fields.RETENTION_TIME_SECONDS).getOrElse(BusConfig1.RETENTION_MIN_SECONDS.toString).toInt
 
+  def retentionTimeStickySeconds: Int = get(BusConfig1Fields.RETENTION_STICKY_TIME_SECONDS).getOrElse(BusConfig1.RETENTION_STICKY_MIN_SECONDS.toString).toInt
 }
 
 object BusConfig1 {

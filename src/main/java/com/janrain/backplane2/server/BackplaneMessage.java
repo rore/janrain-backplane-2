@@ -17,13 +17,13 @@
 package com.janrain.backplane2.server;
 
 import com.janrain.backplane.common.BackplaneServerException;
-import com.janrain.backplane.common.RandomUtils;
 import com.janrain.backplane.common.DateTimeUtils;
 import com.janrain.backplane.server.ExternalizableCore;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.MessageField;
 import com.janrain.commons.util.Pair;
 import com.janrain.servlet.InvalidRequestException;
+import com.janrain.util.RandomUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;

@@ -5,12 +5,47 @@ import com.janrain.backplane2.server.{GrantState, Scope, GrantType}
 import com.janrain.backplane.common.{DateTimeUtils, MessageException}
 import com.janrain.oauth2.TokenException
 import org.apache.commons.lang.StringUtils
+import scala.collection.JavaConversions._
 
 /**
  * @author Johnny Bufu
  */
 class Grant(data: Map[String,String]) extends Message(data, GrantFields.values) {
+
+  def this(javaData: java.util.Map[String,String])= this(javaData.toMap)
+
   def idField = GrantFields.ID
+
+  def getType: GrantType = get(GrantFields.TYPE).map(typeValue => {
+    try {
+      GrantType.valueOf(typeValue)
+    } catch {
+      case e: IllegalArgumentException =>
+        throw new IllegalStateException("Invalid GrantType on for GrantField.Type, should have been validated on grant creation: " + typeValue)
+    }
+  })
+  .getOrElse( { throw new IllegalStateException("Missing value for GrantFields.TYPE") })
+
+  def getState: GrantState = get(GrantFields.STATE).map(stateValue => {
+    try {
+      GrantState.valueOf(stateValue)
+    } catch {
+      case e: IllegalArgumentException =>
+        throw new IllegalStateException("Invalid GrantState on for GrantField.STATE, should have been validated on grant creation: " + stateValue)
+    }
+  })
+  .getOrElse( { throw new IllegalStateException("Missing value for GrantFields.STATE") })
+
+  def getAuthorizedScope: Scope = get(GrantFields.AUTHORIZED_SCOPES).map(scopeValue => {
+      try {
+        new Scope(scopeValue)
+      } catch {
+        case te: TokenException =>
+          throw new IllegalStateException("Invalid value on for GrantFields.AUTHORIZED_SCOPES, should have been validated on grant creation: " + scopeValue)
+      }
+    })
+    .getOrElse( { throw new IllegalStateException("Missing value for GrantFields.AUTHORIZED_SCOPES") } )
+
 }
 
 object Grant {

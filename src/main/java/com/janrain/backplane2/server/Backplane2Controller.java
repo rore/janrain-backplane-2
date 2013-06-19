@@ -18,25 +18,20 @@ package com.janrain.backplane2.server;
 
 import com.janrain.backplane.common.AuthException;
 import com.janrain.backplane.common.BackplaneServerException;
-import com.janrain.backplane.common.HmacHashUtils;
-import com.janrain.backplane.common.RandomUtils;
+import com.janrain.backplane.common.DateTimeUtils;
 import com.janrain.backplane.config.BackplaneConfig;
 import com.janrain.backplane.dao.DaoException;
-import com.janrain.backplane.server2.model.AuthSession;
-import com.janrain.backplane.server2.model.AuthSessionFields;
+import com.janrain.backplane.server2.dao.BP2DAOs;
+import com.janrain.backplane.server2.model.*;
 import com.janrain.backplane.server2.oauth2.model.AuthorizationDecisionKey;
 import com.janrain.backplane.server2.oauth2.model.AuthorizationDecisionKeyFields;
 import com.janrain.backplane.server2.oauth2.model.AuthorizationRequest;
 import com.janrain.backplane.server2.oauth2.model.AuthorizationRequestFields;
-import com.janrain.backplane2.server.config.BusConfig2;
-import com.janrain.backplane2.server.config.Client;
-import com.janrain.backplane2.server.config.User;
-import com.janrain.backplane2.server.dao.BP2DAOs;
-import com.janrain.backplane.common.DateTimeUtils;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.oauth2.*;
 import com.janrain.redis.Redis;
 import com.janrain.servlet.InvalidRequestException;
+import com.janrain.util.RandomUtils;
 import com.janrain.util.ServletUtil;
 import com.janrain.utils.AnalyticsLogger;
 import com.yammer.metrics.core.MetricName;
@@ -49,13 +44,13 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.ModelAndView;
+import scala.collection.JavaConversions;
 
 import javax.inject.Inject;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.UnsupportedEncodingException;
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -170,7 +165,8 @@ public class Backplane2Controller {
             logger.debug("returning view for GET");
             return new ModelAndView(BUS_OWNER_AUTH_FORM_JSP);
         } else if ("POST".equals(httpMethod)) {
-            checkBusOwnerAuth(busOwner, password);
+            BP2DAOs.busOwnerDao().getAuthenticated(busOwner, password);
+            logger.info("Authenticated bus owner: " + busOwner);
             persistAuthenticatedSession(response, busOwner);
             return new ModelAndView("redirect:https://" + request.getServerName() + "/v2/authorize");
         } else {
@@ -198,7 +194,7 @@ public class Backplane2Controller {
                                            @RequestParam(required = false) final String callback,
                                            @RequestParam(required = false) final String refresh_token,
                                            @RequestHeader(value = "Authorization", required = false) final String authorizationHeader,
-                                           @RequestHeader(value = "Referer", required = false) String referer) {
+                                           @RequestHeader(value = "Referer", required = false) String referer) throws DaoException {
 
         ServletUtil.checkSecure(request);
 
@@ -313,7 +309,7 @@ public class Backplane2Controller {
             MessagesResponse bpResponse = new MessagesResponse(messageRequest.getSince());
             boolean exit = false;
             do {
-                BP2DAOs.getBackplaneMessageDAO().retrieveMessagesPerScope(bpResponse, token);
+                com.janrain.backplane2.server.dao.BP2DAOs.getBackplaneMessageDAO().retrieveMessagesPerScope(bpResponse, token);
                 if (!bpResponse.hasMessages() && new Date().before(messageRequest.getReturnBefore())) {
                     try {
                         Thread.sleep(MESSAGES_POLL_SLEEP_MILLIS);
@@ -375,7 +371,7 @@ public class Backplane2Controller {
                 throw new TokenException("Invalid token type: " + token.getType(), HttpServletResponse.SC_FORBIDDEN);
             }
 
-            BackplaneMessage message = BP2DAOs.getBackplaneMessageDAO().retrieveBackplaneMessage(msg_id, token);
+            BackplaneMessage message = com.janrain.backplane2.server.dao.BP2DAOs.getBackplaneMessageDAO().retrieveBackplaneMessage(msg_id, token);
 
             if (message != null) {
                 Map<String,Object> result = message.asFrame(request.getServerName(), token.getType().isPrivileged());
@@ -417,7 +413,7 @@ public class Backplane2Controller {
             }
 
             BackplaneMessage message = parsePostedMessage(messagePostBody, token);
-            BP2DAOs.getBackplaneMessageDAO().persist(message);
+            com.janrain.backplane2.server.dao.BP2DAOs.getBackplaneMessageDAO().persist(message);
 
             aniLogNewMessage(request, message, token);
 
@@ -451,7 +447,7 @@ public class Backplane2Controller {
     @ExceptionHandler
     @ResponseBody
     public Map<String,Object> handleTokenException(final TokenException e, HttpServletResponse response) {
-        logger.warn("Error processing token request: " + e.getMessage(), bpConfig.getDebugException(e));
+        logger.warn("Error processing token request: " + e.getMessage(), BackplaneConfig.getDebugException(e));
         response.setStatus(e.getHttpResponseCode());
         return new HashMap<String,Object>() {{
             put(ERR_MSG_FIELD, e.getOauthErrorCode());
@@ -465,7 +461,7 @@ public class Backplane2Controller {
     @ExceptionHandler
     @ResponseBody
     public Map<String, String> handle(final AuthException e, HttpServletResponse response) {
-        logger.warn("Backplane authentication error: " + e.getMessage(), bpConfig.getDebugException(e));
+        logger.warn("Backplane authentication error: " + e.getMessage(), BackplaneConfig.getDebugException(e));
         response.setStatus(SC_UNAUTHORIZED);
         return new HashMap<String,String>() {{
             put(ERR_MSG_FIELD, e.getMessage());
@@ -478,7 +474,7 @@ public class Backplane2Controller {
     @ExceptionHandler
     @ResponseBody
     public Map<String, Object> handleInvalidRequest(final InvalidRequestException e, HttpServletResponse response) {
-        logger.error("Error handling backplane request: " + e.getMessage(), bpConfig.getDebugException(e));
+        logger.error("Error handling backplane request: " + e.getMessage(), BackplaneConfig.getDebugException(e));
         response.setStatus(e.getHttpResponseCode());
         return new HashMap<String,Object>() {{
             put(ERR_MSG_FIELD, e.getMessage());
@@ -495,7 +491,7 @@ public class Backplane2Controller {
     @ExceptionHandler
     @ResponseBody
     public Map<String, Object> handleInvalidRequest(final HttpRequestMethodNotSupportedException e, HttpServletResponse response) {
-        logger.warn("Error handling backplane request: " + e.getMessage(), bpConfig.getDebugException(e));
+        logger.warn("Error handling backplane request: " + e.getMessage(), BackplaneConfig.getDebugException(e));
         response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
         return new HashMap<String,Object>() {{
             put(ERR_MSG_FIELD, e.getMessage());
@@ -508,10 +504,10 @@ public class Backplane2Controller {
     @ExceptionHandler
     @ResponseBody
     public Map<String, String> handle(final Exception e, HttpServletResponse response) {
-        logger.error("Error handling backplane request: " + e.getMessage(), bpConfig.getDebugException(e));
+        logger.error("Error handling backplane request: " + e.getMessage(), BackplaneConfig.getDebugException(e));
         response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         return new HashMap<String,String>() {{
-                put(ERR_MSG_FIELD, bpConfig.isDebugMode() ? e.getMessage() : "Error processing request.");
+                put(ERR_MSG_FIELD, BackplaneConfig.isDebugMode() ? e.getMessage() : "Error processing request.");
         }};
     }
 
@@ -561,29 +557,7 @@ public class Backplane2Controller {
     private static final int MESSAGES_POLL_SLEEP_MILLIS = 3000;
 
     @Inject
-    private BackplaneConfig bpConfig;
-
-    @Inject
     private AnalyticsLogger anilogger;
-
-    //private static final Random random = new SecureRandom();
-
-    private void checkBusOwnerAuth(String busOwner, String password) throws AuthException {
-        User busOwnerEntry = null;
-        try {
-            busOwnerEntry = BP2DAOs.getBusOwnerDAO().get(busOwner);
-        } catch (BackplaneServerException e) {
-            logger.error("Error looking up bus owner user: " + busOwner, e);
-            authError("Error looking up bus owner user: " + busOwner);
-        }
-
-        if (busOwnerEntry == null) {
-            authError("Bus owner user not found: " + busOwner);
-        } else if ( ! HmacHashUtils.checkHmacHash(password, busOwnerEntry.get(User.Field.PWDHASH)) ) {
-            authError("Incorrect password for bus owner user " + busOwner);
-        }
-        logger.info("Authenticated bus owner: " + busOwner);
-    }
 
     private void persistAuthenticatedSession(HttpServletResponse response, String busOwner) throws BackplaneServerException, DaoException {
         try {
@@ -615,7 +589,7 @@ public class Backplane2Controller {
     private void authError(String errMsg) throws AuthException {
         logger.error(errMsg);
         try {
-            throw new AuthException("Access denied. " + (bpConfig.isDebugMode() ? errMsg : ""));
+            throw new AuthException("Access denied. " + (BackplaneConfig.isDebugMode() ? errMsg : ""));
         } catch (Exception e) {
             throw new AuthException("Access denied.");
         }
@@ -665,22 +639,8 @@ public class Backplane2Controller {
         String client = userPass.substring(0, delim);
         String pass = userPass.substring(delim + 1);
 
-        Client clientEntry = null;
-        try {
-            clientEntry = BP2DAOs.getClientDAO().get(client);
-        } catch (BackplaneServerException e) {
-            logger.error("Error looking up client: " + client, e);
-            authError("Error looking up client: " + client);
-        }
 
-        if (clientEntry == null) {
-            authError("Client not found: " + client);
-        } else if (!HmacHashUtils.checkHmacHash(pass, clientEntry.get(Client.Field.PWDHASH))) {
-            authError("Incorrect password for client " + client);
-        }
-
-        logger.info("Authenticated client: " + client);
-        return clientEntry;
+        return BP2DAOs.clientDao().getAuthenticated(client, pass);
     }
 
     /** Present an authorization form to the bus owner and obtain authorization decision */
@@ -712,11 +672,11 @@ public class Backplane2Controller {
 
     private String checkScope(String scope, String authenticatedBusOwner) throws BackplaneServerException {
         StringBuilder result = new StringBuilder();
-        List<BusConfig2> ownedBuses = BP2DAOs.getBusDao().retrieveByOwner(authenticatedBusOwner);
+        List<BusConfig2> ownedBuses = JavaConversions.seqAsJavaList(BP2DAOs.busDao().retrieveByOwner(authenticatedBusOwner));
         if(StringUtils.isEmpty(scope)) {
             // request scope empty, ask/offer permission to all owned buses
             for(BusConfig2 bus : ownedBuses) {
-                result.append("bus:").append(bus.get(BusConfig2.Field.BUS_NAME)).append(" ");
+                result.append("bus:").append(bus.get(BusConfig2Fields.BUS_NAME())).append(" ");
             }
             if(result.length() > 0) {
                 result.deleteCharAt(result.length()-1);
@@ -724,7 +684,7 @@ public class Backplane2Controller {
         } else {
             List<String> ownedBusNames = new ArrayList<String>();
             for(BusConfig2 bus : ownedBuses) {
-                ownedBusNames.add(bus.get(BusConfig2.Field.BUS_NAME));
+                ownedBusNames.add(bus.id());
             }
             for(String scopeToken : scope.split(" ")) {
                 if(scopeToken.startsWith("bus:")) {
@@ -758,7 +718,7 @@ public class Backplane2Controller {
 
             // check authZdecisionKey
             AuthorizationDecisionKey authZdecisionKeyEntry = com.janrain.backplane.server2.dao.BP2DAOs.authorizationDecisionKeyDao().get(authZdecisionKey).getOrElse(null);
-            if (null == authZdecisionKeyEntry || ! authSessionCookie.equals(authZdecisionKeyEntry.get(AuthorizationDecisionKeyFields.AUTH_COOKIE()))) {
+            if (null == authZdecisionKeyEntry || ! authSessionCookie.equals(authZdecisionKeyEntry.get(AuthorizationDecisionKeyFields.AUTH_COOKIE()).getOrElse(null))) {
                 throw new AuthorizationException(OAuth2.OAUTH2_AUTHZ_ACCESS_DENIED, "Presented authorization key was issued to a different authenticated bus owner.", authorizationRequest);
             }
 
@@ -768,17 +728,17 @@ public class Backplane2Controller {
                 // todo: use (and check) scope posted back by bus owner
                 String scopeString = checkScope((String)authorizationRequest.get(AuthorizationRequestFields.SCOPE()).getOrElse(null), authenticatedBusOwner);
                 // create grant/code
-                Grant grant =  new Grant.Builder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE,
+                Grant grant =  new GrantBuilder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE,
                             authenticatedBusOwner,
                             authorizationRequest.get(AuthorizationRequestFields.CLIENT_ID()).get(),
                             scopeString).buildGrant();
-                BP2DAOs.getGrantDao().persist(grant);
+                BP2DAOs.grantDao().store(grant);
 
                 logger.info("Authorized " + authorizationRequest.get(AuthorizationRequestFields.CLIENT_ID())+
-                        "[" + authorizationRequest.get(AuthorizationRequestFields.COOKIE())+"]" + "grant ID: " + grant.getIdValue());
+                        "[" + authorizationRequest.get(AuthorizationRequestFields.COOKIE())+"]" + "grant ID: " + grant.id());
 
                 // return OAuth2 authz response
-                final String code = grant.getIdValue();
+                final String code = grant.id();
                 final String state = authorizationRequest.get(AuthorizationRequestFields.STATE()).getOrElse(null);
 
                 try {
@@ -857,7 +817,7 @@ public class Backplane2Controller {
         }
     }
 
-    private BackplaneMessage parsePostedMessage(Map<String, Map<String, Object>> messagePostBody, Token token) throws BackplaneServerException {
+    private BackplaneMessage parsePostedMessage(Map<String, Map<String, Object>> messagePostBody, Token token) throws BackplaneServerException, DaoException {
         List<BackplaneMessage> result = new ArrayList<BackplaneMessage>();
 
         Map<String,Object> msg = messagePostBody.get("message");
@@ -878,8 +838,8 @@ public class Backplane2Controller {
         }
 
         // check to see if channel is already full
-        if (BP2DAOs.getBackplaneMessageDAO().getMessageCount(channelId) >= bpConfig.getDefaultMaxMessageLimit()) {
-            throw new InvalidRequestException("Message limit of " + bpConfig.getDefaultMaxMessageLimit() + " has been reached for channel '" + channel + "'",
+        if (com.janrain.backplane2.server.dao.BP2DAOs.getBackplaneMessageDAO().getMessageCount(channelId) >= BackplaneConfig.getDefaultMaxMessageLimit()) {
+            throw new InvalidRequestException("Message limit of " + BackplaneConfig.getDefaultMaxMessageLimit() + " has been reached for channel '" + channel + "'",
                     HttpServletResponse.SC_FORBIDDEN);
         }
 
@@ -899,12 +859,12 @@ public class Backplane2Controller {
         return  message;
     }
 
-    private Channel getChannel(String channelId) throws BackplaneServerException {
-        Channel channel = BP2DAOs.getChannelDao().get(channelId);
+    private Channel getChannel(String channelId) throws BackplaneServerException, DaoException {
+        Channel channel = com.janrain.backplane2.server.dao.BP2DAOs.getChannelDao().get(channelId);
         if (channel == null) {
             // legacy channel-bus binding support
             // todo: remove after all old channels have expired
-            BusConfig2 busConfig = BP2DAOs.getBusDao().get(Redis.getInstance().get("v2_channel_bus_" + channelId));
+            BusConfig2 busConfig = BP2DAOs.busDao().get(Redis.getInstance().get("v2_channel_bus_" + channelId)).getOrElse(null);
             if (busConfig != null) {
                 try {
                     channel = new Channel(channelId, busConfig, 0);
@@ -1002,7 +962,7 @@ public class Backplane2Controller {
             anilogger.log(eventName, mapper.writeValueAsString(eventData));
         } catch (Exception e) {
             String errMsg = "Error sending analytics event: " + e.getMessage();
-            logger.error(errMsg, bpConfig.getDebugException(e));
+            logger.error(errMsg, BackplaneConfig.getDebugException(e));
         }
     }
 

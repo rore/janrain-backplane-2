@@ -16,7 +16,7 @@
 
 package com.janrain.backplane.provision;
 
-import com.janrain.commons.supersimpledb.message.AbstractMessage;
+import com.janrain.backplane.common.model.Message;
 
 import java.util.Collections;
 import java.util.List;
@@ -24,7 +24,7 @@ import java.util.List;
 /**
  * @author Johnny Bufu
  */
-public class UpdateRequest<T extends AbstractMessage> {
+public class UpdateRequest<T extends Message> {
 
     // - PUBLIC
 

@@ -30,7 +30,7 @@ object Utils {
     r != null && s != null && r.length == s.length && ( (0 /: (r zip s))( (partial,rs) => partial | (rs._1 ^ rs._2) ) == 0 )
 
   def getOptionalSystemProperty(propName: String): Option[String] = System.getProperty(propName) match {
-    case s if (StringUtils.isNotBlank(s)) => Some(s)
+    case s if StringUtils.isNotBlank(s) => Some(s)
     case _ => None
   }
 
@@ -39,7 +39,7 @@ object Utils {
   )
 
   def getSystenEnv(envName: String) = System.getenv(envName) match {
-    case s if (StringUtils.isNotBlank(s)) => s
+    case s if StringUtils.isNotBlank(s) => s
     case _ => throw new RuntimeException("Required environment configuration missing: " + envName)
   }
 
