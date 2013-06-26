@@ -1597,7 +1597,7 @@ public class Backplane2ControllerTest {
     @Test
     public void testAnonymousRefreshToken() throws Exception {
 
-        Map<String, Object> tokenResponse = new AnonymousTokenRequest("bla", "testbus", null, null, request, null).tokenResponse();
+        Map<String, Object> tokenResponse = new AnonymousTokenRequest("bla", "testbus", null, request).tokenResponse();
         String refreshToken = tokenResponse.get(OAUTH2_REFRESH_TOKEN_PARAM_NAME).toString();
         Scope scope1 = new Scope(tokenResponse.get(OAUTH2_SCOPE_PARAM_NAME).toString());
 
@@ -1624,7 +1624,7 @@ public class Backplane2ControllerTest {
         Scope scope1 = new Scope(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, "testbus"));
         setOAuthBasicAuthentication(request, testClient.id(), testClient.get(ClientFields.PWDHASH()).get());
         Map<String, Object> tokenResponse = new AuthenticatedTokenRequest(OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS, testClient,
-                null, null, null, scope1.toString(), request, request.getHeader("Authorization")).tokenResponse();
+                null, null, scope1.toString(), request).tokenResponse();
         String accessToken = tokenResponse.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME).toString();
         String refreshToken = tokenResponse.get(OAUTH2_REFRESH_TOKEN_PARAM_NAME).toString();
 
@@ -1685,7 +1685,7 @@ public class Backplane2ControllerTest {
 
     private TokensAndChannel anonTokenRequest(String tokenBus) throws TokenException, DaoException {
         refreshRequestAndResponse();
-        TokenRequest req = new AnonymousTokenRequest("bla", tokenBus, null, null, request, null);
+        TokenRequest req = new AnonymousTokenRequest("bla", tokenBus, null, request);
         Map<String, Object> tokenResponse = req.tokenResponse();
         Scope scope = new Scope(tokenResponse.get(OAUTH2_SCOPE_PARAM_NAME).toString());
 
@@ -1702,7 +1702,7 @@ public class Backplane2ControllerTest {
         Scope scope = new Scope(scopeString);
         setOAuthBasicAuthentication(request, testClient.id(), testClient.get(ClientFields.PWDHASH()).get());
         TokenRequest req = new AuthenticatedTokenRequest(OAUTH2_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS, testClient,
-                null, null, null, scope.toString(), request, request.getHeader("Authorization"));
+                null, null, scope.toString(), request);
         return req.tokenResponse().get(OAUTH2_ACCESS_TOKEN_PARAM_NAME).toString();
     }
 

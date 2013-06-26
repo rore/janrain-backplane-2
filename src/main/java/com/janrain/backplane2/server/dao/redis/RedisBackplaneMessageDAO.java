@@ -20,7 +20,7 @@ import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane2.server.BackplaneMessage;
 import com.janrain.backplane2.server.MessagesResponse;
 import com.janrain.backplane2.server.Scope;
-import com.janrain.backplane2.server.Token;
+import com.janrain.backplane.server2.oauth2.model.Token;
 import com.janrain.backplane2.server.dao.BackplaneMessageDAO;
 import com.janrain.oauth2.TokenException;
 import com.janrain.redis.Redis;
@@ -84,7 +84,7 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
 
         BackplaneMessage message = get(messageId);
 
-        if ( message == null || ! token.getScope().isMessageInScope(message)) {
+        if ( message == null || ! token.scope().isMessageInScope(message)) {
             // don't disclose that the messageId exists if not in scope
             throw new TokenException("Message id '" + messageId + "' not found", HttpServletResponse.SC_NOT_FOUND);
         } else {
@@ -104,7 +104,7 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
 
     @Override
     public void retrieveMessagesPerScope(@NotNull MessagesResponse bpResponse, @NotNull Token token) throws BackplaneServerException {
-        final Scope scope = token.getScope();
+        final Scope scope = token.scope();
         Jedis jedis = null;
         try {
             jedis = Redis.getInstance().getReadJedis();

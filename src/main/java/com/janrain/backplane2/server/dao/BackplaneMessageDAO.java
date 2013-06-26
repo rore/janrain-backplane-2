@@ -20,7 +20,7 @@ import com.janrain.backplane.dao.DAO;
 import com.janrain.backplane2.server.BackplaneMessage;
 import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane2.server.MessagesResponse;
-import com.janrain.backplane2.server.Token;
+import com.janrain.backplane.server2.oauth2.model.Token;
 import com.janrain.oauth2.TokenException;
 import org.jetbrains.annotations.NotNull;
 

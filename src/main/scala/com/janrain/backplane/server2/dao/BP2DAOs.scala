@@ -61,4 +61,8 @@ object BP2DAOs {
     protected def instantiate(data: Map[_, _]) = new Grant( data.map( kv => kv._1.toString -> kv._2.toString ))
   }
 
+  val tokenDao: TokenDao = new RedisMessageDao[Token]("bp2Token:") with TokenDao {
+    protected def instantiate(data: Map[_, _]) = new Token( data.map( kv => kv._1.toString -> kv._2.toString ))
+  }
+
 }

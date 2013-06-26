@@ -22,7 +22,14 @@ trait GrantDao extends DaoAll[Grant] with Loggable {
    */
   def revokeBuses(grants: List[Grant], buses: List[String]): Boolean = {
     val busesToRevoke = new Scope(Scope.getEncodedScopesAsString(BackplaneMessage.Field.BUS, JavaConversions.seqAsJavaList(buses)))
-    grants.foldLeft(false)( (res: Boolean, grant: Grant) => res || revokeBusesFromGrant(grant, busesToRevoke) )
+    val updatedGrantIds = grants.withFilter(revokeBusesFromGrant(_, busesToRevoke)).map(_.id).toSet
+    if ( ! updatedGrantIds.isEmpty ) {
+      // revoke (delete) affected tokens
+      BP2DAOs.tokenDao.getAll
+        .withFilter( t => ! (t.backingGrants.toSet & updatedGrantIds).isEmpty)
+        .foreach(t => BP2DAOs.tokenDao.delete(t.id))
+    }
+    ! updatedGrantIds.isEmpty
   }
 
   def deleteByBus(busesToDelete: List[String]) {

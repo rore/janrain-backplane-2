@@ -9,6 +9,7 @@ import org.apache.commons.lang.StringUtils
 import java.text.ParseException
 import org.apache.commons.codec.binary.Base64
 import com.janrain.backplane.common.MessageException
+import java.net.{MalformedURLException, URL}
 
 /**
  * @author Johnny Bufu
@@ -58,7 +59,7 @@ object Message extends Loggable {
 
   final def generateId = Utils.ISO8601.print(new Date().getTime) + ID_TIMESTAMP_SEP + RandomUtils.randomString(ID_RANDOM_LENGTH)
 
-  def dateFromId(timestampPrefixedId: String): Date =
+  final def dateFromId(timestampPrefixedId: String): Date =
     try {
       Utils.ISO8601.parseDateTime(timestampPrefixedId.substring(0, timestampPrefixedId.indexOf("Z") + 1)).toDate
     } catch {
@@ -67,7 +68,6 @@ object Message extends Loggable {
         throw new MessageException("error extracting timestamp from id: " + e.getMessage)
       }
     }
-
 
   final def isExpired(fieldValue: Option[String]) = fieldValue match {
     case Some(s: String) =>
@@ -119,6 +119,15 @@ trait MessageField {
       fieldValue.foreach(_.toLong)
     } catch {
       case e: NumberFormatException => throw new MessageException("invalid long value for " + name + ": " + fieldValue)
+    }
+  }
+
+  def validateUrl(fieldValue: Option[String]) {
+    try {
+      fieldValue.foreach(new URL(_))
+    }
+    catch {
+      case e: MalformedURLException => throw new MessageException("Invalid URL value for " + name + ": " + fieldValue)
     }
   }
 }

@@ -22,10 +22,12 @@ import com.janrain.backplane.common.DateTimeUtils;
 import com.janrain.backplane.config.BackplaneConfig;
 import com.janrain.backplane.dao.DaoException;
 import com.janrain.backplane.server2.dao.BP2DAOs;
-import com.janrain.backplane.server2.model.*;
+import com.janrain.backplane.server2.model.AuthSession;
+import com.janrain.backplane.server2.model.AuthSessionFields;
+import com.janrain.backplane.server2.model.BusConfig2;
+import com.janrain.backplane.server2.model.BusConfig2Fields;
 import com.janrain.backplane.server2.oauth2.model.*;
-import com.janrain.backplane.server2.oauth2.model.AuthorizationDecisionKeyFields;
-import com.janrain.backplane.server2.oauth2.model.AuthorizationRequestFields;
+import com.janrain.backplane.server2.oauth2.model.Token;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.oauth2.*;
 import com.janrain.redis.Redis;
@@ -43,6 +45,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.ModelAndView;
+import scala.Option;
 import scala.collection.JavaConversions;
 
 import javax.inject.Inject;
@@ -191,8 +194,6 @@ public class Backplane2Controller {
                                            @RequestParam(value = OAUTH2_SCOPE_PARAM_NAME, required = false) final String scope,
                                            @RequestParam(required = false) final String bus,
                                            @RequestParam(required = false) final String callback,
-                                           @RequestParam(required = false) final String refresh_token,
-                                           @RequestHeader(value = "Authorization", required = false) final String authorizationHeader,
                                            @RequestHeader(value = "Referer", required = false) String referer) throws DaoException {
 
         ServletUtil.checkSecure(request);
@@ -200,7 +201,7 @@ public class Backplane2Controller {
         final TimerContext context = getRegularTokenTimer.time();
 
         try {
-            Map<String,Object> result = new AnonymousTokenRequest(callback, bus, scope, refresh_token, request, authorizationHeader).tokenResponse();
+            Map<String,Object> result = new AnonymousTokenRequest(callback, bus, scope, request).tokenResponse();
             // Refresh token requests are not logged to analytics.
             if (StringUtils.isNotEmpty(bus)) {
                 aniLogNewChannel(request, referer, bus, (String) result.get(OAUTH2_SCOPE_PARAM_NAME));
@@ -240,7 +241,6 @@ public class Backplane2Controller {
                                         @RequestParam(value = "code", required = false) String code,
                                         @RequestParam(value = "client_secret", required = false) String client_secret,
                                         @RequestParam(value = "scope", required = false) String scope,
-                                        @RequestParam(required = false) String refresh_token,
                                         @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
 
         ServletUtil.checkSecure(request);
@@ -252,8 +252,7 @@ public class Backplane2Controller {
             Client authenticatedClient = getAuthenticatedClient(authorizationHeader);
 
             return (new AuthenticatedTokenRequest(
-                    grant_type, authenticatedClient, code, redirect_uri, refresh_token, scope,
-                    request, authorizationHeader)).tokenResponse();
+                    grant_type, authenticatedClient, code, redirect_uri, scope, request)).tokenResponse();
         } catch (TokenException e) {
             return handleTokenException(e, response);
         } catch (AuthException e) {
@@ -280,12 +279,10 @@ public class Backplane2Controller {
 
     @RequestMapping(value = "/messages", method = { RequestMethod.GET})
     public @ResponseBody Map<String,Object> messages(final HttpServletRequest request, HttpServletResponse response,
-                                                     @RequestParam(value = OAUTH2_ACCESS_TOKEN_PARAM_NAME, required = false) final String access_token,
                                                      @RequestParam(value = "block", defaultValue = "0", required = false) String block,
                                                      @RequestParam(required = false) String callback,
                                                      @RequestParam(value = "since", required = false) String since,
-                                                     @RequestHeader(value = "Referer", required = false) String referer,
-                                                     @RequestHeader(value = "Authorization", required = false) final String authorizationHeader)
+                                                     @RequestHeader(value = "Referer", required = false) String referer)
             throws SimpleDBException, BackplaneServerException {
 
         ServletUtil.checkSecure(request);
@@ -299,16 +296,19 @@ public class Backplane2Controller {
         try {
             MessageRequest messageRequest = new MessageRequest(callback, since, block);
 
-            Token token = Token.fromRequest(request, access_token, authorizationHeader);
-            if (token.getType().isRefresh()) {
-                return returnMessage(OAuth2.OAUTH2_TOKEN_INVALID_REQUEST, "Invalid token type: " + token.getType(),
+            Option<Token> token = Token.fromRequest(request);
+            if ( ! token.isDefined()) {
+              throw new TokenException("invalid token", HttpServletResponse.SC_FORBIDDEN);
+            }
+            if (token.get().grantType().isRefresh()) {
+                return returnMessage(OAuth2.OAUTH2_TOKEN_INVALID_REQUEST, "Invalid token type: " + token.get().grantType(),
                         HttpServletResponse.SC_FORBIDDEN, response);
             }
 
             MessagesResponse bpResponse = new MessagesResponse(messageRequest.getSince());
             boolean exit = false;
             do {
-                com.janrain.backplane2.server.dao.BP2DAOs.getBackplaneMessageDAO().retrieveMessagesPerScope(bpResponse, token);
+                com.janrain.backplane2.server.dao.BP2DAOs.getBackplaneMessageDAO().retrieveMessagesPerScope(bpResponse, token.get());
                 if (!bpResponse.hasMessages() && new Date().before(messageRequest.getReturnBefore())) {
                     try {
                         Thread.sleep(MESSAGES_POLL_SLEEP_MILLIS);
@@ -320,7 +320,7 @@ public class Backplane2Controller {
                 }
             } while (!exit);
 
-            Map<String,Object> result = bpResponse.asResponseFields(request.getServerName(), token.getType().isPrivileged());
+            Map<String,Object> result = bpResponse.asResponseFields(request.getServerName(), token.get().grantType().isPrivileged());
             aniLogPollMessages(request, referer, bpResponse.getMessages());
             return result;
 
@@ -349,9 +349,7 @@ public class Backplane2Controller {
     @RequestMapping(value = "/message/{msg_id:.*}", method = { RequestMethod.GET})
     public @ResponseBody Map<String,Object> message(HttpServletRequest request, HttpServletResponse response,
                                 @PathVariable final String msg_id,
-                                @RequestParam(value = OAUTH2_ACCESS_TOKEN_PARAM_NAME, required = false) String access_token,
-                                @RequestParam(required = false) String callback,
-                                @RequestHeader(value = "Authorization", required = false) String authorizationHeader)
+                                @RequestParam(required = false) String callback)
             throws BackplaneServerException, SimpleDBException {
 
         ServletUtil.checkSecure(request);
@@ -365,16 +363,19 @@ public class Backplane2Controller {
         }
 
         try {
-            Token token = Token.fromRequest(request, access_token, authorizationHeader);
-            if (token.getType().isRefresh()) {
-                throw new TokenException("Invalid token type: " + token.getType(), HttpServletResponse.SC_FORBIDDEN);
+            Option<Token> token = Token.fromRequest(request);
+            if ( ! token.isDefined()) {
+                throw new TokenException("invalid token", HttpServletResponse.SC_FORBIDDEN);
+            }
+            if (token.get().grantType().isRefresh()) {
+                throw new TokenException("Invalid token type: " + token.get().grantType(), HttpServletResponse.SC_FORBIDDEN);
             }
 
-            BackplaneMessage message = com.janrain.backplane2.server.dao.BP2DAOs.getBackplaneMessageDAO().retrieveBackplaneMessage(msg_id, token);
+            BackplaneMessage message = com.janrain.backplane2.server.dao.BP2DAOs.getBackplaneMessageDAO().retrieveBackplaneMessage(msg_id, token.get());
 
             if (message != null) {
-                Map<String,Object> result = message.asFrame(request.getServerName(), token.getType().isPrivileged());
-                aniLogGetMessage(request, message, token);
+                Map<String,Object> result = message.asFrame(request.getServerName(), token.get().grantType().isPrivileged());
+                aniLogGetMessage(request, message, token.get());
                 return result;
             } else {
                 return returnMessage(OAuth2.OAUTH2_TOKEN_INVALID_REQUEST, "Message id '" + msg_id + "' not found",
@@ -396,9 +397,7 @@ public class Backplane2Controller {
     @RequestMapping(value = "/message", method = { RequestMethod.POST})
     public @ResponseBody Map<String,Object>  postMessages(
             HttpServletRequest request, HttpServletResponse response,
-            @RequestBody Map<String,Map<String,Object>> messagePostBody,
-            @RequestParam(value = OAUTH2_ACCESS_TOKEN_PARAM_NAME, required = false) String access_token,
-            @RequestHeader(value = "Authorization", required = false) String authorizationHeader)
+            @RequestBody Map<String,Map<String,Object>> messagePostBody)
             throws SimpleDBException, BackplaneServerException {
 
         ServletUtil.checkSecure(request);
@@ -406,15 +405,18 @@ public class Backplane2Controller {
         final TimerContext context = v2PostTimer.time();
 
         try {
-            Token token = Token.fromRequest(request, access_token, authorizationHeader);
-            if ( token.getType().isRefresh() || ! token.getType().isPrivileged() ) {
-                throw new TokenException("Invalid token type: " + token.getType(), HttpServletResponse.SC_FORBIDDEN);
+            Option<Token> token = Token.fromRequest(request);
+            if ( ! token.isDefined()) {
+                throw new TokenException("invalid token", HttpServletResponse.SC_FORBIDDEN);
+            }
+            if ( token.get().grantType().isRefresh() || ! token.get().grantType().isPrivileged() ) {
+                throw new TokenException("Invalid token type: " + token.get().grantType(), HttpServletResponse.SC_FORBIDDEN);
             }
 
-            BackplaneMessage message = parsePostedMessage(messagePostBody, token);
+            BackplaneMessage message = parsePostedMessage(messagePostBody, token.get());
             com.janrain.backplane2.server.dao.BP2DAOs.getBackplaneMessageDAO().persist(message);
 
-            aniLogNewMessage(request, message, token);
+            aniLogNewMessage(request, message, token.get());
 
             response.setStatus(HttpServletResponse.SC_CREATED);
             return null;
@@ -845,14 +847,14 @@ public class Backplane2Controller {
         BackplaneMessage message;
         try {
             message = new BackplaneMessage(
-                    token.get(Token.TokenField.CLIENT_SOURCE_URL),
+                    (String)token.get(TokenFields.CLIENT_SOURCE_URL()).getOrElse(null),
                     Integer.parseInt(channel.get(Channel.ChannelField.MESSAGE_EXPIRE_DEFAULT_SECONDS)),
                     Integer.parseInt(channel.get(Channel.ChannelField.MESSAGE_EXPIRE_MAX_SECONDS)),
                     msg);
         } catch (Exception e) {
             throw new InvalidRequestException("Invalid message data: " + e.getMessage(), HttpServletResponse.SC_BAD_REQUEST);
         }
-        if ( ! token.getScope().isMessageInScope(message) ) {
+        if ( ! token.scope().isMessageInScope(message) ) {
             throw new InvalidRequestException("Invalid bus in message", HttpServletResponse.SC_FORBIDDEN);
         }
         return  message;
@@ -930,7 +932,7 @@ public class Backplane2Controller {
         aniEvent.put("message_id", message.getIdValue());
         aniEvent.put("bus", bus);
         aniEvent.put("channel_id", channelId);
-        aniEvent.put("client_id", token.get(Token.TokenField.ISSUED_TO_CLIENT_ID));
+        aniEvent.put("client_id", token.get(TokenFields.ISSUED_TO_CLIENT_ID()));
 
         aniLog("get_message", aniEvent);
     }
@@ -943,7 +945,7 @@ public class Backplane2Controller {
         String bus = message.getBus();
         String channel = message.getChannel();
         String channelId = "https://" + request.getServerName() + "/v2/bus/" + bus + "/channel/" + channel;
-        String clientId = token.get(Token.TokenField.ISSUED_TO_CLIENT_ID);
+        String clientId = (String) token.get(TokenFields.ISSUED_TO_CLIENT_ID()).getOrElse(null);
         Map<String,Object> aniEvent = new HashMap<String,Object>();
         aniEvent.put("channel_id", channelId);
         aniEvent.put("bus", bus);

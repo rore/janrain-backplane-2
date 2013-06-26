@@ -2,18 +2,17 @@ package com.janrain.oauth2;
 
 import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.dao.DaoException;
-import com.janrain.backplane.server2.oauth2.model.Client;
-import com.janrain.backplane.server2.oauth2.model.ClientFields;
-import com.janrain.backplane.server2.oauth2.model.Grant;
+import com.janrain.backplane.server2.dao.BP2DAOs;
+import com.janrain.backplane.server2.oauth2.model.*;
 import com.janrain.backplane2.server.GrantLogic;
 import com.janrain.backplane2.server.GrantType;
 import com.janrain.backplane2.server.Scope;
-import com.janrain.backplane2.server.Token;
-import com.janrain.backplane2.server.dao.BP2DAOs;
-import com.janrain.commons.supersimpledb.SimpleDBException;
+import com.janrain.backplane2.server.TokenBuilder;
 import com.janrain.commons.util.Pair;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
+import scala.Option;
+import scala.collection.JavaConversions;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -31,8 +30,8 @@ public class AuthenticatedTokenRequest implements TokenRequest {
     // - PUBLIC
 
     public AuthenticatedTokenRequest(String grantType, Client authenticatedClient, String code,
-                                     String redirectUri, String refreshToken, String scope,
-                                     HttpServletRequest request, String authHeader) throws TokenException, DaoException {
+                                     String redirectUri, String scope,
+                                     HttpServletRequest request) throws TokenException, DaoException {
 
         this.authenticatedClientId = authenticatedClient.id();
         this.authenticatedClientSourceUrl = authenticatedClient.get(ClientFields.SOURCE_URL()).getOrElse(null);
@@ -63,7 +62,9 @@ public class AuthenticatedTokenRequest implements TokenRequest {
             throw new TokenException("Invalid code: " + code);
         }
 
-        if ( this.grantType == GrantType.REFRESH_PRIVILEGED ^ StringUtils.isNotEmpty(refreshToken) ) {
+        Option<Token> token = Token.fromRequest(request);
+
+        if ( this.grantType == GrantType.REFRESH_PRIVILEGED ^ (! token.isDefined()) ) {
             throw new TokenException("refresh_token is required if and only if grant_type is refresh_token");
         }
 
@@ -76,8 +77,14 @@ public class AuthenticatedTokenRequest implements TokenRequest {
             throw new TokenException(e.getCode(), "Invalid redirect_uri: " + redirectUri);
         }
 
-        if (StringUtils.isNotEmpty(refreshToken)) {
-            this.refreshToken = Token.fromRequest(request, refreshToken, authHeader);
+
+
+        if (token.isDefined()) {
+            this.refreshToken = token.get();
+            if ( ! this.refreshToken.grantType().isRefresh()) {
+                logger.warn("access token presented where refresh token is expected: " + refreshToken);
+                throw new TokenException(OAuth2.OAUTH2_TOKEN_INVALID_REQUEST, "invalid token: " + refreshToken);
+            }
         }
 
         this.requestScope = new Scope(scope);
@@ -91,15 +98,15 @@ public class AuthenticatedTokenRequest implements TokenRequest {
         Date expires = new Date(System.currentTimeMillis() + expiresIn.longValue() * 1000);
         Pair<Scope,List<String>> scopeGrants = processScope();
         try {
-            accessToken = new Token.Builder(grantType.getAccessType(), scopeGrants.getLeft().toString())
+            accessToken = new TokenBuilder(grantType.getAccessType(), scopeGrants.getLeft().toString())
                     .expires(expires)
                     .issuedToClient(authenticatedClientId)
                     .clientSourceUrl(authenticatedClientSourceUrl)
                     .grants(scopeGrants.getRight())
                     .buildToken();
-            BP2DAOs.getTokenDao().persist(accessToken);
+            BP2DAOs.tokenDao().store(accessToken);
             return accessToken.response(generateRefreshToken(grantType.getRefreshType(), accessToken));
-        } catch (SimpleDBException e) {
+        } catch (DaoException e) {
             logger.error("error processing anonymous access token request: " + e.getMessage(), e);
             throw new TokenException(OAuth2.OAUTH2_TOKEN_SERVER_ERROR, "error processing anonymous token request", HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         } catch (BackplaneServerException bpe) {
@@ -109,10 +116,10 @@ public class AuthenticatedTokenRequest implements TokenRequest {
         } finally {
             try {
                 if (this.refreshToken != null) {
-                    BP2DAOs.getTokenDao().delete(this.refreshToken.getIdValue());
+                    BP2DAOs.tokenDao().delete(this.refreshToken.id());
                 }
-            } catch (BackplaneServerException e) {
-                logger.error("error deleting used refresh token: " + refreshToken.getIdValue(), e);
+            } catch (DaoException e) {
+                logger.error("error deleting used refresh token: " + refreshToken.id(), e);
             }
         }
     }
@@ -132,7 +139,7 @@ public class AuthenticatedTokenRequest implements TokenRequest {
     private Pair<Scope,List<String>> processScope() throws TokenException {
 
         if (refreshToken != null) {
-            return new Pair<Scope, List<String>>(Scope.checkCombine(refreshToken.getScope(), requestScope), refreshToken.getBackingGrants());
+            return new Pair<Scope, List<String>>(Scope.checkCombine(refreshToken.scope(), requestScope), JavaConversions.seqAsJavaList(refreshToken.backingGrants()));
         }
 
         if (codeGrant != null) {
@@ -163,14 +170,14 @@ public class AuthenticatedTokenRequest implements TokenRequest {
         }
     }
 
-    private String generateRefreshToken(GrantType refreshType, Token accessToken) throws SimpleDBException, BackplaneServerException {
+    private String generateRefreshToken(GrantType refreshType, Token accessToken) throws BackplaneServerException, DaoException {
         if (! refreshType.isRefresh()) return null;
-        Token refreshToken = new Token.Builder(refreshType, accessToken.getScopeString())
+        Token refreshToken = new TokenBuilder(refreshType, accessToken.get(TokenFields.SCOPE()).get())
                 .issuedToClient(authenticatedClientId)
                 .clientSourceUrl(authenticatedClientSourceUrl)
-                .grants(accessToken.getBackingGrants())
+                .grants(JavaConversions.seqAsJavaList(accessToken.backingGrants()))
                 .buildToken();
-        BP2DAOs.getTokenDao().persist(refreshToken);
-        return refreshToken.getIdValue();
+        BP2DAOs.tokenDao().store(refreshToken);
+        return refreshToken.id();
     }
 }
