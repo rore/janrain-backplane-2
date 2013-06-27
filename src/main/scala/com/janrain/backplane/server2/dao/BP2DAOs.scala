@@ -4,6 +4,8 @@ import com.janrain.backplane.dao.redis.RedisMessageDao
 import com.janrain.backplane.server2.oauth2.model._
 import com.janrain.backplane.dao.{PasswordHasherDao, ExpiringDao}
 import com.janrain.backplane.server2.model._
+import com.janrain.backplane2.server.BackplaneMessage
+import scala.collection.JavaConversions.asScalaSet
 
 /**
  * @author Johnny Bufu
@@ -61,8 +63,25 @@ object BP2DAOs {
     protected def instantiate(data: Map[_, _]) = new Grant( data.map( kv => kv._1.toString -> kv._2.toString ))
   }
 
-  val tokenDao: TokenDao = new RedisMessageDao[Token]("bp2Token:") with TokenDao {
+  val tokenDao: TokenDao = new RedisMessageDao[Token]("bp2Token:") with TokenDao
+    with LegacyDaoForwarder[com.janrain.backplane2.server.Token, Token] {
+
     protected def instantiate(data: Map[_, _]) = new Token( data.map( kv => kv._1.toString -> kv._2.toString ))
+
+    val legacyDao = com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao
+
+    def preferLegacyGet(id: String) = id.length == Token.LEGACY_TOKEN_LENGTH
+
+    def isLegacyStore(token: Token): Boolean = {
+      if (token.grantType.isPrivileged) {
+        token.get(TokenFields.ISSUED_TO_CLIENT_ID).flatMap(clientDao.get(_)).exists(_.isLegacyTokens)
+      } else {
+        // non-privileged tokens have only one bus in scope
+        Option(token.scope.getScopeFieldValues(BackplaneMessage.Field.BUS))
+        .map(_.map(busDao.get(_)).flatten)
+        .flatten.exists(_.isLegacyTokens)
+      }
+    }
   }
 
 }

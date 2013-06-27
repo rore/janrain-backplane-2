@@ -7,7 +7,7 @@ import com.janrain.oauth2.{OAuth2, TokenException}
 import com.janrain.oauth2.OAuth2._
 import javax.servlet.http.{HttpServletResponse, HttpServletRequest}
 import com.janrain.backplane.server2.TokenSource
-import com.janrain.backplane.server2.dao.BP2DAOs
+import com.janrain.backplane.server2.dao.{LegacySupport, BP2DAOs}
 import com.janrain.backplane.dao.DaoException
 import com.janrain.util.{Utils, Loggable}
 import scala.collection.JavaConversions._
@@ -16,11 +16,13 @@ import java.util.Date
 /**
  * @author Johnny Bufu
  */
-class Token(data: Map[String,String]) extends Message(data, TokenFields.values) {
+class Token(data: Map[String,String]) extends Message(data, TokenFields.values) with LegacySupport[com.janrain.backplane2.server.Token] {
 
   def this(javaData: java.util.Map[String,String]) = this(javaData.toMap)
 
   def idField = TokenFields.ID
+
+  def asLegacy = new com.janrain.backplane2.server.Token(mapAsJavaMap(this))
 
   def grantType: GrantType = get(TokenFields.TYPE).map(typeValue => {
     try {
@@ -70,11 +72,12 @@ class Token(data: Map[String,String]) extends Message(data, TokenFields.values) 
 
 object Token extends Loggable {
 
-  final val TOKEN_LENGTH: Int = 20
+  final val TOKEN_LENGTH: Int = 25
+  final val LEGACY_TOKEN_LENGTH: Int = 20
 
   private def looksLikeOurToken(tokenString: String) = Option(GrantType.fromTokenString(tokenString))
     .map(gt => tokenString.substring(gt.getTokenPrefix.length))
-    .exists(_.length == TOKEN_LENGTH)
+    .exists(t => t.length == TOKEN_LENGTH || t.length == LEGACY_TOKEN_LENGTH)
 
   final val GRANTS_SEPARATOR = " "
 
