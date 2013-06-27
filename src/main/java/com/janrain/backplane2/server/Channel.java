@@ -30,6 +30,13 @@ public class Channel extends ExternalizableCore {
         super.init(id, data);
     }
 
+    /**
+     * Copy constructor (to help with migration).
+     */
+    public Channel(Map<String,String> data) throws SimpleDBException {
+        super.init(data.get(ChannelField.ID.getFieldName()), data);
+    }
+
     @Override
     public String getIdValue() {
         return get(ChannelField.ID);

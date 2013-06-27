@@ -4,7 +4,9 @@ import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.dao.DaoException;
 import com.janrain.backplane.server2.dao.BP2DAOs;
 import com.janrain.backplane.server2.model.BusConfig2;
+import com.janrain.backplane.server2.model.ChannelFields;
 import com.janrain.backplane.server2.oauth2.model.Token;
+import com.janrain.backplane.server2.model.Channel;
 import com.janrain.backplane2.server.*;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import org.apache.commons.lang.StringUtils;
@@ -82,7 +84,7 @@ public class AnonymousTokenRequest implements TokenRequest {
         Date expires = new Date(System.currentTimeMillis() + expiresIn.longValue() * 1000);
         try {
             Channel channel = createOrRefreshChannel(10 * expiresIn);
-            Scope processedScope = processScope(channel.getIdValue(), channel.get(Channel.ChannelField.BUS));
+            Scope processedScope = processScope(channel.id(), (String) channel.get(ChannelFields.BUS()).getOrElse(null));
             accessToken = new TokenBuilder(grantType.getAccessType(), processedScope.toString()).expires(expires).buildToken();
             BP2DAOs.tokenDao().store(accessToken);
             return accessToken.response(generateRefreshToken(grantType.getRefreshType(), processedScope));
@@ -135,7 +137,7 @@ public class AnonymousTokenRequest implements TokenRequest {
             config = busConfig;
         }
         Channel channel = new Channel(channelId, config, expireSeconds);
-        com.janrain.backplane2.server.dao.BP2DAOs.getChannelDao().persist(channel);
+        BP2DAOs.channelDao().store(channel);
         return channel;
     }
 

@@ -22,10 +22,8 @@ import com.janrain.backplane.common.DateTimeUtils;
 import com.janrain.backplane.config.BackplaneConfig;
 import com.janrain.backplane.dao.DaoException;
 import com.janrain.backplane.server2.dao.BP2DAOs;
-import com.janrain.backplane.server2.model.AuthSession;
-import com.janrain.backplane.server2.model.AuthSessionFields;
-import com.janrain.backplane.server2.model.BusConfig2;
-import com.janrain.backplane.server2.model.BusConfig2Fields;
+import com.janrain.backplane.server2.model.*;
+import com.janrain.backplane.server2.model.Channel;
 import com.janrain.backplane.server2.oauth2.model.*;
 import com.janrain.backplane.server2.oauth2.model.Token;
 import com.janrain.commons.supersimpledb.SimpleDBException;
@@ -833,7 +831,7 @@ public class Backplane2Controller {
         String channelId = msg.get(BackplaneMessage.Field.CHANNEL.getFieldName()) != null ? msg.get(BackplaneMessage.Field.CHANNEL.getFieldName()).toString() : null;
         String bus = msg.get(BackplaneMessage.Field.BUS.getFieldName()) != null ? msg.get(BackplaneMessage.Field.BUS.getFieldName()).toString() : null;
         Channel channel = getChannel(channelId);
-        String boundBus = channel == null ? null : channel.get(Channel.ChannelField.BUS);
+        String boundBus = channel == null ? null : (String) channel.get(ChannelFields.BUS()).getOrElse(null);
         if ( channel == null || ! StringUtils.equals(bus, boundBus)) {
             throw new InvalidRequestException("Invalid bus - channel binding ", HttpServletResponse.SC_FORBIDDEN);
         }
@@ -848,8 +846,8 @@ public class Backplane2Controller {
         try {
             message = new BackplaneMessage(
                     (String)token.get(TokenFields.CLIENT_SOURCE_URL()).getOrElse(null),
-                    Integer.parseInt(channel.get(Channel.ChannelField.MESSAGE_EXPIRE_DEFAULT_SECONDS)),
-                    Integer.parseInt(channel.get(Channel.ChannelField.MESSAGE_EXPIRE_MAX_SECONDS)),
+                    Integer.parseInt( (String) channel.get(ChannelFields.MESSAGE_EXPIRE_DEFAULT_SECONDS()).getOrElse(null)),
+                    Integer.parseInt( (String) channel.get(ChannelFields.MESSAGE_EXPIRE_MAX_SECONDS()).getOrElse(null)),
                     msg);
         } catch (Exception e) {
             throw new InvalidRequestException("Invalid message data: " + e.getMessage(), HttpServletResponse.SC_BAD_REQUEST);
@@ -861,21 +859,12 @@ public class Backplane2Controller {
     }
 
     private Channel getChannel(String channelId) throws BackplaneServerException, DaoException {
-        Channel channel = com.janrain.backplane2.server.dao.BP2DAOs.getChannelDao().get(channelId);
-        if (channel == null) {
-            // legacy channel-bus binding support
-            // todo: remove after all old channels have expired
-            BusConfig2 busConfig = BP2DAOs.busDao().get(Redis.getInstance().get("v2_channel_bus_" + channelId)).getOrElse(null);
-            if (busConfig != null) {
-                try {
-                    channel = new Channel(channelId, busConfig, 0);
-                } catch (SimpleDBException e) {
-                    // shouldn't happen
-                    throw new BackplaneServerException("", e);
-                }
-            }
-        }
-        return channel;
+        Option<Channel> channel = BP2DAOs.channelDao().get(channelId);
+        if (channel.isDefined()) return channel.get();
+
+        // legacy channel-bus binding support
+        // todo: remove after all old channels have expired
+        return new Channel(channelId, (BusConfig2) BP2DAOs.busDao().get(Redis.getInstance().get("v2_channel_bus_" + channelId)).getOrElse(null), 0);
     }
 
     private void aniLogNewChannel(HttpServletRequest request, String referer, String bus, String scope) {

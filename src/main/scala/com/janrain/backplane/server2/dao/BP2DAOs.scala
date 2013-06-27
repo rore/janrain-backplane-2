@@ -84,4 +84,16 @@ object BP2DAOs {
     }
   }
 
+  val channelDao: ChannelDao = new RedisMessageDao[Channel]("bp2Channel:") with ChannelDao
+    with LegacyDaoForwarder[com.janrain.backplane2.server.Channel, Channel] {
+
+    protected def instantiate(data: Map[_, _]) = new Channel( data.map( kv => kv._1.toString -> kv._2.toString ))
+
+    val legacyDao = com.janrain.backplane2.server.dao.BP2DAOs.getChannelDao
+
+    def preferLegacyGet(id: String) = id.length == Channel.CHANNEL_LEGACY_NAME_LENGTH
+
+    def isLegacyStore(channel: Channel): Boolean = channel.get(ChannelFields.BUS).flatMap(busDao.get(_)).exists(_.isLegacyChannelsAndMessages)
+  }
+
 }
