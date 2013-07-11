@@ -4,8 +4,6 @@ import com.janrain.backplane.dao.redis.RedisMessageDao
 import com.janrain.backplane.server2.oauth2.model._
 import com.janrain.backplane.dao.{PasswordHasherDao, ExpiringDao}
 import com.janrain.backplane.server2.model._
-import com.janrain.backplane2.server.BackplaneMessage
-import scala.collection.JavaConversions.asScalaSet
 
 /**
  * @author Johnny Bufu
@@ -71,17 +69,6 @@ object BP2DAOs {
     val legacyDao = com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao
 
     def preferLegacyGet(id: String) = id.length == Token.LEGACY_TOKEN_LENGTH
-
-    def isLegacyStore(token: Token): Boolean = {
-      if (token.grantType.isPrivileged) {
-        token.get(TokenFields.ISSUED_TO_CLIENT_ID).flatMap(clientDao.get(_)).exists(_.isLegacyTokens)
-      } else {
-        // non-privileged tokens have only one bus in scope
-        Option(token.scope.getScopeFieldValues(BackplaneMessage.Field.BUS))
-        .map(_.map(busDao.get(_)).flatten)
-        .flatten.exists(_.isLegacyTokens)
-      }
-    }
   }
 
   val channelDao: ChannelDao = new RedisMessageDao[Channel]("bp2Channel:") with ChannelDao
@@ -92,8 +79,6 @@ object BP2DAOs {
     val legacyDao = com.janrain.backplane2.server.dao.BP2DAOs.getChannelDao
 
     def preferLegacyGet(id: String) = id.length == Channel.CHANNEL_LEGACY_NAME_LENGTH
-
-    def isLegacyStore(channel: Channel): Boolean = channel.get(ChannelFields.BUS).flatMap(busDao.get(_)).exists(_.isLegacyChannelsAndMessages)
   }
 
 }

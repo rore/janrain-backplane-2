@@ -18,8 +18,6 @@ class Client(data: Map[String,String]) extends User("bp2Client", data, ClientFie
 
   def pwdHashField = ClientFields.PWDHASH
 
-  // default true if field missing
-  def isLegacyTokens: Boolean = ! get(ClientFields.LEGACY_TOKENS).exists(java.lang.Boolean.valueOf(_) == false)
 }
 
 object ClientFields extends UserFieldEnum {
@@ -40,7 +38,4 @@ object ClientFields extends UserFieldEnum {
       }
     }
   }
-
-  val LEGACY_TOKENS = new ClientEnumVal { def name = "legacy_tokens"; override def required = false }
-
 }

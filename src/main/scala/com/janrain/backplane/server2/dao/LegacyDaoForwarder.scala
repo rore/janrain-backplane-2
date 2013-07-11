@@ -19,8 +19,6 @@ trait LegacyDaoForwarder[LT <: NamedMap, T <: Message[_] with LegacySupport[LT]]
 
   def preferLegacyGet(id: String): Boolean
 
-  def isLegacyStore(item: T): Boolean
-
   abstract override def get(id: String): Option[T] = {
     if (preferLegacyGet(id)) {
       val legacyItem = legacyDao.get(id)
@@ -49,8 +47,8 @@ trait LegacyDaoForwarder[LT <: NamedMap, T <: Message[_] with LegacySupport[LT]]
   }
 
   abstract override def store(item: T) {
-    if (isLegacyStore(item)) legacyDao.persist(item.asLegacy)
-    else super.store(item)
+    legacyDao.persist(item.asLegacy)
+    super.store(item)
   }
 
 }
