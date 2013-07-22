@@ -1,0 +1,195 @@
+package com.janrain.backplane.server2.dao.redis
+
+import java.util.concurrent.{TimeUnit, Executors}
+import com.janrain.backplane.config.{SystemProperties, BackplaneConfig}
+import java.util.concurrent.atomic.AtomicBoolean
+import com.netflix.curator.framework.CuratorFramework
+import com.netflix.curator.framework.state.ConnectionState
+import com.janrain.backplane.dao.redis.Redis
+import com.redis.{RedisCommand, RedisClient}
+import com.janrain.backplane.common.model.Message
+import com.yammer.metrics.Metrics
+import com.yammer.metrics.core.MetricName
+import com.janrain.backplane.dao.DaoException
+import org.apache.commons.lang.exception.ExceptionUtils
+import com.janrain.backplane.server2.model.{BackplaneMessage, BackplaneMessageFields}
+import java.util.Date
+import com.janrain.backplane.common.DateTimeUtils
+import com.janrain.util.Loggable
+import com.netflix.curator.framework.recipes.leader.LeaderSelectorListener
+import RedisBackplaneMessageDao.MESSAGES
+import RedisBackplaneMessageDao.MESSAGE_QUEUE
+import RedisBackplaneMessageDao.LAST_ID
+
+/**
+ * ZooKeeper Leader Selector / message processor support for the Redis DAO implementation
+ *
+ * @author Johnny Bufu
+ */
+object RedisMessageProcessor extends LeaderSelectorListener with Loggable {
+
+  def scalaObject = this // for no eye-hurting access from java
+
+  private val cleanupRunnable = new Runnable {
+    override def run() {
+      try {
+        deleteExpiredMessages()
+      } catch {
+        case e: Exception => logger.warn(e)
+      }
+    }
+  }
+
+  private val scheduledExecutor = Executors.newScheduledThreadPool(1)
+
+  BackplaneConfig.addToBackgroundServices("bp2_cleanup_runner", scheduledExecutor)
+
+  private val leader = new AtomicBoolean(false)
+
+  private def isLeader: Boolean = leader.get && ! BackplaneConfig.isLeaderDisabled
+
+  override def takeLeadership(curatorFramework: CuratorFramework) {
+    leader.set(true)
+    logger.info("[" + SystemProperties.machineName + "] bp2 leader elected for message processing")
+    val cleanupTask = scheduledExecutor.scheduleAtFixedRate(cleanupRunnable, 1, 2, TimeUnit.HOURS)
+    insertMessages()
+    cleanupTask.cancel(false)
+    logger.info("[" + SystemProperties.machineName + "] bp2 leader ended message processing")
+  }
+
+  override def stateChanged(curatorFramework: CuratorFramework, connectionState: ConnectionState) {
+    logger.info("v2 leader selector state changed to " + connectionState)
+    if (isLeader && (ConnectionState.LOST == connectionState || ConnectionState.SUSPENDED == connectionState)) {
+      leader.set(false)
+      logger.info("v2 leader lost connection, giving up leadership")
+    }
+  }
+
+  private def deleteExpiredMessages() {
+    Redis.readPool.withClient(_.zrangebyscore(MESSAGES, 0, minInclusive = true, Double.MaxValue, maxInclusive = true, None, RedisClient.ASC))
+      .map( allMsgIds => {
+      Redis.writePool.withClient(_.pipeline( p => {
+        allMsgIds.map(_.split(" ")).collect {
+          case Array(bus, channel, msgId, expTime: String) if Message.isExpired(Option(expTime)) =>
+            p.del(msgId)
+            p.zrem(MESSAGES, msgId)
+            p.zrem(RedisBackplaneMessageDao.busKey(bus), msgId)
+            p.zrem(RedisBackplaneMessageDao.channelKey(channel), msgId)
+        }
+      }))
+    })
+  }
+
+  private val timeInQueue = Metrics.newHistogram(new MetricName("bp2", this.getClass.getName.replace(".", "_"), "time_in_queue"))
+
+  /** Processor to pull messages off queue and make them available */
+  private def insertMessages() {
+    while (isLeader) {
+      try {
+        Redis.writePool.withClient(processSingleBatchOfPendingMessages)
+        Thread.sleep(150)
+      } catch {
+        case e: Exception => {
+          logger.warn(e)
+          try {
+            Thread.sleep(2000)
+          } catch {
+            case ie: InterruptedException => // ignore
+          }
+        }
+      }
+    }
+  }
+
+  private def processSingleBatchOfPendingMessages(redisClient: RedisClient) {
+    try {
+      // no writes go through if another node updates LAST_ID
+      redisClient.send("WATCH " + LAST_ID)(redisClient.asString)
+
+      val redisLastId = redisClient.get(LAST_ID).getOrElse("")
+      val initialInsertionTimes: List[String] = Nil
+      // is there a better way to extract the insertionTimes from inside the pipeline loaner pattern?
+      var finalPostedIds: List[String] = Nil
+
+      val messagesToProcess = redisClient.lrange(MESSAGE_QUEUE, 0, 9).flatten.flatten.toList
+      if ( ! messagesToProcess.isEmpty ) {
+        redisClient.pipeline( p => {
+          // pipelines are actually transactions (MULTI/EXEC) with scala-redis lib
+          val (latestId, postedIds) = messagesToProcess.foldLeft( (redisLastId, initialInsertionTimes) ) {
+            case ( (lastId, postedIdsCollector), messageString ) => {
+              val (backplaneMessage, postedId) = fixId(Message.deserialize(messageString), lastId)
+              processSingleMessage(backplaneMessage, postedId, postedIdsCollector, p)
+            }
+          }
+          p.set(LAST_ID, latestId)
+          logger.info("processing transaction with " + postedIds.size + " bp2 message(s)")
+          finalPostedIds = postedIds
+        })
+          .filter(! _.isEmpty).getOrElse(throw new DaoException("empty result received for message insertion transaction"))
+
+        val now = System.currentTimeMillis
+        for {
+          postedId <- finalPostedIds
+          diff = now - Message.timeFromId(postedId)
+        } {
+          if (diff < 0 || diff > 2880000)
+            logger.warn("bp2 message post time vs message processor insertion time diff is bizarre for original id: %s, delta from now: %s ".format(postedId, diff))
+          else
+            timeInQueue.update(diff)
+        }
+        logger.info("flushed " + finalPostedIds.size + " bp2 messages")
+      }
+
+    } catch {
+      case e: Exception => {
+        logger.warn("error while trying to process bp2 message batch: " + ExceptionUtils.getRootCauseMessage(e), BackplaneConfig.getDebugException(e))
+        throw e
+      }
+    }
+  }
+
+  private final val ID_FIELD_NAME = BackplaneMessageFields.ID.name
+  private def fixId(messageData: Map[String,String], lastId: String): (BackplaneMessage, String) = {
+    val postedId = messageData.get(BackplaneMessageFields.ID.name).getOrElse {
+      logger.warn("bp2 message was not assigned an ID when it was posted, generating it at queue processing time: " + messageData.mkString("\n"))
+      BackplaneMessage.generateMessageId(new Date)
+    }
+    val msg = RedisBackplaneMessageDao.instantiate( messageData.map {
+      case (ID_FIELD_NAME, posted) if Message.dateFromId(posted).exists(_.getTime < Message.timeFromId(lastId)) => {
+        val newId = BackplaneMessage.generateMessageId(new Date(Message.timeFromId(lastId) + 1))
+        logger.warn("bp2 posted message id %s is before latest id %s, fixed to: %s".format(posted, lastId, newId))
+        BackplaneMessageFields.ID.name -> newId
+      }
+      case other => other
+    })
+
+    (msg, postedId)
+  }
+
+  /**
+   * Store one message to redis, as part of the supplied redis pipeline / transaction.
+   * The following associated redis data structures are created or updated:
+   * - key = msgId, value = serialized message string
+   * - key = bp2messages, add sorted set entry, score = msg time, value = msg metadata
+   * - key = bp2bus:<bus>, add sorted set entry, score = msg time, value = msgId
+   * - key = bp2channel:<channel>, add sorted set entry, score = msg time, value = msgId
+   *
+   * @return pair of:
+   *         last, possibly updated, id
+   *         old message id prepended to the list of supplied insertion times
+   */
+  private def processSingleMessage(backplaneMessage: BackplaneMessage, postedId: String, insertionTimes: List[String], redisClient: RedisCommand): (String,List[String]) = {
+    val msgId = backplaneMessage.id
+    val messageTime = Message.timeFromId(msgId)
+    val sticky: Boolean = backplaneMessage.get(BackplaneMessageFields.STICKY).exists(_.toBoolean)
+    redisClient.setex(RedisBackplaneMessageDao.getKey(msgId), DateTimeUtils.getExpireSeconds(msgId, backplaneMessage.expiration, sticky), backplaneMessage.serialize)
+    redisClient.zadd(RedisBackplaneMessageDao.channelKey(backplaneMessage.channel), messageTime, msgId)
+    redisClient.zadd(RedisBackplaneMessageDao.busKey(backplaneMessage.bus), messageTime, msgId)
+    val metaData = "%s %s %s %s".format(backplaneMessage.bus, backplaneMessage.channel, msgId, backplaneMessage.expiration)
+    redisClient.zadd(MESSAGES, messageTime, metaData)
+    redisClient.lpop(MESSAGE_QUEUE)
+    logger.info("bp2 message pipelined: %s -> %s".format(postedId, msgId))
+    (msgId, postedId :: insertionTimes)
+  }
+
+}

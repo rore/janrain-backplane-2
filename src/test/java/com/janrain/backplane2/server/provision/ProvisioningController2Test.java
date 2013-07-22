@@ -24,13 +24,13 @@ import com.janrain.backplane.config.model.AdminFields;
 import com.janrain.backplane.dao.DaoException;
 import com.janrain.backplane.provision.ProvisioningController2;
 import com.janrain.backplane.server2.dao.BP2DAOs;
+import com.janrain.backplane.server2.model.BackplaneMessageFields;
 import com.janrain.backplane.server2.model.BusConfig2;
 import com.janrain.backplane.server2.model.BusConfig2Fields;
 import com.janrain.backplane.server2.oauth2.model.BusOwner;
 import com.janrain.backplane.server2.oauth2.model.BusOwnerFields;
 import com.janrain.backplane.server2.oauth2.model.Client;
 import com.janrain.backplane.server2.oauth2.model.ClientFields;
-import com.janrain.backplane2.server.BackplaneMessage;
 import com.janrain.backplane2.server.Scope;
 import com.janrain.oauth2.TokenException;
 import com.janrain.util.RandomUtils;
@@ -625,7 +625,7 @@ public class ProvisioningController2Test {
         if (grantsForClient != null) {
             for(String grantId : grantsForClient.keySet()) {
                 Scope scope = new Scope(grantsForClient.get(grantId));
-                busesGranted.addAll(scope.getScopeFieldValues(BackplaneMessage.Field.BUS));
+                busesGranted.addAll(scope.getScopeFieldValues(BackplaneMessageFields.BUS()));
             }
         }
 

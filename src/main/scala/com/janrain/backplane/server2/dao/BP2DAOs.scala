@@ -4,6 +4,7 @@ import com.janrain.backplane.dao.redis.RedisMessageDao
 import com.janrain.backplane.server2.oauth2.model._
 import com.janrain.backplane.dao.{PasswordHasherDao, ExpiringDao}
 import com.janrain.backplane.server2.model._
+import com.janrain.backplane.server2.dao.redis.RedisBackplaneMessageDao
 
 /**
  * @author Johnny Bufu
@@ -80,5 +81,7 @@ object BP2DAOs {
 
     def preferLegacyGet(id: String) = id.length == Channel.CHANNEL_LEGACY_NAME_LENGTH
   }
+
+  val messageDao: BackplaneMessageDao = RedisBackplaneMessageDao
 
 }

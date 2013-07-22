@@ -8,8 +8,9 @@ import java.util.Date
 import org.apache.commons.lang.StringUtils
 import java.text.ParseException
 import org.apache.commons.codec.binary.Base64
-import com.janrain.backplane.common.MessageException
+import com.janrain.backplane.common.DateTimeUtils
 import java.net.{MalformedURLException, URL}
+import com.janrain.backplane.common.MessageException
 
 /**
  * @author Johnny Bufu
@@ -59,16 +60,6 @@ object Message extends Loggable {
 
   final def generateId = Utils.ISO8601.print(new Date().getTime) + ID_TIMESTAMP_SEP + RandomUtils.randomString(ID_RANDOM_LENGTH)
 
-  final def dateFromId(timestampPrefixedId: String): Date =
-    try {
-      Utils.ISO8601.parseDateTime(timestampPrefixedId.substring(0, timestampPrefixedId.indexOf("Z") + 1)).toDate
-    } catch {
-      case e: Throwable => {
-        logger.warn(e)
-        throw new MessageException("error extracting timestamp from id: " + e.getMessage)
-      }
-    }
-
   final def isExpired(fieldValue: Option[String]) = fieldValue match {
     case Some(s: String) =>
       try {
@@ -79,6 +70,28 @@ object Message extends Loggable {
     case _ => false
   }
 
+  /** @return milliseconds since 1970-01-01, or 0 if the provided parameter is not a valid ISO8601 date prefixed string */
+  final def timeFromId(timestampPrefixedId: String): Long = {
+    try {
+      dateFromId(timestampPrefixedId).map(_.getTime).getOrElse(0)
+    } catch {
+      case e: Exception =>
+        logger.warn("invalid message ID: " + timestampPrefixedId)
+        0
+    }
+  }
+
+  /** throws if the provided parameter is not a valid ISO8601 date prefixed string */
+  final def dateFromId(timestampPrefixedId: String): Option[Date] =
+    try {
+      Some(Utils.ISO8601.parseDateTime(timestampPrefixedId.substring(0, timestampPrefixedId.indexOf("Z") + 1)).toDate)
+    } catch {
+      case e: Throwable => {
+        logger.warn(e)
+        throw new MessageException("error extracting timestamp from id: " + e.getMessage)
+      }
+    }
+
   private final val ID_RANDOM_LENGTH = 10
   private final val ID_TIMESTAMP_SEP = "-"
   private final val SERIAL_KEY_VAL_SEP = ":"
@@ -88,11 +101,12 @@ object Message extends Loggable {
 trait MessageFieldEnum extends Enum { type EnumVal <: Value with MessageField }
 
 trait MessageField {
+  import com.janrain.backplane.common.MessageException
 
   def name: String
   def required: Boolean
 
-  /** throws MessageException */
+  @throws(classOf[MessageException])
   def validate(fieldValue:Option[String], wholeMessage: Message[_]) {
     if (required) validateRequired(fieldValue)
   }
@@ -111,6 +125,22 @@ trait MessageField {
       fieldValue.foreach(Utils.ISO8601.parseDateTime(_))
     } catch {
       case e: ParseException => throw new MessageException("invalid value for " + name + ": " + fieldValue)
+    }
+  }
+
+  def validateInternetDate(fieldValue: Option[String]) {
+    try {
+      fieldValue.foreach(DateTimeUtils.INTERNETDATE.get.parse(_))
+    } catch {
+      case e: Exception => throw new MessageException("invalid internet date value for " + name + ": " + fieldValue)
+    }
+  }
+
+  def validateBoolean(fieldValue: Option[String]) {
+    try {
+      fieldValue.foreach(_.toBoolean)
+    } catch {
+      case e: Exception => throw new MessageException("invalid boolean string value for " + name + ": " + fieldValue)
     }
   }
 

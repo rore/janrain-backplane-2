@@ -20,14 +20,9 @@ public class BP2DAOs {
         return tokenDao;
     }
 
-    public static BackplaneMessageDAO getBackplaneMessageDAO() {
-        return messageDao;
-    }
-
     // - PRIVATE
 
     private static final TokenDAO tokenDao = new RedisTokenDAO();
     private static final ChannelDAO channelDao = new RedisChannelDAO();
-    private static final BackplaneMessageDAO messageDao = new RedisBackplaneMessageDAO();
 
 }

@@ -1,7 +1,7 @@
 package com.janrain.backplane.server2.oauth2.model
 
 import com.janrain.backplane.common.model.{MessageField, MessageFieldEnum, Message}
-import com.janrain.backplane2.server.{BackplaneMessage, Scope, GrantType}
+import com.janrain.backplane2.server.{Scope, GrantType}
 import com.janrain.backplane.common.MessageException
 import com.janrain.oauth2.{OAuth2, TokenException}
 import com.janrain.oauth2.OAuth2._
@@ -12,6 +12,7 @@ import com.janrain.backplane.dao.DaoException
 import com.janrain.util.{Utils, Loggable}
 import scala.collection.JavaConversions._
 import java.util.Date
+import com.janrain.backplane.server2.model.BackplaneMessageFields
 
 /**
  * @author Johnny Bufu
@@ -174,8 +175,8 @@ object TokenFields extends MessageFieldEnum {
           val scope = new Scope(scopeValue)
           wholeMessage match {
             case token: Token if ! token.grantType.isPrivileged => {
-              val buses = scope.getScopeMap.get(BackplaneMessage.Field.BUS)
-              val channels = scope.getScopeMap.get(BackplaneMessage.Field.CHANNEL)
+              val buses = scope.getScopeFieldValues(BackplaneMessageFields.BUS)
+              val channels = scope.getScopeFieldValues(BackplaneMessageFields.CHANNEL)
               if (buses == null || buses.size > 1 || channels == null || channels.size > 1) {
                 throw new MessageException("invalid scope for anonymous token, must have exactly one bus and one channel specified: " + scopeValue)
               }

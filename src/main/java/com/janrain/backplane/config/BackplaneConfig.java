@@ -19,7 +19,6 @@ package com.janrain.backplane.config;
 import com.janrain.backplane.config.dao.ConfigDAOs;
 import com.janrain.backplane.config.model.ServerConfigFields;
 import com.janrain.backplane.server.MessageProcessor;
-import com.janrain.backplane2.server.V2MessageProcessor;
 import com.janrain.commons.util.AwsUtility;
 import com.janrain.commons.util.Pair;
 import com.janrain.redis.Redis;
@@ -109,7 +108,6 @@ public class BackplaneConfig {
     private static final Map<String, ExecutorService> backgroundServices = new HashMap<String, ExecutorService>();
 
     final MessageProcessor v1messageProcessor = new MessageProcessor();
-    final V2MessageProcessor v2messageProcessor = new V2MessageProcessor();
 
     // Amazon specific instance-id value
     private static String EC2InstanceId = AwsUtility.retrieveEC2InstanceId();
@@ -163,7 +161,7 @@ public class BackplaneConfig {
     private void init() {
         addTask(backgroundServices, createPingTask());
         initZk("/v1_worker", v1messageProcessor);
-        initZk("/v2_worker", v2messageProcessor);
+        initZk("/v2_worker", com.janrain.backplane.server2.dao.redis.RedisMessageProcessor.scalaObject());
     }
 
     private void initZk(String leaderPath, LeaderSelectorListener listener) {

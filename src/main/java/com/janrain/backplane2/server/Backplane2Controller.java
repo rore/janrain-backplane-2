@@ -21,6 +21,7 @@ import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.common.DateTimeUtils;
 import com.janrain.backplane.config.BackplaneConfig;
 import com.janrain.backplane.dao.DaoException;
+import com.janrain.backplane.server2.MessageResponse;
 import com.janrain.backplane.server2.dao.BP2DAOs;
 import com.janrain.backplane.server2.model.*;
 import com.janrain.backplane.server2.model.Channel;
@@ -28,7 +29,6 @@ import com.janrain.backplane.server2.oauth2.model.*;
 import com.janrain.backplane.server2.oauth2.model.Token;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.oauth2.*;
-import com.janrain.redis.Redis;
 import com.janrain.servlet.InvalidRequestException;
 import com.janrain.util.RandomUtils;
 import com.janrain.util.ServletUtil;
@@ -44,6 +44,7 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.ModelAndView;
 import scala.Option;
+import scala.Tuple2;
 import scala.collection.JavaConversions;
 
 import javax.inject.Inject;
@@ -303,29 +304,15 @@ public class Backplane2Controller {
                         HttpServletResponse.SC_FORBIDDEN, response);
             }
 
-            MessagesResponse bpResponse = new MessagesResponse(messageRequest.getSince());
-            boolean exit = false;
-            do {
-                com.janrain.backplane2.server.dao.BP2DAOs.getBackplaneMessageDAO().retrieveMessagesPerScope(bpResponse, token.get());
-                if (!bpResponse.hasMessages() && new Date().before(messageRequest.getReturnBefore())) {
-                    try {
-                        Thread.sleep(MESSAGES_POLL_SLEEP_MILLIS);
-                    } catch (InterruptedException e) {
-                        //ignore
-                    }
-                } else {
-                    exit = true;
-                }
-            } while (!exit);
-
-            Map<String,Object> result = bpResponse.asResponseFields(request.getServerName(), token.get().grantType().isPrivileged());
-            aniLogPollMessages(request, referer, bpResponse.getMessages());
-            return result;
+            // val (framesResult, messages) = ...
+            Tuple2<Map<String,Object>,scala.collection.immutable.List<BackplaneMessage>> framesResultAndMessages = MessageResponse.scalaObject().apply(
+                    request.getServerName(), token.get().grantType().isPrivileged(),
+                    token.get().scope(), messageRequest.getSince(), MESSAGES_POLL_SLEEP_MILLIS, messageRequest.getReturnBefore());
+            aniLogPollMessages(request, referer, JavaConversions.asJavaList(framesResultAndMessages._2()));
+            return framesResultAndMessages._1();
 
         } catch (TokenException te) {
             return handleTokenException(te, response);
-        } catch (BackplaneServerException bse) {
-            throw bse;
         } catch (InvalidRequestException ire) {
             throw ire;
         } catch (Exception e) {
@@ -336,6 +323,23 @@ public class Backplane2Controller {
             }
         }
     }
+
+/*
+    public Map<String, Object> asResponseFields(String serverName, boolean privileged) throws BackplaneServerException {
+        List<Map<String,Object>> frames = new ArrayList<Map<String, Object>>();
+        for (BackplaneMessage message : messages) {
+            frames.add(message.asFrame(serverName, privileged));
+        }
+
+        Map<String, Object> messagesResponse = new HashMap<String, Object>();
+        messagesResponse.put("nextURL", "https://" + serverName + "/v2/messages" +
+                (!StringUtils.isBlank(lastMessageId) ? "?since=" + lastMessageId : ""));
+        messagesResponse.put("moreMessages", moreMessages);
+        messagesResponse.put("messages", frames);
+        return messagesResponse;
+    }
+*/
+
 
     /**
      * Retrieve a single message from the server.
@@ -348,7 +352,7 @@ public class Backplane2Controller {
     public @ResponseBody Map<String,Object> message(HttpServletRequest request, HttpServletResponse response,
                                 @PathVariable final String msg_id,
                                 @RequestParam(required = false) String callback)
-            throws BackplaneServerException, SimpleDBException {
+            throws BackplaneServerException, SimpleDBException, DaoException {
 
         ServletUtil.checkSecure(request);
 
@@ -369,10 +373,13 @@ public class Backplane2Controller {
                 throw new TokenException("Invalid token type: " + token.get().grantType(), HttpServletResponse.SC_FORBIDDEN);
             }
 
-            BackplaneMessage message = com.janrain.backplane2.server.dao.BP2DAOs.getBackplaneMessageDAO().retrieveBackplaneMessage(msg_id, token.get());
+            BackplaneMessage message = BP2DAOs.messageDao().get(msg_id).getOrElse(null);
 
             if (message != null) {
-                Map<String,Object> result = message.asFrame(request.getServerName(), token.get().grantType().isPrivileged());
+                if (! token.get().scope().isMessageInScope(message)) {
+                    throw new TokenException("Message id '" + msg_id + "' not found", HttpServletResponse.SC_NOT_FOUND);
+                }
+                Map<String,Object> result = JavaConversions.mapAsJavaMap(message.asFrame(request.getServerName(), token.get().grantType().isPrivileged()));
                 aniLogGetMessage(request, message, token.get());
                 return result;
             } else {
@@ -412,10 +419,9 @@ public class Backplane2Controller {
             }
 
             BackplaneMessage message = parsePostedMessage(messagePostBody, token.get());
-            com.janrain.backplane2.server.dao.BP2DAOs.getBackplaneMessageDAO().persist(message);
+            BP2DAOs.messageDao().store(message);
 
             aniLogNewMessage(request, message, token.get());
-
             response.setStatus(HttpServletResponse.SC_CREATED);
             return null;
 
@@ -828,8 +834,8 @@ public class Backplane2Controller {
             throw new InvalidRequestException("Invalid data in payload", HttpServletResponse.SC_BAD_REQUEST);
         }
 
-        String channelId = msg.get(BackplaneMessage.Field.CHANNEL.getFieldName()) != null ? msg.get(BackplaneMessage.Field.CHANNEL.getFieldName()).toString() : null;
-        String bus = msg.get(BackplaneMessage.Field.BUS.getFieldName()) != null ? msg.get(BackplaneMessage.Field.BUS.getFieldName()).toString() : null;
+        String channelId = msg.get(BackplaneMessageFields.CHANNEL().name()) != null ? msg.get(BackplaneMessageFields.CHANNEL().name()).toString() : null;
+        String bus = msg.get(BackplaneMessageFields.BUS().name()) != null ? msg.get(BackplaneMessageFields.BUS().name()).toString() : null;
         Channel channel = getChannel(channelId);
         String boundBus = channel == null ? null : (String) channel.get(ChannelFields.BUS()).getOrElse(null);
         if ( channel == null || ! StringUtils.equals(bus, boundBus)) {
@@ -837,34 +843,29 @@ public class Backplane2Controller {
         }
 
         // check to see if channel is already full
-        if (com.janrain.backplane2.server.dao.BP2DAOs.getBackplaneMessageDAO().getMessageCount(channelId) >= BackplaneConfig.getDefaultMaxMessageLimit()) {
+        if (BP2DAOs.messageDao().messageCount(channelId) >= BackplaneConfig.getDefaultMaxMessageLimit()) {
             throw new InvalidRequestException("Message limit of " + BackplaneConfig.getDefaultMaxMessageLimit() + " has been reached for channel '" + channel + "'",
                     HttpServletResponse.SC_FORBIDDEN);
         }
 
-        BackplaneMessage message;
         try {
-            message = new BackplaneMessage(
+            BackplaneMessage message = new BackplaneMessage(
                     (String)token.get(TokenFields.CLIENT_SOURCE_URL()).getOrElse(null),
                     Integer.parseInt( (String) channel.get(ChannelFields.MESSAGE_EXPIRE_DEFAULT_SECONDS()).getOrElse(null)),
                     Integer.parseInt( (String) channel.get(ChannelFields.MESSAGE_EXPIRE_MAX_SECONDS()).getOrElse(null)),
                     msg);
+            if ( ! token.scope().isMessageInScope(message) ) {
+                throw new InvalidRequestException("Invalid bus in message", HttpServletResponse.SC_FORBIDDEN);
+            }
+            return  message;
         } catch (Exception e) {
             throw new InvalidRequestException("Invalid message data: " + e.getMessage(), HttpServletResponse.SC_BAD_REQUEST);
         }
-        if ( ! token.scope().isMessageInScope(message) ) {
-            throw new InvalidRequestException("Invalid bus in message", HttpServletResponse.SC_FORBIDDEN);
-        }
-        return  message;
     }
 
     private Channel getChannel(String channelId) throws BackplaneServerException, DaoException {
         Option<Channel> channel = BP2DAOs.channelDao().get(channelId);
-        if (channel.isDefined()) return channel.get();
-
-        // legacy channel-bus binding support
-        // todo: remove after all old channels have expired
-        return new Channel(channelId, (BusConfig2) BP2DAOs.busDao().get(Redis.getInstance().get("v2_channel_bus_" + channelId)).getOrElse(null), 0);
+        return channel.getOrElse(null);
     }
 
     private void aniLogNewChannel(HttpServletRequest request, String referer, String bus, String scope) {
@@ -896,10 +897,10 @@ public class Backplane2Controller {
 
         List<Map<String,String>> messagesMeta = new ArrayList<Map<String,String>>();
         for (BackplaneMessage message : messages) {
-            String bus = message.getBus();
-            String channelId = "https://" + serverName + "/v2/bus/" + bus + "/channel/" + message.getChannel();
+            String bus = message.bus();
+            String channelId = "https://" + serverName + "/v2/bus/" + bus + "/channel/" + message.channel();
             Map<String,String> anotherMeta = new HashMap<String,String>();
-            anotherMeta.put("id", message.getIdValue());
+            anotherMeta.put("id", message.id());
             anotherMeta.put("bus", bus);
             anotherMeta.put("channel_id", channelId);
             messagesMeta.add(anotherMeta);
@@ -915,10 +916,10 @@ public class Backplane2Controller {
             return;
         }
 
-        String bus = message.getBus();
-        String channelId = "https://" + request.getServerName() + "/v2/bus/" + bus + "/channel/" + message.getChannel();
+        String bus = message.bus();
+        String channelId = "https://" + request.getServerName() + "/v2/bus/" + bus + "/channel/" + message.channel();
         Map<String,Object> aniEvent = new HashMap<String,Object>();
-        aniEvent.put("message_id", message.getIdValue());
+        aniEvent.put("message_id", message.id());
         aniEvent.put("bus", bus);
         aniEvent.put("channel_id", channelId);
         aniEvent.put("client_id", token.get(TokenFields.ISSUED_TO_CLIENT_ID()));
@@ -931,8 +932,8 @@ public class Backplane2Controller {
             return;
         }
 
-        String bus = message.getBus();
-        String channel = message.getChannel();
+        String bus = message.bus();
+        String channel = message.channel();
         String channelId = "https://" + request.getServerName() + "/v2/bus/" + bus + "/channel/" + channel;
         String clientId = (String) token.get(TokenFields.ISSUED_TO_CLIENT_ID()).getOrElse(null);
         Map<String,Object> aniEvent = new HashMap<String,Object>();
