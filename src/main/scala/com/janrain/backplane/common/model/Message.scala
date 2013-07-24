@@ -1,6 +1,6 @@
 package com.janrain.backplane.common.model
 
-import com.janrain.util.{Utils, Loggable, RandomUtils, Enum}
+import com.janrain.util.{Utils, Loggable, Enum}
 import org.apache.commons.codec.binary.Base64._
 import com.janrain.commons.util.Utf8StringUtils._
 import scala.Some
@@ -58,8 +58,6 @@ object Message extends Loggable {
     case _ => Map()
   }
 
-  final def generateId = Utils.ISO8601.print(new Date().getTime) + ID_TIMESTAMP_SEP + RandomUtils.randomString(ID_RANDOM_LENGTH)
-
   final def isExpired(fieldValue: Option[String]) = fieldValue match {
     case Some(s: String) =>
       try {
@@ -70,30 +68,6 @@ object Message extends Loggable {
     case _ => false
   }
 
-  /** @return milliseconds since 1970-01-01, or 0 if the provided parameter is not a valid ISO8601 date prefixed string */
-  final def timeFromId(timestampPrefixedId: String): Long = {
-    try {
-      dateFromId(timestampPrefixedId).map(_.getTime).getOrElse(0)
-    } catch {
-      case e: Exception =>
-        logger.warn("invalid message ID: " + timestampPrefixedId)
-        0
-    }
-  }
-
-  /** throws if the provided parameter is not a valid ISO8601 date prefixed string */
-  final def dateFromId(timestampPrefixedId: String): Option[Date] =
-    try {
-      Some(Utils.ISO8601.parseDateTime(timestampPrefixedId.substring(0, timestampPrefixedId.indexOf("Z") + 1)).toDate)
-    } catch {
-      case e: Throwable => {
-        logger.warn(e)
-        throw new MessageException("error extracting timestamp from id: " + e.getMessage)
-      }
-    }
-
-  private final val ID_RANDOM_LENGTH = 10
-  private final val ID_TIMESTAMP_SEP = "-"
   private final val SERIAL_KEY_VAL_SEP = ":"
   private final val SERIAL_ENTRY_SEP = ","
 }

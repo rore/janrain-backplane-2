@@ -1,6 +1,6 @@
 package com.janrain.backplane.server1.dao
 
-import com.janrain.backplane.dao.redis.{RedisMessageDao}
+import com.janrain.backplane.dao.redis.RedisMessageDao
 import com.janrain.backplane.server1.model.{BusUserFields, BusConfig1, BusUser}
 import com.janrain.backplane.dao.PasswordHasherDao
 

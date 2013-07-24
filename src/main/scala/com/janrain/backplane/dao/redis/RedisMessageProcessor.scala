@@ -1,34 +1,29 @@
-package com.janrain.backplane.server2.dao.redis
+package com.janrain.backplane.dao.redis
 
 import java.util.concurrent.{TimeUnit, Executors}
 import com.janrain.backplane.config.{SystemProperties, BackplaneConfig}
 import java.util.concurrent.atomic.AtomicBoolean
 import com.netflix.curator.framework.CuratorFramework
 import com.netflix.curator.framework.state.ConnectionState
-import com.janrain.backplane.dao.redis.Redis
 import com.redis.{RedisCommand, RedisClient}
-import com.janrain.backplane.common.model.Message
+import com.janrain.backplane.common.model.{MessageField, BackplaneMessageBase, Message}
 import com.yammer.metrics.Metrics
 import com.yammer.metrics.core.MetricName
-import com.janrain.backplane.dao.DaoException
+import com.janrain.backplane.dao.{Dao, MessageDao, DaoException}
 import org.apache.commons.lang.exception.ExceptionUtils
-import com.janrain.backplane.server2.model.{BackplaneMessage, BackplaneMessageFields}
 import java.util.Date
 import com.janrain.backplane.common.DateTimeUtils
 import com.janrain.util.Loggable
 import com.netflix.curator.framework.recipes.leader.LeaderSelectorListener
-import RedisBackplaneMessageDao.MESSAGES
-import RedisBackplaneMessageDao.MESSAGE_QUEUE
-import RedisBackplaneMessageDao.LAST_ID
+
 
 /**
  * ZooKeeper Leader Selector / message processor support for the Redis DAO implementation
  *
  * @author Johnny Bufu
  */
-object RedisMessageProcessor extends LeaderSelectorListener with Loggable {
-
-  def scalaObject = this // for no eye-hurting access from java
+class RedisMessageProcessor[BMF <: MessageField, BMT <: BackplaneMessageBase[BMF]]( private val dao: Dao[BMT] with MessageProcessorDaoSupport[BMF,BMT] )
+  extends LeaderSelectorListener with Loggable {
 
   private val cleanupRunnable = new Runnable {
     override def run() {
@@ -42,7 +37,7 @@ object RedisMessageProcessor extends LeaderSelectorListener with Loggable {
 
   private val scheduledExecutor = Executors.newScheduledThreadPool(1)
 
-  BackplaneConfig.addToBackgroundServices("bp2_cleanup_runner", scheduledExecutor)
+  BackplaneConfig.addToBackgroundServices("%scleanup_runner".format(dao.processorId), scheduledExecutor)
 
   private val leader = new AtomicBoolean(false)
 
@@ -50,31 +45,31 @@ object RedisMessageProcessor extends LeaderSelectorListener with Loggable {
 
   override def takeLeadership(curatorFramework: CuratorFramework) {
     leader.set(true)
-    logger.info("[" + SystemProperties.machineName + "] bp2 leader elected for message processing")
+    logger.info("[%s] %sprocessor leader elected for message processing".format(SystemProperties.machineName, dao.processorId))
     val cleanupTask = scheduledExecutor.scheduleAtFixedRate(cleanupRunnable, 1, 2, TimeUnit.HOURS)
     insertMessages()
     cleanupTask.cancel(false)
-    logger.info("[" + SystemProperties.machineName + "] bp2 leader ended message processing")
+    logger.info("[%s] %sprocessor leader ended message processing".format(SystemProperties.machineName, dao.processorId))
   }
 
   override def stateChanged(curatorFramework: CuratorFramework, connectionState: ConnectionState) {
-    logger.info("v2 leader selector state changed to " + connectionState)
+    logger.info("%sprocessor leader selector state changed to %s".format(dao.processorId, connectionState))
     if (isLeader && (ConnectionState.LOST == connectionState || ConnectionState.SUSPENDED == connectionState)) {
       leader.set(false)
-      logger.info("v2 leader lost connection, giving up leadership")
+      logger.info("%sprocessor leader lost connection, giving up leadership".format(dao.processorId))
     }
   }
 
   private def deleteExpiredMessages() {
-    Redis.readPool.withClient(_.zrangebyscore(MESSAGES, 0, minInclusive = true, Double.MaxValue, maxInclusive = true, None, RedisClient.ASC))
+    Redis.readPool.withClient(_.zrangebyscore(dao.messagesKey, 0, minInclusive = true, Double.MaxValue, maxInclusive = true, None, RedisClient.ASC))
       .map( allMsgIds => {
       Redis.writePool.withClient(_.pipeline( p => {
         allMsgIds.map(_.split(" ")).collect {
           case Array(bus, channel, msgId, expTime: String) if Message.isExpired(Option(expTime)) =>
             p.del(msgId)
-            p.zrem(MESSAGES, msgId)
-            p.zrem(RedisBackplaneMessageDao.busKey(bus), msgId)
-            p.zrem(RedisBackplaneMessageDao.channelKey(channel), msgId)
+            p.zrem(dao.messagesKey, msgId)
+            p.zrem(dao.busKey(bus), msgId)
+            p.zrem(dao.channelKey(channel), msgId)
         }
       }))
     })
@@ -104,14 +99,14 @@ object RedisMessageProcessor extends LeaderSelectorListener with Loggable {
   private def processSingleBatchOfPendingMessages(redisClient: RedisClient) {
     try {
       // no writes go through if another node updates LAST_ID
-      redisClient.send("WATCH " + LAST_ID)(redisClient.asString)
+      redisClient.send("WATCH " + dao.lastIdKey)(redisClient.asString)
 
-      val redisLastId = redisClient.get(LAST_ID).getOrElse("")
+      val redisLastId = redisClient.get(dao.lastIdKey).getOrElse("")
       val initialInsertionTimes: List[String] = Nil
       // is there a better way to extract the insertionTimes from inside the pipeline loaner pattern?
       var finalPostedIds: List[String] = Nil
 
-      val messagesToProcess = redisClient.lrange(MESSAGE_QUEUE, 0, 9).flatten.flatten.toList
+      val messagesToProcess = redisClient.lrange(dao.messagesQueueKey, 0, 9).flatten.flatten.toList
       if ( ! messagesToProcess.isEmpty ) {
         redisClient.pipeline( p => {
           // pipelines are actually transactions (MULTI/EXEC) with scala-redis lib
@@ -121,7 +116,7 @@ object RedisMessageProcessor extends LeaderSelectorListener with Loggable {
               processSingleMessage(backplaneMessage, postedId, postedIdsCollector, p)
             }
           }
-          p.set(LAST_ID, latestId)
+          p.set(dao.lastIdKey, latestId)
           logger.info("processing transaction with " + postedIds.size + " bp2 message(s)")
           finalPostedIds = postedIds
         })
@@ -130,7 +125,7 @@ object RedisMessageProcessor extends LeaderSelectorListener with Loggable {
         val now = System.currentTimeMillis
         for {
           postedId <- finalPostedIds
-          diff = now - Message.timeFromId(postedId)
+          diff = now - BackplaneMessageBase.timeFromId(postedId)
         } {
           if (diff < 0 || diff > 2880000)
             logger.warn("bp2 message post time vs message processor insertion time diff is bizarre for original id: %s, delta from now: %s ".format(postedId, diff))
@@ -148,17 +143,18 @@ object RedisMessageProcessor extends LeaderSelectorListener with Loggable {
     }
   }
 
-  private final val ID_FIELD_NAME = BackplaneMessageFields.ID.name
-  private def fixId(messageData: Map[String,String], lastId: String): (BackplaneMessage, String) = {
-    val postedId = messageData.get(BackplaneMessageFields.ID.name).getOrElse {
+  private final val ID_FIELD_NAME = dao.idField.name
+
+  private def fixId(messageData: Map[String,String], lastId: String): (BMT, String) = {
+    val postedId = messageData.get(ID_FIELD_NAME).getOrElse {
       logger.warn("bp2 message was not assigned an ID when it was posted, generating it at queue processing time: " + messageData.mkString("\n"))
-      BackplaneMessage.generateMessageId(new Date)
+      BackplaneMessageBase.generateMessageId(new Date)
     }
-    val msg = RedisBackplaneMessageDao.instantiate( messageData.map {
-      case (ID_FIELD_NAME, posted) if Message.dateFromId(posted).exists(_.getTime < Message.timeFromId(lastId)) => {
-        val newId = BackplaneMessage.generateMessageId(new Date(Message.timeFromId(lastId) + 1))
+    val msg = dao.mpInstantiate( messageData.map {
+      case (ID_FIELD_NAME, posted) if BackplaneMessageBase.dateFromId(posted).exists(_.getTime < BackplaneMessageBase.timeFromId(lastId)) => {
+        val newId = BackplaneMessageBase.generateMessageId(new Date(BackplaneMessageBase.timeFromId(lastId) + 1))
         logger.warn("bp2 posted message id %s is before latest id %s, fixed to: %s".format(posted, lastId, newId))
-        BackplaneMessageFields.ID.name -> newId
+        ID_FIELD_NAME -> newId
       }
       case other => other
     })
@@ -178,16 +174,15 @@ object RedisMessageProcessor extends LeaderSelectorListener with Loggable {
    *         last, possibly updated, id
    *         old message id prepended to the list of supplied insertion times
    */
-  private def processSingleMessage(backplaneMessage: BackplaneMessage, postedId: String, insertionTimes: List[String], redisClient: RedisCommand): (String,List[String]) = {
+  private def processSingleMessage(backplaneMessage: BMT, postedId: String, insertionTimes: List[String], redisClient: RedisCommand): (String,List[String]) = {
     val msgId = backplaneMessage.id
-    val messageTime = Message.timeFromId(msgId)
-    val sticky: Boolean = backplaneMessage.get(BackplaneMessageFields.STICKY).exists(_.toBoolean)
-    redisClient.setex(RedisBackplaneMessageDao.getKey(msgId), DateTimeUtils.getExpireSeconds(msgId, backplaneMessage.expiration, sticky), backplaneMessage.serialize)
-    redisClient.zadd(RedisBackplaneMessageDao.channelKey(backplaneMessage.channel), messageTime, msgId)
-    redisClient.zadd(RedisBackplaneMessageDao.busKey(backplaneMessage.bus), messageTime, msgId)
+    val messageTime = BackplaneMessageBase.timeFromId(msgId)
+    redisClient.setex(dao.itemKey(msgId), DateTimeUtils.getExpireSeconds(msgId, backplaneMessage.expiration, backplaneMessage.sticky), backplaneMessage.serialize)
+    redisClient.zadd(dao.channelKey(backplaneMessage.channel), messageTime, msgId)
+    redisClient.zadd(dao.busKey(backplaneMessage.bus), messageTime, msgId)
     val metaData = "%s %s %s %s".format(backplaneMessage.bus, backplaneMessage.channel, msgId, backplaneMessage.expiration)
-    redisClient.zadd(MESSAGES, messageTime, metaData)
-    redisClient.lpop(MESSAGE_QUEUE)
+    redisClient.zadd(dao.messagesKey, messageTime, metaData)
+    redisClient.lpop(dao.messagesQueueKey)
     logger.info("bp2 message pipelined: %s -> %s".format(postedId, msgId))
     (msgId, postedId :: insertionTimes)
   }

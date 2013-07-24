@@ -1,12 +1,12 @@
 package com.janrain.backplane.server2.model
 
-import com.janrain.backplane.common.model.{MessageField, MessageFieldEnum, Message}
+import com.janrain.backplane.common.model.{BackplaneMessageBase, MessageField, MessageFieldEnum, Message}
 import com.janrain.backplane2.server.Scope
 import com.janrain.backplane2.server.Scope.ScopeType._
 import com.janrain.servlet.InvalidRequestException
 import com.janrain.backplane.common.{BackplaneServerException, DateTimeUtils}
 import java.util.Date
-import com.janrain.util.{Loggable, RandomUtils}
+import com.janrain.util.Loggable
 import org.codehaus.jackson.map.ObjectMapper
 import java.io.IOException
 import scala.collection.JavaConversions._
@@ -15,7 +15,7 @@ import com.janrain.backplane2.server.Scope.ScopeType
 /**
  * @author Johnny Bufu
  */
-class BackplaneMessage(data: Map[String,String]) extends Message(data, BackplaneMessageFields.values) {
+class BackplaneMessage(data: Map[String,String]) extends BackplaneMessageBase(data, BackplaneMessageFields.values) {
 
   def this(clientSourceUrl: String, defaultExpireSeconds: Int, maxExpireSeconds: Int, upstreamData: java.util.Map[String,AnyRef]) =
     this(
@@ -23,7 +23,7 @@ class BackplaneMessage(data: Map[String,String]) extends Message(data, Backplane
         BackplaneMessage.parseUpstreamData(upstreamData.toMap), defaultExpireSeconds, maxExpireSeconds )
       ++
       Map(
-        BackplaneMessageFields.ID.name -> BackplaneMessage.generateMessageId(new Date),
+        BackplaneMessageFields.ID.name -> BackplaneMessageBase.generateMessageId(new Date),
         BackplaneMessageFields.SOURCE.name -> clientSourceUrl
       ))
 
@@ -40,24 +40,18 @@ class BackplaneMessage(data: Map[String,String]) extends Message(data, Backplane
   def channel: String = get(BackplaneMessageFields.CHANNEL)
     .getOrElse(throw new IllegalStateException("channel field missing from bp2 message, should have failed validation"))
 
+  def sticky = get(BackplaneMessageFields.STICKY).exists(_.toBoolean)
+
   def expiration: String = get(BackplaneMessageFields.EXPIRE)
     .getOrElse(throw new IllegalStateException("expire field missing from bp2 message, should have failed validation"))
 }
 
 object BackplaneMessage {
 
-  private final val MESSAGE_ID_RANDOM_LENGTH = 10
-  private final val MESSAGE_ID_LEGACY_RANDOM_LENGTH = 10
-
   private final val UPSTREAM_FIELDS = BackplaneMessageFields.values.filter(_.isUpstream).toList
   private final val UPSTREAM_FIELD_NAMES = UPSTREAM_FIELDS.map(_.name)
 
   val scopeKeys = BackplaneMessageFields.values.filter(_.scopeType != ScopeType.NONE).map(sc => sc.name -> sc).toMap
-
-  def generateMessageId(date: Date) =
-    DateTimeUtils.ISO8601.get.format(date) + "-" + RandomUtils.randomString(MESSAGE_ID_RANDOM_LENGTH)
-
-  def legacyIdLength: Int = 25 + MESSAGE_ID_LEGACY_RANDOM_LENGTH // ISO8601 length + "-" + random_length
 
   private def parseUpstreamData(upstreamData: Map[String,AnyRef]): Map[String,String] = {
     BackplaneMessage.checkUpstreamFields(upstreamData)
@@ -98,7 +92,7 @@ object BackplaneMessageFields extends MessageFieldEnum with Loggable {
     override def frameOutput(msgId: String, serverDomain: String, includePayload: Boolean, fieldValue: Option[String]) = None
     override def validateLong(fieldValue: Option[String]) {
       super.validateLong(fieldValue)
-      fieldValue.foreach(Message.dateFromId)
+      fieldValue.foreach(BackplaneMessageBase.dateFromId)
     }
   }
 
