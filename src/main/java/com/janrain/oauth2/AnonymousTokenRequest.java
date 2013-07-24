@@ -3,12 +3,11 @@ package com.janrain.oauth2;
 import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.dao.DaoException;
 import com.janrain.backplane.server2.dao.BP2DAOs;
-import com.janrain.backplane.server2.model.BackplaneMessageFields;
-import com.janrain.backplane.server2.model.BusConfig2;
-import com.janrain.backplane.server2.model.ChannelFields;
+import com.janrain.backplane.server2.model.*;
 import com.janrain.backplane.server2.oauth2.model.Token;
-import com.janrain.backplane.server2.model.Channel;
-import com.janrain.backplane2.server.*;
+import com.janrain.backplane2.server.GrantType;
+import com.janrain.backplane2.server.Scope;
+import com.janrain.backplane2.server.TokenBuilder;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -41,8 +40,8 @@ public class AnonymousTokenRequest implements TokenRequest {
 
         this.requestScope = new Scope(scope);
         if ( this.requestScope.isAuthorizationRequired() ||
-             ( this.requestScope.getScopeFieldValues(BackplaneMessageFields.CHANNEL()) != null &&
-               ! this.requestScope.getScopeFieldValues(BackplaneMessageFields.CHANNEL()).isEmpty())) {
+             ( this.requestScope.getScopeFieldValues(Backplane2MessageFields.CHANNEL()) != null &&
+               ! this.requestScope.getScopeFieldValues(Backplane2MessageFields.CHANNEL()).isEmpty())) {
             throw new TokenException(OAuth2.OAUTH2_TOKEN_INVALID_SCOPE, "Buses and channels not allowed in the scope of anonymous token requests");
         }
 
@@ -125,8 +124,8 @@ public class AnonymousTokenRequest implements TokenRequest {
         String channelId = null;
         BusConfig2 config;
         if (refreshToken != null ) {
-            final Set<String> channels = refreshToken.scope().getScopeFieldValues(BackplaneMessageFields.CHANNEL());
-            final Set<String> buses = refreshToken.scope().getScopeFieldValues(BackplaneMessageFields.BUS());
+            final Set<String> channels = refreshToken.scope().getScopeFieldValues(Backplane2MessageFields.CHANNEL());
+            final Set<String> buses = refreshToken.scope().getScopeFieldValues(Backplane2MessageFields.BUS());
             if ( channels == null || channels.isEmpty() || channels.size() > 1 ||
                     buses == null || buses.isEmpty() || buses.size() > 1 ) {
                 throw new TokenException("invalid anonymous refresh token: " + refreshToken.id());
@@ -143,10 +142,10 @@ public class AnonymousTokenRequest implements TokenRequest {
     }
 
     private Scope processScope(final String channel, final String bus) {
-        Map<BackplaneMessageFields.EnumVal,LinkedHashSet<String>> scopeMap = new LinkedHashMap<BackplaneMessageFields.EnumVal, LinkedHashSet<String>>();
+        Map<Backplane2MessageFields.EnumVal,LinkedHashSet<String>> scopeMap = new LinkedHashMap<Backplane2MessageFields.EnumVal, LinkedHashSet<String>>();
         scopeMap.putAll(requestScope.getScopeMap());
-        scopeMap.put(BackplaneMessageFields.BUS(), new LinkedHashSet<String>() {{ add(bus);}});
-        scopeMap.put(BackplaneMessageFields.CHANNEL(), new LinkedHashSet<String>() {{ add(channel);}});
+        scopeMap.put(Backplane2MessageFields.BUS(), new LinkedHashSet<String>() {{ add(bus);}});
+        scopeMap.put(Backplane2MessageFields.CHANNEL(), new LinkedHashSet<String>() {{ add(channel);}});
         return new Scope(scopeMap);
     }
 }

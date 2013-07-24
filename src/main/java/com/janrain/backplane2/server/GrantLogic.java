@@ -4,7 +4,7 @@ import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.common.model.Message;
 import com.janrain.backplane.dao.DaoException;
 import com.janrain.backplane.server2.dao.BP2DAOs;
-import com.janrain.backplane.server2.model.BackplaneMessageFields;
+import com.janrain.backplane.server2.model.Backplane2MessageFields;
 import com.janrain.backplane.server2.oauth2.model.Grant;
 import com.janrain.backplane.server2.oauth2.model.GrantFields;
 import com.janrain.commons.supersimpledb.SimpleDBException;
@@ -44,7 +44,7 @@ public class GrantLogic {
 
         if (scope == null || ! scope.isAuthorizationRequired()) {
             Set<Grant> selectedGrants = new LinkedHashSet<Grant>();
-            Map<BackplaneMessageFields.EnumVal,LinkedHashSet<String>> authorizedScopesMap = new LinkedHashMap<BackplaneMessageFields.EnumVal, LinkedHashSet<String>>();
+            Map<Backplane2MessageFields.EnumVal,LinkedHashSet<String>> authorizedScopesMap = new LinkedHashMap<Backplane2MessageFields.EnumVal, LinkedHashSet<String>>();
             for (Grant grant : clientActiveGrants) {
                 if (Message.isExpired(grant.get(GrantFields.TIME_EXPIRE()))) continue;
                 selectedGrants.add(grant);
@@ -57,11 +57,11 @@ public class GrantLogic {
         } else {
             for(Scope authReqScope : scope.getAuthReqScopes()) {
                 final Scope testScope;
-                if (authReqScope.getScopeMap().containsKey(BackplaneMessageFields.CHANNEL())) {
+                if (authReqScope.getScopeMap().containsKey(Backplane2MessageFields.CHANNEL())) {
                     Channel channel = com.janrain.backplane2.server.dao.BP2DAOs
-                            .getChannelDao().get(authReqScope.getScopeMap().get(BackplaneMessageFields.CHANNEL()).iterator().next());
+                            .getChannelDao().get(authReqScope.getScopeMap().get(Backplane2MessageFields.CHANNEL()).iterator().next());
                     String boundBus = channel == null ? null : channel.get(Channel.ChannelField.BUS);
-                    testScope = new Scope(BackplaneMessageFields.BUS(), boundBus);
+                    testScope = new Scope(Backplane2MessageFields.BUS(), boundBus);
                 } else {
                     testScope = authReqScope;
                 }

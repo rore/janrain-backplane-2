@@ -17,8 +17,8 @@
 package com.janrain.backplane2.server;
 
 import com.janrain.backplane.common.MessageException;
-import com.janrain.backplane.server2.model.BackplaneMessage;
-import com.janrain.backplane.server2.model.BackplaneMessageFields;
+import com.janrain.backplane.server2.model.Backplane2Message;
+import com.janrain.backplane.server2.model.Backplane2MessageFields;
 import com.janrain.commons.util.Pair;
 import com.janrain.oauth2.OAuth2;
 import com.janrain.oauth2.TokenException;
@@ -49,31 +49,31 @@ public class Scope {
         this.scopes = parseScopeString(scopeString);
     }
 
-    public Scope(final BackplaneMessageFields.EnumVal scopeField, final String value) {
-        this.scopes = new LinkedHashMap<BackplaneMessageFields.EnumVal, LinkedHashSet<String>>() {{
+    public Scope(final Backplane2MessageFields.EnumVal scopeField, final String value) {
+        this.scopes = new LinkedHashMap<Backplane2MessageFields.EnumVal, LinkedHashSet<String>>() {{
             put(scopeField, new LinkedHashSet<String>() {{ add(value); }});
         }};
     }
 
-    public Scope(Map<BackplaneMessageFields.EnumVal, LinkedHashSet<String>> scopeMap) {
-        this.scopes = new LinkedHashMap<BackplaneMessageFields.EnumVal, LinkedHashSet<String>>(scopeMap);
+    public Scope(Map<Backplane2MessageFields.EnumVal, LinkedHashSet<String>> scopeMap) {
+        this.scopes = new LinkedHashMap<Backplane2MessageFields.EnumVal, LinkedHashSet<String>>(scopeMap);
     }
 
     /**
      * @return a copy of this scope's internal map of scope key-values
      */
-    public Map<BackplaneMessageFields.EnumVal, LinkedHashSet<String>> getScopeMap() {
-        Map<BackplaneMessageFields.EnumVal, LinkedHashSet<String>> mapCopy = new LinkedHashMap<BackplaneMessageFields.EnumVal, LinkedHashSet<String>>();
+    public Map<Backplane2MessageFields.EnumVal, LinkedHashSet<String>> getScopeMap() {
+        Map<Backplane2MessageFields.EnumVal, LinkedHashSet<String>> mapCopy = new LinkedHashMap<Backplane2MessageFields.EnumVal, LinkedHashSet<String>>();
         mapCopy.putAll(scopes);
         return mapCopy;
     }
 
-    public Set<String> getScopeFieldValues(BackplaneMessageFields.EnumVal field) {
+    public Set<String> getScopeFieldValues(Backplane2MessageFields.EnumVal field) {
         return scopes.get(field);
     }
 
     public boolean isAuthorizationRequired() {
-        for(BackplaneMessageFields.EnumVal scopeKey : scopes.keySet()) {
+        for(Backplane2MessageFields.EnumVal scopeKey : scopes.keySet()) {
             LinkedHashSet<String> values = scopes.get(scopeKey);
             if (scopeKey.scopeType() == ScopeType.AUTHZ_REQ && values != null && ! values.isEmpty()) return true;
         }
@@ -85,7 +85,7 @@ public class Scope {
      */
     public List<Scope> getAuthReqScopes() {
         List<Scope> authReqScopes = new ArrayList<Scope>();
-        for(BackplaneMessageFields.EnumVal scopeKey : scopes.keySet()) {
+        for(Backplane2MessageFields.EnumVal scopeKey : scopes.keySet()) {
             LinkedHashSet<String> values = scopes.get(scopeKey);
             if (scopeKey.scopeType() == ScopeType.AUTHZ_REQ && values != null && ! values.isEmpty()) {
                 for(String value : values) {
@@ -97,8 +97,8 @@ public class Scope {
     }
 
 
-    public boolean isMessageInScope(@NotNull BackplaneMessage message) {
-        for(BackplaneMessageFields.EnumVal scopeField : scopes.keySet()) {
+    public boolean isMessageInScope(@NotNull Backplane2Message message) {
+        for(Backplane2MessageFields.EnumVal scopeField : scopes.keySet()) {
             LinkedHashSet<String> scopeValues = scopes.get(scopeField);
             if (scopeValues == null || ! scopeValues.contains((String)message.get(scopeField).getOrElse(null))) return false;
         }
@@ -106,7 +106,7 @@ public class Scope {
     }
 
     public boolean containsScope(Scope testScope) {
-        for(BackplaneMessageFields.EnumVal scopeKey : testScope.scopes.keySet()) {
+        for(Backplane2MessageFields.EnumVal scopeKey : testScope.scopes.keySet()) {
             if (scopeKey.scopeType() == ScopeType.AUTHZ_REQ ) {
                 if (! scopes.containsKey(scopeKey) || ! scopes.get(scopeKey).containsAll(testScope.scopes.get(scopeKey))) {
                     return false;
@@ -122,7 +122,7 @@ public class Scope {
     @Override
     public String toString() {
         StringBuilder scopeString = new StringBuilder();
-        for (Map.Entry<BackplaneMessageFields.EnumVal, LinkedHashSet<String>> entry : scopes.entrySet()) {
+        for (Map.Entry<Backplane2MessageFields.EnumVal, LinkedHashSet<String>> entry : scopes.entrySet()) {
             if (entry.getValue().isEmpty()) {
                 logger.info("empty scope values for key: " + entry.getKey()); // shouldn't happen
                 continue;
@@ -151,8 +151,8 @@ public class Scope {
     /**
      * Add the scopes in the second map to the first.
      */
-    public static void addScopes(Map<BackplaneMessageFields.EnumVal, LinkedHashSet<String>> first, Map<BackplaneMessageFields.EnumVal, LinkedHashSet<String>> second) {
-        for (BackplaneMessageFields.EnumVal field : second.keySet()) {
+    public static void addScopes(Map<Backplane2MessageFields.EnumVal, LinkedHashSet<String>> first, Map<Backplane2MessageFields.EnumVal, LinkedHashSet<String>> second) {
+        for (Backplane2MessageFields.EnumVal field : second.keySet()) {
             LinkedHashSet<String> values = first.get(field);
             if (values == null) {
                 values = new LinkedHashSet<String>();
@@ -182,11 +182,11 @@ public class Scope {
      *
      * @return  an encoded space delimited string of scopes e.g.:  "bus:thisbus.com bus:andthatbus.com ..."
      */
-    public static String getEncodedScopesAsString(BackplaneMessageFields.EnumVal field, String scopeValues) {
+    public static String getEncodedScopesAsString(Backplane2MessageFields.EnumVal field, String scopeValues) {
         return getEncodedScopesAsString(field, getScopesAsList(scopeValues));
     }
 
-    public static String getEncodedScopesAsString(BackplaneMessageFields.EnumVal field, @NotNull List<String> scopeValues) {
+    public static String getEncodedScopesAsString(Backplane2MessageFields.EnumVal field, @NotNull List<String> scopeValues) {
         StringBuilder sb = new StringBuilder();
         for (String value: scopeValues) {
             if (sb.length() > 0) sb.append(SEPARATOR);
@@ -199,9 +199,9 @@ public class Scope {
      * @return a new Scope consisting of all scope values present in the first one, less the auth-req scope values in 'revoke'
      */
     public static Scope revoke(@NotNull Scope scope, @NotNull Scope revoke) {
-        Map<BackplaneMessageFields.EnumVal,LinkedHashSet<String>> newScope = new LinkedHashMap<BackplaneMessageFields.EnumVal, LinkedHashSet<String>>();
+        Map<Backplane2MessageFields.EnumVal,LinkedHashSet<String>> newScope = new LinkedHashMap<Backplane2MessageFields.EnumVal, LinkedHashSet<String>>();
 
-        for(BackplaneMessageFields.EnumVal scopeKey : scope.getScopeMap().keySet()) {
+        for(Backplane2MessageFields.EnumVal scopeKey : scope.getScopeMap().keySet()) {
             Set<String> revokeValues = revoke.getScopeFieldValues(scopeKey);
             if(scopeKey.scopeType() != ScopeType.AUTHZ_REQ || revokeValues == null || revokeValues.isEmpty()) {
                 newScope.put(scopeKey, scope.getScopeMap().get(scopeKey));
@@ -235,15 +235,15 @@ public class Scope {
         } else if (request.isAuthorizationRequired()) {
             return new Scope(request.getScopeMap());
         } else { // combine
-            Map<BackplaneMessageFields.EnumVal, LinkedHashSet<String>> result = new LinkedHashMap<BackplaneMessageFields.EnumVal, LinkedHashSet<String>>();
-            Map<BackplaneMessageFields.EnumVal, LinkedHashSet<String>> authorizedMap = authorized.getScopeMap();
-            Map<BackplaneMessageFields.EnumVal, LinkedHashSet<String>> requestMap = request.getScopeMap();
-            for (BackplaneMessageFields.EnumVal authorizedField : authorizedMap.keySet()) {
+            Map<Backplane2MessageFields.EnumVal, LinkedHashSet<String>> result = new LinkedHashMap<Backplane2MessageFields.EnumVal, LinkedHashSet<String>>();
+            Map<Backplane2MessageFields.EnumVal, LinkedHashSet<String>> authorizedMap = authorized.getScopeMap();
+            Map<Backplane2MessageFields.EnumVal, LinkedHashSet<String>> requestMap = request.getScopeMap();
+            for (Backplane2MessageFields.EnumVal authorizedField : authorizedMap.keySet()) {
                 if (authorizedField.scopeType() == ScopeType.AUTHZ_REQ) {
                     result.put(authorizedField, authorizedMap.get(authorizedField));
                 }
             }
-            for (BackplaneMessageFields.EnumVal filterField : requestMap.keySet()) {
+            for (Backplane2MessageFields.EnumVal filterField : requestMap.keySet()) {
                 if (filterField.scopeType() == ScopeType.FILTER) {
                     result.put(filterField, requestMap.get(filterField));
                 }
@@ -261,11 +261,11 @@ public class Scope {
     private static final String SEPARATOR = " ";
     private static final String DELIMITER = ":";
 
-    private Map<BackplaneMessageFields.EnumVal,LinkedHashSet<String>> scopes;
+    private Map<Backplane2MessageFields.EnumVal,LinkedHashSet<String>> scopes;
 
-    private static Map<BackplaneMessageFields.EnumVal, LinkedHashSet<String>> parseScopeString(String scopeString) throws TokenException {
+    private static Map<Backplane2MessageFields.EnumVal, LinkedHashSet<String>> parseScopeString(String scopeString) throws TokenException {
 
-        Map<BackplaneMessageFields.EnumVal,LinkedHashSet<String>> scopes = new LinkedHashMap<BackplaneMessageFields.EnumVal, LinkedHashSet<String>>();
+        Map<Backplane2MessageFields.EnumVal,LinkedHashSet<String>> scopes = new LinkedHashMap<Backplane2MessageFields.EnumVal, LinkedHashSet<String>>();
         logger.debug("parsing scopeString = '" + scopeString + "' ...");
 
         if (StringUtils.isNotBlank(scopeString)) {
@@ -273,7 +273,7 @@ public class Scope {
             for (String token : scopeString.split(Scope.SEPARATOR, Scope.MAX_PARAMETERS)) {
                 if (StringUtils.isEmpty(token)) continue;
 
-                Pair<BackplaneMessageFields.EnumVal, String> keyValue = parseScopeToken(token);
+                Pair<Backplane2MessageFields.EnumVal, String> keyValue = parseScopeToken(token);
 
                 if (!scopes.containsKey(keyValue.getLeft())) {
                     scopes.put(keyValue.getLeft(), new LinkedHashSet<String>());
@@ -286,7 +286,7 @@ public class Scope {
         return scopes;
     }
 
-    private static Pair<BackplaneMessageFields.EnumVal, String> parseScopeToken(String token) throws TokenException {
+    private static Pair<Backplane2MessageFields.EnumVal, String> parseScopeToken(String token) throws TokenException {
         // all scope tokens need to have the ":" key/value delimiter
         // if they have the ":" in the value (like the source field MUST have)
         // we will use the first ":" as the key/value delimiter.
@@ -301,7 +301,7 @@ public class Scope {
             throw new TokenException(OAuth2.OAUTH2_TOKEN_INVALID_SCOPE, errMsg);
         }
 
-        Option<BackplaneMessageFields.EnumVal> key = BackplaneMessage.scopeKeys().get(token.substring(0, delimiterIndex));
+        Option<Backplane2MessageFields.EnumVal> key = Backplane2Message.scopeKeys().get(token.substring(0, delimiterIndex));
         if ( ! key.isDefined() ) {
             throw new TokenException(OAuth2.OAUTH2_TOKEN_INVALID_SCOPE, "invalid scope key / message field in token: " + token);
         }
@@ -316,6 +316,6 @@ public class Scope {
             throw new TokenException(OAuth2.OAUTH2_TOKEN_INVALID_SCOPE, "invalid scope value in token: " + token);
         }
         
-        return new Pair<BackplaneMessageFields.EnumVal, String>(key.get(), value.get());
+        return new Pair<Backplane2MessageFields.EnumVal, String>(key.get(), value.get());
     }
 }

@@ -1,13 +1,13 @@
 package com.janrain.backplane.dao.redis
 
-import com.janrain.backplane.common.model.{MessageField, BackplaneMessageBase}
+import com.janrain.backplane.common.model.{MessageField, BackplaneMessage}
 
 /**
- * Mixin for RedisMessageDao with support for BackplaneMessage / Message Processor
+ * Mixin for RedisMessageDao with support for Backplane2Message / Message Processor
  *
  * @author Johnny Bufu
  */
-trait MessageProcessorDaoSupport[BMF <: MessageField,BMT <: BackplaneMessageBase[BMF]] {
+trait MessageProcessorDaoSupport[BMF <: MessageField,BMT <: BackplaneMessage[BMF]] {
 
   this: RedisMessageDao[BMT] =>
 

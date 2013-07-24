@@ -82,7 +82,7 @@ object BP2DAOs {
     def preferLegacyGet(id: String) = id.length == Channel.CHANNEL_LEGACY_NAME_LENGTH
   }
 
-  type BackplaneMessageDaoWithProcessor = BackplaneMessageDao with MessageProcessorDaoSupport[BackplaneMessageFields.EnumVal,BackplaneMessage]
+  type BackplaneMessageDaoWithProcessor = BackplaneMessageDao with MessageProcessorDaoSupport[Backplane2MessageFields.EnumVal,Backplane2Message]
 
   val messageDao: BackplaneMessageDaoWithProcessor = RedisBackplaneMessageDao
 

@@ -18,7 +18,7 @@ package com.janrain.backplane2.server;
 
 import com.janrain.backplane.common.DateTimeUtils;
 import com.janrain.backplane.server.ExternalizableCore;
-import com.janrain.backplane.server2.model.BackplaneMessageFields;
+import com.janrain.backplane.server2.model.Backplane2MessageFields;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.commons.supersimpledb.message.AbstractMessage;
 import com.janrain.commons.supersimpledb.message.MessageField;
@@ -72,8 +72,8 @@ public class Token extends ExternalizableCore {
             AbstractMessage.validateNotBlank(TokenField.BACKING_GRANTS.getFieldName(), get(Token.TokenField.BACKING_GRANTS));
         } else {
             Scope anonScope = getScope();
-            LinkedHashSet<String> buses = anonScope.getScopeMap().get(BackplaneMessageFields.BUS());
-            LinkedHashSet<String> channels = anonScope.getScopeMap().get(BackplaneMessageFields.CHANNEL());
+            LinkedHashSet<String> buses = anonScope.getScopeMap().get(Backplane2MessageFields.BUS());
+            LinkedHashSet<String> channels = anonScope.getScopeMap().get(Backplane2MessageFields.CHANNEL());
             if (buses == null || buses.size() > 1 || channels == null || channels.size() > 1) {
                 throw new SimpleDBException("invalid scope for anonymous token, must have exactly one bus and one channel specified: " + anonScope);
             }

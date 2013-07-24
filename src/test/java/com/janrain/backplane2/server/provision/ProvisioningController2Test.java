@@ -24,7 +24,7 @@ import com.janrain.backplane.config.model.AdminFields;
 import com.janrain.backplane.dao.DaoException;
 import com.janrain.backplane.provision.ProvisioningController2;
 import com.janrain.backplane.server2.dao.BP2DAOs;
-import com.janrain.backplane.server2.model.BackplaneMessageFields;
+import com.janrain.backplane.server2.model.Backplane2MessageFields;
 import com.janrain.backplane.server2.model.BusConfig2;
 import com.janrain.backplane.server2.model.BusConfig2Fields;
 import com.janrain.backplane.server2.oauth2.model.BusOwner;
@@ -625,7 +625,7 @@ public class ProvisioningController2Test {
         if (grantsForClient != null) {
             for(String grantId : grantsForClient.keySet()) {
                 Scope scope = new Scope(grantsForClient.get(grantId));
-                busesGranted.addAll(scope.getScopeFieldValues(BackplaneMessageFields.BUS()));
+                busesGranted.addAll(scope.getScopeFieldValues(Backplane2MessageFields.BUS()));
             }
         }
 

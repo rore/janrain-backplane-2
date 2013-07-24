@@ -2,39 +2,39 @@ package com.janrain.backplane.server2.dao.redis
 
 import com.janrain.backplane.server2.dao.BackplaneMessageDao
 import com.janrain.backplane.dao.redis.{MessageProcessorDaoSupport, Redis, RedisMessageDao}
-import com.janrain.backplane.server2.model.{BackplaneMessageFields, BackplaneMessage}
+import com.janrain.backplane.server2.model.{Backplane2MessageFields, Backplane2Message}
 import com.janrain.backplane2.server.Scope
 import com.redis.RedisClient
-import com.janrain.backplane.common.model.{BackplaneMessageBase, Message}
+import com.janrain.backplane.common.model.{BackplaneMessage, Message}
 import scala.collection.JavaConversions._
 import com.janrain.util.RandomUtils
 
 /**
  * @author Johnny Bufu
  */
-object RedisBackplaneMessageDao extends RedisMessageDao[BackplaneMessage]("bp2Message:")
+object RedisBackplaneMessageDao extends RedisMessageDao[Backplane2Message]("bp2Message:")
   with BackplaneMessageDao
-  with MessageProcessorDaoSupport[BackplaneMessageFields.EnumVal,BackplaneMessage] {
+  with MessageProcessorDaoSupport[Backplane2MessageFields.EnumVal,Backplane2Message] {
 
   private final val MAX_MSGS_IN_FRAME = 25
 
   private[redis] final val INDEXED_SCOPE_FIELDS = Map(
-    BackplaneMessageFields.CHANNEL -> channelKey _,
-    BackplaneMessageFields.BUS -> busKey _ )
+    Backplane2MessageFields.CHANNEL -> channelKey _,
+    Backplane2MessageFields.BUS -> busKey _ )
 
-  val idField = BackplaneMessageFields.ID
+  val idField = Backplane2MessageFields.ID
 
-  protected def instantiate(data: Map[_, _]) = new BackplaneMessage(data.map(kv => kv._1.toString -> kv._2.toString))
+  protected def instantiate(data: Map[_, _]) = new Backplane2Message(data.map(kv => kv._1.toString -> kv._2.toString))
 
   override protected[redis] def getKey(itemId: String) = super.getKey(itemId)
 
-  override def store(item: BackplaneMessage) {
+  override def store(item: Backplane2Message) {
     Redis.writePool.withClient(_.rpush(messagesQueueKey, item.serialize))
   }
 
   override def messageCount(channel: String): Long = Redis.readPool.withClient(_.zcard(channelKey(channel))).getOrElse(0)
 
-  def retrieveMessagesPerScope(scope: Scope, since: String): (List[BackplaneMessage], Boolean, Option[String]) = {
+  def retrieveMessagesPerScope(scope: Scope, since: String): (List[Backplane2Message], Boolean, Option[String]) = {
     val pipelineResponse = Redis.readPool.withClient(_.pipeline( p => {
       p.zrange(messagesKey, -1, -1, RedisClient.ASC) // extract last msg metadata /ID
       // logical OR for all indexed scope fields of the same type
@@ -58,7 +58,7 @@ object RedisBackplaneMessageDao extends RedisMessageDao[BackplaneMessage]("bp2Me
         }
       }
       // filter by time/since
-      .map(p.zrangebyscore(_, BackplaneMessageBase.timeFromId(since), minInclusive = false, Double.MaxValue, maxInclusive = true, None, RedisClient.ASC))
+      .map(p.zrangebyscore(_, BackplaneMessage.timeFromId(since), minInclusive = false, Double.MaxValue, maxInclusive = true, None, RedisClient.ASC))
 
       unions.foreach(p.del(_))
     }))

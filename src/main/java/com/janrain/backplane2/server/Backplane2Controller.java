@@ -27,6 +27,7 @@ import com.janrain.backplane.server2.model.*;
 import com.janrain.backplane.server2.model.Channel;
 import com.janrain.backplane.server2.oauth2.model.*;
 import com.janrain.backplane.server2.oauth2.model.Token;
+import com.janrain.backplane.server2.model.Backplane2Message;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.oauth2.*;
 import com.janrain.servlet.InvalidRequestException;
@@ -305,7 +306,7 @@ public class Backplane2Controller {
             }
 
             // val (framesResult, messages) = ...
-            Tuple2<Map<String,Object>,scala.collection.immutable.List<BackplaneMessage>> framesResultAndMessages = MessageResponse.scalaObject().apply(
+            Tuple2<Map<String,Object>,scala.collection.immutable.List<Backplane2Message>> framesResultAndMessages = MessageResponse.scalaObject().apply(
                     request.getServerName(), token.get().grantType().isPrivileged(),
                     token.get().scope(), messageRequest.getSince(), MESSAGES_POLL_SLEEP_MILLIS, messageRequest.getReturnBefore());
             aniLogPollMessages(request, referer, JavaConversions.asJavaList(framesResultAndMessages._2()));
@@ -327,7 +328,7 @@ public class Backplane2Controller {
 /*
     public Map<String, Object> asResponseFields(String serverName, boolean privileged) throws BackplaneServerException {
         List<Map<String,Object>> frames = new ArrayList<Map<String, Object>>();
-        for (BackplaneMessage message : messages) {
+        for (Backplane2Message message : messages) {
             frames.add(message.asFrame(serverName, privileged));
         }
 
@@ -373,7 +374,7 @@ public class Backplane2Controller {
                 throw new TokenException("Invalid token type: " + token.get().grantType(), HttpServletResponse.SC_FORBIDDEN);
             }
 
-            BackplaneMessage message = BP2DAOs.messageDao().get(msg_id).getOrElse(null);
+            Backplane2Message message = BP2DAOs.messageDao().get(msg_id).getOrElse(null);
 
             if (message != null) {
                 if (! token.get().scope().isMessageInScope(message)) {
@@ -418,7 +419,7 @@ public class Backplane2Controller {
                 throw new TokenException("Invalid token type: " + token.get().grantType(), HttpServletResponse.SC_FORBIDDEN);
             }
 
-            BackplaneMessage message = parsePostedMessage(messagePostBody, token.get());
+            Backplane2Message message = parsePostedMessage(messagePostBody, token.get());
             BP2DAOs.messageDao().store(message);
 
             aniLogNewMessage(request, message, token.get());
@@ -822,8 +823,8 @@ public class Backplane2Controller {
         }
     }
 
-    private BackplaneMessage parsePostedMessage(Map<String, Map<String, Object>> messagePostBody, Token token) throws BackplaneServerException, DaoException {
-        List<BackplaneMessage> result = new ArrayList<BackplaneMessage>();
+    private Backplane2Message parsePostedMessage(Map<String, Map<String, Object>> messagePostBody, Token token) throws BackplaneServerException, DaoException {
+        List<Backplane2Message> result = new ArrayList<Backplane2Message>();
 
         Map<String,Object> msg = messagePostBody.get("message");
         if (msg == null) { // no message body?
@@ -834,8 +835,8 @@ public class Backplane2Controller {
             throw new InvalidRequestException("Invalid data in payload", HttpServletResponse.SC_BAD_REQUEST);
         }
 
-        String channelId = msg.get(BackplaneMessageFields.CHANNEL().name()) != null ? msg.get(BackplaneMessageFields.CHANNEL().name()).toString() : null;
-        String bus = msg.get(BackplaneMessageFields.BUS().name()) != null ? msg.get(BackplaneMessageFields.BUS().name()).toString() : null;
+        String channelId = msg.get(Backplane2MessageFields.CHANNEL().name()) != null ? msg.get(Backplane2MessageFields.CHANNEL().name()).toString() : null;
+        String bus = msg.get(Backplane2MessageFields.BUS().name()) != null ? msg.get(Backplane2MessageFields.BUS().name()).toString() : null;
         Channel channel = getChannel(channelId);
         String boundBus = channel == null ? null : (String) channel.get(ChannelFields.BUS()).getOrElse(null);
         if ( channel == null || ! StringUtils.equals(bus, boundBus)) {
@@ -849,7 +850,7 @@ public class Backplane2Controller {
         }
 
         try {
-            BackplaneMessage message = new BackplaneMessage(
+            Backplane2Message message = new Backplane2Message(
                     (String)token.get(TokenFields.CLIENT_SOURCE_URL()).getOrElse(null),
                     Integer.parseInt( (String) channel.get(ChannelFields.MESSAGE_EXPIRE_DEFAULT_SECONDS()).getOrElse(null)),
                     Integer.parseInt( (String) channel.get(ChannelFields.MESSAGE_EXPIRE_MAX_SECONDS()).getOrElse(null)),
@@ -886,7 +887,7 @@ public class Backplane2Controller {
         aniLog("new_channel", aniEvent);
     }
 
-    private void aniLogPollMessages(HttpServletRequest request, String referer, List<BackplaneMessage> messages) {
+    private void aniLogPollMessages(HttpServletRequest request, String referer, List<Backplane2Message> messages) {
         if (!anilogger.isEnabled()) {
             return;
         }
@@ -896,7 +897,7 @@ public class Backplane2Controller {
         Map<String,Object> aniEvent = new HashMap<String,Object>();
 
         List<Map<String,String>> messagesMeta = new ArrayList<Map<String,String>>();
-        for (BackplaneMessage message : messages) {
+        for (Backplane2Message message : messages) {
             String bus = message.bus();
             String channelId = "https://" + serverName + "/v2/bus/" + bus + "/channel/" + message.channel();
             Map<String,String> anotherMeta = new HashMap<String,String>();
@@ -911,7 +912,7 @@ public class Backplane2Controller {
         aniLog("poll_messages", aniEvent);
     }
 
-    private void aniLogGetMessage(HttpServletRequest request, BackplaneMessage message, Token token) {
+    private void aniLogGetMessage(HttpServletRequest request, Backplane2Message message, Token token) {
         if (!anilogger.isEnabled()) {
             return;
         }
@@ -927,7 +928,7 @@ public class Backplane2Controller {
         aniLog("get_message", aniEvent);
     }
 
-    private void aniLogNewMessage(HttpServletRequest request, BackplaneMessage message, Token token) {
+    private void aniLogNewMessage(HttpServletRequest request, Backplane2Message message, Token token) {
         if (!anilogger.isEnabled()) {
             return;
         }

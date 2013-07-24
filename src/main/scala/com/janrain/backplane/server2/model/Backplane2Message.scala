@@ -1,6 +1,6 @@
 package com.janrain.backplane.server2.model
 
-import com.janrain.backplane.common.model.{BackplaneMessageBase, MessageField, MessageFieldEnum, Message}
+import com.janrain.backplane.common.model.{BackplaneMessage, MessageField, MessageFieldEnum, Message}
 import com.janrain.backplane2.server.Scope
 import com.janrain.backplane2.server.Scope.ScopeType._
 import com.janrain.servlet.InvalidRequestException
@@ -15,47 +15,47 @@ import com.janrain.backplane2.server.Scope.ScopeType
 /**
  * @author Johnny Bufu
  */
-class BackplaneMessage(data: Map[String,String]) extends BackplaneMessageBase(data, BackplaneMessageFields.values) {
+class Backplane2Message(data: Map[String,String]) extends BackplaneMessage(data, Backplane2MessageFields.values) {
 
   def this(clientSourceUrl: String, defaultExpireSeconds: Int, maxExpireSeconds: Int, upstreamData: java.util.Map[String,AnyRef]) =
     this(
-      BackplaneMessage.processExpire(
-        BackplaneMessage.parseUpstreamData(upstreamData.toMap), defaultExpireSeconds, maxExpireSeconds )
+      Backplane2Message.processExpire(
+        Backplane2Message.parseUpstreamData(upstreamData.toMap), defaultExpireSeconds, maxExpireSeconds )
       ++
       Map(
-        BackplaneMessageFields.ID.name -> BackplaneMessageBase.generateMessageId(new Date),
-        BackplaneMessageFields.SOURCE.name -> clientSourceUrl
+        Backplane2MessageFields.ID.name -> BackplaneMessage.generateMessageId(new Date),
+        Backplane2MessageFields.SOURCE.name -> clientSourceUrl
       ))
 
-  def idField = BackplaneMessageFields.ID
+  def idField = Backplane2MessageFields.ID
 
   def asFrame(serverDomain: String, includePayload: Boolean): Map[String, AnyRef] =
-    BackplaneMessageFields.values
+    Backplane2MessageFields.values
       .map(field => field.name -> field.frameOutput(id, serverDomain, includePayload, get(field))).toMap
       .filter { case (k,v) => v.isDefined } .mapValues(_.get)
 
-  def bus: String = get(BackplaneMessageFields.BUS)
+  def bus: String = get(Backplane2MessageFields.BUS)
     .getOrElse(throw new IllegalStateException("bus field missing from bp2 message, should have failed validation"))
 
-  def channel: String = get(BackplaneMessageFields.CHANNEL)
+  def channel: String = get(Backplane2MessageFields.CHANNEL)
     .getOrElse(throw new IllegalStateException("channel field missing from bp2 message, should have failed validation"))
 
-  def sticky = get(BackplaneMessageFields.STICKY).exists(_.toBoolean)
+  def sticky = get(Backplane2MessageFields.STICKY).exists(_.toBoolean)
 
-  def expiration: String = get(BackplaneMessageFields.EXPIRE)
+  def expiration: String = get(Backplane2MessageFields.EXPIRE)
     .getOrElse(throw new IllegalStateException("expire field missing from bp2 message, should have failed validation"))
 }
 
-object BackplaneMessage {
+object Backplane2Message {
 
-  private final val UPSTREAM_FIELDS = BackplaneMessageFields.values.filter(_.isUpstream).toList
+  private final val UPSTREAM_FIELDS = Backplane2MessageFields.values.filter(_.isUpstream).toList
   private final val UPSTREAM_FIELD_NAMES = UPSTREAM_FIELDS.map(_.name)
 
-  val scopeKeys = BackplaneMessageFields.values.filter(_.scopeType != ScopeType.NONE).map(sc => sc.name -> sc).toMap
+  val scopeKeys = Backplane2MessageFields.values.filter(_.scopeType != ScopeType.NONE).map(sc => sc.name -> sc).toMap
 
   private def parseUpstreamData(upstreamData: Map[String,AnyRef]): Map[String,String] = {
-    BackplaneMessage.checkUpstreamFields(upstreamData)
-    BackplaneMessage.UPSTREAM_FIELDS
+    Backplane2Message.checkUpstreamFields(upstreamData)
+    Backplane2Message.UPSTREAM_FIELDS
       .map(field => field.name -> field.parseUpstreamValue(upstreamData)).toMap
       .filter { case (k,v) => v.isDefined } .mapValues(_.get)
   }
@@ -67,15 +67,15 @@ object BackplaneMessage {
   }
 
   private def processExpire(data: Map[String,String], defaultExpSeconds: Int, stickyExpSeconds: Int): Map[String,String] = {
-    val sticky = data.get(BackplaneMessageFields.STICKY.name).exists(_.equalsIgnoreCase(true.toString))
+    val sticky = data.get(Backplane2MessageFields.STICKY.name).exists(_.equalsIgnoreCase(true.toString))
     data.map( kv =>
-      if (kv._1 == BackplaneMessageFields.EXPIRE.name) kv._1 -> DateTimeUtils.processExpireTime(sticky, kv._2, defaultExpSeconds, stickyExpSeconds)
+      if (kv._1 == Backplane2MessageFields.EXPIRE.name) kv._1 -> DateTimeUtils.processExpireTime(sticky, kv._2, defaultExpSeconds, stickyExpSeconds)
       else kv
     )
   }
 }
 
-object BackplaneMessageFields extends MessageFieldEnum with Loggable {
+object Backplane2MessageFields extends MessageFieldEnum with Loggable {
 
   type BackplaneMessageField = EnumVal
 
@@ -92,7 +92,7 @@ object BackplaneMessageFields extends MessageFieldEnum with Loggable {
     override def frameOutput(msgId: String, serverDomain: String, includePayload: Boolean, fieldValue: Option[String]) = None
     override def validateLong(fieldValue: Option[String]) {
       super.validateLong(fieldValue)
-      fieldValue.foreach(BackplaneMessageBase.dateFromId)
+      fieldValue.foreach(BackplaneMessage.dateFromId)
     }
   }
 

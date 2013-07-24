@@ -5,7 +5,7 @@ import com.janrain.backplane2.server.{GrantBuilder, Scope}
 import scala.collection.JavaConversions
 import com.janrain.util.Loggable
 import com.janrain.backplane.server2.oauth2.model.{GrantFields, Grant}
-import com.janrain.backplane.server2.model.BackplaneMessageFields
+import com.janrain.backplane.server2.model.Backplane2MessageFields
 
 /**
  * @author Johnny Bufu
@@ -22,7 +22,7 @@ trait GrantDao extends DaoAll[Grant] with Loggable {
    * @return true if any of the existing grants were updated, false if nothing was updated
    */
   def revokeBuses(grants: List[Grant], buses: List[String]): Boolean = {
-    val busesToRevoke = new Scope(Scope.getEncodedScopesAsString(BackplaneMessageFields.BUS, JavaConversions.seqAsJavaList(buses)))
+    val busesToRevoke = new Scope(Scope.getEncodedScopesAsString(Backplane2MessageFields.BUS, JavaConversions.seqAsJavaList(buses)))
     val updatedGrantIds = grants.withFilter(revokeBusesFromGrant(_, busesToRevoke)).map(_.id).toSet
     if ( ! updatedGrantIds.isEmpty ) {
       // revoke (delete) affected tokens
@@ -34,9 +34,9 @@ trait GrantDao extends DaoAll[Grant] with Loggable {
   }
 
   def deleteByBus(busesToDelete: List[String]) {
-    val deleteBusesScope: Scope = new Scope(Scope.getEncodedScopesAsString(BackplaneMessageFields.BUS, JavaConversions.seqAsJavaList(busesToDelete)))
+    val deleteBusesScope: Scope = new Scope(Scope.getEncodedScopesAsString(Backplane2MessageFields.BUS, JavaConversions.seqAsJavaList(busesToDelete)))
     getAll.foreach(grant => {
-      Option(JavaConversions.asScalaSet(grant.getAuthorizedScope.getScopeFieldValues(BackplaneMessageFields.BUS)))
+      Option(JavaConversions.asScalaSet(grant.getAuthorizedScope.getScopeFieldValues(Backplane2MessageFields.BUS)))
         .flatten.foreach(bus =>
           if (busesToDelete.contains(bus)) revokeBusesFromGrant(grant, deleteBusesScope)
         )

@@ -6,7 +6,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import com.netflix.curator.framework.CuratorFramework
 import com.netflix.curator.framework.state.ConnectionState
 import com.redis.{RedisCommand, RedisClient}
-import com.janrain.backplane.common.model.{MessageField, BackplaneMessageBase, Message}
+import com.janrain.backplane.common.model.{MessageField, BackplaneMessage, Message}
 import com.yammer.metrics.Metrics
 import com.yammer.metrics.core.MetricName
 import com.janrain.backplane.dao.{Dao, MessageDao, DaoException}
@@ -22,7 +22,7 @@ import com.netflix.curator.framework.recipes.leader.LeaderSelectorListener
  *
  * @author Johnny Bufu
  */
-class RedisMessageProcessor[BMF <: MessageField, BMT <: BackplaneMessageBase[BMF]]( private val dao: Dao[BMT] with MessageProcessorDaoSupport[BMF,BMT] )
+class RedisMessageProcessor[BMF <: MessageField, BMT <: BackplaneMessage[BMF]]( private val dao: Dao[BMT] with MessageProcessorDaoSupport[BMF,BMT] )
   extends LeaderSelectorListener with Loggable {
 
   private val cleanupRunnable = new Runnable {
@@ -125,7 +125,7 @@ class RedisMessageProcessor[BMF <: MessageField, BMT <: BackplaneMessageBase[BMF
         val now = System.currentTimeMillis
         for {
           postedId <- finalPostedIds
-          diff = now - BackplaneMessageBase.timeFromId(postedId)
+          diff = now - BackplaneMessage.timeFromId(postedId)
         } {
           if (diff < 0 || diff > 2880000)
             logger.warn("bp2 message post time vs message processor insertion time diff is bizarre for original id: %s, delta from now: %s ".format(postedId, diff))
@@ -148,11 +148,11 @@ class RedisMessageProcessor[BMF <: MessageField, BMT <: BackplaneMessageBase[BMF
   private def fixId(messageData: Map[String,String], lastId: String): (BMT, String) = {
     val postedId = messageData.get(ID_FIELD_NAME).getOrElse {
       logger.warn("bp2 message was not assigned an ID when it was posted, generating it at queue processing time: " + messageData.mkString("\n"))
-      BackplaneMessageBase.generateMessageId(new Date)
+      BackplaneMessage.generateMessageId(new Date)
     }
     val msg = dao.mpInstantiate( messageData.map {
-      case (ID_FIELD_NAME, posted) if BackplaneMessageBase.dateFromId(posted).exists(_.getTime < BackplaneMessageBase.timeFromId(lastId)) => {
-        val newId = BackplaneMessageBase.generateMessageId(new Date(BackplaneMessageBase.timeFromId(lastId) + 1))
+      case (ID_FIELD_NAME, posted) if BackplaneMessage.dateFromId(posted).exists(_.getTime < BackplaneMessage.timeFromId(lastId)) => {
+        val newId = BackplaneMessage.generateMessageId(new Date(BackplaneMessage.timeFromId(lastId) + 1))
         logger.warn("bp2 posted message id %s is before latest id %s, fixed to: %s".format(posted, lastId, newId))
         ID_FIELD_NAME -> newId
       }
@@ -176,7 +176,7 @@ class RedisMessageProcessor[BMF <: MessageField, BMT <: BackplaneMessageBase[BMF
    */
   private def processSingleMessage(backplaneMessage: BMT, postedId: String, insertionTimes: List[String], redisClient: RedisCommand): (String,List[String]) = {
     val msgId = backplaneMessage.id
-    val messageTime = BackplaneMessageBase.timeFromId(msgId)
+    val messageTime = BackplaneMessage.timeFromId(msgId)
     redisClient.setex(dao.itemKey(msgId), DateTimeUtils.getExpireSeconds(msgId, backplaneMessage.expiration, backplaneMessage.sticky), backplaneMessage.serialize)
     redisClient.zadd(dao.channelKey(backplaneMessage.channel), messageTime, msgId)
     redisClient.zadd(dao.busKey(backplaneMessage.bus), messageTime, msgId)

@@ -21,8 +21,8 @@ import com.janrain.backplane.config.model.ServerConfigFields;
 import com.janrain.backplane.dao.redis.RedisMessageProcessor;
 import com.janrain.backplane.server.MessageProcessor;
 import com.janrain.backplane.server2.dao.BP2DAOs;
-import com.janrain.backplane.server2.model.BackplaneMessage;
-import com.janrain.backplane.server2.model.BackplaneMessageFields;
+import com.janrain.backplane.server2.model.Backplane2Message;
+import com.janrain.backplane.server2.model.Backplane2MessageFields;
 import com.janrain.commons.util.AwsUtility;
 import com.janrain.commons.util.Pair;
 import com.janrain.redis.Redis;
@@ -165,7 +165,7 @@ public class BackplaneConfig {
     private void init() {
         addTask(backgroundServices, createPingTask());
         initZk("/v1_worker", v1messageProcessor);
-        initZk("/v2_worker", new RedisMessageProcessor<BackplaneMessageFields.EnumVal, BackplaneMessage>(BP2DAOs.messageDao()));
+        initZk("/v2_worker", new RedisMessageProcessor<Backplane2MessageFields.EnumVal, Backplane2Message>(BP2DAOs.messageDao()));
     }
 
     private void initZk(String leaderPath, LeaderSelectorListener listener) {

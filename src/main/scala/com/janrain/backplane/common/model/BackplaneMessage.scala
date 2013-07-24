@@ -5,11 +5,11 @@ import com.janrain.backplane.common.MessageException
 import com.janrain.util.{Loggable, Utils, RandomUtils}
 
 /**
- * Base class for BackplaneMessage v*
+ * Base class for Backplane2Message v*
  *
  * @author Johnny Bufu
  */
-abstract class BackplaneMessageBase[MF <: MessageField](data: Map[String,String], declaredFields: Traversable[MF])
+abstract class BackplaneMessage[MF <: MessageField](data: Map[String,String], declaredFields: Traversable[MF])
   extends Message(data, declaredFields) {
   def bus: String
   def channel: String
@@ -17,7 +17,7 @@ abstract class BackplaneMessageBase[MF <: MessageField](data: Map[String,String]
   def expiration: String
 }
 
-object BackplaneMessageBase extends Loggable {
+object BackplaneMessage extends Loggable {
 
   private final val MESSAGE_ID_RANDOM_LENGTH = 10
   private final val MESSAGE_ID_LEGACY_RANDOM_LENGTH = 10

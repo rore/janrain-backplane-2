@@ -25,7 +25,7 @@ import com.janrain.backplane.config.dao.ConfigDAOs;
 import com.janrain.backplane.dao.DaoAll;
 import com.janrain.backplane.dao.DaoException;
 import com.janrain.backplane.server2.dao.BP2DAOs;
-import com.janrain.backplane.server2.model.BackplaneMessageFields;
+import com.janrain.backplane.server2.model.Backplane2MessageFields;
 import com.janrain.backplane.server2.model.BusConfig2;
 import com.janrain.backplane.server2.model.BusConfig2Fields;
 import com.janrain.backplane.server2.oauth2.model.*;
@@ -334,14 +334,14 @@ public class ProvisioningController2 {
                 GrantState.ACTIVE,
                 issuer,
                 clientId,
-                Scope.getEncodedScopesAsString(BackplaneMessageFields.BUS(), buses))
+                Scope.getEncodedScopesAsString(Backplane2MessageFields.BUS(), buses))
                 .buildGrant();
         BP2DAOs.grantDao().store(grant);
     }
 
     private void revokeBuses(String clientId, List<String> buses) throws TokenException, SimpleDBException, BackplaneServerException {
         boolean updated = false;
-        Scope busesToRevoke = new Scope(Scope.getEncodedScopesAsString(BackplaneMessageFields.BUS(), buses));
+        Scope busesToRevoke = new Scope(Scope.getEncodedScopesAsString(Backplane2MessageFields.BUS(), buses));
         if ( ! BP2DAOs.grantDao().revokeBuses(
                 BP2DAOs.grantDao().getByClientId(clientId),
                 JavaConversions.collectionAsScalaIterable(buses).toList() )) {
