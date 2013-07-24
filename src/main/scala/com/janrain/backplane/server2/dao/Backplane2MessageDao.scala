@@ -7,7 +7,7 @@ import com.janrain.backplane2.server.Scope
 /**
  * @author Johnny Bufu
  */
-trait BackplaneMessageDao extends Dao[Backplane2Message] {
+trait Backplane2MessageDao extends Dao[Backplane2Message] {
 
   def messageCount(channel: String): Long
 

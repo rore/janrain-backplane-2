@@ -1,6 +1,6 @@
 package com.janrain.backplane.server2.dao.redis
 
-import com.janrain.backplane.server2.dao.BackplaneMessageDao
+import com.janrain.backplane.server2.dao.Backplane2MessageDao
 import com.janrain.backplane.dao.redis.{MessageProcessorDaoSupport, Redis, RedisMessageDao}
 import com.janrain.backplane.server2.model.{Backplane2MessageFields, Backplane2Message}
 import com.janrain.backplane2.server.Scope
@@ -12,8 +12,8 @@ import com.janrain.util.RandomUtils
 /**
  * @author Johnny Bufu
  */
-object RedisBackplaneMessageDao extends RedisMessageDao[Backplane2Message]("bp2Message:")
-  with BackplaneMessageDao
+object RedisBackplane2MessageDao extends RedisMessageDao[Backplane2Message]("bp2Message:")
+  with Backplane2MessageDao
   with MessageProcessorDaoSupport[Backplane2MessageFields.EnumVal,Backplane2Message] {
 
   private final val MAX_MSGS_IN_FRAME = 25
