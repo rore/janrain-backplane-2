@@ -19,7 +19,8 @@ package com.janrain.backplane.config;
 import com.janrain.backplane.config.dao.ConfigDAOs;
 import com.janrain.backplane.config.model.ServerConfigFields;
 import com.janrain.backplane.dao.redis.RedisMessageProcessor;
-import com.janrain.backplane.server.MessageProcessor;
+import com.janrain.backplane.server1.dao.BP1DAOs;
+import com.janrain.backplane.server1.dao.redis.RedisBackplane1DualFormatMessageProcessor;
 import com.janrain.backplane.server2.dao.BP2DAOs;
 import com.janrain.backplane.server2.model.Backplane2Message;
 import com.janrain.backplane.server2.model.Backplane2MessageFields;
@@ -111,8 +112,6 @@ public class BackplaneConfig {
 
     private static final Map<String, ExecutorService> backgroundServices = new HashMap<String, ExecutorService>();
 
-    final MessageProcessor v1messageProcessor = new MessageProcessor();
-
     // Amazon specific instance-id value
     private static String EC2InstanceId = AwsUtility.retrieveEC2InstanceId();
 
@@ -164,7 +163,9 @@ public class BackplaneConfig {
     @PostConstruct
     private void init() {
         addTask(backgroundServices, createPingTask());
-        initZk("/v1_worker", v1messageProcessor);
+        // todo: replace with this after transition to new serialization is complete
+        //initZk("/v1_worker", new RedisMessageProcessor<Backplane1MessageFields.EnumVal, Backplane1Message>(BP1DAOs.messageDao()));
+        initZk("/v1_worker", new RedisBackplane1DualFormatMessageProcessor(BP1DAOs.messageDao()));
         initZk("/v2_worker", new RedisMessageProcessor<Backplane2MessageFields.EnumVal, Backplane2Message>(BP2DAOs.messageDao()));
     }
 

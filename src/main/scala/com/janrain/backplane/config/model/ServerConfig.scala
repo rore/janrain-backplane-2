@@ -40,4 +40,11 @@ object ServerConfigFields extends MessageFieldEnum {
     }
   }
   val TOKEN_CACHE_MAX_MB = new ServerConfigField { def name = "token_cache_max_mb" }
+
+  // must be exactly "true" to enable new DAO
+  val BP1_MESSAGES_USE_NEW_DAO = new ServerConfigField { def name = "bp1_messages_use_new_dao" }
+
+  // must be exactly "true" to instruct message processor to stop writing old serialization format and old index/redis keys
+  val BP1_MP_STOP_WRITING_LEGACY_FORMAT = new ServerConfigField { def name = "bp1_mp_stop_writing_legacy_format" }
+
 }

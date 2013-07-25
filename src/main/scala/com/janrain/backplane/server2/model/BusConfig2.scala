@@ -17,11 +17,6 @@ class BusConfig2(data: Map[String,String]) extends Message(data, BusConfig2Field
 
   def retentionTimeStickySeconds: Int = get(BusConfig2Fields.RETENTION_STICKY_TIME_SECONDS).getOrElse(BusConfig2.RETENTION_STICKY_MIN_SECONDS.toString).toInt
 
-  // default true if field missing
-  def isLegacyTokens: Boolean = ! get(BusConfig2Fields.LEGACY_TOKENS).exists(java.lang.Boolean.valueOf(_) == false)
-
-  // default true if field missing
-  def isLegacyChannelsAndMessages: Boolean = ! get(BusConfig2Fields.LEGACY_CHANNELS_MESSAGES).exists(java.lang.Boolean.valueOf(_) == false)
 }
 
 object BusConfig2 {
@@ -66,9 +61,4 @@ object  BusConfig2Fields extends MessageFieldEnum {
       )
     }
   }
-
-  val LEGACY_TOKENS = new BusConfig2Field { def name = "legacy_tokens"; override def required = false }
-
-  val LEGACY_CHANNELS_MESSAGES = new BusConfig2Field { def name = "legacy_channels_messages"; override def required = false }
-
 }

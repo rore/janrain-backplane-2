@@ -67,7 +67,7 @@ public class DateTimeUtils {
                 }
             }
         } catch (ParseException pe) {
-            throw new InvalidRequestException("Requested exipration time not in internet date/time format: " + pe.getMessage());
+            throw new InvalidRequestException("Requested expiration time not in internet date/time format: " + pe.getMessage());
         }
     }
 

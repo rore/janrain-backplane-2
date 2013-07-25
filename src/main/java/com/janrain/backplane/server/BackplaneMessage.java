@@ -54,6 +54,13 @@ public class BackplaneMessage extends ExternalizableCore {
         super.init(id, d);
     }
 
+    /**
+     * Copy constructor (to help with migration).
+     */
+    public BackplaneMessage(Map<String,String> data) throws SimpleDBException {
+        super.init(data.get(BackplaneMessage.Field.ID.getFieldName()), data);
+    }
+
     @Override
     public String getIdValue() {
         return get(Field.ID);

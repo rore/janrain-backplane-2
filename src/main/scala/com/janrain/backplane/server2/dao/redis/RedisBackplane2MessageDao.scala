@@ -18,15 +18,13 @@ object RedisBackplane2MessageDao extends RedisMessageDao[Backplane2Message]("bp2
 
   private final val MAX_MSGS_IN_FRAME = 25
 
-  private[redis] final val INDEXED_SCOPE_FIELDS = Map(
+  private final val INDEXED_SCOPE_FIELDS = Map(
     Backplane2MessageFields.CHANNEL -> channelKey _,
     Backplane2MessageFields.BUS -> busKey _ )
 
   val idField = Backplane2MessageFields.ID
 
   protected def instantiate(data: Map[_, _]) = new Backplane2Message(data.map(kv => kv._1.toString -> kv._2.toString))
-
-  override protected[redis] def getKey(itemId: String) = super.getKey(itemId)
 
   override def store(item: Backplane2Message) {
     Redis.writePool.withClient(_.rpush(messagesQueueKey, item.serialize))
@@ -64,7 +62,7 @@ object RedisBackplane2MessageDao extends RedisMessageDao[Backplane2Message]("bp2
     }))
 
     val lastAvailableMsgId = pipelineResponse.map {
-      case List(Some(List(lastMsgMetadata: String)), _) => lastMsgMetadata.split(" ")
+      case List(Some(List(lastMsgMetadata: String)), _) => lastMsgMetadata.split(" ") // todo: fix unchecked cast to String b/c erasure
       case _ => Array.empty
     }.collect {
       case Array(bus, channel, msgId, expTime) => msgId
