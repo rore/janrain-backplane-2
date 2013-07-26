@@ -38,7 +38,7 @@ window.Backplane = window.Backplane || (function() {
             console.error("Backplane ERROR: " + msg);
         }
     }
-    BP.version = "1.2.6";
+    BP.version = "1.2.7";
     BP.channelByBus = {};
     BP.config = {};
     BP.initialized = false;
@@ -224,9 +224,9 @@ Backplane.finishInit = function (channelName) {
     if (channelName) {
         this.channelByBus[this.config.busName] = channelName;
         this.setCookieChannels();
-        this.config.channelName = this.getChannelName();
-        this.config.channelID = this.generateChannelID();
     }
+    this.config.channelName = this.getChannelName();
+    this.config.channelID = this.generateChannelID();
 
     this.onInit();
     this.request();
