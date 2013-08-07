@@ -39,7 +39,7 @@ window.Backplane = window.Backplane || (function() {
             console.error("Backplane ERROR: " + msg);
         }
     };
-    BP.version = "2.0.6";
+    BP.version = "2.0.7";
     BP.token = null;
     BP.refresh_token = null;
     BP.channelName = null;
@@ -429,13 +429,12 @@ Backplane.setCookieChannel = function() {
         ";expires=" + this.config.channelExpires + ";path=/";
 };
 
+// Obliterate all existing channel state and fetch a new channel.
 Backplane.resetCookieChannel = function() {
     this.invalidateCache();
-    this.channelName = null;
-    this.token = null;
-    this.refresh_token = null;
-    this.setCookieChannel();
-    // make the async call to retrieve a server generated channel
+    this.log("Removing backplane2-channel cookie.");
+    document.cookie = "backplane2-channel=; expires=Thu, 01 Jan 1970 00:00:01 GMT;path=/";
+    // make the async call to retrieve a server generated channel.
     this.fetchNewChannel();
 };
 
