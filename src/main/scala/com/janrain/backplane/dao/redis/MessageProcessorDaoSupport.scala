@@ -3,7 +3,7 @@ package com.janrain.backplane.dao.redis
 import com.janrain.backplane.common.model.{MessageField, BackplaneMessage}
 
 /**
- * Mixin for RedisMessageDao with support for Backplane2Message / Message Processor
+ * Mixin for RedisMessageDao with support for Backplane[1|2]Message / Message Processor
  *
  * @author Johnny Bufu
  */

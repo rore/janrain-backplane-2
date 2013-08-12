@@ -5,7 +5,7 @@ import com.janrain.backplane.common.MessageException
 import com.janrain.util.{Loggable, Utils, RandomUtils}
 
 /**
- * Base class for Backplane2Message v*
+ * Base class for Backplane[1|2]Message
  *
  * @author Johnny Bufu
  */

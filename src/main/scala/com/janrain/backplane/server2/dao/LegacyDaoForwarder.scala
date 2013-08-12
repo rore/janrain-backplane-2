@@ -4,6 +4,7 @@ import com.janrain.backplane.dao.{MessageDao, DAO, DaoAll}
 import com.janrain.commons.supersimpledb.message.NamedMap
 import scala.collection.JavaConversions
 import com.janrain.backplane.common.model.Message
+import com.janrain.util.Loggable
 
 /**
  * Stackable modification trait for Message DAOs
@@ -13,26 +14,24 @@ import com.janrain.backplane.common.model.Message
  *
  * @author Johnny Bufu
  */
-trait LegacyDaoForwarder[LT <: NamedMap, T <: Message[_] with LegacySupport[LT]] extends MessageDao[T] with DaoAll[T] {
+trait LegacyDaoForwarder[LT <: NamedMap, T <: Message[_] with LegacySupport[LT]] extends MessageDao[T] with DaoAll[T] with Loggable {
 
   val legacyDao: DAO[LT]
 
-  def preferLegacyGet(id: String): Boolean
-
-  abstract override def get(id: String): Option[T] = {
-    if (preferLegacyGet(id)) {
+  abstract override def get(id: String): Option[T] = super.get(id) match {
+    case None => try {
       val legacyItem = legacyDao.get(id)
-      if (legacyItem != null)
-        Option(instantiate(JavaConversions.mapAsScalaMap(legacyItem).toMap))
-      else
-        super.get(id)
-    } else {
-      val nonLegacyItem = super.get(id)
-      if (nonLegacyItem.isDefined)
-        nonLegacyItem
-      else
-        Some(instantiate(JavaConversions.mapAsScalaMap(legacyDao.get(id)).toMap))
+      val convertedItem = instantiate(JavaConversions.mapAsScalaMap(legacyItem).toMap)
+      // should happen only once, instantiate/convert throws NPE if legacyDao returns null
+      // then (after one successful super.store) new DAO (super.get) will find this item/id
+      super.store(convertedItem)
+      logDebug("converted %s : %s to new dao/format".format(legacyItem.getClass.getSimpleName, legacyItem.getName))
+      Some(convertedItem)
+    } catch {
+      case npe: NullPointerException => None
     }
+
+    case nonLegacyItem => nonLegacyItem
   }
 
   abstract override def delete(id: String) = {

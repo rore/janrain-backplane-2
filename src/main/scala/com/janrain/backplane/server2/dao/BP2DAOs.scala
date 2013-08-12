@@ -68,8 +68,6 @@ object BP2DAOs {
     protected def instantiate(data: Map[_, _]) = new Token( data.map( kv => kv._1.toString -> kv._2.toString ))
 
     val legacyDao = com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao
-
-    def preferLegacyGet(id: String) = id.length == Token.LEGACY_TOKEN_LENGTH
   }
 
   val channelDao: ChannelDao = new RedisMessageDao[Channel]("bp2Channel:") with ChannelDao
@@ -78,8 +76,6 @@ object BP2DAOs {
     protected def instantiate(data: Map[_, _]) = new Channel( data.map( kv => kv._1.toString -> kv._2.toString ))
 
     val legacyDao = com.janrain.backplane2.server.dao.BP2DAOs.getChannelDao
-
-    def preferLegacyGet(id: String) = id.length == Channel.CHANNEL_LEGACY_NAME_LENGTH
   }
 
   type BackplaneMessageDaoWithProcessor = Backplane2MessageDao with MessageProcessorDaoSupport[Backplane2MessageFields.EnumVal,Backplane2Message]
