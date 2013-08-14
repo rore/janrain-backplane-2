@@ -4,15 +4,15 @@ import com.janrain.backplane.dao.DaoAll
 import com.janrain.backplane2.server.{GrantBuilder, Scope}
 import scala.collection.JavaConversions
 import com.janrain.util.Loggable
-import com.janrain.backplane.server2.oauth2.model.{GrantFields, Grant}
+import com.janrain.backplane.server2.oauth2.model.{GrantFields, Grant2}
 import com.janrain.backplane.server2.model.Backplane2MessageFields
 
 /**
  * @author Johnny Bufu
  */
-trait GrantDao extends DaoAll[Grant] with Loggable {
+trait GrantDao extends DaoAll[Grant2] with Loggable {
 
-  def getByClientId(clientId: String) = getAll.filter(_.get(GrantFields.ISSUED_TO_CLIENT_ID).exists(_ == clientId))
+  def getByClientId(clientId: String): List[Grant2] = getAll.filter(_.get(GrantFields.ISSUED_TO_CLIENT_ID).exists(_ == clientId))
 
   /**
    * Revokes buses across the provided grants.
@@ -21,7 +21,7 @@ trait GrantDao extends DaoAll[Grant] with Loggable {
    *
    * @return true if any of the existing grants were updated, false if nothing was updated
    */
-  def revokeBuses(grants: List[Grant], buses: List[String]): Boolean = {
+  def revokeBuses(grants: List[Grant2], buses: List[String]): Boolean = {
     val busesToRevoke = new Scope(Scope.getEncodedScopesAsString(Backplane2MessageFields.BUS, JavaConversions.seqAsJavaList(buses)))
     val updatedGrantIds = grants.withFilter(revokeBusesFromGrant(_, busesToRevoke)).map(_.id).toSet
     if ( ! updatedGrantIds.isEmpty ) {
@@ -43,7 +43,7 @@ trait GrantDao extends DaoAll[Grant] with Loggable {
     })
   }
 
-  private def revokeBusesFromGrant(grant: Grant, busesToRevoke: Scope): Boolean = {
+  private def revokeBusesFromGrant(grant: Grant2, busesToRevoke: Scope): Boolean = {
     val grantScope = grant.getAuthorizedScope
     val updatedScope = Scope.revoke(grantScope, busesToRevoke)
     if (updatedScope == grantScope) return false
@@ -52,7 +52,7 @@ trait GrantDao extends DaoAll[Grant] with Loggable {
       logger.info("Revoked all buses from grant: " + grant.id)
       delete(grant.id)
     } else {
-      val updated: Grant = new GrantBuilder(grant, grant.getState).scope(updatedScope).buildGrant
+      val updated: Grant2 = new GrantBuilder(grant, grant.getState).scope(updatedScope).buildGrant
       update(grant, updated)
       logger.info("Buses updated updated for grant: " + updated.id + " remaining scope: '" + updated.getAuthorizedScope + "'")
     }

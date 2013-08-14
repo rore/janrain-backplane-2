@@ -8,18 +8,28 @@ import scala.collection.JavaConversions._
 import com.janrain.util.Loggable
 import com.janrain.backplane.config.dao.ConfigDAOs
 import com.janrain.backplane.config.model.ServerConfigFields
+import com.janrain.backplane.server2.dao.LegacyDaoForwarder
 
 /**
  * @author Johnny Bufu
  */
 object BP1DAOs extends Loggable {
 
-  val userDao: BusUserDao = new RedisMessageDao[BusUser]("bp1BusUser:") with BusUserDao with PasswordHasherDao[BusUserFields.EnumVal,BusUser] {
+  val userDao: BusUserDao = new RedisMessageDao[BusUser]("bp1BusUser:") with BusUserDao
+    with PasswordHasherDao[BusUserFields.EnumVal,BusUser]
+    with LegacyDaoForwarder[com.janrain.backplane2.server.config.User, BusUser] {
+
     protected def instantiate(data: Map[_, _]) = new BusUser( data.map( kv => kv._1.toString -> kv._2.toString ))
+
+    val legacyDao = com.janrain.backplane.server.redisdao.BP1DAOs.getUserDao
   }
 
-  val busDao: BusDao = new RedisMessageDao[BusConfig1]("bp1Bus") with BusDao {
+  val busDao: BusDao = new RedisMessageDao[BusConfig1]("bp1Bus") with BusDao
+    with LegacyDaoForwarder[com.janrain.backplane.server.BusConfig1, BusConfig1] {
+
     protected def instantiate(data: Map[_, _]) = new BusConfig1( data.map( kv => kv._1.toString -> kv._2.toString ))
+
+    val legacyDao = com.janrain.backplane.server.redisdao.BP1DAOs.getBusDao
   }
 
   //type BackplaneMessageDaoWithProcessor = Backplane1MessageDao with MessageProcessorDaoSupport[Backplane1MessageFields.EnumVal,Backplane1Message]

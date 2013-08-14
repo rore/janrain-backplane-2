@@ -5,12 +5,14 @@ import com.janrain.oauth2.{ValidationException, OAuth2}
 import com.janrain.servlet.InvalidRequestException
 import com.janrain.backplane.config.model.Password
 import scala.collection.JavaConversions._
+import com.janrain.backplane.server2.dao.LegacySupport
 
 /**
  * @author Johnny Bufu
  */
 class Client(data: Map[String,String]) extends User("bp2Client", data, ClientFields.values)
-  with Password[ClientFields.EnumVal, Client] {
+  with Password[ClientFields.EnumVal, Client]
+  with LegacySupport[com.janrain.backplane2.server.config.Client] {
 
   def this(javaData: java.util.Map[String,String]) = this(javaData.toMap)
 
@@ -18,6 +20,7 @@ class Client(data: Map[String,String]) extends User("bp2Client", data, ClientFie
 
   def pwdHashField = ClientFields.PWDHASH
 
+  def asLegacy = new com.janrain.backplane2.server.config.Client(mapAsJavaMap(this))
 }
 
 object ClientFields extends UserFieldEnum {

@@ -6,15 +6,19 @@ import com.janrain.backplane.common.{DateTimeUtils, MessageException}
 import com.janrain.oauth2.TokenException
 import org.apache.commons.lang.StringUtils
 import scala.collection.JavaConversions._
+import com.janrain.backplane.server2.dao.LegacySupport
 
 /**
  * @author Johnny Bufu
  */
-class Grant(data: Map[String,String]) extends Message(data, GrantFields.values) {
+class Grant2(data: Map[String,String]) extends Message(data, GrantFields.values) with LegacySupport[com.janrain.backplane2.server.Grant] {
 
   def this(javaData: java.util.Map[String,String])= this(javaData.toMap)
 
   def idField = GrantFields.ID
+
+
+  def asLegacy = new com.janrain.backplane2.server.Grant(mapAsJavaMap(this))
 
   def getType: GrantType = get(GrantFields.TYPE).map(typeValue => {
     try {
@@ -48,7 +52,7 @@ class Grant(data: Map[String,String]) extends Message(data, GrantFields.values) 
 
 }
 
-object Grant {
+object Grant2 {
   private[model] final val CODE_ID_LENGTH = 20L
   private[model] final val CODE_EXPIRATION_SECONDS_DEFAULT = 600L
 }

@@ -188,7 +188,7 @@ public class Backplane2ControllerTest {
 
             for (String key:this.createdGrantsKeys) {
                 logger.info("deleting Grant " + key);
-                Grant grant = BP2DAOs.grantDao().get(key).getOrElse(null);
+                Grant2 grant = BP2DAOs.grantDao().get(key).getOrElse(null);
                 if (grant != null) {
                     com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao().revokeTokenByGrant(grant.id());
                 }
@@ -243,7 +243,7 @@ public class Backplane2ControllerTest {
         logger.info("created Message " + message.id());
     }
 
-    private void saveGrant(Grant grant) throws BackplaneServerException, DaoException {
+    private void saveGrant(Grant2 grant) throws BackplaneServerException, DaoException {
         BP2DAOs.grantDao().store(grant);
         logger.info("saved grant: " + grant.id());
         this.createdGrantsKeys.add(grant.id());
@@ -481,7 +481,7 @@ public class Backplane2ControllerTest {
 
         //create grant for test
 
-        Grant grant = new GrantBuilder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE, "fakeOwnerId", testClient.id(),"bus:test").buildGrant();
+        Grant2 grant = new GrantBuilder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE, "fakeOwnerId", testClient.id(),"bus:test").buildGrant();
         this.saveGrant(grant);
 
         // because we didn't specify a bus in the "scope" parameter, the server will
@@ -519,14 +519,14 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
 
         //create grant for test
-        Grant grant1 = new GrantBuilder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE, "fakeOwnerId", testClient.id(),"bus:foo").buildGrant();
+        Grant2 grant1 = new GrantBuilder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE, "fakeOwnerId", testClient.id(),"bus:foo").buildGrant();
         this.saveGrant(grant1);
 
-        Grant grant2 = new GrantBuilder(GrantType.AUTHORIZATION_CODE, GrantState.ACTIVE, "fakeOwnerId", testClient.id(), "bus:bar").buildGrant();
+        Grant2 grant2 = new GrantBuilder(GrantType.AUTHORIZATION_CODE, GrantState.ACTIVE, "fakeOwnerId", testClient.id(), "bus:bar").buildGrant();
         this.saveGrant(grant2);
 
         // add grant with duplicate bus
-        Grant grant3 = new GrantBuilder(GrantType.AUTHORIZATION_CODE, GrantState.ACTIVE, "fakeOwernId", testClient.id(), "bus:foo").buildGrant();
+        Grant2 grant3 = new GrantBuilder(GrantType.AUTHORIZATION_CODE, GrantState.ACTIVE, "fakeOwernId", testClient.id(), "bus:foo").buildGrant();
         this.saveGrant(grant3);
 
         request.setRequestURI("/v2/token");
@@ -607,7 +607,7 @@ public class Backplane2ControllerTest {
 
         String buses = org.springframework.util.StringUtils.collectionToDelimitedString(randomBuses, " ");
 
-        Grant grant = new GrantBuilder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE, "fakeOwnerId", testClient.id(),
+        Grant2 grant = new GrantBuilder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE, "fakeOwnerId", testClient.id(),
                 Scope.getEncodedScopesAsString(Backplane2MessageFields.BUS(), buses)).buildGrant();
         this.saveGrant(grant);
 
@@ -668,7 +668,7 @@ public class Backplane2ControllerTest {
         refreshRequestAndResponse();
 
         //create grant for test
-        Grant grant = new GrantBuilder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE, "fakeOwnerId", testClient.id(),"bus:test").buildGrant();
+        Grant2 grant = new GrantBuilder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE, "fakeOwnerId", testClient.id(),"bus:test").buildGrant();
         this.saveGrant(grant);
         logger.info("issued AuthCode " + grant.id());
 
@@ -717,7 +717,7 @@ public class Backplane2ControllerTest {
         request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_AUTH_CODE);
 
         //create grant for test
-        Grant grant = new GrantBuilder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE, "fakeOwnerId", testClient.id(),"bus:test").buildGrant();
+        Grant2 grant = new GrantBuilder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE, "fakeOwnerId", testClient.id(),"bus:test").buildGrant();
         this.saveGrant(grant);
 
         request.setParameter("code", grant.id());
@@ -747,7 +747,7 @@ public class Backplane2ControllerTest {
         request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_AUTH_CODE);
 
         //create grant for test
-        Grant grant = new GrantBuilder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE, "fakeOwnerId", testClient.id(),"bus:mybus.com").buildGrant();
+        Grant2 grant = new GrantBuilder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE, "fakeOwnerId", testClient.id(),"bus:mybus.com").buildGrant();
         this.saveGrant(grant);
 
         request.setParameter("code", grant.id());
@@ -783,7 +783,7 @@ public class Backplane2ControllerTest {
         request.setParameter("grant_type", OAuth2.OAUTH2_TOKEN_GRANT_TYPE_AUTH_CODE);
 
         //create grant for test
-        Grant grant = new GrantBuilder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE, "fakeOwnerId", testClient.id(),"bus:test").buildGrant();
+        Grant2 grant = new GrantBuilder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE, "fakeOwnerId", testClient.id(),"bus:test").buildGrant();
         this.saveGrant(grant);
 
         request.setParameter("code", grant.id());
@@ -1297,9 +1297,9 @@ public class Backplane2ControllerTest {
         logger.info("TEST: testGrantAndRevoke() =================");
 
         // Create auth
-        ArrayList<Grant> grants = new ArrayList<Grant>();
-        Grant grant1 = new GrantBuilder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.id(), "bus:mybus.com").buildGrant();
-        Grant grant2 = new GrantBuilder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.id(), "bus:thisbus.com").buildGrant();
+        ArrayList<Grant2> grants = new ArrayList<Grant2>();
+        Grant2 grant1 = new GrantBuilder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.id(), "bus:mybus.com").buildGrant();
+        Grant2 grant2 = new GrantBuilder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.id(), "bus:thisbus.com").buildGrant();
         this.saveGrant(grant1);
         this.saveGrant(grant2);
         grants.add(grant1);
@@ -1335,9 +1335,9 @@ public class Backplane2ControllerTest {
         logger.info("TEST: testGrantAndRevokeByBus() =================");
 
         // Create auth
-        ArrayList<Grant> grants = new ArrayList<Grant>();
-        Grant grant1 = new GrantBuilder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.id(), "bus:mybus.com").buildGrant();
-        Grant grant2 = new GrantBuilder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.id(), "bus:thisbus.com").buildGrant();
+        ArrayList<Grant2> grants = new ArrayList<Grant2>();
+        Grant2 grant1 = new GrantBuilder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.id(), "bus:mybus.com").buildGrant();
+        Grant2 grant2 = new GrantBuilder(GrantType.CLIENT_CREDENTIALS, GrantState.ACTIVE, "fakeOwnerId", testClient.id(), "bus:thisbus.com").buildGrant();
         this.saveGrant(grant1);
         this.saveGrant(grant2);
         grants.add(grant1);
@@ -1498,7 +1498,7 @@ public class Backplane2ControllerTest {
             String tokenId = (String) returnedBody.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME);
             assertNotNull(tokenId);
 
-            Grant grant = BP2DAOs.grantDao().get(code).getOrElse(null);
+            Grant2 grant = BP2DAOs.grantDao().get(code).getOrElse(null);
             Token token = com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao().get(tokenId);
 
             assertTrue(grant.get(GrantFields.ISSUED_TO_CLIENT_ID()).getOrElse(null).equals(token.get(Token.TokenField.ISSUED_TO_CLIENT_ID)));

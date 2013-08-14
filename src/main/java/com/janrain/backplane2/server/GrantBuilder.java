@@ -1,7 +1,7 @@
 package com.janrain.backplane2.server;
 
 import com.janrain.backplane.common.DateTimeUtils;
-import com.janrain.backplane.server2.oauth2.model.Grant;
+import com.janrain.backplane.server2.oauth2.model.Grant2;
 import com.janrain.backplane.server2.oauth2.model.GrantFields;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.util.RandomUtils;
@@ -27,7 +27,7 @@ public class GrantBuilder {
         data.put(GrantFields.AUTHORIZED_SCOPES().name(), scopes);
     }
 
-    public GrantBuilder(Grant other, GrantState state) {
+    public GrantBuilder(Grant2 other, GrantState state) {
         data.putAll(JavaConversions.mapAsJavaMap(other));
         data.put(GrantFields.STATE().name(), state.toString());
     }
@@ -42,7 +42,7 @@ public class GrantBuilder {
         return this;
     }
 
-    public Grant buildGrant() throws SimpleDBException {
+    public Grant2 buildGrant() throws SimpleDBException {
         String id = data.get(GrantFields.ID().name());
         if ( id == null) {
             id = RandomUtils.randomString(CODE_ID_LENGTH);
@@ -60,7 +60,7 @@ public class GrantBuilder {
             data.remove(GrantFields.TIME_EXPIRE().name());
         }
 
-        return new Grant(data);
+        return new Grant2(data);
     }
 
     private Map<String,String> data = new HashMap<String, String>();

@@ -2,7 +2,7 @@ package com.janrain.backplane.server2.dao
 
 import com.janrain.backplane.dao.{MessageDao, DAO, DaoAll}
 import com.janrain.commons.supersimpledb.message.NamedMap
-import scala.collection.JavaConversions
+import scala.collection.JavaConversions._
 import com.janrain.backplane.common.model.Message
 import com.janrain.util.Loggable
 
@@ -21,7 +21,7 @@ trait LegacyDaoForwarder[LT <: NamedMap, T <: Message[_] with LegacySupport[LT]]
   abstract override def get(id: String): Option[T] = super.get(id) match {
     case None => try {
       val legacyItem = legacyDao.get(id)
-      val convertedItem = instantiate(JavaConversions.mapAsScalaMap(legacyItem).toMap)
+      val convertedItem = instantiate(legacyItem.toMap)
       // should happen only once, instantiate/convert throws NPE if legacyDao returns null
       // then (after one successful super.store) new DAO (super.get) will find this item/id
       super.store(convertedItem)
@@ -40,9 +40,8 @@ trait LegacyDaoForwarder[LT <: NamedMap, T <: Message[_] with LegacySupport[LT]]
   }
 
   abstract override def getAll: List[T] = {
-    val legacyItems = JavaConversions.asScalaBuffer(legacyDao.getAll)
-      .map( legacyItem => instantiate(JavaConversions.mapAsScalaMap(legacyItem).toMap)).toList
-    super.getAll ++ legacyItems
+    (super.getAll ++ legacyDao.getAll.map(legacyItem => instantiate(legacyItem.toMap)).toList)
+    .toSet.toList
   }
 
   abstract override def store(item: T) {

@@ -3,11 +3,12 @@ package com.janrain.backplane.server1.model
 import com.janrain.backplane.common.model.{MessageField, MessageFieldEnum, Message}
 import com.janrain.backplane.common.MessageException
 import scala.collection.JavaConversions._
+import com.janrain.backplane.server2.dao.LegacySupport
 
 /**
  * @author Johnny Bufu
  */
-class BusConfig1(data: Map[String,String]) extends Message(data, BusConfig1Fields.values) {
+class BusConfig1(data: Map[String,String]) extends Message(data, BusConfig1Fields.values) with LegacySupport[com.janrain.backplane.server.BusConfig1] {
 
   def this(javaData: java.util.Map[String,String]) = this(javaData.toMap)
 
@@ -18,6 +19,8 @@ class BusConfig1(data: Map[String,String]) extends Message(data, BusConfig1Field
   def retentionTimeSeconds: Int = get(BusConfig1Fields.RETENTION_TIME_SECONDS).getOrElse(BusConfig1.RETENTION_MIN_SECONDS.toString).toInt
 
   def retentionTimeStickySeconds: Int = get(BusConfig1Fields.RETENTION_STICKY_TIME_SECONDS).getOrElse(BusConfig1.RETENTION_STICKY_MIN_SECONDS.toString).toInt
+
+  def asLegacy = new com.janrain.backplane.server.BusConfig1(mapAsJavaMap(this))
 }
 
 object BusConfig1 {

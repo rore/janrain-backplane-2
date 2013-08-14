@@ -195,6 +195,33 @@ public class Scope {
         return sb.toString();
     }
 
+    // - LEGACY DAO SUPPORT to be removed
+
+    /**
+     * @param field scope field
+     * @param scopeValues space separated scope values
+     *
+     * @return  an encoded space delimited string of scopes e.g.:  "bus:thisbus.com bus:andthatbus.com ..."
+     */
+    public static String getEncodedScopesAsString(BackplaneMessage.Field field, String scopeValues) {
+        return getEncodedScopesAsString(field, getScopesAsList(scopeValues));
+    }
+
+    public static String getEncodedScopesAsString(BackplaneMessage.Field field, @NotNull List<String> scopeValues) {
+        StringBuilder sb = new StringBuilder();
+        for (String value: scopeValues) {
+            if (sb.length() > 0) sb.append(SEPARATOR);
+            sb.append(field.getFieldName()).append(DELIMITER).append(value);
+        }
+        return sb.toString();
+    }
+
+    public Set<String> getScopeFieldValues(BackplaneMessage.Field field) {
+        return scopes.get(field);
+    }
+
+    // - LEGACY DAO SUPPORT to be removed
+
     /**
      * @return a new Scope consisting of all scope values present in the first one, less the auth-req scope values in 'revoke'
      */

@@ -137,9 +137,9 @@ public class ProvisioningController2 {
         for(String clientId : listRequest.getEntities()) {
             try {
                 Map<String,String> grantsList = new HashMap<String, String>();
-                Map<Scope, Set<Grant>> scopeGrants = GrantLogic.retrieveClientGrants(clientId, null);
-                for (Set<Grant> grantSets : scopeGrants.values()) {
-                    for(Grant grant : grantSets) {
+                Map<Scope, Set<Grant2>> scopeGrants = GrantLogic.retrieveClientGrants(clientId, null);
+                for (Set<Grant2> grantSets : scopeGrants.values()) {
+                    for(Grant2 grant : grantSets) {
                         grantsList.put(grant.id(), grant.getAuthorizedScope().toString());
                     }
                     result.put(clientId, grantsList);
@@ -329,7 +329,7 @@ public class ProvisioningController2 {
     }
 
     private void addGrant(String issuer, String clientId, List<String> buses) throws SimpleDBException, BackplaneServerException, DaoException {
-        Grant grant = new GrantBuilder(
+        Grant2 grant = new GrantBuilder(
                 GrantType.CLIENT_CREDENTIALS,
                 GrantState.ACTIVE,
                 issuer,

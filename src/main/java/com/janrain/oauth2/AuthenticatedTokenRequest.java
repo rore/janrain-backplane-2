@@ -133,7 +133,7 @@ public class AuthenticatedTokenRequest implements TokenRequest {
     private final String authenticatedClientSourceUrl;
     private final Scope requestScope;
 
-    private Grant codeGrant;
+    private Grant2 codeGrant;
     private Token refreshToken;
 
     private Pair<Scope,List<String>> processScope() throws TokenException {
@@ -148,10 +148,10 @@ public class AuthenticatedTokenRequest implements TokenRequest {
 
         // client credentials scope
         try {
-            Map<Scope,Set<Grant>> scopeGrantsMap = GrantLogic.retrieveClientGrants(authenticatedClientId, requestScope);
+            Map<Scope,Set<Grant2>> scopeGrantsMap = GrantLogic.retrieveClientGrants(authenticatedClientId, requestScope);
             List<String> allGrants = new ArrayList<String>();
-            for(Set<Grant> grants : scopeGrantsMap.values()) {
-                for(Grant grant : grants) {
+            for(Set<Grant2> grants : scopeGrantsMap.values()) {
+                for(Grant2 grant : grants) {
                     allGrants.add(grant.id());
                 }
             }

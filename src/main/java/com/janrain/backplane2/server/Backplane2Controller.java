@@ -734,7 +734,7 @@ public class Backplane2Controller {
                 // todo: use (and check) scope posted back by bus owner
                 String scopeString = checkScope((String)authorizationRequest.get(AuthorizationRequestFields.SCOPE()).getOrElse(null), authenticatedBusOwner);
                 // create grant/code
-                Grant grant =  new GrantBuilder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE,
+                Grant2 grant =  new GrantBuilder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE,
                             authenticatedBusOwner,
                             authorizationRequest.get(AuthorizationRequestFields.CLIENT_ID()).get(),
                             scopeString).buildGrant();

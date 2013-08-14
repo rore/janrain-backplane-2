@@ -5,7 +5,7 @@ import com.janrain.backplane.common.model.Message;
 import com.janrain.backplane.dao.DaoException;
 import com.janrain.backplane.server2.dao.BP2DAOs;
 import com.janrain.backplane.server2.model.Backplane2MessageFields;
-import com.janrain.backplane.server2.oauth2.model.Grant;
+import com.janrain.backplane.server2.oauth2.model.Grant2;
 import com.janrain.backplane.server2.oauth2.model.GrantFields;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.oauth2.TokenException;
@@ -35,17 +35,17 @@ public class GrantLogic {
      * @return  map of authorized scopes backed-by grants
      * @throws
      */
-    public static @NotNull Map<Scope,Set<Grant>>
+    public static @NotNull Map<Scope,Set<Grant2>>
     retrieveClientGrants(final String clientId, @Nullable Scope scope) throws BackplaneServerException, TokenException {
 
-        List<Grant> clientActiveGrants = JavaConversions.seqAsJavaList(BP2DAOs.grantDao().getByClientId(clientId));
+        List<Grant2> clientActiveGrants = JavaConversions.seqAsJavaList(BP2DAOs.grantDao().getByClientId(clientId));
 
-        Map<Scope,Set<Grant>> result = new LinkedHashMap<Scope, Set<Grant>>();
+        Map<Scope,Set<Grant2>> result = new LinkedHashMap<Scope, Set<Grant2>>();
 
         if (scope == null || ! scope.isAuthorizationRequired()) {
-            Set<Grant> selectedGrants = new LinkedHashSet<Grant>();
+            Set<Grant2> selectedGrants = new LinkedHashSet<Grant2>();
             Map<Backplane2MessageFields.EnumVal,LinkedHashSet<String>> authorizedScopesMap = new LinkedHashMap<Backplane2MessageFields.EnumVal, LinkedHashSet<String>>();
-            for (Grant grant : clientActiveGrants) {
+            for (Grant2 grant : clientActiveGrants) {
                 if (Message.isExpired(grant.get(GrantFields.TIME_EXPIRE()))) continue;
                 selectedGrants.add(grant);
                 Scope.addScopes(authorizedScopesMap, grant.getAuthorizedScope().getScopeMap());
@@ -65,12 +65,12 @@ public class GrantLogic {
                 } else {
                     testScope = authReqScope;
                 }
-                for(Grant grant : clientActiveGrants) {
+                for(Grant2 grant : clientActiveGrants) {
                     if (Message.isExpired(grant.get(GrantFields.TIME_EXPIRE()))) continue;
                     if (grant.getAuthorizedScope().containsScope(testScope)) {
-                        Set<Grant> backingGrants = result.get(authReqScope);
+                        Set<Grant2> backingGrants = result.get(authReqScope);
                         if (backingGrants == null) {
-                            backingGrants = new LinkedHashSet<Grant>();
+                            backingGrants = new LinkedHashSet<Grant2>();
                             result.put(authReqScope, backingGrants);
                         }
                         backingGrants.add(grant);
@@ -97,9 +97,9 @@ public class GrantLogic {
      *
      * @throws
      */
-      public static Grant getAndActivateCodeGrant(final String codeId, String authenticatedClientId) throws BackplaneServerException, TokenException, DaoException {
+      public static Grant2 getAndActivateCodeGrant(final String codeId, String authenticatedClientId) throws BackplaneServerException, TokenException, DaoException {
 
-          Grant existing = BP2DAOs.grantDao().get(codeId).getOrElse(null);
+          Grant2 existing = BP2DAOs.grantDao().get(codeId).getOrElse(null);
 
           GrantState updatedState = GrantState.ACTIVE;
           if ( existing == null) {
@@ -113,7 +113,7 @@ public class GrantLogic {
               updatedState = GrantState.REVOKED;
           }
 
-          Grant updated; // no expiration
+          Grant2 updated; // no expiration
           try {
               updated = new GrantBuilder(existing, updatedState).buildGrant();
           } catch (SimpleDBException e) {
