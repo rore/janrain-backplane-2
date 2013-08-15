@@ -79,7 +79,7 @@ object ServletUtil {
 
   def hasQueryParameter(request: HttpServletRequest, paramName: String) = {
     val paramNameEncoded = URLEncoder.encode(paramName, Utf8StringUtils.UTF8.name)
-    Option(request.getQueryString).map(_.split("&")).flatten.exists(_.startsWith(paramNameEncoded + "="))
+    Option(request.getQueryString).map(_.split("&")).toIterable.flatten.exists(_.startsWith(paramNameEncoded + "="))
   }
 
   def hasOnlyPostBodyParameter(request: HttpServletRequest, paramName: String) = {

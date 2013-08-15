@@ -31,14 +31,14 @@ object TokenSource extends Enum {
           case (name, value) if name == OAUTH2_ACCESS_TOKEN_PARAM_NAME
             => if (value.startsWith("=")) value.substring(1) else value
         }
-      ).flatten.toList
+      ).toIterable.flatten.toList
     )
   }
 
   val POSTBODY = new EnumVal { def name = "postbody"
     def isAccess = true
     def extract(request: HttpServletRequest, previouslyDiscovered: List[String]) = (this,
-      Option(request.getParameterValues(OAUTH2_ACCESS_TOKEN_PARAM_NAME)).flatten
+      Option(request.getParameterValues(OAUTH2_ACCESS_TOKEN_PARAM_NAME)).toIterable.flatten
         // query params mask parameters from post body with HttpServletRequest
         .filterNot( previouslyDiscovered.contains(_) ).toList
       )
@@ -47,7 +47,7 @@ object TokenSource extends Enum {
   val POSTBODY_REFRESH = new EnumVal { def name = "postbody"
     def isAccess = false
     def extract(request: HttpServletRequest, previouslyDiscovered: List[String]) = (this,
-      Option(request.getParameterValues(OAUTH2_REFRESH_TOKEN_PARAM_NAME)).flatten
+      Option(request.getParameterValues(OAUTH2_REFRESH_TOKEN_PARAM_NAME)).toIterable.flatten
         // query params mask parameters from post body with HttpServletRequest
         .filterNot( previouslyDiscovered.contains(_) ).toList
       )
@@ -61,7 +61,7 @@ object TokenSource extends Enum {
           case bearer if bearer.startsWith(OAUTH2_TOKEN_TYPE_BEARER) && bearer.length > OAUTH2_TOKEN_TYPE_BEARER.length +1
             => bearer.substring(OAUTH2_TOKEN_TYPE_BEARER.length +1)
         }
-      ).flatten.toList
+      ).toIterable.flatten.toList
     )
   }
 }

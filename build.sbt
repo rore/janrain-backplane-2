@@ -2,7 +2,7 @@ name := "backplane-server"
 
 version := "BP_2_0.2013.26_RC1"
 
-scalaVersion := "2.10.0"
+scalaVersion := "2.10.2"
 
 scalacOptions += "-deprecation"
 
@@ -72,7 +72,7 @@ libraryDependencies ++= Seq(
   "com.yammer.metrics" % "metrics-servlet" % "2.1.2",
   "com.yammer.metrics" % "metrics-log4j" % "2.1.2",
   "com.yammer.metrics" % "metrics-graphite" % "2.1.2",
-  "org.scala-lang" % "scala-library" % "2.10.0",
+  "org.scala-lang" % "scala-library" % "2.10.2",
   "com.janrain" % "federate-utils" % "1.2.0",
   // Joda time
   "joda-time" % "joda-time" % "1.6.2",
@@ -81,7 +81,7 @@ libraryDependencies ++= Seq(
   "org.kohsuke.jetbrains" % "annotations" % "9.0",
   "net.sf.ehcache" % "ehcache" % "2.5.2",
   // Redis
-  "net.debasishg" % "redisclient_2.9.2" % "2.7",
+  "net.debasishg" % "redisclient_2.10" % "2.10",
   "redis.clients" % "jedis" % "2.1.0.a",
   "com.netflix.curator" % "curator-recipes" % "1.1.15",
   // supersimpledb

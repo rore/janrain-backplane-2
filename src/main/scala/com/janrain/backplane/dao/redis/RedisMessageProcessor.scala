@@ -108,7 +108,7 @@ class RedisMessageProcessor[BMF <: MessageField, BMT <: BackplaneMessage[BMF]]( 
       // is there a better way to extract the insertionTimes from inside the pipeline loaner pattern?
       var finalPostedIds: List[String] = Nil
 
-      val messagesToProcess = redisClient.lrange(dao.messagesQueueKey, 0, 9).flatten.flatten.toList
+      val messagesToProcess: List[String] = redisClient.lrange(dao.messagesQueueKey, 0, 9).toIterable.flatten.flatten.toList
       if ( ! messagesToProcess.isEmpty ) {
         redisClient.pipeline( p => {
           // pipelines are actually transactions (MULTI/EXEC) with scala-redis lib

@@ -79,7 +79,7 @@ abstract class RedisMessageDao[MT <: Message[_]](val keyPrefix: String) extends 
     val keys: Seq[String] = Redis.readPool.withClient(c => {
       c.keys[String](getKey("*"))
     })
-      .flatten.flatten
+      .toIterable.flatten.flatten
       .collect { case s: String if s.length > keyPrefix.length =>  s.substring(keyPrefix.length) }
       .toSeq
 

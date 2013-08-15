@@ -53,7 +53,7 @@ class Token(data: Map[String,String]) extends Message(data, TokenFields.values) 
     else Seq(TokenSource.AUTHHEADER)
   }
 
-  def backingGrants: List[String] = get(TokenFields.BACKING_GRANTS).map(_.split(Token.GRANTS_SEPARATOR)).flatten.toList
+  def backingGrants: List[String] = get(TokenFields.BACKING_GRANTS).map(_.split(Token.GRANTS_SEPARATOR)).toIterable.flatten.toList
 
   def response(refreshToken: String): java.util.Map[String, AnyRef] = {
     var response = new java.util.LinkedHashMap[String,AnyRef]()
@@ -173,17 +173,16 @@ object TokenFields extends MessageFieldEnum {
       fieldValue.foreach(scopeValue => {
         try {
           val scope = new Scope(scopeValue)
-          wholeMessage match {
-            case token: Token if ! token.grantType.isPrivileged => {
-              val buses = scope.getScopeFieldValues(Backplane2MessageFields.BUS)
-              val channels = scope.getScopeFieldValues(Backplane2MessageFields.CHANNEL)
-              if (buses == null || buses.size > 1 || channels == null || channels.size > 1) {
-                throw new MessageException("invalid scope for anonymous token, must have exactly one bus and one channel specified: " + scopeValue)
-              }
+          if (! wholeMessage.asInstanceOf[Token].grantType.isPrivileged) {
+            val buses = scope.getScopeFieldValues(Backplane2MessageFields.BUS)
+            val channels = scope.getScopeFieldValues(Backplane2MessageFields.CHANNEL)
+            if (buses == null || buses.size > 1 || channels == null || channels.size > 1) {
+              throw new MessageException("invalid scope for anonymous token, must have exactly one bus and one channel specified: " + scopeValue)
             }
           }
         } catch {
-          case e: TokenException => throw new MessageException("Invalid Scope: " + scopeValue)
+          case te: TokenException => throw new MessageException("Invalid Scope: " + scopeValue)
+          case cce: ClassCastException => throw new MessageException("Invalid token message for scope validation: " + wholeMessage)
         }
       })
     }
@@ -219,9 +218,11 @@ object TokenFields extends MessageFieldEnum {
   }
 
   private def validatePrivileged(field: TokenField, fieldValue: Option[String], wholeMessage: Message[_]) {
-    wholeMessage match {
-      case token: Token if token.grantType.isPrivileged => field.validateRequired(fieldValue)
-      case _ => throw new MessageException("Field " + field.name + " cannot be blank")
+    try {
+      if (wholeMessage.asInstanceOf[Token].grantType.isPrivileged)
+        field.validateRequired(fieldValue)
+    } catch {
+      case cce: ClassCastException => throw new MessageException("Field " + field.name + " cannot be blank")
     }
   }
 

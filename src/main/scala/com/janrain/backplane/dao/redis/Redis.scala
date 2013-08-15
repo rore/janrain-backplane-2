@@ -11,16 +11,18 @@ import scala.util.Random
 object Redis extends Loggable {
   private final val REDIS_DEFAULT_PORT = 6379
   private final val REDIS_DEFAULT_MAX_IDLE_CLIENTS = 100
+  private final val REDIS_DEFAULT_DATABASE = 0
+
 
   private val (writeRedisHost, writeRedisPort) = redisHostAndPort(Utils.getRequiredSystemProperty(SystemProperties.REDIS_SERVER_PRIMARY))
 
-  val writePool = new RedisClientPool(writeRedisHost, writeRedisPort, REDIS_DEFAULT_MAX_IDLE_CLIENTS)
+  val writePool = new RedisClientPool(writeRedisHost, writeRedisPort, REDIS_DEFAULT_MAX_IDLE_CLIENTS, REDIS_DEFAULT_DATABASE)
   logger.info("initialized redis write pool for %s:%s, max idle connections: %s)".format(writeRedisHost, writeRedisPort, REDIS_DEFAULT_MAX_IDLE_CLIENTS))
 
   private val readPools: Array[(String,RedisClientPool)] =
     Utils.getRequiredSystemProperty(SystemProperties.REDIS_SERVER_READS)
     .split(",").map(r => redisHostAndPort(r))
-    .map( hostAndPort => hostAndPort.toString() -> new RedisClientPool(hostAndPort._1, hostAndPort._2, REDIS_DEFAULT_MAX_IDLE_CLIENTS) )
+    .map( hostAndPort => hostAndPort.toString() -> new RedisClientPool(hostAndPort._1, hostAndPort._2, REDIS_DEFAULT_MAX_IDLE_CLIENTS, REDIS_DEFAULT_DATABASE) )
 
   def readPool: RedisClientPool = readPools(Random.nextInt(readPools.size))._2
 

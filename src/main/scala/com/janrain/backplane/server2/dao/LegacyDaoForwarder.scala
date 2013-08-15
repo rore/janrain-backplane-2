@@ -25,7 +25,7 @@ trait LegacyDaoForwarder[LT <: NamedMap, T <: Message[_] with LegacySupport[LT]]
       // should happen only once, instantiate/convert throws NPE if legacyDao returns null
       // then (after one successful super.store) new DAO (super.get) will find this item/id
       super.store(convertedItem)
-      logDebug("converted %s : %s to new dao/format".format(legacyItem.getClass.getSimpleName, legacyItem.getName))
+      logger.info("converted %s : %s to new dao/format".format(legacyItem.getClass.getSimpleName, legacyItem.getName))
       Some(convertedItem)
     } catch {
       case npe: NullPointerException => None
