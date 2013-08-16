@@ -18,20 +18,20 @@ package com.janrain.backplane.server;
 
 import com.janrain.backplane.common.AuthException;
 import com.janrain.backplane.common.BackplaneServerException;
+import com.janrain.backplane.common.DateTimeUtils;
 import com.janrain.backplane.common.HmacHashUtils;
 import com.janrain.backplane.config.BackplaneConfig;
 import com.janrain.backplane.dao.DaoException;
-import com.janrain.backplane.server.redisdao.BP1MessageDao;
-import com.janrain.backplane.common.DateTimeUtils;
-import com.janrain.commons.supersimpledb.SimpleDBException;
-import com.janrain.util.ServletUtil;
-import com.janrain.utils.AnalyticsLogger;
 import com.janrain.backplane.server1.dao.BP1DAOs;
+import com.janrain.backplane.server1.model.Backplane1Message;
 import com.janrain.backplane.server1.model.BusConfig1;
 import com.janrain.backplane.server1.model.BusConfig1Fields;
 import com.janrain.backplane.server1.model.BusUser;
 import com.janrain.backplane.server1.model.BusUserFields;
+import com.janrain.commons.supersimpledb.SimpleDBException;
 import com.janrain.util.RandomUtils;
+import com.janrain.util.ServletUtil;
+import com.janrain.utils.AnalyticsLogger;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Histogram;
 import com.yammer.metrics.core.MetricName;
@@ -159,11 +159,8 @@ public class Backplane1Controller {
         final TimerContext context = postMessagesTime.time();
 
         try {
-
-            BP1MessageDao backplaneMessageDAO = com.janrain.backplane.server.redisdao.BP1DAOs.getMessageDao();
-
             //Block post if the caller has exceeded the message post limit
-            if (backplaneMessageDAO.getMessageCount(bus, channel) >= BackplaneConfig.getDefaultMaxMessageLimit()) {
+            if (BP1DAOs.messageDao().messageCount(channel) >= BackplaneConfig.getDefaultMaxMessageLimit()) {
                 logger.warn("Channel " + bus + ":" + channel + " has reached the maximum of " +
                         BackplaneConfig.getDefaultMaxMessageLimit() + " messages");
                 throw new BackplaneServerException("Message limit exceeded for this channel");
@@ -176,11 +173,11 @@ public class Backplane1Controller {
             String clientId = user.id();
 
             for(Map<String,Object> messageData : messages) {
-                BackplaneMessage message = new BackplaneMessage(bus, channel,
+                Backplane1Message message = new Backplane1Message(bus, channel,
                         busConfig.retentionTimeSeconds(),
                         busConfig.retentionTimeStickySeconds(),
                         messageData);
-                backplaneMessageDAO.persist(message);
+                BP1DAOs.messageDao().store(message);
                 aniLogNewMessage(version, bus, channelId, clientId);
             }
 
