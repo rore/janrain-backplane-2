@@ -18,13 +18,19 @@ trait LegacyDaoForwarder[LT <: NamedMap, T <: Message[_] with LegacySupport[LT]]
 
   val legacyDao: DAO[LT]
 
+  def instantiateFromLegacy(legacyItem: LT): T = instantiate(legacyItem.toMap.map{
+    case (k,v) => k.toLowerCase -> v
+  })
+
+  def storeFromLegacy(convertedItem: T) = super.store(convertedItem)
+
   abstract override def get(id: String): Option[T] = super.get(id) match {
     case None => try {
       val legacyItem = legacyDao.get(id)
-      val convertedItem = instantiate(legacyItem.toMap)
+      val convertedItem = instantiateFromLegacy(legacyItem)
       // should happen only once, instantiate/convert throws NPE if legacyDao returns null
       // then (after one successful super.store) new DAO (super.get) will find this item/id
-      super.store(convertedItem)
+      storeFromLegacy(convertedItem)
       logger.info("converted %s : %s to new dao/format".format(legacyItem.getClass.getSimpleName, legacyItem.getName))
       Some(convertedItem)
     } catch {

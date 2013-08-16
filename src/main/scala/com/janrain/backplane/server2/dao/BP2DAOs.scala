@@ -65,6 +65,11 @@ object BP2DAOs {
 
     protected def instantiate(data: Map[_, _]) = new BusOwner( data.map( kv => kv._1.toString -> kv._2.toString ))
 
+
+    override def storeFromLegacy(convertedItem: BusOwner) {
+      storeNoPwdHash(convertedItem)
+    }
+
     override def delete(id: String): Boolean = {
       val busOwnerDeleteSuccess = super.delete(id)
       busDao.deleteByOwner(id) // throws if not success
@@ -79,6 +84,10 @@ object BP2DAOs {
     with LegacyDaoForwarder[com.janrain.backplane2.server.config.Client, Client] {
 
     protected def instantiate(data: Map[_, _]) = new Client( data.map( kv => kv._1.toString -> kv._2.toString ))
+
+    override def storeFromLegacy(convertedItem: Client) {
+      storeNoPwdHash(convertedItem)
+    }
 
     val legacyDao = com.janrain.backplane2.server.dao.BP2DAOs.getClientDAO
   }

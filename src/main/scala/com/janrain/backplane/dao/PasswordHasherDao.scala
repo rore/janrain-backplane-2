@@ -14,12 +14,16 @@ trait PasswordHasherDao[UF <: UserField, UT <:  User[UF] with Password[UF,UT]] e
 
   this: MessageDao[UT] =>
 
+  def storeNoPwdHash(item: UT) {
+    super.store(item)
+  }
+
   abstract override def store(item: UT) {
     super.store(hashPwd(item))
   }
 
   abstract override def store(items: UT*): List[(String,Boolean)] = {
-    super.store(items.map(hashPwd(_)): _*)
+    super.store(items.map(hashPwd): _*)
   }
 
   private def hashPwd(item: UT): UT = {
