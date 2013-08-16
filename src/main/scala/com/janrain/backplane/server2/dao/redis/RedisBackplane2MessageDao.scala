@@ -5,7 +5,7 @@ import com.janrain.backplane.dao.redis.{MessageProcessorDaoSupport, Redis, Redis
 import com.janrain.backplane.server2.model.{Backplane2MessageFields, Backplane2Message}
 import com.janrain.backplane2.server.Scope
 import com.redis.RedisClient
-import com.janrain.backplane.common.model.{BackplaneMessage, Message}
+import com.janrain.backplane.common.model.BackplaneMessage
 import scala.collection.JavaConversions._
 import com.janrain.util.RandomUtils
 
@@ -49,35 +49,27 @@ object RedisBackplane2MessageDao extends RedisMessageDao[Backplane2Message]("bp2
       }
       // logical AND for all index scope fields of different type
       unions.foldLeft(Option.empty[String]) {
-        case (None, union) => Some(union) // user first elem as the first intermediary result
+        case (None, union) => Some(union) // use first elem as the first intermediary result
         case (Some(intersectionResult), union) => {
           p.zinterstore(intersectionResult, List(intersectionResult, union), RedisClient.MAX)
           Some(intersectionResult)
         }
       }
       // filter by time/since
-      .map(p.zrangebyscore(_, BackplaneMessage.timeFromId(since), minInclusive = false, Double.MaxValue, maxInclusive = true, None, RedisClient.ASC))
+      .foreach(p.zrangebyscore(_, BackplaneMessage.timeFromId(since), minInclusive = false, Double.MaxValue, maxInclusive = true, None, RedisClient.ASC))
 
       unions.foreach(p.del(_))
     }))
 
-    val lastAvailableMsgId = pipelineResponse.map {
-      case List(Some(List(lastMsgMetadata: String)), _) => lastMsgMetadata.split(" ") // todo: fix unchecked cast to String b/c erasure
-      case _ => Array.empty
-    }.collect {
-      case Array(bus, channel, msgId, expTime) => msgId
-    }
-
-    val messages = pipelineResponse.map(_.collect { // the zrangebyscore Option[List] result
-      case Some(msgIds: List[_]) if !msgIds.isEmpty => {
-        Redis.readPool.withClient(_.mget(msgIds.head, msgIds.tail: _*)).map(_.flatten)
-        .map(_.map(ser => instantiate(Message.deserialize(ser))))
+    pipelineResponse.map( _.collect { // the two zrange* operations above
+      case Some(zrangeResult: List[_]) => zrangeResult
+    } match {
+      case List(List(lastAvailableMsgId), msgIds) => {
+        val messages = get(msgIds.map(_.toString): _*).map(_._2).flatten
+        val filtered = messages.filter(scope.isMessageInScope).take(MAX_MSGS_IN_FRAME)
+        (filtered, filtered.size != messages.size, Option(lastAvailableMsgId).map(_.toString))
       }
-    }).map(_.flatten.flatten)
-
-    messages.map(m => {
-      val filtered = m.filter(scope.isMessageInScope).take(MAX_MSGS_IN_FRAME)
-      (filtered, filtered.size != m.size, lastAvailableMsgId)
-    }).getOrElse(Nil, false, lastAvailableMsgId)
+      case _ => (Nil, false, None)
+    }).get
   }
 }

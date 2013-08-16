@@ -39,7 +39,8 @@ class RedisBackplane1DualFormatMessageProcessor(dao: Dao[Backplane1Message] with
     val expireSeconds = DateTimeUtils.getExpireSeconds(msgId, backplaneMessage.expiration, backplaneMessage.sticky)
 
     // new format
-    redisClient.setex(dao.itemKey(msgId), expireSeconds, backplaneMessage.serialize)
+    redisClient.hmset(dao.itemKey(msgId), backplaneMessage)
+    redisClient.expire(dao.itemKey(msgId), expireSeconds)
     redisClient.zadd(dao.channelKey(backplaneMessage.channel), messageTime, msgId)
     redisClient.zadd(dao.busKey(backplaneMessage.bus), messageTime, msgId)
     val metaDataNew = "%s %s %s %s".format(backplaneMessage.bus, backplaneMessage.channel, msgId, backplaneMessage.expiration)

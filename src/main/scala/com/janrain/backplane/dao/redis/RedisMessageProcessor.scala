@@ -101,7 +101,7 @@ class RedisMessageProcessor[BMF <: MessageField, BMT <: BackplaneMessage[BMF]]( 
   private def processSingleBatchOfPendingMessages(redisClient: RedisClient) {
     try {
       // no writes go through if another node updates LAST_ID
-      redisClient.send("WATCH " + dao.lastIdKey)(redisClient.asString)
+      redisClient.send("WATCH", dao.lastIdKey)(redisClient.asString)
 
       val redisLastId = redisClient.get(dao.lastIdKey).getOrElse("")
       val initialInsertionTimes: List[String] = Nil
@@ -179,7 +179,8 @@ class RedisMessageProcessor[BMF <: MessageField, BMT <: BackplaneMessage[BMF]]( 
   protected def processSingleMessage(backplaneMessage: BMT, postedId: String, insertionTimes: List[String], redisClient: RedisCommand): (String,List[String]) = {
     val msgId = backplaneMessage.id
     val messageTime = BackplaneMessage.timeFromId(msgId)
-    redisClient.setex(dao.itemKey(msgId), DateTimeUtils.getExpireSeconds(msgId, backplaneMessage.expiration, backplaneMessage.sticky), backplaneMessage.serialize)
+    redisClient.hmset(dao.itemKey(msgId), backplaneMessage)
+    redisClient.expire(dao.itemKey(msgId), DateTimeUtils.getExpireSeconds(msgId, backplaneMessage.expiration, backplaneMessage.sticky))
     redisClient.zadd(dao.channelKey(backplaneMessage.channel), messageTime, msgId)
     redisClient.zadd(dao.busKey(backplaneMessage.bus), messageTime, msgId)
     redisClient.zadd(dao.messagesKey, messageTime, metaData(backplaneMessage.bus, backplaneMessage.channel, msgId, backplaneMessage.expiration))
