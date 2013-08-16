@@ -8,6 +8,7 @@ import com.janrain.backplane.common.model.{MessageField, MessageFieldEnum, Messa
  */
 class ServerConfig(data: Map[String,String]) extends Message(ServerConfig.DEFAULT ++ data, ServerConfigFields.values) {
   def idField = ServerConfigFields.ID
+  def isDebugMode = get(ServerConfigFields.DEBUG_MODE).getOrElse("false").toBoolean
 }
 
 object ServerConfig {

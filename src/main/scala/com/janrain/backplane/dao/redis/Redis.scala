@@ -26,7 +26,7 @@ object Redis extends Loggable {
 
   def readPool: RedisClientPool = readPools(Random.nextInt(readPools.size))._2
 
-  logger.info("initialized redis read pool(s) for %s, max idle connections per server: %s)".format(readPools.map(_._1), REDIS_DEFAULT_MAX_IDLE_CLIENTS))
+  logger.info("initialized redis read pool(s) for [%s], max idle connections per server: %s)".format(readPools.map(_._1).mkString(" "), REDIS_DEFAULT_MAX_IDLE_CLIENTS))
 
 
   private def redisHostAndPort(hostAndPort: String) = {

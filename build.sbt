@@ -14,6 +14,13 @@ javacOptions += "-g"
 //compileOrder := CompileOrder.ScalaThenJava
 compileOrder := CompileOrder.Mixed
 
+initialize ~= { _ =>
+  System.setProperty("AWS_INSTANCE_ID", "bp2local")
+  System.setProperty("REDIS_SERVER_PRIMARY", "localhost:6379")
+  System.setProperty("REDIS_SERVER_READS", "localhost:6379")
+  System.setProperty("ZOOKEEPER_SERVERS", "localhost:2181")
+}
+
 seq(webSettings :_*)
 
 // A hack to set context path for jetty to "/backplane-server"

@@ -302,7 +302,7 @@ public class Redis implements PathChildrenCacheListener {
         logger.info("redis server set to " + server);
     }
 
-    public void ping() {
+    public void ping(String label) {
 
         Jedis jedisWrite = null;
         Jedis jedisRead = null;
@@ -315,9 +315,9 @@ public class Redis implements PathChildrenCacheListener {
             replyJedisWrite = jedisWrite.ping();
         } catch (Exception e) {
             // something bad
-            logger.warn("error during ping");
+            logger.warn(label + ": error during ping");
         } finally {
-            logger.info("PING " + System.getProperty(SystemProperties.REDIS_SERVER_PRIMARY()) + " (" + SystemProperties.REDIS_SERVER_PRIMARY() + ") -> " + replyJedisWrite);
+            logger.info(label + ": PING " + System.getProperty(SystemProperties.REDIS_SERVER_PRIMARY()) + " (" + SystemProperties.REDIS_SERVER_PRIMARY() + ") -> " + replyJedisWrite);
             releaseToPool(jedisWrite);
         }
 
@@ -326,9 +326,9 @@ public class Redis implements PathChildrenCacheListener {
             replyJedisRead = jedisRead.ping();
         }   catch (Exception e) {
             // something bad
-            logger.warn("error during ping");
+            logger.warn(label + ": error during ping");
         } finally {
-            logger.info("PING " + System.getProperty(SystemProperties.REDIS_SERVER_READS()) + " (" + SystemProperties.REDIS_SERVER_READS() + ") -> " + replyJedisRead);
+            logger.info(label + ": PING " + System.getProperty(SystemProperties.REDIS_SERVER_READS()) + " (" + SystemProperties.REDIS_SERVER_READS() + ") -> " + replyJedisRead);
             releaseToPool(jedisRead);
         }
 

@@ -64,7 +64,7 @@ public class BackplaneConfig {
 	 * @return the debugMode
 	 */
 	public static boolean isDebugMode() {
-        return Boolean.valueOf(ConfigDAOs.serverConfigDao().oneServerConfig().get().get(ServerConfigFields.DEBUG_MODE()).get());
+        return ConfigDAOs.serverConfigDao().oneServerConfig().get().isDebugMode();
 	}
 
     /**
@@ -145,12 +145,12 @@ public class BackplaneConfig {
     }
 
     private Pair<String, ExecutorService> createPingTask() {
-        String label = "redis ping";
+        final String label = "redis/jedis";
         ScheduledExecutorService ping = Executors.newScheduledThreadPool(1);
         ping.scheduleWithFixedDelay(new Runnable() {
             @Override
             public void run() {
-                com.janrain.redis.Redis.getInstance().ping();
+                com.janrain.redis.Redis.getInstance().ping(label);
             }
         }, 30, 10, TimeUnit.SECONDS);
         return new Pair<String, ExecutorService>(label, ping);
