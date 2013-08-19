@@ -7,10 +7,10 @@ import com.janrain.backplane.common.model.Message
 import com.janrain.util.Loggable
 
 /**
- * Stackable modification trait for Message DAOs
- * that transparently forwards (read) DAO operations to the legacy DAO object/layer.
- *
- * Store operation(s) can be configured at the model layer and routed to either legacy or new DAO layer.
+ * Stackable modification trait for Message DAOs that:
+ * 1) stores in both (legacy and new) formats
+ * 2) attempts to read from new format first, then falls back to legacy format/DAO
+ * 3) on first (and only on first) successful fallback, the entry is converted to new format
  *
  * @author Johnny Bufu
  */
@@ -46,8 +46,15 @@ trait LegacyDaoForwarder[LT <: NamedMap, T <: Message[_] with LegacySupport[LT]]
   }
 
   abstract override def getAll: List[T] = {
-    (super.getAll ++ legacyDao.getAll.map(legacyItem => instantiate(legacyItem.toMap)).toList)
-    .toSet.toList
+    val newItems = super.getAll
+    val legacyItems = legacyDao.getAll.map(legacyItem => instantiate(legacyItem.toMap)).toList
+    val itemsToConvert = legacyItems.filterNot(newItems.contains)
+    if(! itemsToConvert.isEmpty) {
+      store(itemsToConvert: _*)
+      logger.info("converted %s : [ %s ] to new dao/format".format(itemsToConvert.head.getClass.getSimpleName, itemsToConvert.map(_.id).mkString(" ")))
+    }
+
+    (newItems ++ legacyItems).toSet.toList // remove duplicates
   }
 
   abstract override def store(item: T) {
