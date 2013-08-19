@@ -76,11 +76,12 @@ abstract class RedisMessageDao[MT <: Message[_]](val keyPrefix: String) extends 
     ).toList
 
   def getAll: List[MT] = {
+    val wildcardKey = getKey("*")
     val keys: Seq[String] = Redis.readPool.withClient(c => {
-      c.keys[String](getKey("*"))
+      c.keys[String](wildcardKey)
     })
       .toIterable.flatten.flatten
-      .collect { case s: String if s.length > keyPrefix.length =>  s.substring(keyPrefix.length) }
+      .collect { case s: String if s.length > keyPrefix.length =>  s.substring(wildcardKey.length - 1) }
       .toSeq
 
     get(keys: _*).map(_._2).flatten
