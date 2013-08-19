@@ -16,6 +16,8 @@ import java.util.Set;
  */
 public class Channel extends ExternalizableCore {
 
+    private static final long serialVersionUID = 4892206445886794360L;
+
     @SuppressWarnings("UnusedDeclaration")
     public Channel() { }
 

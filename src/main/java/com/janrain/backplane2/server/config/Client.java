@@ -30,6 +30,8 @@ import java.util.*;
  */
 public class Client extends User implements Externalizable {
 
+    private static final long serialVersionUID = -7216424765846672928L;
+
     /**
      * Empty default constructor for AWS to use
      */
