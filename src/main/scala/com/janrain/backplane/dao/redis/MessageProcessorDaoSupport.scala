@@ -1,6 +1,7 @@
 package com.janrain.backplane.dao.redis
 
 import com.janrain.backplane.common.model.{MessageField, BackplaneMessage}
+import com.janrain.backplane.config.SystemProperties
 
 /**
  * Mixin for RedisMessageDao with support for Backplane[1|2]Message / Message Processor
@@ -15,15 +16,15 @@ trait MessageProcessorDaoSupport[BMF <: MessageField,BMT <: BackplaneMessage[BMF
 
   val idField: BMF
 
-  def busKey(bus: String): String = keyPrefix + "busIndex:" + bus
+  def busKey(bus: String): String = SystemProperties.INSTANCE_ID + ":" + keyPrefix + "busIndex:" + bus
 
-  def channelKey(channel: String): String = keyPrefix + "channelIndex:" + channel
+  def channelKey(channel: String): String = SystemProperties.INSTANCE_ID + ":" + keyPrefix + "channelIndex:" + channel
 
-  val messagesQueueKey: String = keyPrefix + "queue"
+  val messagesQueueKey: String = SystemProperties.INSTANCE_ID + ":" + keyPrefix + "queue"
 
-  val messagesKey: String = keyPrefix + "index"
+  val messagesKey: String = SystemProperties.INSTANCE_ID + ":" + keyPrefix + "index"
 
-  val lastIdKey: String = keyPrefix +  "lastId"
+  val lastIdKey: String = SystemProperties.INSTANCE_ID + ":" + keyPrefix +  "lastId"
 
   // extend access scope from Redis/MessageDao'
   def itemKey(itemId: String): String = getKey(itemId)

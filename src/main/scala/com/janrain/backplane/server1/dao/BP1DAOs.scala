@@ -30,7 +30,7 @@ object BP1DAOs extends Loggable {
     val legacyDao = com.janrain.backplane.server.redisdao.BP1DAOs.getUserDao
   }
 
-  val busDao: BusDao = new RedisMessageDao[BusConfig1]("bp1Bus") with BusDao
+  val busDao: BusDao = new RedisMessageDao[BusConfig1]("bp1Bus:") with BusDao
     with LegacyDaoForwarder[com.janrain.backplane.server.BusConfig1, BusConfig1] {
 
     protected def instantiate(data: Map[_, _]) = new BusConfig1( data.map( kv => kv._1.toString -> kv._2.toString ))

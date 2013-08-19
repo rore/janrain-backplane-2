@@ -90,48 +90,49 @@ object Token extends Loggable {
     }
 
     val foldAccInit: Option[(TokenSource.EnumVal, String)] = None
-    val (source: TokenSource.EnumVal, tokenString: String) =
-      sourcesAndTokens.foldLeft(foldAccInit) {
-        case (found, (nextSource,nextTokens)) => {
-          if (found.isDefined && ! nextTokens.isEmpty)
-            throw new TokenException("token found in more than one source: %s and %s".format(found.get._1, nextSource))
-          else if (found.isDefined) // nextTokens.isEmpty
-            found
-          else if (nextTokens.size > 1) // ! found.isDefined
-            throw new TokenException("multiple tokens found in " + nextSource)
-          else
-            Some( (nextSource, nextTokens.head) )
-        }
-      }.getOrElse(throw new TokenException("no token found in request"))
-
-    if (! Token.looksLikeOurToken(tokenString))
-      throw new TokenException("invalid token: " + tokenString, HttpServletResponse.SC_FORBIDDEN)
-
-    try {
-      val token: Option[Token] = BP2DAOs.tokenDao.get(tokenString)
-
-      if (token.exists(t => Message.isExpired(t.get(TokenFields.EXPIRES)))) {
-        throw new TokenException("expired token: " + tokenString, HttpServletResponse.SC_FORBIDDEN)
+    val validSourceAndTokenString = sourcesAndTokens.foldLeft(foldAccInit) {
+      case (found@Some(_), (nextSource, Nil)) => found
+      case (found@Some(_), (nextSource, nextTokens)) => {
+        throw new TokenException("token found in more than one source: %s and %s".format(found.get._1, nextSource))
       }
-
-      if (! token.exists(t => t.allowedSources.contains(source))) {
-        throw new TokenException("token source not allowed: " + source, HttpServletResponse.SC_FORBIDDEN)
-      }
-
-      if (token.exists(t => source.isRefresh != t.grantType.isRefresh)) {
-        logger.warn("invalid token / source: %s / %s ".format(token, source))
-        throw new TokenException("invalid token: " + tokenString, HttpServletResponse.SC_FORBIDDEN)
-      }
-
-      token
-
-    } catch {
-      case e: DaoException => {
-        logger.error("Error looking up token: " + tokenString)
-        throw new TokenException(OAuth2.OAUTH2_TOKEN_SERVER_ERROR, "error looking up token", HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+      case (None, (nextSource, Nil)) => None
+      case (None, (nextSource, List(oneToken))) => Some((nextSource, oneToken))
+      case (None, (nextSource, nextTokens)) => {
+        throw new TokenException("multiple tokens found in " + nextSource)
       }
     }
 
+    validSourceAndTokenString.map {
+      case (source, tokenString) => {
+        if (! Token.looksLikeOurToken(tokenString))
+          throw new TokenException("invalid token: " + tokenString, HttpServletResponse.SC_FORBIDDEN)
+
+        try {
+          val token: Option[Token] = BP2DAOs.tokenDao.get(tokenString)
+
+          if (token.exists(t => Message.isExpired(t.get(TokenFields.EXPIRES)))) {
+            throw new TokenException("expired token: " + tokenString, HttpServletResponse.SC_FORBIDDEN)
+          }
+
+          if (! token.exists(t => t.allowedSources.contains(source))) {
+            throw new TokenException("token source not allowed: " + source, HttpServletResponse.SC_FORBIDDEN)
+          }
+
+          if (token.exists(t => source.isRefresh != t.grantType.isRefresh)) {
+            logger.warn("invalid token / source: %s / %s ".format(token, source))
+            throw new TokenException("invalid token: " + tokenString, HttpServletResponse.SC_FORBIDDEN)
+          }
+
+          token
+        } catch {
+          case e: DaoException => {
+            logger.error("Error looking up token: " + tokenString)
+            throw new TokenException(OAuth2.OAUTH2_TOKEN_SERVER_ERROR, "error looking up token", HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+          }
+        }
+
+      }
+    }.flatten
   }
 }
 
@@ -160,8 +161,11 @@ object TokenFields extends MessageFieldEnum {
   }
 
   val EXPIRES = new TokenField { def name = "expires"
+    override def required = false
     override def validate(fieldValue:Option[String], wholeMessage: Message[_]) {
       super.validate(fieldValue, wholeMessage)
+      if (! wholeMessage.asInstanceOf[Token].grantType.isRefresh)
+        validateRequired(fieldValue)
       validateIso8601Date(fieldValue)
     }
   }
@@ -188,7 +192,7 @@ object TokenFields extends MessageFieldEnum {
     }
   }
 
-  val ISSUED_TO_CLIENT_ID = new TokenField { def name = "issued_to_client_id"
+  val ISSUED_TO_CLIENT = new TokenField { def name = "issued_to_client"
 
     override def required = false
 

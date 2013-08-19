@@ -39,6 +39,7 @@ object RedisBackplane2MessageDao extends RedisMessageDao[Backplane2Message]("bp2
       val unions = for {
         (indexedScope, indexKey) <- INDEXED_SCOPE_FIELDS
         scopeValues = scope.getScopeFieldValues(indexedScope)
+        if scopeValues != null
         if ! scopeValues.isEmpty
       } yield {
         val union = "scope_req_zunionstore:" + indexedScope + ":" + RandomUtils.randomString(10)
@@ -64,10 +65,16 @@ object RedisBackplane2MessageDao extends RedisMessageDao[Backplane2Message]("bp2
     pipelineResponse.map( _.collect { // the two zrange* operations above
       case Some(zrangeResult: List[_]) => zrangeResult
     } match {
-      case List(List(lastAvailableMsgId), msgIds) => {
+      case List(lastAvailableMsgMetaData @List(_), msgIds) => {
         val messages = get(msgIds.map(_.toString): _*).map(_._2).flatten
         val filtered = messages.filter(scope.isMessageInScope).take(MAX_MSGS_IN_FRAME)
-        (filtered, filtered.size != messages.size, Option(lastAvailableMsgId).map(_.toString))
+        val lastId = lastAvailableMsgMetaData.map(_.toString.split(" ")).collect {
+          case Array(bus, channel, lastMsgId, expTime) => lastMsgId
+        } match {
+          case List(last) => Option(last)
+          case _ => None
+        }
+        (filtered, filtered.size != messages.size, lastId)
       }
       case _ => (Nil, false, None)
     }).get

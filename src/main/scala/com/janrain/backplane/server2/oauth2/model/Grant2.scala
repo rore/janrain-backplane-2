@@ -80,9 +80,9 @@ object GrantFields extends MessageFieldEnum {
     }
   }
 
-  val ISSUED_BY_USER_ID = new GrantField { def name = "issued_by_user_id" }
+  val ISSUED_BY_USER = new GrantField { def name = "issued_by_user" }
 
-  val ISSUED_TO_CLIENT_ID = new GrantField { def name = "issued_to_client_id" }
+  val ISSUED_TO_CLIENT = new GrantField { def name = "issued_to_client" }
 
   val AUTHORIZED_SCOPES = new GrantField { def name = "authorized_scopes"
 
@@ -124,6 +124,7 @@ object GrantFields extends MessageFieldEnum {
   }
 
   val TIME_EXPIRE = new GrantField { def name = "time_expire"
+    override def required = false
 
     override def validate(fieldValue: Option[String], wholeMessage: Message[_]) {
       super.validate(fieldValue, wholeMessage)

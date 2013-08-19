@@ -64,7 +64,7 @@ public class AuthenticatedTokenRequest implements TokenRequest {
 
         Option<Token> token = Token.fromRequest(request);
 
-        if ( this.grantType == GrantType.REFRESH_PRIVILEGED ^ (! token.isDefined()) ) {
+        if ( this.grantType == GrantType.REFRESH_PRIVILEGED ^ (token.isDefined()) ) {
             throw new TokenException("refresh_token is required if and only if grant_type is refresh_token");
         }
 

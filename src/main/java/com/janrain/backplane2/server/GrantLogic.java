@@ -107,7 +107,7 @@ public class GrantLogic {
               throw new TokenException("Invalid code: " + codeId);
           } else if ( GrantType.AUTHORIZATION_CODE != existing.getType() || Message.isExpired(existing.get(GrantFields.TIME_EXPIRE())) ||
                   StringUtils.isBlank(authenticatedClientId) ||
-                  ! authenticatedClientId.equals(existing.get(GrantFields.ISSUED_TO_CLIENT_ID()).getOrElse(null)) ||
+                  ! authenticatedClientId.equals(existing.get(GrantFields.ISSUED_TO_CLIENT()).getOrElse(null)) ||
                   GrantState.INACTIVE != existing.getState()) {
               logger.error("Invalid grant for code: " + codeId);
               updatedState = GrantState.REVOKED;

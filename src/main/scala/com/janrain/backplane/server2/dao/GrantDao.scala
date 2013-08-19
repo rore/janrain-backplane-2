@@ -12,7 +12,7 @@ import com.janrain.backplane.server2.model.Backplane2MessageFields
  */
 trait GrantDao extends DaoAll[Grant2] with Loggable {
 
-  def getByClientId(clientId: String): List[Grant2] = getAll.filter(_.get(GrantFields.ISSUED_TO_CLIENT_ID).exists(_ == clientId))
+  def getByClientId(clientId: String): List[Grant2] = getAll.filter(_.get(GrantFields.ISSUED_TO_CLIENT).exists(_ == clientId))
 
   /**
    * Revokes buses across the provided grants.

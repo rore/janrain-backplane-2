@@ -36,7 +36,7 @@ object BackplaneMessage extends Loggable {
       dateFromId(timestampPrefixedId).map(_.getTime).getOrElse(0)
     } catch {
       case e: Exception =>
-        logger.warn("invalid message ID: " + timestampPrefixedId)
+        logDebug("invalid message ID: " + timestampPrefixedId)
         0
     }
   }
@@ -47,7 +47,6 @@ object BackplaneMessage extends Loggable {
       Some(Utils.ISO8601.parseDateTime(timestampPrefixedId.substring(0, timestampPrefixedId.indexOf("Z") + 1)).toDate)
     } catch {
       case e: Throwable => {
-        logger.warn(e)
         throw new MessageException("error extracting timestamp from id: " + e.getMessage)
       }
     }

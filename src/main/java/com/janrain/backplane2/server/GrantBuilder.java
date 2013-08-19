@@ -22,8 +22,8 @@ public class GrantBuilder {
             expireSeconds = CODE_EXPIRATION_SECONDS_DEFAULT;
         }
         data.put(GrantFields.STATE().name(), state.toString());
-        data.put(GrantFields.ISSUED_BY_USER_ID().name(), issuedById);
-        data.put(GrantFields.ISSUED_TO_CLIENT_ID().name(), issuedToClientId);
+        data.put(GrantFields.ISSUED_BY_USER().name(), issuedById);
+        data.put(GrantFields.ISSUED_TO_CLIENT().name(), issuedToClientId);
         data.put(GrantFields.AUTHORIZED_SCOPES().name(), scopes);
     }
 

@@ -3,6 +3,7 @@ package com.janrain.backplane.server2.model
 import com.janrain.backplane.common.model.{MessageField, MessageFieldEnum, Message}
 import com.janrain.backplane.server2.dao.LegacySupport
 import scala.collection.JavaConversions._
+import com.janrain.util.RandomUtils
 
 /**
  * Binds a previously server-generated channel ID to a bus/config.
@@ -13,7 +14,13 @@ import scala.collection.JavaConversions._
 class Channel(data: Map[String,String]) extends Message(data, ChannelFields.values) with LegacySupport[com.janrain.backplane2.server.Channel] {
 
   def this(channelId: String, config: BusConfig2, channelExpireSeconds: Int) {
-    this(null)
+    this(Map(
+      ChannelFields.ID.name -> (if (channelId == null) RandomUtils.randomString(Channel.CHANNEL_NAME_LENGTH) else channelId),
+      ChannelFields.BUS.name -> config.id,
+      ChannelFields.EXPIRE_SECONDS.name -> channelExpireSeconds.toString,
+      ChannelFields.MESSAGE_EXPIRE_DEFAULT_SECONDS.name -> config.retentionTimeSeconds.toString,
+      ChannelFields.MESSAGE_EXPIRE_MAX_SECONDS.name -> config.retentionTimeStickySeconds.toString
+    ))
   }
 
   def idField = ChannelFields.ID

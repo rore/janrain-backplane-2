@@ -68,10 +68,8 @@ object Backplane2Message {
 
   private def processExpire(data: Map[String,String], defaultExpSeconds: Int, stickyExpSeconds: Int): Map[String,String] = {
     val sticky = data.get(Backplane2MessageFields.STICKY.name).exists(_.equalsIgnoreCase(true.toString))
-    data.map( kv =>
-      if (kv._1 == Backplane2MessageFields.EXPIRE.name) kv._1 -> DateTimeUtils.processExpireTime(sticky, kv._2, defaultExpSeconds, stickyExpSeconds)
-      else kv
-    )
+    val exp = data.get(Backplane2MessageFields.EXPIRE.name).getOrElse(null)
+    data ++ Map(Backplane2MessageFields.EXPIRE.name -> DateTimeUtils.processExpireTime(sticky, exp, defaultExpSeconds, stickyExpSeconds))
   }
 }
 

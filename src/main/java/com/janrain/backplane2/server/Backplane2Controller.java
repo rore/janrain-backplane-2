@@ -923,7 +923,7 @@ public class Backplane2Controller {
         aniEvent.put("message_id", message.id());
         aniEvent.put("bus", bus);
         aniEvent.put("channel_id", channelId);
-        aniEvent.put("client_id", token.get(TokenFields.ISSUED_TO_CLIENT_ID()));
+        aniEvent.put("client_id", token.get(TokenFields.ISSUED_TO_CLIENT()));
 
         aniLog("get_message", aniEvent);
     }
@@ -936,7 +936,7 @@ public class Backplane2Controller {
         String bus = message.bus();
         String channel = message.channel();
         String channelId = "https://" + request.getServerName() + "/v2/bus/" + bus + "/channel/" + channel;
-        String clientId = (String) token.get(TokenFields.ISSUED_TO_CLIENT_ID()).getOrElse(null);
+        String clientId = (String) token.get(TokenFields.ISSUED_TO_CLIENT()).getOrElse(null);
         Map<String,Object> aniEvent = new HashMap<String,Object>();
         aniEvent.put("channel_id", channelId);
         aniEvent.put("bus", bus);

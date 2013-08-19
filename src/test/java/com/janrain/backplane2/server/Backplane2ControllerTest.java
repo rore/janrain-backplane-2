@@ -1501,8 +1501,8 @@ public class Backplane2ControllerTest {
             Grant2 grant = BP2DAOs.grantDao().get(code).getOrElse(null);
             Token token = com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao().get(tokenId);
 
-            assertTrue(grant.get(GrantFields.ISSUED_TO_CLIENT_ID()).getOrElse(null).equals(token.get(Token.TokenField.ISSUED_TO_CLIENT_ID)));
-            assertTrue(grant.get(GrantFields.ISSUED_BY_USER_ID()).getOrElse(null).equals(busOwner.id()));
+            assertTrue(grant.get(GrantFields.ISSUED_TO_CLIENT()).getOrElse(null).equals(token.get(Token.TokenField.ISSUED_TO_CLIENT_ID)));
+            assertTrue(grant.get(GrantFields.ISSUED_BY_USER()).getOrElse(null).equals(busOwner.id()));
 
 
         } finally {

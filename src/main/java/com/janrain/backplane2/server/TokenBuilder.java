@@ -27,7 +27,7 @@ public class TokenBuilder {
     }
 
     public TokenBuilder issuedToClient(String clientId) {
-        data.put(TokenFields.ISSUED_TO_CLIENT_ID().name(), clientId);
+        data.put(TokenFields.ISSUED_TO_CLIENT().name(), clientId);
         return this;
     }
 
