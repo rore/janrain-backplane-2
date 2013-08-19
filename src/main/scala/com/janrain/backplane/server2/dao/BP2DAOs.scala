@@ -65,7 +65,6 @@ object BP2DAOs {
 
     protected def instantiate(data: Map[_, _]) = new BusOwner( data.map( kv => kv._1.toString -> kv._2.toString ))
 
-
     override def storeFromLegacy(convertedItem: BusOwner) {
       storeNoPwdHash(convertedItem)
     }

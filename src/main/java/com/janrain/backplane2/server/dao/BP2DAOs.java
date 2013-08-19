@@ -12,6 +12,10 @@ import org.springframework.stereotype.Service;
 @Scope(value="singleton")
 public class BP2DAOs {
 
+    public static AdminDAO getAdminDao() {
+        return adminDao;
+    }
+
     public static BusDAO getBusDao() {
         return busDao;
     }
@@ -44,5 +48,6 @@ public class BP2DAOs {
     private static final ChannelDAO channelDao = new RedisChannelDAO();
     private static final BusOwnerDAO busOwnerDao = new RedisBusOwnerDAO(busDao);
     private static final ClientDAO clientDao = new RedisClientDAO();
+    private static final AdminDAO adminDao = new RedisAdminDAO();
 
 }

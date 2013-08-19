@@ -1,16 +1,26 @@
 package com.janrain.backplane.config.dao
 
-import com.janrain.backplane.dao.redis.{RedisMessageDao}
+import com.janrain.backplane.dao.redis.RedisMessageDao
 import com.janrain.backplane.config.model.{AdminFields, ServerConfigFields, ServerConfig, Admin}
 import com.janrain.backplane.dao.{PasswordHasherDao, ExpiringCacheDao}
 import com.janrain.backplane.config.SystemProperties
+import com.janrain.backplane.server2.dao.LegacyDaoForwarder
 
 object ConfigDAOs {
 
   private val DEFAULT_CONFIG_CACHE_SECONDS = 60L // 1 min
 
-  val adminDao: AdminDao = new RedisMessageDao[Admin]("admin:") with AdminDao with PasswordHasherDao[AdminFields.EnumVal,Admin] {
+  val adminDao: AdminDao = new RedisMessageDao[Admin]("admin:") with AdminDao
+    with PasswordHasherDao[AdminFields.EnumVal,Admin]
+    with LegacyDaoForwarder[com.janrain.backplane2.server.config.User, Admin] {
+
     protected def instantiate(data: Map[_, _]) = new Admin( data.map( kv => kv._1.toString -> kv._2.toString ))
+
+    override def storeFromLegacy(convertedItem: Admin) {
+      storeNoPwdHash(convertedItem)
+    }
+
+    val legacyDao = com.janrain.backplane2.server.dao.BP2DAOs.getAdminDao
   }
 
   val serverConfigDao: ServerConfigDao = new RedisMessageDao[ServerConfig]("backplane_server_config")
