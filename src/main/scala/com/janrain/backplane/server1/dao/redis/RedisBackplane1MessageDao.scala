@@ -27,13 +27,21 @@ class RedisBackplane1MessageDao extends RedisMessageDao[Backplane1Message]("bp1M
 
   override def retrieveMessagesByChannel(channel: String, since: String, sticky: String) = retrieveMessagesByKey(channelKey, channel, since, sticky)
 
-  private def retrieveMessagesByKey(keyFunc: (String) => String, key: String, since: String, sticky: String) =
+  private def retrieveMessagesByKey(keyFunc: (String) => String, key: String, since: String, stickyRequested: String) = {
+    val redisResult =
     Redis.readPool.withClient(
       _.zrangebyscore(keyFunc(key), BackplaneMessage.timeFromId(since),
         minInclusive = false, Double.PositiveInfinity, maxInclusive = true, None, RedisClient.ASC))
-    .withFilter(!_.isEmpty).map(msgIds => get(msgIds: _*).map(_._2).flatten)
-    .toList.flatten
-    .filter(_.get(Backplane1MessageFields.STICKY).exists(_ == sticky))
-    .sortBy(_.id)
+
+    val filtered = redisResult
+      .withFilter(!_.isEmpty).map(msgIds => get(msgIds: _*).map(_._2).flatten)
+      .toList.flatten
+
+    val stickyOrNotSticky = filtered
+      .filter( ! stickyRequested.toBoolean || _.sticky)
+      .sortBy(_.id)
+
+    stickyOrNotSticky
+  }
 
 }

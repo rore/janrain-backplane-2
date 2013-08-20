@@ -91,7 +91,7 @@ public class AuthenticatedTokenRequest implements TokenRequest {
     }
 
     @Override
-    public Map<String,Object> tokenResponse() throws TokenException {
+    public Map<String,Object> tokenResponse() throws TokenException, DaoException {
         logger.info("Responding to authenticated token request...");
         final Token accessToken;
         final Integer expiresIn = grantType.getAccessType().getTokenExpiresSecondsDefault();
@@ -136,7 +136,7 @@ public class AuthenticatedTokenRequest implements TokenRequest {
     private Grant2 codeGrant;
     private Token refreshToken;
 
-    private Pair<Scope,List<String>> processScope() throws TokenException {
+    private Pair<Scope,List<String>> processScope() throws TokenException, DaoException {
 
         if (refreshToken != null) {
             return new Pair<Scope, List<String>>(Scope.checkCombine(refreshToken.scope(), requestScope), JavaConversions.seqAsJavaList(refreshToken.backingGrants()));

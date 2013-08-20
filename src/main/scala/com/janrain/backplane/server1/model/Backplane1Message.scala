@@ -9,6 +9,7 @@ import org.codehaus.jackson.map.ObjectMapper
 import java.io.IOException
 import scala.collection.JavaConversions._
 import com.janrain.backplane.server2.dao.LegacySupport
+import scala.collection.JavaConversions
 
 /**
  * @author Johnny Bufu
@@ -33,13 +34,13 @@ class Backplane1Message(data: Map[String,String]) extends BackplaneMessage(data,
 
   def asLegacy = new com.janrain.backplane.server.BackplaneMessage(mapAsJavaMap(this))
 
-  def asFrame(serverDomain: String, includePayload: Boolean): Map[String, AnyRef] = {
+  def asFrame(version: String): Map[String, AnyRef] = {
     val (upstream, topFrame) = Backplane1MessageFields.values
-      .map(field => field -> field.frameOutput(id, serverDomain, includePayload, get(field))).toMap
+      .map(field => field -> field.frameOutput(id, version, get(field))).toMap
       .filter { case (k,v) => v.isDefined } .mapValues(_.get)
       .partition(_._1.isUpstream)
 
-    topFrame.map(kv => kv._1.name -> kv._2) ++ Map("message" -> upstream.map(kv => kv._1.name -> kv._2))
+    topFrame.map(kv => kv._1.name -> kv._2) ++ Map("message" -> JavaConversions.mapAsJavaMap(upstream.map(kv => kv._1.name -> kv._2)))
   }
 
   def bus: String = get(Backplane1MessageFields.BUS)
@@ -95,11 +96,11 @@ object Backplane1MessageFields extends MessageFieldEnum with Loggable {
     def required = true
     def isUpstream = false
     def parseUpstreamValue(upstreamData: Map[String,AnyRef]): Option[String] = upstreamData.get(name).map(_.toString)
-    def frameOutput(msgId: String, serverDomain: String, includePayload: Boolean, fieldValue: Option[String]): Option[AnyRef] = fieldValue
+    def frameOutput( msgId: String, version: String, fieldValue: Option[String]): Option[AnyRef] = fieldValue
   }
 
   val ID = new BackplaneMessageField { def name = "id"
-    override def frameOutput(msgId: String, serverDomain: String, includePayload: Boolean, fieldValue: Option[String]) = None
+    override def frameOutput(msgId: String, version: String, fieldValue: Option[String]) = None
     override def validateLong(fieldValue: Option[String]) {
       super.validateLong(fieldValue)
       fieldValue.foreach(BackplaneMessage.dateFromId)
@@ -126,6 +127,10 @@ object Backplane1MessageFields extends MessageFieldEnum with Loggable {
       super.validate(fieldValue, wholeMessage)
       validateInternetDate(fieldValue)
     }
+
+    override def frameOutput(msgId: String, version: String, fieldValue: Option[String]) =
+      if ("1.3" == version) fieldValue
+      else None
   }
 
   val SOURCE = new BackplaneMessageField { def name = "source"
@@ -153,19 +158,16 @@ object Backplane1MessageFields extends MessageFieldEnum with Loggable {
         }
       }
     }
-    override def frameOutput(msgId: String, serverDomain: String, includePayload: Boolean, fieldValue: Option[String]) = {
-      if (includePayload) {
-        try {
-          Some(new ObjectMapper().readValue(fieldValue.getOrElse(null), classOf[AnyRef]) ) // un-quote the value
-        } catch {
-          case e: IOException => {
-            val errMsg = "Error deserializing message payload: " + e.getMessage
-            logger.error(errMsg)
-            throw new BackplaneServerException(errMsg, e)
-          }
+
+    override def frameOutput(msgId: String, version: String, fieldValue: Option[String]) = {
+      try {
+        Some(new ObjectMapper().readValue(fieldValue.getOrElse(null), classOf[AnyRef])) // un-quote the value
+      } catch {
+        case e: IOException => {
+          val errMsg = "Error deserializing message payload: " + e.getMessage
+          logger.error(errMsg)
+          throw new BackplaneServerException(errMsg, e)
         }
-      } else {
-        None
       }
     }
   }

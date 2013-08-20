@@ -128,7 +128,7 @@ public class ProvisioningController2 {
 
     @RequestMapping(value = "/grant/list", method = RequestMethod.POST)
     @ResponseBody
-    public Map<String, Map<String, String>> grantList(HttpServletRequest request, @RequestBody ListRequest listRequest) throws AuthException {
+    public Map<String, Map<String, String>> grantList(HttpServletRequest request, @RequestBody ListRequest listRequest) throws AuthException, DaoException {
         ServletUtil.checkSecure(request);
         ConfigDAOs.adminDao().getAuthenticated(listRequest.getAdmin(), listRequest.getSecret());
 

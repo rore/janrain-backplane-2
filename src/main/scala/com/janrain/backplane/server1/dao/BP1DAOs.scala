@@ -88,7 +88,7 @@ object BP1DAOs extends Loggable {
       val id1s = legacyDaoMsgs.map(_.id)
       val id2s = newDaoMsgs.map(_.id)
       val identical = (id1s zip id2s).foldLeft(true) {
-        case (acc, (id1, id2)) => acc && id1 == id2
+        case (acc, (id1, id2)) => acc && (id1 == id2)
       }
 
       (identical, isUseNewDao) match {

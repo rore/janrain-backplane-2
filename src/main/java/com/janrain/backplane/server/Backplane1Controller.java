@@ -45,6 +45,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.ModelAndView;
+import scala.collection.JavaConversions;
 
 import javax.inject.Inject;
 import javax.servlet.http.HttpServletRequest;
@@ -75,7 +76,7 @@ public class Backplane1Controller {
     }
 
     @RequestMapping(value = "/{version}/bus/{bus}", method = RequestMethod.GET)
-    public @ResponseBody List<HashMap<String,Object>> getBusMessages(
+    public @ResponseBody List<Map<String,Object>> getBusMessages(
             @PathVariable String version,
             @RequestHeader(value = "Authorization", required = false) String basicAuth,
             @PathVariable String bus,
@@ -89,12 +90,12 @@ public class Backplane1Controller {
 
             checkAuth(basicAuth, bus, BusConfig1Fields.GETALL_USERS());
 
-            List<BackplaneMessage> messages =
-               com.janrain.backplane.server.redisdao.BP1DAOs.getMessageDao().getMessagesByBus(bus, since, sticky);
+            List<Backplane1Message> messages = JavaConversions.seqAsJavaList(
+               BP1DAOs.messageDao().retrieveMessagesByBus(bus, since, sticky) );
 
-            List<HashMap<String,Object>> frames = new ArrayList<HashMap<String, Object>>();
-            for (BackplaneMessage message : messages) {
-                frames.add(message.asFrame(version));
+            List<Map<String,Object>> frames = new ArrayList<Map<String, Object>>();
+            for (Backplane1Message message : messages) {
+                frames.add(JavaConversions.mapAsJavaMap(message.asFrame(version)));
             }
             return frames;
 
@@ -113,7 +114,7 @@ public class Backplane1Controller {
             @RequestHeader(value = "Referer", required = false) String referer,
             @RequestParam(required = false) String callback,
             @RequestParam(value = "since", required = false) String since,
-            @RequestParam(value = "sticky", required = false) String sticky)
+            @RequestParam(value = "sticky", defaultValue = "false") String sticky)
             throws SimpleDBException, AuthException, BackplaneServerException {
 
         logger.debug("request started");
@@ -121,7 +122,7 @@ public class Backplane1Controller {
         try {
             boolean newChannel = NEW_CHANNEL_LAST_PATH.equals(channel);
             String resp;
-            List<BackplaneMessage> messages = new ArrayList<BackplaneMessage>();
+            List<Backplane1Message> messages = new ArrayList<Backplane1Message>();
 
             if (newChannel) {
                 resp = newChannel();
@@ -307,16 +308,12 @@ public class Backplane1Controller {
     	return newChannel;
     }
 
-    private List<BackplaneMessage> getChannelMessages(final String bus, final String channel, final String since, final String sticky) throws SimpleDBException, BackplaneServerException {
+    private List<Backplane1Message> getChannelMessages(final String bus, final String channel, final String since, final String sticky) throws SimpleDBException, BackplaneServerException {
 
         final TimerContext context = getChannelMessagesTime.time();
 
         try {
-            return com.janrain.backplane.server.redisdao.BP1DAOs.getMessageDao().getMessagesByChannel(bus, channel, since, sticky);
-        } catch (SimpleDBException sdbe) {
-            throw sdbe;
-        } catch (BackplaneServerException bse) {
-            throw bse;
+            return JavaConversions.seqAsJavaList( BP1DAOs.messageDao().retrieveMessagesByChannel(channel, since, sticky) );
         } catch (Exception e) {
             throw new BackplaneServerException(e.getMessage(), e);
         } finally {
@@ -324,13 +321,13 @@ public class Backplane1Controller {
         }
     }
 
-    private String messagesToFrames(List<BackplaneMessage> messages, final String version) throws BackplaneServerException {
+    private String messagesToFrames(List<Backplane1Message> messages, final String version) throws BackplaneServerException {
 
         try {
             List<Map<String,Object>> frames = new ArrayList<Map<String, Object>>();
 
-            for (BackplaneMessage message : messages) {
-                frames.add(message.asFrame(version));
+            for (Backplane1Message message : messages) {
+                frames.add(JavaConversions.mapAsJavaMap(message.asFrame(version)));
             }
             ObjectMapper mapper = new ObjectMapper();
             try {
@@ -365,7 +362,7 @@ public class Backplane1Controller {
         aniLog("new_channel", aniEvent);
     }
 
-    private void aniLogPollMessages(HttpServletRequest request, String referer, String version, String bus, String channel, List<BackplaneMessage> messages) {
+    private void aniLogPollMessages(HttpServletRequest request, String referer, String version, String bus, String channel, List<Backplane1Message> messages) {
         if (!anilogger.isEnabled()) {
             return;
         }
@@ -379,8 +376,8 @@ public class Backplane1Controller {
         aniEvent.put("version", version);
         aniEvent.put("site_host", siteHost);
         List<String> messageIds = new ArrayList<String>();
-        for (BackplaneMessage message : messages) {
-            messageIds.add(message.getIdValue());
+        for (Backplane1Message message : messages) {
+            messageIds.add(message.id());
         }
         aniEvent.put("message_ids", messageIds);
 

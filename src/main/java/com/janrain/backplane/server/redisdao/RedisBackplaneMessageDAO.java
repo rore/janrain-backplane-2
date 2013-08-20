@@ -286,7 +286,7 @@ public class RedisBackplaneMessageDAO implements BP1MessageDao {
     private void filterAndSort(List<BackplaneMessage> messages, String since, String sticky) {
 
         // filter per sticky flag
-        if (StringUtils.isNotBlank(sticky)) {
+        if (StringUtils.isNotBlank(sticky) && Boolean.parseBoolean(sticky)) {
             Iterator<BackplaneMessage> iterator = messages.iterator();
             while(iterator.hasNext()) {
                 BackplaneMessage message = iterator.next();

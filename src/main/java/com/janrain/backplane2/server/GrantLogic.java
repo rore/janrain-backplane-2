@@ -5,6 +5,7 @@ import com.janrain.backplane.common.model.Message;
 import com.janrain.backplane.dao.DaoException;
 import com.janrain.backplane.server2.dao.BP2DAOs;
 import com.janrain.backplane.server2.model.Backplane2MessageFields;
+import com.janrain.backplane.server2.model.ChannelFields;
 import com.janrain.backplane.server2.oauth2.model.Grant2;
 import com.janrain.backplane.server2.oauth2.model.GrantFields;
 import com.janrain.commons.supersimpledb.SimpleDBException;
@@ -36,7 +37,7 @@ public class GrantLogic {
      * @throws
      */
     public static @NotNull Map<Scope,Set<Grant2>>
-    retrieveClientGrants(final String clientId, @Nullable Scope scope) throws BackplaneServerException, TokenException {
+    retrieveClientGrants(final String clientId, @Nullable Scope scope) throws BackplaneServerException, TokenException, DaoException {
 
         List<Grant2> clientActiveGrants = JavaConversions.seqAsJavaList(BP2DAOs.grantDao().getByClientId(clientId));
 
@@ -58,9 +59,8 @@ public class GrantLogic {
             for(Scope authReqScope : scope.getAuthReqScopes()) {
                 final Scope testScope;
                 if (authReqScope.getScopeMap().containsKey(Backplane2MessageFields.CHANNEL())) {
-                    Channel channel = com.janrain.backplane2.server.dao.BP2DAOs
-                            .getChannelDao().get(authReqScope.getScopeMap().get(Backplane2MessageFields.CHANNEL()).iterator().next());
-                    String boundBus = channel == null ? null : channel.get(Channel.ChannelField.BUS);
+                    com.janrain.backplane.server2.model.Channel channel = BP2DAOs.channelDao().get(authReqScope.getScopeMap().get(Backplane2MessageFields.CHANNEL()).iterator().next()).getOrElse(null);
+                    String boundBus = channel == null ? null : (String) channel.get(ChannelFields.BUS()).getOrElse(null);
                     testScope = new Scope(Backplane2MessageFields.BUS(), boundBus);
                 } else {
                     testScope = authReqScope;
