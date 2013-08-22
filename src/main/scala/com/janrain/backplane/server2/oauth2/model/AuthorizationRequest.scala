@@ -72,7 +72,7 @@ object AuthorizationRequestFields extends MessageFieldEnum {
 
     override def validate(fieldValue: Option[String], wholeMessage: Message[_]) {
       super.validate(fieldValue, wholeMessage)
-      if ( OAuth2.OAUTH2_TOKEN_RESPONSE_TYPE_CODE != fieldValue) {
+      if (fieldValue.exists(_ != OAuth2.OAUTH2_TOKEN_RESPONSE_TYPE_CODE)) {
         throw new IllegalArgumentException("Unsupported OAuth2 response_type: " + fieldValue)
       }
     }
