@@ -27,9 +27,9 @@ import java.util.List;
 
 public interface DAO<T extends NamedMap> {
 
-    abstract public T get(String id) throws BackplaneServerException;
-    abstract public List<T> getAll() throws BackplaneServerException;
-    abstract public void persist(T obj) throws BackplaneServerException;
-    abstract public void delete(String id) throws BackplaneServerException;
+    T get(String id) throws BackplaneServerException;
+    List<T> getAll() throws BackplaneServerException;
+    void persist(T obj) throws BackplaneServerException;
+    void delete(String id) throws BackplaneServerException;
 
 }

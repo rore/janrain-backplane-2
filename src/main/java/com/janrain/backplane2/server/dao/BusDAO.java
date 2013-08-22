@@ -28,9 +28,9 @@ import java.util.List;
  */
 public interface BusDAO extends DAO<BusConfig2> {
 
-    public List<BusConfig2> retrieveByOwner(String busOwner) throws BackplaneServerException;
+    List<BusConfig2> retrieveByOwner(String busOwner) throws BackplaneServerException;
 
     /** Associated grants and tokens are deleted/revoked. */
-    public void deleteByOwner(String busOwner) throws BackplaneServerException, TokenException;
+    void deleteByOwner(String busOwner) throws BackplaneServerException, TokenException;
 
 }

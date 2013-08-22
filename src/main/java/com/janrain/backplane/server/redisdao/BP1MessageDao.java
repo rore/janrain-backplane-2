@@ -12,13 +12,13 @@ import java.util.List;
  */
 public interface BP1MessageDao extends DAO<BackplaneMessage> {
 
-    public List<BackplaneMessage> getMessagesByBus(String bus, String since, String sticky)
+    List<BackplaneMessage> getMessagesByBus(String bus, String since, String sticky)
             throws SimpleDBException, BackplaneServerException;
 
-    public List<BackplaneMessage> getMessagesByChannel(String bus, String channel, String since, String sticky)
+    List<BackplaneMessage> getMessagesByChannel(String bus, String channel, String since, String sticky)
             throws SimpleDBException, BackplaneServerException;
 
-    public int getMessageCount(String bus, String channel);
+    int getMessageCount(String bus, String channel);
 
-    public void deleteExpiredMessages();
+    void deleteExpiredMessages();
 }
