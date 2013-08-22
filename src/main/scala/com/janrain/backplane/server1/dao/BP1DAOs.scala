@@ -10,7 +10,6 @@ import com.janrain.backplane.config.dao.ConfigDAOs
 import com.janrain.backplane.config.model.ServerConfigFields
 import com.janrain.backplane.server2.dao.LegacyDaoForwarder
 import com.janrain.backplane.server
-import com.janrain.backplane.server.BusConfig1.BUS_PERMISSION
 
 /**
  * @author Johnny Bufu
@@ -35,23 +34,7 @@ object BP1DAOs extends Loggable {
 
     protected def instantiate(data: Map[_, _]) = new BusConfig1( data.map( kv => kv._1.toString -> kv._2.toString ))
 
-    override def instantiateFromLegacy(legacyItem: server.BusConfig1) = {
-      val getallUsers = legacyItem.collect {
-        case (k,v) if v.contains(BUS_PERMISSION.GETALL.name()) => k
-      }
-      val postUsers = legacyItem.collect {
-        case (k,v) if v.contains(BUS_PERMISSION.POST.name()) => k
-      }
-
-      instantiate(
-        legacyItem.toMap.collect {
-          case (k,v) if ! getallUsers.contains(k) && ! postUsers.contains(k) => k.toLowerCase -> v
-        }
-        ++
-        Map( BusConfig1Fields.POST_USERS.name -> postUsers.mkString(","),
-             BusConfig1Fields.GETALL_USERS.name -> getallUsers.mkString(",") )
-      )
-    }
+    override def instantiateFromLegacy(legacyItem: server.BusConfig1) = instantiate(BusConfig1.fromLegacy(legacyItem))
 
     val legacyDao = com.janrain.backplane.server.redisdao.BP1DAOs.getBusDao
   }
@@ -107,4 +90,7 @@ object BP1DAOs extends Loggable {
       .flatMap(_.get(ServerConfigFields.BP1_MESSAGES_USE_NEW_DAO))
       .exists(_ == true.toString)
   }
+
+  def asScalaImmutableMap(javaMap: java.util.Map[String,String]) = javaMap.toMap
+
 }

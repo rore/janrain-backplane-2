@@ -104,7 +104,7 @@ object BP2DAOs {
     }
 
     override def revokeBuses(grants: List[Grant2], buses: List[String]) = {
-      super.revokeBuses(grants, buses) || legacyDao.revokeBuses(grants.map(_.asLegacy), buses)
+      super.revokeBuses(grants, buses) & legacyDao.revokeBuses(grants.map(_.asLegacy), buses)
     }
 
     override def deleteByBus(busesToDelete: List[String]) {

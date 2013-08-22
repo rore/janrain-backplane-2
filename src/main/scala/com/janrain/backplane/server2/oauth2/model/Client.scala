@@ -14,13 +14,13 @@ class Client(data: Map[String,String]) extends User("bp2Client", data, ClientFie
   with Password[ClientFields.EnumVal, Client]
   with LegacySupport[com.janrain.backplane2.server.config.Client] {
 
-  def this(javaData: java.util.Map[String,String]) = this(javaData.toMap)
+  def this(javaData: java.util.Map[String,String]) = this(LegacySupport.fromLegacy(javaData))
 
   def idField = ClientFields.USER
 
   def pwdHashField = ClientFields.PWDHASH
 
-  def asLegacy = new com.janrain.backplane2.server.config.Client(mapAsJavaMap(this))
+  def asLegacy = new com.janrain.backplane2.server.config.Client(LegacySupport.toLegacy(this))
 }
 
 object ClientFields extends UserFieldEnum {

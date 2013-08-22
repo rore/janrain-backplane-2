@@ -125,7 +125,7 @@ object Backplane2MessageFields extends MessageFieldEnum with Loggable {
 
   val TYPE = new BackplaneMessageField { def name = "type"; def scopeType = FILTER }
 
-  val MESSAGE_URL = new BackplaneMessageField { def name = "message_url"; def scopeType = FILTER
+  val MESSAGE_URL = new BackplaneMessageField { def name = "messageURL"; def scopeType = FILTER
     override def required = false
     override def isUpstream = false
     override def validate(fieldValue: Option[String], wholeMessage: Message[_]) {

@@ -28,7 +28,7 @@ class Backplane1Message(data: Map[String,String]) extends BackplaneMessage(data,
           Backplane1MessageFields.CHANNEL_NAME.name -> channel
         ))
 
-  def this(javaData: java.util.Map[String,String]) = this(javaData.toMap)
+  def this(javaData: java.util.Map[String,String]) = this(LegacySupport.fromLegacy(javaData))
 
   def idField = Backplane1MessageFields.ID
 

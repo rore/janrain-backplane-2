@@ -17,11 +17,13 @@ class BusOwner(data: Map[String,String]) extends User("bp2BusOwner", data, BusOw
     BusOwnerFields.PWDHASH.name -> pwdhash
   ))
 
+  def this(javaData: java.util.Map[String,String]) = this(LegacySupport.fromLegacy(javaData))
+
   def idField = BusOwnerFields.USER
 
   def pwdHashField = BusOwnerFields.PWDHASH
 
-  def asLegacy = new com.janrain.backplane2.server.config.User(mapAsJavaMap(this))
+  def asLegacy = new com.janrain.backplane2.server.config.User(LegacySupport.toLegacy(this))
 }
 
 object BusOwnerFields extends UserFieldEnum {

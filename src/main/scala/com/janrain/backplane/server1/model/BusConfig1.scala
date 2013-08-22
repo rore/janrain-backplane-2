@@ -4,13 +4,14 @@ import com.janrain.backplane.common.model.{MessageField, MessageFieldEnum, Messa
 import com.janrain.backplane.common.MessageException
 import scala.collection.JavaConversions._
 import com.janrain.backplane.server2.dao.LegacySupport
+import com.janrain.backplane.server.BusConfig1.BUS_PERMISSION
 
 /**
  * @author Johnny Bufu
  */
 class BusConfig1(data: Map[String,String]) extends Message(data, BusConfig1Fields.values) with LegacySupport[com.janrain.backplane.server.BusConfig1] {
 
-  def this(javaData: java.util.Map[String,String]) = this(javaData.toMap)
+  def this(javaData: java.util.Map[String,String]) = this(BusConfig1.fromLegacy(javaData))
 
   def idField = BusConfig1Fields.BUS_NAME
 
@@ -20,7 +21,22 @@ class BusConfig1(data: Map[String,String]) extends Message(data, BusConfig1Field
 
   def retentionTimeStickySeconds: Int = get(BusConfig1Fields.RETENTION_STICKY_TIME_SECONDS).getOrElse(BusConfig1.RETENTION_STICKY_MIN_SECONDS.toString).toInt
 
-  def asLegacy = new com.janrain.backplane.server.BusConfig1(mapAsJavaMap(this))
+  def asLegacy = {
+    val getallUsers = get(BusConfig1Fields.GETALL_USERS).map(_.split(",")).toIterable.flatten
+    val postUsers = get(BusConfig1Fields.POST_USERS).map(_.split(",")).toIterable.flatten
+
+    val g = getallUsers.map(user => if (postUsers.contains(user)) user -> "GETALL,POST" else user -> "GETALL").toMap
+    val p = postUsers.map(user => if (getallUsers.contains(user)) user -> "GETALL,POST" else user -> "POST").toMap
+    val userPermissionsMap = g ++ p
+
+    val legacyFieldNames = com.janrain.backplane.server.BusConfig1.Field.values().map(_.getFieldName.toLowerCase)
+
+    val filtered = this.filterKeys(legacyFieldNames.contains(_)).map {
+      case (k,v) => k.toUpperCase -> v
+    }
+
+    new com.janrain.backplane.server.BusConfig1(mapAsJavaMap(filtered ++ userPermissionsMap))
+  }
 }
 
 object BusConfig1 {
@@ -28,6 +44,22 @@ object BusConfig1 {
   private[model] final val RETENTION_MAX_SECONDS = 604800L        // one week
   private[model] final val RETENTION_STICKY_MIN_SECONDS = 28800L  // eight hours
   private[model] final val RETENTION_STICKY_MAX_SECONDS = 604800L // one week
+
+  def fromLegacy(javaData: java.util.Map[String, String]): Map[String,String] = {
+    val scalaMap = javaData.toMap
+    val getallUsers = scalaMap.collect {
+      case (k, v) if v.contains(BUS_PERMISSION.GETALL.name()) => k
+    }
+    val postUsers = scalaMap.collect {
+      case (k, v) if v.contains(BUS_PERMISSION.POST.name()) => k
+    }
+
+    scalaMap.collect {
+      case (k, v) if !getallUsers.contains(k) && !postUsers.contains(k) => k.toLowerCase -> v
+    } ++
+      Map( BusConfig1Fields.POST_USERS.name -> postUsers.mkString(","),
+           BusConfig1Fields.GETALL_USERS.name -> getallUsers.mkString(","))
+  }
 }
 
 object BusConfig1Fields extends MessageFieldEnum {

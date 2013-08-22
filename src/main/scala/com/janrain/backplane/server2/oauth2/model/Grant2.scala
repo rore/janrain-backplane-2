@@ -13,7 +13,7 @@ import com.janrain.backplane.server2.dao.LegacySupport
  */
 class Grant2(data: Map[String,String]) extends Message(data, GrantFields.values) with LegacySupport[com.janrain.backplane2.server.Grant] {
 
-  def this(javaData: java.util.Map[String,String])= this(javaData.toMap)
+  def this(javaData: java.util.Map[String,String])= this(LegacySupport.fromLegacy(javaData))
 
   def idField = GrantFields.ID
 

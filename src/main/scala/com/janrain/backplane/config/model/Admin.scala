@@ -20,7 +20,7 @@ with LegacySupport[com.janrain.backplane2.server.config.User] {
 
   def pwdHashField = AdminFields.PWDHASH
 
-  def asLegacy = new com.janrain.backplane2.server.config.User(mapAsJavaMap(this))
+  def asLegacy = new com.janrain.backplane2.server.config.User(LegacySupport.toLegacy(this))
 }
 
 object AdminFields extends UserFieldEnum {

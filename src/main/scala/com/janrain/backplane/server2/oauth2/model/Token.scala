@@ -19,7 +19,7 @@ import com.janrain.backplane.server2.model.Backplane2MessageFields
  */
 class Token(data: Map[String,String]) extends Message(data, TokenFields.values) with LegacySupport[com.janrain.backplane2.server.Token] {
 
-  def this(javaData: java.util.Map[String,String]) = this(javaData.toMap)
+  def this(javaData: java.util.Map[String,String]) = this(LegacySupport.fromLegacy(javaData))
 
   def idField = TokenFields.ID
 
