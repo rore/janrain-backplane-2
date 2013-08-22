@@ -17,6 +17,7 @@
 package com.janrain.backplane.server;
 
 import com.janrain.backplane.server1.dao.BP1DAOs;
+import com.janrain.backplane.server1.model.Backplane1Message;
 import com.janrain.backplane.server1.model.BusConfig1;
 import com.janrain.backplane.server1.model.BusConfig1Fields;
 import com.janrain.backplane.server1.model.BusUser;
@@ -108,11 +109,15 @@ public class Backplane1ControllerTest extends TestCase {
         String[] versions = new String[]{"1.1", "1.2", "1.3"};
         for (String version : versions) {
             refreshRequestAndResponse();
-            BackplaneMessage message = null;
+            Backplane1Message message = null;
 
             try {
 
                 BP1DAOs.userDao().store(new BusUser("testBusOwner", "busOwnerSecret"));
+
+
+                scala.collection.immutable.Map$.MODULE$.empty();
+
                 Map<String,String> busConfigData = new HashMap<String,String>() {{
                     put(BusConfig1Fields.BUS_NAME().name(), "test");
                     put(BusConfig1Fields.POST_USERS().name(), "testBusOwner");
@@ -120,14 +125,14 @@ public class Backplane1ControllerTest extends TestCase {
                     put(BusConfig1Fields.RETENTION_TIME_SECONDS().name(), "60");
                     put(BusConfig1Fields.RETENTION_STICKY_TIME_SECONDS().name(), "28800");
                 }};
-                BP1DAOs.busDao().store(new BusConfig1(busConfigData));
+                BP1DAOs.busDao().store(new BusConfig1(BP1DAOs.asScalaImmutableMap(busConfigData)));
 
                 // encode un:pw
                 String credentials = "testBusOwner:busOwnerSecret";
 
                 Map<String,Object> msg = new ObjectMapper().readValue(TEST_MSG, new TypeReference<Map<String,Object>>() {});
-                message = new BackplaneMessage("test", "test", DEFAULT_MESSAGE_RETENTION_SECONDS, MAX_MESSAGE_RETENTION_SECONDS, msg);
-                com.janrain.backplane.server.redisdao.BP1DAOs.getMessageDao().persist(message);
+                message = new Backplane1Message("test", "test", DEFAULT_MESSAGE_RETENTION_SECONDS, MAX_MESSAGE_RETENTION_SECONDS, msg);
+                BP1DAOs.messageDao().store(message);
 
                 Thread.sleep(1000);
 
@@ -145,7 +150,7 @@ public class Backplane1ControllerTest extends TestCase {
                 BP1DAOs.userDao().delete("testBusOwner");
                 BP1DAOs.busDao().delete("test");
                 if (message != null) {
-                    com.janrain.backplane.server.redisdao.BP1DAOs.getMessageDao().delete(message.getIdValue());
+                    com.janrain.backplane.server.redisdao.BP1DAOs.getMessageDao().delete(message.id());
                 }
             }
         }

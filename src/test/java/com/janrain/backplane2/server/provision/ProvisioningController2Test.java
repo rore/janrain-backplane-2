@@ -20,7 +20,6 @@ import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.common.HmacHashUtils;
 import com.janrain.backplane.config.dao.ConfigDAOs;
 import com.janrain.backplane.config.model.Admin;
-import com.janrain.backplane.config.model.AdminFields;
 import com.janrain.backplane.dao.DaoException;
 import com.janrain.backplane.provision.ProvisioningController2;
 import com.janrain.backplane.server2.dao.BP2DAOs;
@@ -129,7 +128,7 @@ public class ProvisioningController2Test {
         logger.info("passing in json " + jsonUpdateBusOwner);
         request.setContent(jsonUpdateBusOwner.getBytes());
         request.addHeader("Content-type", "application/json");
-        request.setRequestURI("/v2/provision/adminUser/update");
+        request.setRequestURI("/v2/provision/user/update");
         request.setMethod("POST");
         handlerAdapter.handle(request, response, controller);
         logger.info("testClientUpdate -> " + response.getContentAsString());
@@ -140,7 +139,7 @@ public class ProvisioningController2Test {
         logger.info("passing in json " + listJson);
         request.setContent(listJson.getBytes());
         request.addHeader("Content-type", "application/json");
-        request.setRequestURI("/v2/provision/adminUser/list");
+        request.setRequestURI("/v2/provision/user/list");
         request.setMethod("POST");
         handlerAdapter.handle(request, response, controller);
         logger.info("testClientList() => " + response.getContentAsString());
@@ -148,11 +147,11 @@ public class ProvisioningController2Test {
 
         refreshRequestAndResponse();
         String deleteJson = "{ \"admin\": \"" + adminUser.id() + "\", \"secret\": \"" + adminpw + "\", " +
-                            "\"entities\": [\"" + busOwner.get(AdminFields.USER())+ "\"] }";
+                            "\"entities\": [\"" + busOwner.id() + "\"] }";
         logger.info("passing in json " + deleteJson);
         request.setContent(deleteJson.getBytes());
         request.addHeader("Content-type", "application/json");
-        request.setRequestURI("/v2/provision/adminUser/delete");
+        request.setRequestURI("/v2/provision/user/delete");
         request.setMethod("POST");
         handlerAdapter.handle(request, response, controller);
         logger.info("testClientList() => " + response.getContentAsString());
@@ -162,7 +161,7 @@ public class ProvisioningController2Test {
         logger.info("passing in json " + listJson);
         request.setContent(listJson.getBytes());
         request.addHeader("Content-type", "application/json");
-        request.setRequestURI("/v2/provision/adminUser/list");
+        request.setRequestURI("/v2/provision/user/list");
         request.setMethod("POST");
         handlerAdapter.handle(request, response, controller);
         logger.info("testClientList() => " + response.getContentAsString());
@@ -264,7 +263,7 @@ public class ProvisioningController2Test {
         logger.info("passing in json " + jsonUpdateBusOwner);
         request.setContent(jsonUpdateBusOwner.getBytes());
         request.addHeader("Content-type", "application/json");
-        request.setRequestURI("/v2/provision/adminUser/update");
+        request.setRequestURI("/v2/provision/user/update");
         request.setMethod("POST");
         handlerAdapter.handle(request, response, controller);
         logger.info("testClientUpdate -> " + response.getContentAsString());
@@ -347,7 +346,7 @@ public class ProvisioningController2Test {
         String delete = "{ \"entities\":[\"does\", \"not\", \"exist\"], \"admin\":\"" + adminUser.id() + "\", \"secret\":\"" + adminpw + "\"}";
         request.setContent(delete.getBytes());
         request.addHeader("Content-type", "application/json");
-        request.setRequestURI("/v2/provision/adminUser/delete");
+        request.setRequestURI("/v2/provision/user/delete");
         request.setMethod("POST");
 
         handlerAdapter.handle(request, response, controller);

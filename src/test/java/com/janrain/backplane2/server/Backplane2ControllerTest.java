@@ -18,7 +18,6 @@ package com.janrain.backplane2.server;
 
 
 import com.janrain.backplane.common.BackplaneServerException;
-import com.janrain.backplane.common.HmacHashUtils;
 import com.janrain.backplane.config.BackplaneConfig;
 import com.janrain.backplane.dao.DaoException;
 import com.janrain.backplane.server2.dao.BP2DAOs;
@@ -183,7 +182,7 @@ public class Backplane2ControllerTest {
             logger.info("checking for tokens to delete...");
             for (String key:this.createdTokenKeys) {
                 logger.info("deleting Token " + key);
-                com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao().delete(key);
+                BP2DAOs.tokenDao().delete(key);
             }
 
             for (String key:this.createdGrantsKeys) {
@@ -216,7 +215,7 @@ public class Backplane2ControllerTest {
 
         Client client = new Client(new HashMap<String,String>() {{
             put(ClientFields.USER().name(), RandomUtils.randomString(15));
-            put(ClientFields.PWDHASH().name(), HmacHashUtils.hmacHash("secret"));
+            put(ClientFields.PWDHASH().name(), "secret");
             put(ClientFields.SOURCE_URL().name(), "http://source_url.com");
             put(ClientFields.REDIRECT_URI().name(), "http://redirect.com");
         }});
@@ -249,10 +248,10 @@ public class Backplane2ControllerTest {
         this.createdGrantsKeys.add(grant.id());
     }
 
-    private void saveToken(Token token) throws BackplaneServerException {
-        com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao().persist(token);
-        logger.info("saved token: " + token.getIdValue());
-        this.createdTokenKeys.add(token.getIdValue());
+    private void saveToken(com.janrain.backplane.server2.oauth2.model.Token token) throws BackplaneServerException, DaoException {
+        BP2DAOs.tokenDao().store(token);
+        logger.info("saved token: " + token.id());
+        this.createdTokenKeys.add(token.id());
     }
 
 
@@ -322,16 +321,16 @@ public class Backplane2ControllerTest {
         // our tests won't include the callback string in this test so don't expect it
         assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
                 matches("[{]\"token_type\":\\s*\"Bearer\",\\s*" +
-                        "\\s*\"access_token\":\\s*\".{22}\",\\s*" +
-                        "\"expires_in\":\\s*604[0-9]{3},\\s*" +
-                        "\"scope\":\"bus:\\s*testbus\\s*channel:.{32}\",\\s*" +
-                        "\"refresh_token\":\".{22}\"\\s*[}]"));
+                        "\\s*\"access_token\":\\s*\".{27}\",\\s*" +
+                        "\"scope\":\"bus:\\s*testbus\\s*channel:.{34}\",\\s*" +
+                        "\"expires_in\":\\s*\"604[0-9]{3}\",\\s*" +
+                        "\"refresh_token\":\".{27}\"\\s*[}]"));
 
         // cleanup test tokens
         String result = response.getContentAsString();
         Map<String,Object> returnedBody = new ObjectMapper().readValue(result, new TypeReference<Map<String,Object>>() {});
-        com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao().delete((String)returnedBody.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME));
-        com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao().delete((String)returnedBody.get(OAUTH2_REFRESH_TOKEN_PARAM_NAME));
+        BP2DAOs.tokenDao().delete((String)returnedBody.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME));
+        BP2DAOs.tokenDao().delete((String)returnedBody.get(OAUTH2_REFRESH_TOKEN_PARAM_NAME));
 
 
     }
@@ -447,8 +446,8 @@ public class Backplane2ControllerTest {
         assertTrue(scope.contains("channel:"));
 
         // remove test tokens
-        com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao().delete((String)msg.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME));
-        com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao().delete((String)msg.get(OAUTH2_REFRESH_TOKEN_PARAM_NAME));
+        BP2DAOs.tokenDao().delete((String)msg.get(OAUTH2_ACCESS_TOKEN_PARAM_NAME));
+        BP2DAOs.tokenDao().delete((String)msg.get(OAUTH2_REFRESH_TOKEN_PARAM_NAME));
     }
 
 
@@ -498,10 +497,10 @@ public class Backplane2ControllerTest {
 
         assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
                 matches("[{]\"token_type\":\\s*\"Bearer\",\\s*" +
-                        "\\s*\"access_token\":\\s*\".{22}\",\\s*" +
-                        "\"expires_in\":\\s*3153[0-9]{4},\\s*" +
+                        "\"access_token\":\\s*\".{27}\",\\s*" +
                         "\"scope\":\"bus:test sticky:\\s*true\\s*\",\\s*" +
-                        "\"refresh_token\":\".{22}\"\\s*[}]"));
+                        "\"expires_in\":\\s*\"3153[0-9]{4}\",\\s*" +
+                        "\"refresh_token\":\".{27}\"\\s*[}]"));
 
 
         Map<String,Object> msg = new ObjectMapper().readValue(response.getContentAsString(),
@@ -546,10 +545,10 @@ public class Backplane2ControllerTest {
 
         assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
                 matches("[{]\"token_type\":\\s*\"Bearer\",\\s*" +
-                        "\\s*\"access_token\":\\s*\".{22}\",\\s*" +
-                        "\"expires_in\":\\s*3153[0-9]{4},\\s*" +
+                        "\\s*\"access_token\":\\s*\".{27}\",\\s*" +
                         "\"scope\":\"bus:foo\",\\s*" +
-                        "\"refresh_token\":\".{22}\"\\s*[}]"));
+                        "\"expires_in\":\\s*\"3153[0-9]{4}\",\\s*" +
+                        "\"refresh_token\":\".{27}\"\\s*[}]"));
 
         ObjectMapper mapper = new ObjectMapper();
         Map<String,Object> msg = mapper.readValue(response.getContentAsString(), new TypeReference<Map<String,Object>>() {});
@@ -575,10 +574,10 @@ public class Backplane2ControllerTest {
 
         assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
                 matches("[{]\"token_type\":\\s*\"Bearer\",\\s*" +
-                        "\\s*\"access_token\":\\s*\".{22}\",\\s*" +
-                        "\"expires_in\":\\s*3153[0-9]{4},\\s*" +
+                        "\\s*\"access_token\":\\s*\".{27}\",\\s*" +
                         "\"scope\":\\s*\"[\\s:a-z]*\",\\s*" +
-                        "\"refresh_token\":\".{22}\"\\s*[}]"));
+                        "\"expires_in\":\\s*\"3153[0-9]{4}\",\\s*" +
+                        "\"refresh_token\":\".{27}\"\\s*[}]"));
 
         msg = mapper.readValue(response.getContentAsString(), new TypeReference<Map<String,Object>>() {});
         String scope = msg.get("scope").toString();
@@ -624,10 +623,10 @@ public class Backplane2ControllerTest {
 
         assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
                 matches("[{]\"token_type\":\\s*\"Bearer\",\\s*" +
-                        "\\s*\"access_token\":\\s*\".{22}\",\\s*" +
-                        "\"expires_in\":\\s*3153[0-9]{4},\\s*" +
+                        "\\s*\"access_token\":\\s*\".{27}\",\\s*" +
                         "\"scope\":\\s*\".*\",\\s*" +
-                        "\"refresh_token\":\".{22}\"\\s*[}]"));
+                        "\"expires_in\":\\s*\"3153[0-9]{4}\",\\s*" +
+                        "\"refresh_token\":\".{27}\"\\s*[}]"));
 
         // attempt to read a message on one of the buses
 
@@ -685,10 +684,10 @@ public class Backplane2ControllerTest {
 
         assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
                 matches("[{]\"token_type\":\\s*\"Bearer\",\\s*" +
-                        "\\s*\"access_token\":\\s*\".{22}\",\\s*" +
-                        "\"expires_in\":\\s*3153[0-9]{4},\\s*" +
+                        "\\s*\"access_token\":\\s*\".{27}\",\\s*" +
                         "\"scope\":\"bus:test\",\\s*" +
-                        "\"refresh_token\":\".{22}\"\\s*[}]"));
+                        "\"expires_in\":\\s*\"3153[0-9]{4}\",\\s*" +
+                        "\"refresh_token\":\".{27}\"\\s*[}]"));
 
         // now, try to use the same code again
         refreshRequestAndResponse();
@@ -701,7 +700,7 @@ public class Backplane2ControllerTest {
         handlerAdapter.handle(request, response, controller);
         logger.info("testTokenEndPointClientUsedCode() ====> " + response.getContentAsString());
 
-        assertTrue(BP2DAOs.grantDao().get(grant.id()).get().getState() == GrantState.ACTIVE);
+        assertTrue(BP2DAOs.grantDao().get(grant.id()).get().getState() == GrantState.REVOKED);
         assertTrue(response.getContentAsString().contains(ERR_RESPONSE));
 
 
@@ -887,20 +886,19 @@ public class Backplane2ControllerTest {
 
         assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
                 matches("[{]\\s*" +
-                        "\"messageURL\":\\s*\".*\",\\s*" +
-                        "\"source\":\\s*\".*\",\\s*" +
-                        "\"type\":\\s*\".*\",\\s*" +
                         "\"bus\":\\s*\".*\",\\s*" +
                         "\"channel\":\\s*\".*\",\\s*" +
+                        "\"source\":\\s*\".*\",\\s*" +
+                        "\"messageURL\":\\s*\".*\",\\s*" +
                         "\"sticky\":\\s*\".*\",\\s*" +
-                        "\"expire\":\\s*\".*\"\\s*" +
+                        "\"expire\":\\s*\".*\",\\s*" +
+                        "\"type\":\\s*\".*\"\\s*" +
                         "[}]"));
 
         assertTrue("Expected " + HttpServletResponse.SC_OK + " but received: " + response.getStatus(), response.getStatus() == HttpServletResponse.SC_OK);
 
-        TokenDAO tokenDAO = com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao();
-        tokenDAO.delete(tokensAndChannel.bearerToken);
-        tokenDAO.delete(tokensAndChannel.refreshToken);
+        BP2DAOs.tokenDao().delete(tokensAndChannel.bearerToken);
+        BP2DAOs.tokenDao().delete(tokensAndChannel.refreshToken);
     }
 
     @Test
@@ -944,14 +942,14 @@ public class Backplane2ControllerTest {
 
         assertTrue("Invalid response: " + response.getContentAsString(), response.getContentAsString().
                 matches("[{]\\s*" +
-                        "\"messageURL\":\\s*\".*\",\\s*" +
-                        "\"source\":\\s*\".*\",\\s*" +
-                        "\"type\":\\s*\".*\",\\s*" +
                         "\"bus\":\\s*\".*\",\\s*" +
                         "\"channel\":\\s*\".*\",\\s*" +
+                        "\"source\":\\s*\".*\",\\s*" +
+                        "\"payload\":\\s*.*" +
+                        "\"messageURL\":\\s*\".*\",\\s*" +
                         "\"sticky\":\\s*\".*\",\\s*" +
                         "\"expire\":\\s*\".*\",\\s*" +
-                        "\"payload\":\\s*.*" +
+                        "\"type\":\\s*\".*\"\\s*" +
                         "[}]"));
 
         assertTrue("Expected " + HttpServletResponse.SC_OK + " but received: " + response.getStatus(), response.getStatus() == HttpServletResponse.SC_OK);
@@ -1038,9 +1036,8 @@ public class Backplane2ControllerTest {
         List<Map<String,Object>> returnedMsgs = (List<Map<String, Object>>) returnedBody.get("messages");
         assertTrue("Expected 1 message, received "  + returnedMsgs.size(), returnedMsgs.size() == 1);
 
-        TokenDAO tokenDAO = com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao();
-        tokenDAO.delete(tokensAndchannel.bearerToken);
-        tokenDAO.delete(tokensAndchannel.refreshToken);
+        BP2DAOs.tokenDao().delete(tokensAndchannel.bearerToken);
+        BP2DAOs.tokenDao().delete(tokensAndchannel.refreshToken);
 
         logger.info("========================================================");
 
@@ -1103,9 +1100,8 @@ public class Backplane2ControllerTest {
             BP2DAOs.messageDao().delete(message.id());
         }
 
-        TokenDAO tokenDAO = com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao();
-        tokenDAO.delete(tokensAndChannel.bearerToken);
-        tokenDAO.delete(tokensAndChannel.refreshToken);
+        BP2DAOs.tokenDao().delete(tokensAndChannel.bearerToken);
+        BP2DAOs.tokenDao().delete(tokensAndChannel.refreshToken);
 
     }
 
@@ -1177,9 +1173,8 @@ public class Backplane2ControllerTest {
             assertTrue(expected.getMessage().contains("Invalid bus - channel binding"));
         }
 
-        TokenDAO tokenDAO = com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao();
-        tokenDAO.delete(tokensAndChannelAndChannel.bearerToken);
-        tokenDAO.delete(tokensAndChannelAndChannel.refreshToken);
+        BP2DAOs.tokenDao().delete(tokensAndChannelAndChannel.bearerToken);
+        BP2DAOs.tokenDao().delete(tokensAndChannelAndChannel.refreshToken);
     }
 
     /**
@@ -1219,9 +1214,8 @@ public class Backplane2ControllerTest {
         logger.info(response.getContentAsString());
         assertFalse(response.getContentAsString().contains(ERR_RESPONSE));
 
-        TokenDAO tokenDAO = com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao();
-        tokenDAO.delete(tokensAndChannel.bearerToken);
-        tokenDAO.delete(tokensAndChannel.refreshToken);
+        BP2DAOs.tokenDao().delete(tokensAndChannel.bearerToken);
+        BP2DAOs.tokenDao().delete(tokensAndChannel.refreshToken);
 
     }
 
@@ -1282,9 +1276,8 @@ public class Backplane2ControllerTest {
 
         assertTrue("Limit should have been reached, but " + numberOfPostedMessages + "<=" + bpConfig.getDefaultMaxMessageLimit(), success);
 
-        TokenDAO tokenDAO = com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao();
-        tokenDAO.delete(tokensAndChannel.bearerToken);
-        tokenDAO.delete(tokensAndChannel.refreshToken);
+        BP2DAOs.tokenDao().delete(tokensAndChannel.bearerToken);
+        BP2DAOs.tokenDao().delete(tokensAndChannel.refreshToken);
 
     }
 
@@ -1316,14 +1309,14 @@ public class Backplane2ControllerTest {
             // Make the call
             request.setRequestURI("/v2/messages");
             request.setMethod("GET");
-            request.setParameter(OAUTH2_ACCESS_TOKEN_PARAM_NAME, token);
+            setOauthBearerTokenAuthorization(request, token);
             handlerAdapter.handle(request, response, controller);
             logger.info("testGrantAndRevoke() => " + response.getContentAsString());
 
             assertTrue(HttpServletResponse.SC_FORBIDDEN == response.getStatus());
             assertTrue(response.getContentAsString().contains("invalid token"));
         } finally {
-            com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao().delete(token);
+            BP2DAOs.tokenDao().delete(token);
         }
     }
 
@@ -1354,14 +1347,14 @@ public class Backplane2ControllerTest {
             // Make the call
             request.setRequestURI("/v2/messages");
             request.setMethod("GET");
-            request.setParameter(OAUTH2_ACCESS_TOKEN_PARAM_NAME, token);
+            setOauthBearerTokenAuthorization(request, token);
             handlerAdapter.handle(request, response, controller);
             logger.info("testGrantAndRevokeByBus() => " + response.getContentAsString());
 
             assertTrue(HttpServletResponse.SC_FORBIDDEN == response.getStatus());
             assertTrue(response.getContentAsString().contains("invalid token"));
         } finally {
-            com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao().delete(token);
+            BP2DAOs.tokenDao().delete(token);
         }
 
     }
@@ -1370,7 +1363,7 @@ public class Backplane2ControllerTest {
     @Test
     public void testAuthenticate() throws Exception {
 
-        final BusOwner busOwner = new BusOwner(RandomUtils.randomString(20), HmacHashUtils.hmacHash("foo"));
+        final BusOwner busOwner = new BusOwner(RandomUtils.randomString(20), "foo");
 
         BusConfig2 bus1 = new BusConfig2(new HashMap<String,String>() {{
             put(BusConfig2Fields.BUS_NAME().name(), RandomUtils.randomString(30));
@@ -1499,9 +1492,9 @@ public class Backplane2ControllerTest {
             assertNotNull(tokenId);
 
             Grant2 grant = BP2DAOs.grantDao().get(code).getOrElse(null);
-            Token token = com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao().get(tokenId);
+            com.janrain.backplane.server2.oauth2.model.Token token = BP2DAOs.tokenDao().get(tokenId).getOrElse(null);
 
-            assertTrue(grant.get(GrantFields.ISSUED_TO_CLIENT()).getOrElse(null).equals(token.get(Token.TokenField.ISSUED_TO_CLIENT_ID)));
+            assertTrue(grant.get(GrantFields.ISSUED_TO_CLIENT()).getOrElse(null).equals(token.get(TokenFields.ISSUED_TO_CLIENT()).getOrElse(null)));
             assertTrue(grant.get(GrantFields.ISSUED_BY_USER()).getOrElse(null).equals(busOwner.id()));
 
 
@@ -1550,7 +1543,7 @@ public class Backplane2ControllerTest {
         }
 
         // we assume the message processor is running in another thread...
-        Thread.sleep(3000);
+        Thread.sleep(10000);
 
         // Make the call
         List<Map<String,Object>> allMsgs = new ArrayList<Map<String, Object>>();
@@ -1588,9 +1581,8 @@ public class Backplane2ControllerTest {
             prev = (String)m.get("messageURL");
         }
 
-        TokenDAO tokenDAO = com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao();
-        tokenDAO.delete(tokensAndChannel.bearerToken);
-        tokenDAO.delete(tokensAndChannel.refreshToken);
+        BP2DAOs.tokenDao().delete(tokensAndChannel.bearerToken);
+        BP2DAOs.tokenDao().delete(tokensAndChannel.refreshToken);
 
     }
 
