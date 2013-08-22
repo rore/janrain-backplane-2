@@ -68,7 +68,10 @@ object RedisBackplane2MessageDao extends RedisMessageDao[Backplane2Message]("bp2
       case List(lastAvailableMsgMetaData @List(_), msgIds) => {
         val messages = get(msgIds.map(_.toString): _*).map(_._2).flatten
         val filtered = messages.filter(scope.isMessageInScope).take(MAX_MSGS_IN_FRAME)
-        val lastId = lastAvailableMsgMetaData.map(_.toString.split(" ")).collect {
+        val lastId =
+          if (messages.size > filtered.size) Option(filtered.reverse.head.id)
+          else
+        lastAvailableMsgMetaData.map(_.toString.split(" ")).collect {
           case Array(bus, channel, lastMsgId, expTime) => lastMsgId
         } match {
           case List(last) => Option(last)
