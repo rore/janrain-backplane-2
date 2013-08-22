@@ -49,7 +49,7 @@ class Token(data: Map[String,String]) extends Message(data, TokenFields.values) 
   def allowedSources: Seq[TokenSource.EnumVal] = {
     val gt = grantType
     if (! gt.isPrivileged) TokenSource.values
-    else if (gt.isRefresh) Seq(TokenSource.POSTBODY)
+    else if (gt.isRefresh) Seq(TokenSource.POSTBODY_REFRESH)
     else Seq(TokenSource.AUTHHEADER)
   }
 

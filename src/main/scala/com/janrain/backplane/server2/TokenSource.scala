@@ -44,7 +44,7 @@ object TokenSource extends Enum {
       )
   }
 
-  val POSTBODY_REFRESH = new EnumVal { def name = "postbody"
+  val POSTBODY_REFRESH = new EnumVal { def name = "postbody_refresh"
     def isAccess = false
     def extract(request: HttpServletRequest, previouslyDiscovered: List[String]) = (this,
       Option(request.getParameterValues(OAUTH2_REFRESH_TOKEN_PARAM_NAME)).toIterable.flatten
