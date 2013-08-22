@@ -15,5 +15,5 @@ trait UserPassAuth[UF <: UserField, UT <: User[UF] with Password[UF, UT]] {
 
   def getAuthenticated(user: String, password: String): UT =
     get(user).filter(u => u.get(u.pwdHashField).exists(HmacHashUtils.checkHmacHash(password, _)))
-    .getOrElse({ throw new AuthException("access denied") })
+    .getOrElse { throw new AuthException("access denied") }
 }

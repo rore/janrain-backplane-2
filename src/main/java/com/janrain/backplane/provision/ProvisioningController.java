@@ -18,7 +18,6 @@ package com.janrain.backplane.provision;
 
 import com.janrain.backplane.common.AuthException;
 import com.janrain.backplane.common.model.Message;
-import com.janrain.backplane.common.model.MessageField;
 import com.janrain.backplane.config.BackplaneConfig;
 import com.janrain.backplane.config.dao.ConfigDAOs;
 import com.janrain.backplane.dao.DaoAll;
@@ -167,7 +166,7 @@ public class ProvisioningController {
     @Inject
     private BackplaneConfig bpConfig;
 
-    private <T extends Message, F extends MessageField> Map<String, Map<String, String>> doList(Class<T> entityType, List<String> entityNames) {
+    private <T extends Message> Map<String, Map<String, String>> doList(Class<T> entityType, List<String> entityNames) {
 
         if (entityNames.size() == 0) return doListAll(entityType);
 
