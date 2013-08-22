@@ -36,6 +36,7 @@ import com.janrain.util.ServletUtil;
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
+import scala.Option;
 import scala.collection.JavaConversions;
 
 import javax.inject.Inject;
@@ -106,24 +107,66 @@ public class ProvisioningController2 {
 
     @RequestMapping(value = "/bus/update", method = RequestMethod.POST)
     @ResponseBody
-    public Map<String, String> busUpdate(HttpServletRequest request, @RequestBody BusUpdateRequest updateRequest) throws AuthException {
+    public Map<String, String> busUpdate(HttpServletRequest request, @RequestBody UpdateRequest updateRequest) throws AuthException {
         ServletUtil.checkSecure(request);
-        return doUpdate(BusConfig2.class, updateRequest);
+        ConfigDAOs.adminDao().getAuthenticated(updateRequest.getAdmin(), updateRequest.getSecret());
+        Map<String,String> result = new LinkedHashMap<String, String>();
+        for(Map<String,String> config : updateRequest.getConfigs()) {
+            String updateStatus = BACKPLANE_UPDATE_SUCCESS;
+            try {
+                BusConfig2 busConfig = new BusConfig2(config);
+                Option<BusOwner> ownerOption = BP2DAOs.busOwnerDao().get((String)config.get(BusConfig2Fields.OWNER().name().toUpperCase()));
+                BusOwner owner = ownerOption.isDefined() ? ownerOption.get() : null;
+                if (owner == null) {
+                    throw new BackplaneServerException("Invalid bus owner: " + config.get(BusConfig2Fields.OWNER().name().toUpperCase()));
+                }
+                BP2DAOs.busDao().store(busConfig);
+            } catch (Exception e) {
+                updateStatus = e.getMessage();
+            }
+            String requestEntryId = config.get(BusConfig2Fields.BUS_NAME().name().toUpperCase());
+            result.put(requestEntryId != null ? requestEntryId : "<unknown>", updateStatus);
+        }
+        return result;
     }
 
     @RequestMapping(value = "/user/update", method = RequestMethod.POST)
     @ResponseBody
-    public Map<String, String> userUpdate(HttpServletRequest request, @RequestBody UserUpdateRequest updateRequest) throws AuthException {
+    public Map<String, String> userUpdate(HttpServletRequest request, @RequestBody UpdateRequest updateRequest) throws AuthException {
         ServletUtil.checkSecure(request);
-        return doUpdate(BusOwner.class, updateRequest);
+        ConfigDAOs.adminDao().getAuthenticated(updateRequest.getAdmin(), updateRequest.getSecret());
+        Map<String,String> result = new LinkedHashMap<String, String>();
+        for(Map<String,String> config : updateRequest.getConfigs()) {
+            String updateStatus = BACKPLANE_UPDATE_SUCCESS;
+            try {
+                BP2DAOs.busOwnerDao().store(new BusOwner(config));
+            } catch (Exception e) {
+                updateStatus = e.getMessage();
+            }
+            String requestEntryId = config.get(BusOwnerFields.USER().name().toUpperCase());
+            result.put(requestEntryId != null ? requestEntryId : "<unknown>", updateStatus);
+        }
+        return result;
     }
 
     @RequestMapping(value = "/client/update", method = RequestMethod.POST)
     @ResponseBody
-    public Map<String, String> clientUpdate(HttpServletRequest request, @RequestBody ClientUpdateRequest updateRequest) throws AuthException {
+    public Map<String, String> clientUpdate(HttpServletRequest request, @RequestBody UpdateRequest updateRequest) throws AuthException {
         ServletUtil.checkSecure(request);
         logger.debug("client updateRequest: '" + updateRequest + "'");
-        return doUpdate(Client.class, updateRequest);
+        ConfigDAOs.adminDao().getAuthenticated(updateRequest.getAdmin(), updateRequest.getSecret());
+        Map<String,String> result = new LinkedHashMap<String, String>();
+        for(Map<String,String> config : updateRequest.getConfigs()) {
+            String updateStatus = BACKPLANE_UPDATE_SUCCESS;
+            try {
+                BP2DAOs.clientDao().store(new Client(config));
+            } catch (Exception e) {
+                updateStatus = e.getMessage();
+            }
+            String requestEntryId = config.get(ClientFields.USER().name().toUpperCase());
+            result.put(requestEntryId != null ? requestEntryId : "<unknown>", updateStatus);
+        }
+        return result;
     }
 
     @RequestMapping(value = "/grant/list", method = RequestMethod.POST)
@@ -253,7 +296,7 @@ public class ProvisioningController2 {
         for(String entityName : entityNames) {
             String deleteStatus = BACKPLANE_DELETE_SUCCESS;
             try {
-                if (getDaoByObjectType(entityType).get(entityName) == null) {
+                if (! getDaoByObjectType(entityType).get(entityName).isDefined()) {
                     deleteStatus = BACKPLANE_ENTRY_NOT_FOUND;
                 } else {
                     getDaoByObjectType(entityType).delete(entityName);
@@ -262,32 +305,6 @@ public class ProvisioningController2 {
                 deleteStatus = e.getMessage();
             }
             result.put(entityName, deleteStatus);
-        }
-        return result;
-    }
-
-    private <T extends Message> Map<String, String> doUpdate(Class<T> entityType, UpdateRequest<T> updateRequest) throws AuthException {
-        ConfigDAOs.adminDao().getAuthenticated(updateRequest.getAdmin(), updateRequest.getSecret());
-        return updateConfigs(entityType, updateRequest.getConfigs());
-    }
-
-    private <T extends Message> Map<String, String> updateConfigs(Class<T> customerConfigType, List<T> bpConfigs) {
-        Map<String,String> result = new LinkedHashMap<String, String>();
-        for(T config : bpConfigs) {
-            String updateStatus = BACKPLANE_UPDATE_SUCCESS;
-            try {
-                if (config instanceof BusConfig2) {
-                    BusOwner owner = BP2DAOs.busOwnerDao().get((String)config.get(BusConfig2Fields.OWNER().name()).getOrElse(null)).getOrElse(null);
-                    if (owner == null) {
-                        throw new BackplaneServerException("Invalid bus owner: " + config.get(BusConfig2Fields.OWNER().name()));
-                    }
-                }
-
-                getDaoByObjectType(customerConfigType).store(config);
-            } catch (Exception e) {
-                updateStatus = e.getMessage();
-            }
-            result.put(config.id(), updateStatus);
         }
         return result;
     }
@@ -362,9 +379,4 @@ public class ProvisioningController2 {
 
         return null;
     }
-
-    // type helper classes for JSON mapper
-    private static class BusUpdateRequest extends UpdateRequest<BusConfig2> {}
-    private static class UserUpdateRequest extends UpdateRequest<BusOwner> {}
-    private static class ClientUpdateRequest extends UpdateRequest<Client> {}
 }

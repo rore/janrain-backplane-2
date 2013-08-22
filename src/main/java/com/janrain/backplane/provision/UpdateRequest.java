@@ -16,15 +16,14 @@
 
 package com.janrain.backplane.provision;
 
-import com.janrain.backplane.common.model.Message;
-
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author Johnny Bufu
  */
-public class UpdateRequest<T extends Message> {
+public class UpdateRequest {
 
     // - PUBLIC
 
@@ -46,12 +45,12 @@ public class UpdateRequest<T extends Message> {
         this.secret = secret;
     }
 
-    public List<T> getConfigs() {
+    public List<Map<String,String>> getConfigs() {
         return configs;
     }
 
     @SuppressWarnings({"UnusedDeclaration"})
-    public void setConfigs(List<T> configs) {
+    public void setConfigs(List<Map<String,String>> configs) {
         this.configs = Collections.unmodifiableList(configs);
     }
     
@@ -60,5 +59,5 @@ public class UpdateRequest<T extends Message> {
     private String admin;
     private String secret;
 
-    private List<T> configs;
+    private List<Map<String,String>> configs;
 }

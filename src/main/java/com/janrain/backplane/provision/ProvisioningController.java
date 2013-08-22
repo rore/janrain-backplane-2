@@ -24,7 +24,9 @@ import com.janrain.backplane.config.dao.ConfigDAOs;
 import com.janrain.backplane.dao.DaoAll;
 import com.janrain.backplane.server1.dao.BP1DAOs;
 import com.janrain.backplane.server1.model.BusConfig1;
+import com.janrain.backplane.server1.model.BusConfig1Fields;
 import com.janrain.backplane.server1.model.BusUser;
+import com.janrain.backplane.server1.model.BusUserFields;
 import com.janrain.commons.supersimpledb.SimpleDBException;
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Controller;
@@ -80,14 +82,38 @@ public class ProvisioningController {
 
     @RequestMapping(value = "/bus/update", method = RequestMethod.POST)
     @ResponseBody
-    public Map<String, String> busUpdate(@RequestBody BusUpdateRequest updateRequest) throws AuthException, SimpleDBException {
-        return doUpdate(BusConfig1.class, updateRequest);
+    public Map<String, String> busUpdate(@RequestBody UpdateRequest updateRequest) throws AuthException, SimpleDBException {
+        ConfigDAOs.adminDao().getAuthenticated(updateRequest.getAdmin(), updateRequest.getSecret());
+        Map<String,String> result = new LinkedHashMap<String, String>();
+        for(Map<String,String> config : updateRequest.getConfigs()) {
+            String updateStatus = BACKPLANE_UPDATE_SUCCESS;
+            try {
+                BP1DAOs.busDao().store(new BusConfig1(config));
+            } catch (Exception e) {
+                updateStatus = e.getMessage();
+            }
+            String requestEntryId = config.get(BusConfig1Fields.BUS_NAME().name().toUpperCase());
+            result.put(requestEntryId != null ? requestEntryId : "<unknown>", updateStatus);
+        }
+        return result;
     }
 
     @RequestMapping(value = "/user/update", method = RequestMethod.POST)
     @ResponseBody
-    public Map<String, String> userUpdate(@RequestBody UserUpdateRequest updateRequest) throws AuthException, SimpleDBException {
-        return doUpdate(BusUser.class, updateRequest);
+    public Map<String, String> userUpdate(@RequestBody UpdateRequest updateRequest) throws AuthException, SimpleDBException {
+        ConfigDAOs.adminDao().getAuthenticated(updateRequest.getAdmin(), updateRequest.getSecret());
+        Map<String,String> result = new LinkedHashMap<String, String>();
+        for(Map<String,String> config : updateRequest.getConfigs()) {
+            String updateStatus = BACKPLANE_UPDATE_SUCCESS;
+            try {
+                BP1DAOs.userDao().store(new BusUser(config));
+            } catch (Exception e) {
+                updateStatus = e.getMessage();
+            }
+            String requestEntryId = config.get(BusUserFields.USER().name().toUpperCase());
+            result.put(requestEntryId != null ? requestEntryId : "<unknown>", updateStatus);
+        }
+        return result;
     }
 
     /**
@@ -190,25 +216,6 @@ public class ProvisioningController {
         return result;
     }
 
-    private <T extends Message> Map<String, String> doUpdate(Class<T> entityType, UpdateRequest<T> updateRequest) throws AuthException, SimpleDBException {
-        ConfigDAOs.adminDao().getAuthenticated(updateRequest.getAdmin(), updateRequest.getSecret());
-        return updateConfigs(entityType, updateRequest.getConfigs());
-    }
-
-    private <T extends Message> Map<String, String> updateConfigs(Class<T> customerConfigType, List<T> bpConfigs) {
-        Map<String,String> result = new LinkedHashMap<String, String>();
-        for(T config : bpConfigs) {
-            String updateStatus = BACKPLANE_UPDATE_SUCCESS;
-            try {
-                getDaoByObjectType(customerConfigType).store(config);
-            } catch (Exception e) {
-                updateStatus = e.getMessage();
-            }
-            result.put(config.id(), updateStatus);
-        }
-        return result;
-    }
-
     private static DaoAll getDaoByObjectType(Class<?> obj) {
         if (BusConfig1.class.isAssignableFrom(obj)) {
             return BP1DAOs.busDao();
@@ -218,8 +225,4 @@ public class ProvisioningController {
 
         return null;
     }
-
-    // type helper classes for JSON mapper
-    private static class BusUpdateRequest extends UpdateRequest<BusConfig1> {}
-    private static class UserUpdateRequest extends UpdateRequest<BusUser> {}
 }
