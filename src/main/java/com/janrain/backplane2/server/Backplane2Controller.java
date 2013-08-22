@@ -660,10 +660,11 @@ public class Backplane2Controller {
             com.janrain.backplane.server2.dao.BP2DAOs.authorizationDecisionKeyDao().store(authorizationDecisionKey);
 
             model.put("auth_key", authorizationDecisionKey.get(AuthorizationDecisionKeyFields.KEY()).get());
-            model.put(AuthorizationRequestFields.CLIENT_ID().name().toLowerCase(), (String) authzRequest.getOrElse(AuthorizationRequestFields.CLIENT_ID().name(), null));
+            model.put(AuthorizationRequestFields.CLIENT_ID().name().toLowerCase(), (String) authzRequest.get(AuthorizationRequestFields.CLIENT_ID().name()).getOrElse(null));
             model.put(AuthorizationRequestFields.REDIRECT_URI().name().toLowerCase(), authzRequest.getRedirectUri());
 
-            String scope = (String) authzRequest.getOrElse(AuthorizationRequestFields.SCOPE().name(), null);
+            Option<String> scopeOption = authzRequest.get(AuthorizationRequestFields.SCOPE().name());
+            String scope = scopeOption.isDefined() ? scopeOption.get() : null;
             model.put(AuthorizationRequestFields.SCOPE().name().toLowerCase(), checkScope(scope, authenticatedBusOwner) );
 
             // return authZ form
@@ -732,7 +733,8 @@ public class Backplane2Controller {
                 throw new AuthorizationException(OAuth2.OAUTH2_AUTHZ_ACCESS_DENIED, "Bus owner denied authorization.", authorizationRequest);
             } else {
                 // todo: use (and check) scope posted back by bus owner
-                String scopeString = checkScope((String)authorizationRequest.get(AuthorizationRequestFields.SCOPE()).getOrElse(null), authenticatedBusOwner);
+                Option<String> scopeOption = authorizationRequest.get(AuthorizationRequestFields.SCOPE());
+                String scopeString = checkScope(scopeOption.isDefined() ? scopeOption.get() : null, authenticatedBusOwner);
                 // create grant/code
                 Grant2 grant =  new GrantBuilder(GrantType.AUTHORIZATION_CODE, GrantState.INACTIVE,
                             authenticatedBusOwner,
@@ -745,7 +747,8 @@ public class Backplane2Controller {
 
                 // return OAuth2 authz response
                 final String code = grant.id();
-                final String state = authorizationRequest.get(AuthorizationRequestFields.STATE()).getOrElse(null);
+                Option<String> stateOption = authorizationRequest.get(AuthorizationRequestFields.STATE());
+                final String state = scopeOption.isDefined() ? scopeOption.get() : null;
 
                 try {
                     return new ModelAndView("redirect:" + UrlResponseFormat.QUERY.encode(
