@@ -14,6 +14,27 @@ trait GrantDao extends DaoAll[Grant2] with Loggable {
 
   def getByClientId(clientId: String): List[Grant2] = getAll.filter(_.get(GrantFields.ISSUED_TO_CLIENT).exists(_ == clientId))
 
+  abstract override def update(grant: Grant2) = {
+    super.update(grant)
+    revokeTokens(Set(grant.id))
+  }
+
+  abstract override def update(grants: Grant2*) = {
+    val grantUpdateResult = super.update(grants: _*)
+    revokeTokens( grants.map(_.id).toSet)
+    grantUpdateResult
+  }
+
+  abstract override def delete(grantId: String) = {
+    revokeTokens(Set(grantId))
+    super.delete(grantId)
+  }
+
+  abstract override def delete(grantIds: String*) = {
+    revokeTokens( grantIds.toSet )
+    super.delete(grantIds: _*)
+  }
+
   /**
    * Revokes buses across the provided grants.
    * Not atomic, best effort.
@@ -24,12 +45,7 @@ trait GrantDao extends DaoAll[Grant2] with Loggable {
   def revokeBuses(grants: List[Grant2], buses: List[String]): Boolean = {
     val busesToRevoke = new Scope(Scope.getEncodedScopesAsString(Backplane2MessageFields.BUS, seqAsJavaList(buses)))
     val updatedGrantIds = grants.withFilter(revokeBusesFromGrant(_, busesToRevoke)).map(_.id).toSet
-    if ( ! updatedGrantIds.isEmpty ) {
-      // revoke (delete) affected tokens
-      BP2DAOs.tokenDao.getAll
-        .withFilter( t => ! (t.backingGrants.toSet & updatedGrantIds).isEmpty)
-        .foreach(t => BP2DAOs.tokenDao.delete(t.id))
-    }
+    revokeTokens(updatedGrantIds)
     ! updatedGrantIds.isEmpty
   }
 
@@ -58,4 +74,13 @@ trait GrantDao extends DaoAll[Grant2] with Loggable {
     }
     true
   }
+
+  private def revokeTokens(grantIds: Set[String]) {
+    if ( ! grantIds.isEmpty ) {
+      BP2DAOs.tokenDao.getAll
+        .withFilter( t => ! (t.backingGrants.toSet & grantIds).isEmpty)
+        .foreach(t => BP2DAOs.tokenDao.delete(t.id))
+    }
+  }
+
 }

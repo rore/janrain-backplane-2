@@ -114,7 +114,7 @@ object Token extends Loggable {
             throw new TokenException("expired token: " + tokenString, HttpServletResponse.SC_FORBIDDEN)
           }
 
-          if (! token.exists(t => t.allowedSources.contains(source))) {
+          if (! token.forall(t => t.allowedSources.contains(source))) {
             throw new TokenException("token source not allowed: " + source, HttpServletResponse.SC_FORBIDDEN)
           }
 

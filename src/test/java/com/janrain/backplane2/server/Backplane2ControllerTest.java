@@ -21,9 +21,11 @@ import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.config.BackplaneConfig;
 import com.janrain.backplane.dao.DaoException;
 import com.janrain.backplane.server2.dao.BP2DAOs;
-import com.janrain.backplane.server2.model.*;
+import com.janrain.backplane.server2.model.Backplane2Message;
+import com.janrain.backplane.server2.model.Backplane2MessageFields;
+import com.janrain.backplane.server2.model.BusConfig2;
+import com.janrain.backplane.server2.model.BusConfig2Fields;
 import com.janrain.backplane.server2.oauth2.model.*;
-import com.janrain.backplane2.server.dao.TokenDAO;
 import com.janrain.oauth2.*;
 import com.janrain.servlet.InvalidRequestException;
 import com.janrain.util.RandomUtils;
@@ -42,6 +44,7 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.web.servlet.HandlerAdapter;
 import org.springframework.web.servlet.ModelAndView;
+import scala.Option;
 import scala.collection.JavaConversions;
 
 import javax.inject.Inject;
@@ -187,7 +190,8 @@ public class Backplane2ControllerTest {
 
             for (String key:this.createdGrantsKeys) {
                 logger.info("deleting Grant " + key);
-                Grant2 grant = BP2DAOs.grantDao().get(key).getOrElse(null);
+                Option<Grant2> grantOption = BP2DAOs.grantDao().get(key);
+                Grant2 grant = grantOption.isDefined() ? grantOption.get() : null;
                 if (grant != null) {
                     com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao().revokeTokenByGrant(grant.id());
                 }
@@ -1301,8 +1305,8 @@ public class Backplane2ControllerTest {
         // Create appropriate token
         String  token = privTokenRequest(Scope.getEncodedScopesAsString(Backplane2MessageFields.BUS(), ""));
 
-        // Revoke token based on one code
-        com.janrain.backplane2.server.dao.BP2DAOs.getTokenDao().revokeTokenByGrant(grant1.id());
+        // Revoke grant and associated tokens based on one code
+        BP2DAOs.grantDao().delete(grant1.id());
 
         try {
             // Now the token should fail
@@ -1543,7 +1547,7 @@ public class Backplane2ControllerTest {
         }
 
         // we assume the message processor is running in another thread...
-        Thread.sleep(10000);
+        Thread.sleep(15000);
 
         // Make the call
         List<Map<String,Object>> allMsgs = new ArrayList<Map<String, Object>>();
