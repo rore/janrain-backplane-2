@@ -2,7 +2,7 @@ package com.janrain.backplane.server.redisdao;
 
 import com.janrain.backplane.common.BackplaneServerException;
 import com.janrain.backplane.server.BusConfig1;
-import com.janrain.backplane.dao.DAO;
+import com.janrain.backplane.dao.DAOLegacy;
 import com.janrain.redis.Redis;
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.log4j.Logger;
@@ -16,7 +16,7 @@ import java.util.List;
 /**
  * @author Tom Raney
  */
-public class RedisBusConfig1DAO implements DAO<BusConfig1> {
+public class RedisBusConfig1DAO implements DAOLegacy<BusConfig1> {
 
     public static byte[] getKey(String busId) {
         return ("v1_bus_" + busId).getBytes();

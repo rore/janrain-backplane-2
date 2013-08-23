@@ -17,7 +17,7 @@
 package com.janrain.backplane2.server.dao;
 
 import com.janrain.backplane.common.BackplaneServerException;
-import com.janrain.backplane.dao.DAO;
+import com.janrain.backplane.dao.DAOLegacy;
 import com.janrain.backplane2.server.config.BusConfig2;
 import com.janrain.oauth2.TokenException;
 
@@ -26,7 +26,7 @@ import java.util.List;
 /**
  * @author Johnny Bufu
  */
-public interface BusDAO extends DAO<BusConfig2> {
+public interface BusDAO extends DAOLegacy<BusConfig2> {
 
     List<BusConfig2> retrieveByOwner(String busOwner) throws BackplaneServerException;
 

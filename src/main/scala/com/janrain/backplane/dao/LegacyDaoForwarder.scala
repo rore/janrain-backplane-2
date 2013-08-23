@@ -1,6 +1,6 @@
 package com.janrain.backplane.dao
 
-import com.janrain.backplane.dao.{LegacySupport, MessageDao, DAO, DaoAll}
+import com.janrain.backplane.dao.{LegacySupport, MessageDao, DAOLegacy, DaoAll}
 import com.janrain.commons.supersimpledb.message.NamedMap
 import scala.collection.JavaConversions._
 import com.janrain.backplane.common.model.Message
@@ -9,14 +9,14 @@ import com.janrain.util.Loggable
 /**
  * Stackable modification trait for Message DAOs that:
  * 1) stores in both (legacy and new) formats
- * 2) attempts to read from new format first, then falls back to legacy format/DAO
+ * 2) attempts to read from new format first, then falls back to legacy format/DAOLegacy
  * 3) on first (and only on first) successful fallback, the entry is converted to new format
  *
  * @author Johnny Bufu
  */
 trait LegacyDaoForwarder[LT <: NamedMap, T <: Message[_] with LegacySupport[LT]] extends MessageDao[T] with DaoAll[T] with Loggable {
 
-  val legacyDao: DAO[LT]
+  val legacyDao: DAOLegacy[LT]
 
   def instantiateFromLegacy(legacyItem: LT): T = instantiate(legacyItem.toMap.map{
     case (k,v) => k.toLowerCase -> v

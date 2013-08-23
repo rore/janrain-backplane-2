@@ -1,6 +1,6 @@
 package com.janrain.backplane.server.redisdao;
 
-import com.janrain.backplane.dao.DAO;
+import com.janrain.backplane.dao.DAOLegacy;
 import com.janrain.backplane.dao.redis.RedisUserDAO;
 import com.janrain.backplane.server.BusConfig1;
 import com.janrain.backplane2.server.config.User;
@@ -12,11 +12,11 @@ public class BP1DAOs {
 
     // - PUBLIC
 
-    public static DAO<BusConfig1> getBusDao() {
+    public static DAOLegacy<BusConfig1> getBusDao() {
         return busDao;
     }
 
-    public static DAO<User> getUserDao() {
+    public static DAOLegacy<User> getUserDao() {
         return userDao;
     }
 
@@ -28,8 +28,8 @@ public class BP1DAOs {
 
     private BP1DAOs() {}
 
-    private static final DAO<BusConfig1> busDao = new RedisBusConfig1DAO();
-    private static final DAO<User> userDao = new RedisUserDAO();
+    private static final DAOLegacy<BusConfig1> busDao = new RedisBusConfig1DAO();
+    private static final DAOLegacy<User> userDao = new RedisUserDAO();
     private static final BP1MessageDao messageDao = new RedisBackplaneMessageDAO();
 
 }

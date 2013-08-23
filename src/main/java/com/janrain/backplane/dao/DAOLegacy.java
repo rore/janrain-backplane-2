@@ -25,7 +25,7 @@ import java.util.List;
  * @author Tom Raney
  */
 
-public interface DAO<T extends NamedMap> {
+public interface DAOLegacy<T extends NamedMap> {
 
     T get(String id) throws BackplaneServerException;
     List<T> getAll() throws BackplaneServerException;

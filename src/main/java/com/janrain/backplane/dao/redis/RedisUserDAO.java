@@ -1,7 +1,7 @@
 package com.janrain.backplane.dao.redis;
 
 import com.janrain.backplane.common.BackplaneServerException;
-import com.janrain.backplane.dao.DAO;
+import com.janrain.backplane.dao.DAOLegacy;
 import com.janrain.backplane2.server.config.User;
 import com.janrain.redis.Redis;
 import org.apache.commons.lang.SerializationUtils;
@@ -16,7 +16,7 @@ import java.util.List;
 /**
  * @author Tom Raney
  */
-public class RedisUserDAO implements DAO<User> {
+public class RedisUserDAO implements DAOLegacy<User> {
 
     public static byte[] getKey(String userId) {
         return ("v1_user_" + userId).getBytes();
