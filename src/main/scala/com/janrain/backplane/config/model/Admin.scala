@@ -1,8 +1,8 @@
 package com.janrain.backplane.config.model
 
 import com.janrain.backplane.common.model.{UserFieldEnum, User}
-import com.janrain.backplane.server2.dao.LegacySupport
 import scala.collection.JavaConversions._
+import com.janrain.backplane.dao.LegacySupport
 
 /**
  * @author Johnny Bufu

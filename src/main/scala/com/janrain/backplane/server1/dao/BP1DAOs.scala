@@ -2,13 +2,12 @@ package com.janrain.backplane.server1.dao
 
 import com.janrain.backplane.dao.redis.RedisMessageDao
 import com.janrain.backplane.server1.model._
-import com.janrain.backplane.dao.PasswordHasherDao
+import com.janrain.backplane.dao.{LegacyDaoForwarder, PasswordHasherDao}
 import com.janrain.backplane.server1.dao.redis.RedisBackplane1MessageDao
 import scala.collection.JavaConversions._
 import com.janrain.util.Loggable
 import com.janrain.backplane.config.dao.ConfigDAOs
 import com.janrain.backplane.config.model.ServerConfigFields
-import com.janrain.backplane.server2.dao.LegacyDaoForwarder
 import com.janrain.backplane.server
 
 /**

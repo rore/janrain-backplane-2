@@ -7,8 +7,8 @@ import com.janrain.oauth2.{OAuth2, TokenException}
 import com.janrain.oauth2.OAuth2._
 import javax.servlet.http.{HttpServletResponse, HttpServletRequest}
 import com.janrain.backplane.server2.TokenSource
-import com.janrain.backplane.server2.dao.{LegacySupport, BP2DAOs}
-import com.janrain.backplane.dao.DaoException
+import com.janrain.backplane.server2.dao.{BP2DAOs}
+import com.janrain.backplane.dao.{LegacySupport, DaoException}
 import com.janrain.util.{Utils, Loggable}
 import scala.collection.JavaConversions._
 import java.util.Date

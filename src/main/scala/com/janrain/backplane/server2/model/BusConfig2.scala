@@ -3,7 +3,7 @@ package com.janrain.backplane.server2.model
 import com.janrain.backplane.common.model.{MessageField, MessageFieldEnum, Message}
 import com.janrain.backplane.common.MessageException
 import scala.collection.JavaConversions._
-import com.janrain.backplane.server2.dao.LegacySupport
+import com.janrain.backplane.dao.LegacySupport
 
 /**
  * @author Johnny Bufu

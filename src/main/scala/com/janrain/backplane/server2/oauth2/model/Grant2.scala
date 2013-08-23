@@ -6,7 +6,7 @@ import com.janrain.backplane.common.{DateTimeUtils, MessageException}
 import com.janrain.oauth2.TokenException
 import org.apache.commons.lang.StringUtils
 import scala.collection.JavaConversions._
-import com.janrain.backplane.server2.dao.LegacySupport
+import com.janrain.backplane.dao.LegacySupport
 
 /**
  * @author Johnny Bufu

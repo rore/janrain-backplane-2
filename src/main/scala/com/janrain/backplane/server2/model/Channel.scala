@@ -1,9 +1,9 @@
 package com.janrain.backplane.server2.model
 
 import com.janrain.backplane.common.model.{MessageField, MessageFieldEnum, Message}
-import com.janrain.backplane.server2.dao.LegacySupport
 import scala.collection.JavaConversions._
 import com.janrain.util.RandomUtils
+import com.janrain.backplane.dao.LegacySupport
 
 /**
  * Binds a previously server-generated channel ID to a bus/config.

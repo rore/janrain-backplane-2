@@ -1,4 +1,4 @@
-package com.janrain.backplane.server2.dao
+package com.janrain.backplane.dao
 
 import com.janrain.commons.supersimpledb.message.NamedMap
 import scala.collection.JavaConversions._

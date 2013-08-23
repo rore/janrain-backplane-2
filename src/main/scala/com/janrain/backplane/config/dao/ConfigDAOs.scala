@@ -2,9 +2,8 @@ package com.janrain.backplane.config.dao
 
 import com.janrain.backplane.dao.redis.RedisMessageDao
 import com.janrain.backplane.config.model.{AdminFields, ServerConfigFields, ServerConfig, Admin}
-import com.janrain.backplane.dao.{PasswordHasherDao, ExpiringCacheDao}
+import com.janrain.backplane.dao.{LegacyDaoForwarder, PasswordHasherDao, ExpiringCacheDao}
 import com.janrain.backplane.config.SystemProperties
-import com.janrain.backplane.server2.dao.LegacyDaoForwarder
 
 object ConfigDAOs {
 

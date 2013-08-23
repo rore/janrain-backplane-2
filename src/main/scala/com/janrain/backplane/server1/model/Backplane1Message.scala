@@ -8,8 +8,8 @@ import com.janrain.util.{Loggable, RandomUtils}
 import org.codehaus.jackson.map.ObjectMapper
 import java.io.IOException
 import scala.collection.JavaConversions._
-import com.janrain.backplane.server2.dao.LegacySupport
 import scala.collection.JavaConversions
+import com.janrain.backplane.dao.LegacySupport
 
 /**
  * @author Johnny Bufu

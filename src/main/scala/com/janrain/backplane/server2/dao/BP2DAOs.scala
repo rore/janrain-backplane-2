@@ -2,7 +2,7 @@ package com.janrain.backplane.server2.dao
 
 import com.janrain.backplane.dao.redis.{MessageProcessorDaoSupport, RedisMessageDao}
 import com.janrain.backplane.server2.oauth2.model._
-import com.janrain.backplane.dao.{PasswordHasherDao, ExpiringDao}
+import com.janrain.backplane.dao.{LegacyDaoForwarder, PasswordHasherDao, ExpiringDao}
 import com.janrain.backplane.server2.model._
 import com.janrain.backplane.server2.dao.redis.RedisBackplane2MessageDao
 import scala.collection.JavaConversions._

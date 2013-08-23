@@ -5,7 +5,7 @@ import com.janrain.oauth2.{ValidationException, OAuth2}
 import com.janrain.servlet.InvalidRequestException
 import com.janrain.backplane.config.model.Password
 import scala.collection.JavaConversions._
-import com.janrain.backplane.server2.dao.LegacySupport
+import com.janrain.backplane.dao.LegacySupport
 
 /**
  * @author Johnny Bufu

@@ -1,6 +1,6 @@
-package com.janrain.backplane.server2.dao
+package com.janrain.backplane.dao
 
-import com.janrain.backplane.dao.{MessageDao, DAO, DaoAll}
+import com.janrain.backplane.dao.{LegacySupport, MessageDao, DAO, DaoAll}
 import com.janrain.commons.supersimpledb.message.NamedMap
 import scala.collection.JavaConversions._
 import com.janrain.backplane.common.model.Message
