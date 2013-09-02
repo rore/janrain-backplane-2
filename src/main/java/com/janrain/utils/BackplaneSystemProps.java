@@ -33,6 +33,8 @@ public class BackplaneSystemProps extends InitSystemProps {
     public static final String ZOOKEEPER_SERVERS  = "ZOOKEEPER_SERVERS";
     public static final String REDIS_SERVER_PRIMARY = "REDIS_SERVER_PRIMARY";
     public static final String REDIS_SERVER_READS = "REDIS_SERVER_READS";
+    public static final String REDIS_SERVER_PRIMARY_PASSWORD = "REDIS_SERVER_PRIMARY_PASSWORD";
+    public static final String REDIS_SERVER_READS_PASSWORD = "REDIS_SERVER_READS_PASSWORD";
     public static final String IP_WHITE_LIST = "IP_WHITE_LIST";
     public static final String ANALYTICS_FALLBACK_PATH = "ANALYTICS_FALLBACK_PATH";
     public static final String ANALYTICS_FALLBACK_MAXSIZEMB = "ANALYTICS_FALLBACK_MAXSIZEMB";
@@ -56,6 +58,8 @@ public class BackplaneSystemProps extends InitSystemProps {
         load(ZOOKEEPER_SERVERS, true);
         load(REDIS_SERVER_PRIMARY, true);
         load(REDIS_SERVER_READS, true);
+        load(REDIS_SERVER_PRIMARY_PASSWORD, false);
+        load(REDIS_SERVER_READS_PASSWORD, false);
         load(IP_WHITE_LIST, false);
         load(ANALYTICS_LOGGING, false);
         load(ANALYTICS_FALLBACK_PATH, false);
