@@ -26,7 +26,7 @@ object ConfigDAOs {
     with ServerConfigDao
     with ExpiringCacheDao[ServerConfig] {
 
-    def oneServerConfig = get("SERVER_CONFIG_KEY_IGNORED")
+    def oneServerConfig = get("SERVER_CONFIG_KEY_IGNORED").orElse(Some(instantiate(ServerConfig.DEFAULT)))
 
     override protected def getKey(itemId: String) =  SystemProperties.INSTANCE_ID + ":" + keyPrefix// ignore itemId, there's only one, don't allow access to other instances' config
 

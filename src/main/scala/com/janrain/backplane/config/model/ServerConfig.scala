@@ -18,7 +18,10 @@ object ServerConfig {
     ServerConfigFields.DEBUG_MODE.name -> false.toString,
     ServerConfigFields.CONFIG_CACHE_AGE_SECONDS.name -> 10.toString,
     ServerConfigFields.CLEANUP_INTERVAL_MINUTES.name -> 2.toString,
-    ServerConfigFields.TOKEN_CACHE_MAX_MB.name -> 100.toString
+    ServerConfigFields.TOKEN_CACHE_MAX_MB.name -> 100.toString,
+    ServerConfigFields.DEFAULT_MESSAGES_MAX.name -> 50.toString,
+    ServerConfigFields.BP1_MESSAGES_USE_NEW_DAO.name -> false.toString,
+    ServerConfigFields.BP1_MP_STOP_WRITING_LEGACY_FORMAT.name -> false.toString
   )
 }
 

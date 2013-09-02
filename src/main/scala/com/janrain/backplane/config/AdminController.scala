@@ -1,6 +1,7 @@
 package com.janrain.backplane.config
 
 import org.springframework.web.bind.annotation.{RequestMethod, RequestMapping}
+import org.springframework.stereotype.Controller;
 import com.janrain.util.{ServletUtil, Loggable}
 import org.springframework.web.servlet.ModelAndView
 import javax.servlet.http.{HttpServletResponse, HttpServletRequest}
@@ -12,6 +13,7 @@ import com.janrain.backplane.common.HmacHashUtils
 /**
  * @author Johnny Bufu
  */
+@Controller
 @RequestMapping (value = Array ("/admin/*") )
 class AdminController extends Loggable {
 
