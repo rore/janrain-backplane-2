@@ -34,6 +34,7 @@ import org.jetbrains.annotations.Nullable;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
+import redis.clients.jedis.Protocol;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -364,6 +365,7 @@ public class Redis implements PathChildrenCacheListener {
         jedisPoolConfig.setMinIdle(50);
 
         String redisServerConfig = System.getProperty(SystemProperties.REDIS_SERVER_PRIMARY());
+        String redisServerPass = System.getProperty(SystemProperties.REDIS_SERVER_PRIMARY_PASSWORD()); 
         if (StringUtils.isEmpty(redisServerConfig)) {
             logger.error("cannot find configuration entry for " + SystemProperties.REDIS_SERVER_PRIMARY());
             System.exit(1);
@@ -378,10 +380,10 @@ public class Redis implements PathChildrenCacheListener {
             }
         }
 
-        poolForWrites = new Pair<String, JedisPool>(args[0] + ":" + port, new JedisPool(jedisPoolConfig, args[0], port));
-
+        poolForWrites = new Pair<String, JedisPool>(args[0] + ":" + port, new JedisPool(jedisPoolConfig, args[0], port, Protocol.DEFAULT_TIMEOUT, redisServerPass)); 
+        
         redisServerConfig = System.getProperty(SystemProperties.REDIS_SERVER_READS());
-
+        redisServerPass = System.getProperty(SystemProperties.REDIS_SERVER_READS_PASSWORD());
         if (StringUtils.isEmpty(redisServerConfig)) {
             logger.error("cannot find configuration entry for " + SystemProperties.REDIS_SERVER_READS());
             System.exit(1);
@@ -395,7 +397,7 @@ public class Redis implements PathChildrenCacheListener {
                 try {
                     port = Integer.parseInt(args[1]);
                     //currentRedisServerForReads[i] = args[0];
-                    poolForReads.add(new Pair<String, JedisPool>(args[0] + ":" + port, new JedisPool(jedisPoolConfig, args[0], port)));
+                    poolForReads.add(new Pair<String, JedisPool>(args[0] + ":" + port, new JedisPool(jedisPoolConfig, args[0], port, Protocol.DEFAULT_TIMEOUT, redisServerPass)));
                 } catch (NumberFormatException e) {
                     logger.error("invalid Redis server configuration: " + redisServerConfig);
                     System.exit(1);

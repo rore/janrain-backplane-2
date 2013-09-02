@@ -112,6 +112,7 @@
         <url-pattern>/app/admin/*</url-pattern>
         <url-pattern>/app/adminadd/*</url-pattern>
         <url-pattern>/app/adminupdate/*</url-pattern>
+        <url-pattern>/app/</url-pattern> 
         <dispatcher>REQUEST</dispatcher>
         <dispatcher>FORWARD</dispatcher>
     </filter-mapping>

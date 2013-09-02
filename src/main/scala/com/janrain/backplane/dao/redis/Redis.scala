@@ -15,14 +15,17 @@ object Redis extends Loggable {
 
 
   private val (writeRedisHost, writeRedisPort) = redisHostAndPort(Utils.getRequiredSystemProperty(SystemProperties.REDIS_SERVER_PRIMARY))
+  private val writeRedisPassword = Utils.getOptionalSystemProperty(SystemProperties.REDIS_SERVER_PRIMARY_PASSWORD)
 
-  val writePool = new RedisClientPool(writeRedisHost, writeRedisPort, REDIS_DEFAULT_MAX_IDLE_CLIENTS, REDIS_DEFAULT_DATABASE)
+  val writePool = new RedisClientPool(writeRedisHost, writeRedisPort, REDIS_DEFAULT_MAX_IDLE_CLIENTS, REDIS_DEFAULT_DATABASE, secret = writeRedisPassword)
   logger.info("initialized redis write pool for %s:%s, max idle connections: %s)".format(writeRedisHost, writeRedisPort, REDIS_DEFAULT_MAX_IDLE_CLIENTS))
 
   private val readPools: Array[(String,RedisClientPool)] =
     Utils.getRequiredSystemProperty(SystemProperties.REDIS_SERVER_READS)
     .split(",").map(r => redisHostAndPort(r))
-    .map( hostAndPort => hostAndPort.toString() -> new RedisClientPool(hostAndPort._1, hostAndPort._2, REDIS_DEFAULT_MAX_IDLE_CLIENTS, REDIS_DEFAULT_DATABASE) )
+    .map( hostAndPort => hostAndPort.toString() -> new RedisClientPool(hostAndPort._1, hostAndPort._2, REDIS_DEFAULT_MAX_IDLE_CLIENTS, REDIS_DEFAULT_DATABASE,
+        secret = Utils.getOptionalSystemProperty(SystemProperties.REDIS_SERVER_READS_PASSWORD)))
+        
 
   def readPool: RedisClientPool = readPools(Random.nextInt(readPools.size))._2
 

@@ -19,8 +19,14 @@ object SystemProperties extends InitSystemProps("/log4j.xml") with Loggable {
   final val REDIS_SERVER_PRIMARY: String = "REDIS_SERVER_PRIMARY"
   load(REDIS_SERVER_PRIMARY, true)
 
+  final val REDIS_SERVER_PRIMARY_PASSWORD: String = "REDIS_SERVER_PRIMARY_PASSWORD"
+  load(REDIS_SERVER_PRIMARY_PASSWORD, false)
+
   final val REDIS_SERVER_READS: String = "REDIS_SERVER_READS"
   load(REDIS_SERVER_READS, true)
+
+  final val REDIS_SERVER_READS_PASSWORD: String = "REDIS_SERVER_READS_PASSWORD"
+  load(REDIS_SERVER_READS_PASSWORD, false)
 
   final val GRAPHITE_SERVER: String = "GRAPHITE_SERVER"
   load(GRAPHITE_SERVER, false)
