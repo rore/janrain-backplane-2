@@ -101,6 +101,7 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
     @Override
     public void retrieveMessagesPerScope(@NotNull MessagesResponse bpResponse, @NotNull Token token) throws BackplaneServerException {
         final Scope scope = token.getScope();
+        final boolean isAnonymous = token.getType() == GrantType.ANONYMOUS;
         Jedis jedis = null;
         try {
             jedis = Redis.getInstance().getReadJedis();
@@ -117,7 +118,8 @@ public class RedisBackplaneMessageDAO implements BackplaneMessageDAO {
                 }
             }
             Set<String> busScopes = scope.getScopeFieldValues(BackplaneMessage.Field.BUS);
-            if (busScopes != null) {
+            // don't try to get bus messages for anonymous tokens (since it's supposed to be only for a specific channel)
+            if (busScopes != null && !isAnonymous) {
                 String busUnion = "scope_req_" + ChannelUtil.randomString(10);
                 unions.add(busUnion);
                 for(String bus : busScopes) {
